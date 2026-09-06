@@ -1,7 +1,10 @@
 ---
 import { warbands } from '../data/warbands';
+import { getMemberStory } from '../data/history';
 
 const statKeys = ['M', 'WS', 'BS', 'S', 'T', 'W', 'I', 'A', 'Ld'] as const;
+
+const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
 ---
 
 <dialog id="member-dialog" class="member-dialog">
@@ -39,6 +42,61 @@ const statKeys = ['M', 'WS', 'BS', 'S', 'T', 'W', 'I', 'A', 'Ld'] as const;
             )}
             <h4>Tale</h4>
             <p class="profile-lore">{m.lore}</p>
+            <details class="storyline">
+              <summary>
+                <span class="storyline-toggle">📜 Follow their story</span>
+              </summary>
+              <ol class="story-timeline">
+                <li class="story-chapter story-backstory">
+                  <span class="story-marker" aria-hidden="true">✦</span>
+                  <h5>The Tale Begins</h5>
+                  <span class="story-meta">{m.epithet} — {wb.name}</span>
+                  <p class="story-text">{m.lore}</p>
+                </li>
+                {getMemberStory(m.id).map((entry) => (
+                  <li
+                    class:list={[
+                      'story-chapter',
+                      { 'story-fell': entry.snapshot.status === 'dead' },
+                    ]}
+                  >
+                    <span class="story-marker" aria-hidden="true">
+                      {entry.snapshot.status === 'dead' ? '✝' : '⚔'}
+                    </span>
+                    <h5>{entry.scenario.scenario}</h5>
+                    <span class="story-meta">
+                      {entry.scenario.date} —{' '}
+                      <span class:list={['story-result', entry.warband.result]}>
+                        {resultLabel[entry.warband.result]}
+                      </span>
+                      {entry.snapshot.status === 'dead' && (
+                        <span class="dead-marker"> ✝ Fell in battle</span>
+                      )}
+                    </span>
+                    <p class="story-text story-highlight">
+                      <strong>Finest moment:</strong> {entry.snapshot.highlight}
+                    </p>
+                    <p class="story-text story-lowlight">
+                      <strong>Darkest moment:</strong> {entry.snapshot.lowlight}
+                    </p>
+                  </li>
+                ))}
+                {m.dead && m.death ? (
+                  <li class="story-chapter story-grave">
+                    <span class="story-marker" aria-hidden="true">🪦</span>
+                    <h5>The Tale Ends</h5>
+                    <span class="story-meta">Laid to rest — {m.death.date}</span>
+                    <p class="story-text story-epitaph">{m.death.epitaph}</p>
+                  </li>
+                ) : (
+                  <li class="story-chapter story-alive">
+                    <span class="story-marker" aria-hidden="true">🕯</span>
+                    <h5>The Tale Continues…</h5>
+                    <span class="story-meta">Still walks the streets of Mordheim</span>
+                  </li>
+                )}
+              </ol>
+            </details>
           </div>
         </div>
       ))
@@ -148,6 +206,120 @@ const statKeys = ['M', 'WS', 'BS', 'S', 'T', 'W', 'I', 'A', 'Ld'] as const;
     color: var(--ink-dim);
     font-size: 0.95rem;
   }
+
+  .storyline {
+    margin-top: 1.4rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+  .storyline summary {
+    list-style: none;
+    cursor: pointer;
+    display: inline-block;
+  }
+  .storyline summary::-webkit-details-marker {
+    display: none;
+  }
+  .storyline-toggle {
+    font-family: 'Pirata One', cursive;
+    font-size: 1.1rem;
+    letter-spacing: 0.06em;
+    color: var(--gold);
+    border: 1px solid var(--gold-dim);
+    padding: 0.45rem 1rem;
+    display: inline-block;
+    transition: all 0.25s;
+  }
+  .storyline summary:hover .storyline-toggle,
+  .storyline summary:focus-visible .storyline-toggle {
+    color: var(--parchment);
+    border-color: var(--gold);
+    background: rgba(184, 150, 62, 0.08);
+  }
+  .storyline[open] .storyline-toggle {
+    background: rgba(184, 150, 62, 0.1);
+    color: var(--parchment);
+  }
+
+  .story-timeline {
+    list-style: none;
+    margin: 1.4rem 0 0;
+    padding: 0 0 0 1.9rem;
+    position: relative;
+  }
+  .story-timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.65rem;
+    top: 0.4rem;
+    bottom: 0.4rem;
+    width: 1px;
+    background: linear-gradient(var(--gold-dim), var(--border));
+  }
+  .story-chapter {
+    position: relative;
+    padding-bottom: 1.5rem;
+  }
+  .story-chapter:last-child {
+    padding-bottom: 0;
+  }
+  .story-chapter::before {
+    content: none;
+  }
+  .story-marker {
+    position: absolute;
+    left: -1.9rem;
+    top: 0;
+    width: 1.35rem;
+    text-align: center;
+    font-size: 0.95rem;
+    color: var(--gold);
+    background: var(--bg-panel);
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+  }
+  .story-chapter h5 {
+    font-family: 'Pirata One', cursive;
+    font-size: 1.15rem;
+    color: var(--parchment);
+    font-weight: normal;
+    letter-spacing: 0.04em;
+  }
+  .story-meta {
+    display: block;
+    font-size: 0.78rem;
+    font-variant: small-caps;
+    letter-spacing: 0.1em;
+    color: var(--ink-dim);
+    margin-bottom: 0.35rem;
+  }
+  .story-result.victory { color: var(--gold); }
+  .story-result.defeat { color: var(--blood-bright); }
+  .story-result.draw { color: var(--ink-dim); }
+  .story-text {
+    font-size: 0.88rem;
+    color: var(--ink-dim);
+    margin: 0.25rem 0;
+  }
+  .story-text strong {
+    font-variant: small-caps;
+    letter-spacing: 0.08em;
+    font-weight: normal;
+  }
+  .story-highlight strong { color: var(--gold); }
+  .story-lowlight strong { color: var(--blood-bright); }
+  .story-backstory .story-text {
+    font-style: italic;
+  }
+  .story-fell .story-marker,
+  .story-fell h5 {
+    color: var(--blood-bright);
+  }
+  .story-grave .story-marker { filter: grayscale(0.5); }
+  .story-epitaph {
+    font-style: italic;
+    color: var(--parchment);
+  }
+  .story-alive h5 { color: var(--gold); }
 </style>
 
 <script>
@@ -157,7 +329,10 @@ const statKeys = ['M', 'WS', 'BS', 'S', 'T', 'W', 'I', 'A', 'Ld'] as const;
   document.querySelectorAll<HTMLElement>('.member-card').forEach((card) => {
     card.addEventListener('click', () => {
       const key = `${card.dataset.warband}:${card.dataset.member}`;
-      profiles.forEach((p) => (p.hidden = p.dataset.profile !== key));
+      profiles.forEach((p) => {
+        p.hidden = p.dataset.profile !== key;
+        p.querySelectorAll<HTMLDetailsElement>('.storyline').forEach((d) => (d.open = false));
+      });
       dialog.showModal();
     });
   });
