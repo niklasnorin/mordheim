@@ -6,8 +6,18 @@
 <canvas id="rain-canvas" aria-hidden="true"></canvas>
 <canvas id="leaf-canvas" aria-hidden="true"></canvas>
 <canvas id="crow-canvas" aria-hidden="true"></canvas>
-<div class="day-city" aria-hidden="true"></div>
-<div class="day-fog" aria-hidden="true"></div>
+<canvas id="crow-canvas-front" aria-hidden="true"></canvas>
+<!-- Tall vertical backdrop: sky + city outline on top, black earth in the middle,
+     the graveyard at the bottom. The viewport pans down through it as the page scrolls. -->
+<div class="backdrop" aria-hidden="true">
+  <div class="backdrop-stack">
+    <div class="stack-sky" style={`--sky-img: url(${import.meta.env.BASE_URL}/day-skyline.jpg)`}>
+      <div class="day-fog"></div>
+    </div>
+    <div class="stack-gap"></div>
+    <div class="stack-grave" style={`--grave-img: url(${import.meta.env.BASE_URL}/graveyard.jpg)`}></div>
+  </div>
+</div>
 <div class="fog" aria-hidden="true"></div>
 <div class="vignette" aria-hidden="true"></div>
 <div class="lightning" id="lightning" aria-hidden="true"></div>
@@ -19,7 +29,8 @@
 <style>
   #rain-canvas,
   #leaf-canvas,
-  #crow-canvas {
+  #crow-canvas,
+  #crow-canvas-front {
     position: fixed;
     inset: 0;
     width: 100%;
@@ -29,35 +40,99 @@
   #rain-canvas { z-index: 5; opacity: 0.35; }
   #leaf-canvas { z-index: 5; display: none; }
   #crow-canvas { z-index: 4; }
+  #crow-canvas-front { z-index: 12; }
 
   :global([data-theme='day']) #rain-canvas { display: none; }
   :global([data-theme='day']) #leaf-canvas { display: block; }
 
-  /* ── Daytime: Mordheim skyline shrouded in fog, far background ── */
-  .day-city {
+  /* ── Scrolling backdrop stack ──
+     Three bands stacked vertically, together taller than the viewport:
+       sky + city outline (100vh) → black earth (45vh) → graveyard (100vh).
+     JS sets --backdrop-progress (0 at page top → 1 as the graveyard section
+     arrives) and the stack is translated up so the viewport pans down through it. */
+  .backdrop {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 42vh;
+    inset: 0;
     z-index: 1;
     pointer-events: none;
-    display: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 300' preserveAspectRatio='none'%3E%3Cpath fill='%23343e4a' d='M0 300V190l18-8 6-34 8 34 14 6v-58l10-14 4-38 6 38 10 14v52l26-10V96l14-10 6-42 8 42 12 10v70l22 12v-48l16-16 8-44 6 44 14 16v66l30-8V110l12-8 8-52 6 52 14 8v92l24 6v-64l18-12 4-30 8 30 16 12v78l28-14V78l16-12 6-36 10 36 12 12v118l24 8v-52l14-10 6-40 8 40 12 10v66l26-8V118l12-10 6-46 8 46 14 10v76l24 12v-60l16-14 6-34 6 34 16 14v72l28-6V96l14-12 8-40 6 40 12 12v104l22 8v-46l14-12 6-36 8 36 14 12v58l24-6V128l12-10 6-42 10 42 12 10v82l20 10V160l14-8 6-30 6 30 16 8v60H800v80z' opacity='0.55'/%3E%3Cpath fill='%232a323c' d='M0 300V236l30-10 8-40 10 40 24 8v-32l18-14 8-46 8 46 16 14v42l36-12v-56l22-16 10-52 10 52 20 16v66l40 10v-40l20-14 10-44 8 44 18 14v34l38-14v-52l24-14 8-56 12 56 20 14v62l42 12v-44l18-12 10-48 10 48 20 12v38l36-10v-58l20-16 10-50 10 50 22 16v54l40 14v-36l18-14 8-42 10 42 20 14v42l34-10v-50l22-14 10-46 8 46 20 14v56l38 8v-30l16-12 8-38 10 38 18 12v44H800v36z' opacity='0.7'/%3E%3C/svg%3E");
-    background-size: 200% 100%;
-    background-repeat: repeat-x;
-    background-position: bottom;
-    filter: blur(1.5px);
+    overflow: hidden;
   }
-  :global([data-theme='day']) .day-city { display: block; }
+  .backdrop-stack {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    /* 100vh + 45vh + 100vh */
+    height: 245vh;
+    transform: translateY(calc(var(--backdrop-progress, 0) * -145vh));
+    will-change: transform;
+  }
+  .stack-sky,
+  .stack-gap,
+  .stack-grave {
+    position: relative;
+    width: 100%;
+  }
+  .stack-sky {
+    height: 100vh;
+    background-image: var(--sky-img);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center bottom;
+    filter: saturate(0.15) brightness(0.22) contrast(1.35);
+    transition: filter 0.07s linear;
+  }
+  :global([data-theme='day']) .stack-sky {
+    filter: saturate(0.8) brightness(1) contrast(1);
+  }
+  /* Night veil — almost black, so only a ghost of the rooftops reads. */
+  .stack-sky::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #030504;
+    opacity: 0.82;
+    transition: opacity 0.07s linear;
+  }
+  :global([data-theme='day']) .stack-sky::before { opacity: 0; }
+  .stack-sky.flash {
+    filter: saturate(0.35) brightness(0.55) contrast(1.45);
+  }
+  .stack-sky.flash::before { opacity: 0.42; }
+  /* Painted last, so it sits over both the skyline and the fog:
+     the bottom of the outline is always solid black. */
+  .stack-sky::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 40%, #030504 85%, #030504 100%);
+  }
+  .stack-gap {
+    height: 45vh;
+    background: #030504;
+  }
+  .stack-grave {
+    height: 100vh;
+    background-image: var(--grave-img);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center bottom;
+  }
+  .stack-grave::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, #030504 0%, transparent 45%);
+  }
 
+  /* Low fog hugging the rooftops. Lives inside the sky band so it scrolls away
+     with the outline and is capped by the band's black gradient below. */
   .day-fog {
-    position: fixed;
+    position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    height: 48vh;
-    z-index: 2;
+    height: 55%;
     pointer-events: none;
     display: none;
     background:
@@ -135,7 +210,7 @@
   :global([data-theme='day']) #theme-toggle .icon-night { display: none; }
 
   @media (prefers-reduced-motion: reduce) {
-    #rain-canvas, #leaf-canvas, #crow-canvas { display: none !important; }
+    #rain-canvas, #leaf-canvas, #crow-canvas, #crow-canvas-front { display: none !important; }
   }
 </style>
 
@@ -156,6 +231,45 @@
       localStorage.setItem('mordheim-theme', isDay() ? 'day' : 'night');
     } catch {}
   });
+
+  /* ── Scroll-driven backdrop ──
+     The stack is 145vh taller than the viewport (100vh sky + 45vh black + 100vh
+     graves). Graveyard art starts 145vh down the stack, so it first touches the
+     fold at progress = 45/145. We hold there until #graveyard itself reaches the
+     fold, then finish the pan as that section comes on screen. */
+  const graveyardSection = document.getElementById('graveyard');
+  const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+  const REVEAL = 45 / 145;
+
+  let scrollQueued = false;
+  function updateScrollVars() {
+    scrollQueued = false;
+    const vh = window.innerHeight;
+    const doc = document.documentElement;
+    const scrollY = window.scrollY;
+
+    const graveTop = graveyardSection
+      ? graveyardSection.getBoundingClientRect().top + scrollY
+      : doc.scrollHeight;
+    const revealStart = Math.max(1, graveTop - vh);
+    const revealEnd = Math.max(revealStart + 1, graveTop - vh * 0.25);
+
+    let progress: number;
+    if (scrollY <= revealStart) {
+      progress = REVEAL * clamp01(scrollY / revealStart);
+    } else {
+      progress = REVEAL + (1 - REVEAL) * clamp01((scrollY - revealStart) / (revealEnd - revealStart));
+    }
+    root.style.setProperty('--backdrop-progress', progress.toFixed(4));
+  }
+  function queueScrollUpdate() {
+    if (scrollQueued) return;
+    scrollQueued = true;
+    requestAnimationFrame(updateScrollVars);
+  }
+  window.addEventListener('scroll', queueScrollUpdate, { passive: true });
+  window.addEventListener('resize', queueScrollUpdate);
+  updateScrollVars();
 
   /* ── Rain ── */
   const rainCanvas = document.getElementById('rain-canvas') as HTMLCanvasElement;
@@ -264,70 +378,570 @@
     }
   }
 
-  /* ── Crows ── */
+  /* ── Crows ──
+     Distant flock stays in the sky. Nearer birds fly across the page,
+     land on UI edges, sit / caw / flap, then take off again. */
   const crowCanvas = document.getElementById('crow-canvas') as HTMLCanvasElement;
-  const crowCtx = crowCanvas.getContext('2d')!;
+  const crowFrontCanvas = document.getElementById('crow-canvas-front') as HTMLCanvasElement;
+  const crowBackCtx = crowCanvas.getContext('2d')!;
+  const crowFrontCtx = crowFrontCanvas.getContext('2d')!;
+  let crowCtx = crowBackCtx;
 
-  interface Crow { x: number; y: number; vx: number; size: number; phase: number; flapSpeed: number; }
+  type CrowState = 'flying' | 'approaching' | 'landing' | 'perched' | 'taking-off';
+  type PerchAction = 'idle' | 'caw' | 'flap';
+
+  interface PerchSpot {
+    id: string;
+    el: Element;
+    t: number;
+    edge: 'top' | 'bottom';
+  }
+
+  const PERCH_TARGETS: { selector: string; edge: 'top' | 'bottom' }[] = [
+    { selector: '.header-bar', edge: 'bottom' },
+    { selector: '.logo-main', edge: 'top' },
+    { selector: '.campaign-bar', edge: 'top' },
+    { selector: '.town-cryer', edge: 'top' },
+    { selector: '.warband-card', edge: 'top' },
+    { selector: '.standings-table', edge: 'top' },
+    { selector: '.timeline-entry', edge: 'top' },
+    { selector: '.section-title', edge: 'top' },
+    { selector: '.tombstone-stone', edge: 'top' },
+    { selector: '.panel', edge: 'top' },
+    { selector: '.site-footer', edge: 'top' },
+  ];
+
+  interface Crow {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    size: number;
+    flySize: number;
+    approachDist: number;
+    phase: number;
+    flapSpeed: number;
+    facing: number;
+    canLand: boolean;
+    alpha: number;
+    state: CrowState;
+    target: PerchSpot | null;
+    flyTimer: number;
+    perchTimer: number;
+    actionTimer: number;
+    perchAction: PerchAction;
+    headAngle: number;
+    beakOpen: number;
+    wingRaise: number;
+    takeoffTimer: number;
+  }
+
+  const LAND_SIZE = 18;
+
   let crows: Crow[] = [];
+  const occupied = new Set<string>();
+  let nextPerchKey = 1;
+  let logicalW = 0;
+  let logicalH = 0;
 
-  function spawnCrow(offscreen = true): Crow {
-    const leftward = Math.random() < 0.5;
-    const size = 5 + Math.random() * 9;
+  function sizeCrowLayer(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, dpr: number) {
+    canvas.width = Math.floor(logicalW * dpr);
+    canvas.height = Math.floor(logicalH * dpr);
+    canvas.style.width = `${logicalW}px`;
+    canvas.style.height = `${logicalH}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function sizeCrowCanvas() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    logicalW = window.innerWidth;
+    logicalH = window.innerHeight;
+    sizeCrowLayer(crowCanvas, crowBackCtx, dpr);
+    sizeCrowLayer(crowFrontCanvas, crowFrontCtx, dpr);
+  }
+
+  function fillAlpha(color: string): number {
+    if (!color || color === 'transparent') return 0;
+    const rgba = color.match(/^rgba?\((.+)\)$/i);
+    if (rgba) {
+      const parts = rgba[1].split(',').map((part) => parseFloat(part));
+      return parts.length >= 4 ? parts[3]! : 1;
+    }
+    return 1;
+  }
+
+  function hasOpaqueFill(el: Element): boolean {
+    const style = getComputedStyle(el);
+    if (style.visibility === 'hidden' || style.display === 'none') return false;
+    if (parseFloat(style.opacity) < 0.08) return false;
+    if (fillAlpha(style.backgroundColor) > 0.08) return true;
+    return Boolean(style.backgroundImage && style.backgroundImage !== 'none');
+  }
+
+  function perchId(el: Element, spot: number) {
+    const node = el as HTMLElement;
+    if (!node.dataset.perchKey) {
+      node.dataset.perchKey = String(nextPerchKey++);
+    }
+    return `${node.dataset.perchKey}:${spot}`;
+  }
+
+  function perchPos(spot: PerchSpot) {
+    const r = spot.el.getBoundingClientRect();
+    const pad = 18;
+    const y = spot.edge === 'bottom' ? r.bottom : r.top + 2;
     return {
-      x: offscreen ? (leftward ? crowCanvas.width + 40 : -40) : Math.random() * crowCanvas.width,
-      y: 30 + Math.random() * crowCanvas.height * 0.4,
-      vx: (leftward ? -1 : 1) * (0.4 + Math.random() * 0.9),
-      size,
+      x: r.left + r.width * spot.t,
+      y,
+      visible:
+        r.width > 48 &&
+        y > 20 &&
+        y < logicalH - 12 &&
+        r.right > pad &&
+        r.left < logicalW - pad,
+    };
+  }
+
+  function collectPerches(): PerchSpot[] {
+    const spots: PerchSpot[] = [];
+    for (const target of PERCH_TARGETS) {
+      document.querySelectorAll(target.selector).forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width < 48 || r.height < 12 || !hasOpaqueFill(el)) return;
+        const count = Math.max(1, Math.min(3, Math.floor(r.width / 200)));
+        for (let i = 0; i < count; i++) {
+          const t = (i + 1) / (count + 1);
+          const spot: PerchSpot = { id: perchId(el, i), el, t, edge: target.edge };
+          if (perchPos(spot).visible && !occupied.has(spot.id)) spots.push(spot);
+        }
+      });
+    }
+    return spots;
+  }
+
+  function perchedCount() {
+    return crows.filter((c) => c.state === 'perched' || c.state === 'landing' || c.state === 'approaching').length;
+  }
+
+  function spawnCrow(offscreen: boolean, canLand: boolean): Crow {
+    const leftward = Math.random() < 0.5;
+    const facing = leftward ? -1 : 1;
+    const flySize = canLand ? 8 + Math.random() * 3.5 : 6 + Math.random() * 5;
+    return {
+      x: offscreen ? (leftward ? logicalW + 50 : -50) : Math.random() * logicalW,
+      y: canLand
+        ? 40 + Math.random() * logicalH * 0.45
+        : 24 + Math.random() * logicalH * 0.28,
+      vx: facing * (canLand ? 0.55 + Math.random() * 0.7 : 0.35 + Math.random() * 0.55),
+      vy: 0,
+      size: flySize,
+      flySize,
+      approachDist: 0,
       phase: Math.random() * Math.PI * 2,
-      flapSpeed: 0.12 + Math.random() * 0.1,
+      flapSpeed: 0.11 + Math.random() * 0.08,
+      facing,
+      canLand,
+      alpha: canLand ? 0.92 : 0.55,
+      state: 'flying',
+      target: null,
+      flyTimer: canLand ? 90 + Math.random() * 220 : 99999,
+      perchTimer: 0,
+      actionTimer: 0,
+      perchAction: 'idle',
+      headAngle: 0,
+      beakOpen: 0,
+      wingRaise: 0,
+      takeoffTimer: 0,
     };
   }
 
   function initCrows() {
-    sizeCanvas(crowCanvas);
-    crows = Array.from({ length: 7 }, () => spawnCrow(false));
+    sizeCrowCanvas();
+    occupied.clear();
+    crows = [
+      ...Array.from({ length: 5 }, () => spawnCrow(false, false)),
+      ...Array.from({ length: 3 }, () => spawnCrow(false, true)),
+    ];
+  }
+
+  function easeToward(current: number, target: number, amount: number) {
+    return current + (target - current) * amount;
+  }
+
+  function startTakeoff(c: Crow) {
+    if (c.target) occupied.delete(c.target.id);
+    c.target = null;
+    c.state = 'taking-off';
+    c.takeoffTimer = 42;
+    c.facing = Math.random() < 0.5 ? -1 : 1;
+    c.vx = c.facing * (1.15 + Math.random() * 0.55);
+    c.vy = -2.4;
+    c.beakOpen = 0;
+    c.headAngle = 0;
+    c.approachDist = 0;
+  }
+
+  function updateFlying(c: Crow) {
+    c.size = easeToward(c.size, c.flySize, 0.05);
+    c.x += c.vx;
+    c.y += Math.sin(c.phase * 0.28) * (c.canLand ? 0.35 : 0.22);
+    c.phase += c.flapSpeed;
+    c.facing = c.vx >= 0 ? 1 : -1;
+    c.flyTimer -= 1;
+
+    if (c.canLand && c.flyTimer <= 0 && perchedCount() < 2) {
+      const options = collectPerches();
+      if (options.length) {
+        const spot = options[Math.floor(Math.random() * options.length)]!;
+        occupied.add(spot.id);
+        c.target = spot;
+        c.approachDist = 0;
+        c.state = 'approaching';
+      } else {
+        c.flyTimer = 80 + Math.random() * 160;
+      }
+    }
+
+    if (c.x < -70 || c.x > logicalW + 70) {
+      const next = spawnCrow(true, c.canLand);
+      Object.assign(c, next);
+    }
+  }
+
+  function updateApproaching(c: Crow) {
+    if (!c.target) {
+      c.state = 'flying';
+      return;
+    }
+    const p = perchPos(c.target);
+    if (!p.visible || !hasOpaqueFill(c.target.el)) {
+      occupied.delete(c.target.id);
+      c.target = null;
+      c.approachDist = 0;
+      c.state = 'flying';
+      c.flyTimer = 100;
+      return;
+    }
+
+    const destX = p.x;
+    const destY = p.y + (c.target.edge === 'bottom' ? -22 : 22);
+    const dx = destX - c.x;
+    const dy = destY - c.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    if (c.approachDist <= 0) c.approachDist = Math.max(dist, 80);
+    const t = 1 - Math.min(1, dist / c.approachDist);
+    const eased = t * t * (3 - 2 * t);
+    c.size = c.flySize + (LAND_SIZE - c.flySize) * eased;
+
+    if (dist < 14) {
+      c.x = p.x;
+      c.y = p.y - (c.target.edge === 'bottom' ? -4 : 4);
+      c.size = LAND_SIZE;
+      c.state = 'landing';
+      return;
+    }
+
+    const speed = Math.min(2.4, 1.1 + dist * 0.045);
+    c.vx = (dx / dist) * speed;
+    c.vy = (dy / dist) * speed;
+    c.facing = c.vx >= 0 ? 1 : -1;
+    c.x += c.vx;
+    c.y += c.vy;
+    c.phase += c.flapSpeed * 1.15;
+  }
+
+  function updateLanding(c: Crow) {
+    if (!c.target) {
+      c.state = 'flying';
+      return;
+    }
+    const p = perchPos(c.target);
+    c.size = LAND_SIZE;
+    c.x = easeToward(c.x, p.x, 0.2);
+    c.y = easeToward(c.y, p.y, 0.2);
+    c.phase += c.flapSpeed * 0.55;
+    c.facing = c.vx >= 0 ? 1 : c.facing;
+    if (Math.hypot(p.x - c.x, p.y - c.y) < 2.4) {
+      c.x = p.x;
+      c.y = p.y;
+      c.vx = 0;
+      c.vy = 0;
+      c.state = 'perched';
+      c.perchTimer = 200 + Math.random() * 260;
+      c.perchAction = 'idle';
+      c.actionTimer = 36 + Math.random() * 40;
+      c.wingRaise = 0;
+    }
+  }
+
+  function updatePerched(c: Crow) {
+    if (!c.target) {
+      startTakeoff(c);
+      return;
+    }
+    const p = perchPos(c.target);
+    if (!p.visible) {
+      startTakeoff(c);
+      return;
+    }
+    c.x = p.x;
+    c.y = p.y;
+    c.size = LAND_SIZE;
+    c.perchTimer -= 1;
+    c.actionTimer -= 1;
+
+    if (c.perchAction === 'caw') {
+      const cycle = ((c.actionTimer % 26) + 26) % 26;
+      const open = cycle > 10 && cycle < 22;
+      c.headAngle = open ? -0.55 : -0.08;
+      c.beakOpen = open ? 1 : 0.1;
+      c.wingRaise *= 0.85;
+    } else if (c.perchAction === 'flap') {
+      c.wingRaise = 0.45 + 0.55 * Math.abs(Math.sin(c.actionTimer * 0.38));
+      c.phase += 0.22;
+      c.headAngle *= 0.88;
+      c.beakOpen *= 0.8;
+    } else {
+      c.headAngle = easeToward(c.headAngle, Math.sin(c.perchTimer * 0.03) * 0.12, 0.08);
+      c.beakOpen *= 0.8;
+      c.wingRaise *= 0.88;
+    }
+
+    if (c.actionTimer <= 0) {
+      if (c.perchTimer <= 0) {
+        startTakeoff(c);
+        return;
+      }
+      const roll = Math.random();
+      if (roll < 0.38) {
+        c.perchAction = 'caw';
+        c.actionTimer = 52;
+      } else if (roll < 0.72) {
+        c.perchAction = 'flap';
+        c.actionTimer = 48;
+      } else {
+        c.perchAction = 'idle';
+        c.actionTimer = 55 + Math.random() * 70;
+      }
+    }
+  }
+
+  function updateTakeoff(c: Crow) {
+    c.size = easeToward(c.size, c.flySize, 0.08);
+    c.x += c.vx;
+    c.y += c.vy;
+    c.vy += 0.055;
+    c.phase += c.flapSpeed * 1.55;
+    c.wingRaise *= 0.8;
+    c.takeoffTimer -= 1;
+    if (c.takeoffTimer <= 0) {
+      c.state = 'flying';
+      c.vy = 0;
+      c.vx = c.facing * (0.55 + Math.random() * 0.7);
+      c.flyTimer = 220 + Math.random() * 280;
+      c.wingRaise = 0;
+      c.headAngle = 0;
+      c.beakOpen = 0;
+    }
+  }
+
+  function fillCrow(alpha: number) {
+    const color = isDay() ? `rgba(22, 16, 12, ${alpha})` : `rgba(8, 8, 11, ${alpha})`;
+    crowCtx.fillStyle = color;
+    crowCtx.strokeStyle = color;
+  }
+
+  function drawFlyingCrow(c: Crow) {
+    const s = c.size;
+    const flap = Math.sin(c.phase);
+    crowCtx.save();
+    crowCtx.translate(c.x, c.y);
+    crowCtx.scale(c.facing, 1);
+    fillCrow(c.alpha);
+    crowCtx.lineJoin = 'round';
+    crowCtx.lineCap = 'round';
+
+    // Far wing
+    crowCtx.beginPath();
+    crowCtx.moveTo(-s * 0.05, 0);
+    crowCtx.quadraticCurveTo(-s * 0.15, -flap * s * 0.85, -s * 0.95, -flap * s * 1.05);
+    crowCtx.lineTo(-s * 1.15, -flap * s * 1.05 + s * 0.18);
+    crowCtx.lineTo(-s * 0.7, -flap * s * 0.55);
+    crowCtx.quadraticCurveTo(-s * 0.15, s * 0.08, 0, s * 0.06);
+    crowCtx.fill();
+
+    // Tail
+    crowCtx.beginPath();
+    crowCtx.moveTo(-s * 0.45, 0);
+    crowCtx.lineTo(-s * 1.15, -s * 0.18);
+    crowCtx.lineTo(-s * 0.95, 0.02 * s);
+    crowCtx.lineTo(-s * 1.12, s * 0.22);
+    crowCtx.closePath();
+    crowCtx.fill();
+
+    // Body
+    crowCtx.beginPath();
+    crowCtx.ellipse(0, 0, s * 0.62, s * 0.26, -0.08, 0, Math.PI * 2);
+    crowCtx.fill();
+
+    // Head + beak
+    crowCtx.beginPath();
+    crowCtx.ellipse(s * 0.58, -s * 0.06, s * 0.24, s * 0.2, 0, 0, Math.PI * 2);
+    crowCtx.fill();
+    crowCtx.beginPath();
+    crowCtx.moveTo(s * 0.78, -s * 0.08);
+    crowCtx.lineTo(s * 1.08, -s * 0.01);
+    crowCtx.lineTo(s * 0.78, s * 0.05);
+    crowCtx.closePath();
+    crowCtx.fill();
+
+    // Near wing
+    crowCtx.beginPath();
+    crowCtx.moveTo(s * 0.08, 0);
+    crowCtx.quadraticCurveTo(s * 0.2, flap * s * 0.9, s * 0.15, -flap * s * 0.15);
+    crowCtx.quadraticCurveTo(-s * 0.05, -flap * s * 1.15, -s * 0.85, -flap * s * 1.25);
+    crowCtx.lineTo(-s * 1.05, -flap * s * 1.2 + s * 0.2);
+    crowCtx.lineTo(-s * 0.55, -flap * s * 0.45);
+    crowCtx.quadraticCurveTo(s * 0.05, s * 0.12, s * 0.2, s * 0.04);
+    crowCtx.fill();
+
+    crowCtx.restore();
+  }
+
+  function drawPerchedCrow(c: Crow) {
+    const s = c.size * 1.05;
+    crowCtx.save();
+    crowCtx.translate(c.x, c.y);
+    crowCtx.scale(c.facing, 1);
+    fillCrow(Math.min(1, c.alpha + 0.05));
+
+    // Contact shadow on the component edge
+    crowCtx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+    crowCtx.beginPath();
+    crowCtx.ellipse(0, 1.5, s * 0.38, 2.1, 0, 0, Math.PI * 2);
+    crowCtx.fill();
+    fillCrow(Math.min(1, c.alpha + 0.05));
+
+    crowCtx.lineCap = 'round';
+    crowCtx.lineJoin = 'round';
+    crowCtx.lineWidth = Math.max(1.1, s * 0.08);
+
+    // Legs + feet
+    crowCtx.beginPath();
+    crowCtx.moveTo(-s * 0.1, -s * 0.42);
+    crowCtx.lineTo(-s * 0.14, 0);
+    crowCtx.lineTo(-s * 0.28, 0);
+    crowCtx.moveTo(s * 0.1, -s * 0.4);
+    crowCtx.lineTo(s * 0.12, 0);
+    crowCtx.lineTo(s * 0.26, 0);
+    crowCtx.stroke();
+
+    const bodyY = -s * 0.82;
+
+    // Tail
+    crowCtx.beginPath();
+    crowCtx.moveTo(-s * 0.2, bodyY);
+    crowCtx.lineTo(-s * 0.95, bodyY - s * 0.22);
+    crowCtx.lineTo(-s * 0.72, bodyY + s * 0.08);
+    crowCtx.lineTo(-s * 0.98, bodyY + s * 0.28);
+    crowCtx.closePath();
+    crowCtx.fill();
+
+    // Body
+    crowCtx.beginPath();
+    crowCtx.ellipse(0, bodyY, s * 0.42, s * 0.36, -0.35, 0, Math.PI * 2);
+    crowCtx.fill();
+
+    // Wing — folded, or raised while stretching
+    if (c.wingRaise > 0.12) {
+      const lift = bodyY - c.wingRaise * s * 1.15;
+      crowCtx.beginPath();
+      crowCtx.moveTo(-s * 0.05, bodyY);
+      crowCtx.quadraticCurveTo(-s * 0.35, lift, s * 0.12, lift - s * 0.12);
+      crowCtx.lineTo(s * 0.28, lift + s * 0.08);
+      crowCtx.quadraticCurveTo(s * 0.05, bodyY - s * 0.1, s * 0.18, bodyY + s * 0.05);
+      crowCtx.closePath();
+      crowCtx.fill();
+    } else {
+      crowCtx.beginPath();
+      crowCtx.ellipse(s * 0.04, bodyY + s * 0.04, s * 0.32, s * 0.2, 0.45, 0, Math.PI * 2);
+      crowCtx.fill();
+    }
+
+    // Head
+    crowCtx.save();
+    crowCtx.translate(s * 0.32, bodyY - s * 0.28);
+    crowCtx.rotate(c.headAngle);
+    crowCtx.beginPath();
+    crowCtx.ellipse(0, 0, s * 0.26, s * 0.22, 0.1, 0, Math.PI * 2);
+    crowCtx.fill();
+
+    // Beak (opens when cawing)
+    crowCtx.beginPath();
+    crowCtx.moveTo(s * 0.2, -s * 0.04);
+    crowCtx.lineTo(s * 0.5, -s * 0.06 - c.beakOpen * s * 0.1);
+    crowCtx.lineTo(s * 0.2, s * 0.03);
+    crowCtx.closePath();
+    crowCtx.fill();
+    if (c.beakOpen > 0.35) {
+      crowCtx.beginPath();
+      crowCtx.moveTo(s * 0.2, s * 0.02);
+      crowCtx.lineTo(s * 0.48, s * 0.1 + c.beakOpen * s * 0.08);
+      crowCtx.lineTo(s * 0.2, s * 0.08);
+      crowCtx.closePath();
+      crowCtx.fill();
+
+      crowCtx.strokeStyle = 'rgba(210, 200, 180, 0.4)';
+      crowCtx.lineWidth = 1;
+      crowCtx.beginPath();
+      crowCtx.moveTo(s * 0.52, -s * 0.16);
+      crowCtx.lineTo(s * 0.78, -s * 0.3);
+      crowCtx.moveTo(s * 0.54, -s * 0.02);
+      crowCtx.lineTo(s * 0.82, -s * 0.08);
+      crowCtx.stroke();
+    }
+    crowCtx.restore();
+    crowCtx.restore();
   }
 
   function drawCrow(c: Crow) {
-    const flap = Math.sin(c.phase);
-    crowCtx.strokeStyle = 'rgba(10, 10, 12, 0.85)';
-    crowCtx.lineWidth = Math.max(1.2, c.size / 5);
-    crowCtx.lineCap = 'round';
-    crowCtx.beginPath();
-    // Left wing
-    crowCtx.moveTo(c.x - c.size, c.y - flap * c.size * 0.7);
-    crowCtx.quadraticCurveTo(c.x - c.size * 0.4, c.y + flap * c.size * 0.3, c.x, c.y);
-    // Right wing
-    crowCtx.quadraticCurveTo(c.x + c.size * 0.4, c.y + flap * c.size * 0.3, c.x + c.size, c.y - flap * c.size * 0.7);
-    crowCtx.stroke();
+    if (c.state === 'perched' || c.state === 'landing') drawPerchedCrow(c);
+    else drawFlyingCrow(c);
   }
 
   function drawCrows() {
-    crowCtx.clearRect(0, 0, crowCanvas.width, crowCanvas.height);
-    for (let i = 0; i < crows.length; i++) {
-      const c = crows[i]!;
+    crowBackCtx.clearRect(0, 0, logicalW, logicalH);
+    crowFrontCtx.clearRect(0, 0, logicalW, logicalH);
+    for (const c of crows) {
+      if (c.state === 'flying') updateFlying(c);
+      else if (c.state === 'approaching') updateApproaching(c);
+      else if (c.state === 'landing') updateLanding(c);
+      else if (c.state === 'perched') updatePerched(c);
+      else updateTakeoff(c);
+      const onLedge = c.state === 'perched' || c.state === 'landing';
+      crowCtx = onLedge ? crowFrontCtx : crowBackCtx;
       drawCrow(c);
-      c.x += c.vx;
-      c.y += Math.sin(c.phase * 0.3) * 0.3;
-      c.phase += c.flapSpeed;
-      if (c.x < -60 || c.x > crowCanvas.width + 60) crows[i] = spawnCrow();
     }
   }
 
   /* ── Lightning ── */
   const lightning = document.getElementById('lightning')!;
+  const nightSky = document.querySelector('.stack-sky') as HTMLElement;
+  function flashSky(ms: number) {
+    lightning.classList.add('flash');
+    nightSky.classList.add('flash');
+    setTimeout(() => {
+      lightning.classList.remove('flash');
+      nightSky.classList.remove('flash');
+    }, ms);
+  }
   function scheduleLightning() {
     const delay = 8000 + Math.random() * 18000;
     setTimeout(() => {
       if (!isDay()) {
-        lightning.classList.add('flash');
-        setTimeout(() => lightning.classList.remove('flash'), 90);
+        flashSky(90);
         if (Math.random() < 0.5) {
-          setTimeout(() => {
-            lightning.classList.add('flash');
-            setTimeout(() => lightning.classList.remove('flash'), 60);
-          }, 180);
+          setTimeout(() => flashSky(60), 180);
         }
       }
       scheduleLightning();
@@ -353,7 +967,7 @@
     window.addEventListener('resize', () => {
       initRain();
       initLeaves();
-      sizeCanvas(crowCanvas);
+      sizeCrowCanvas();
     });
     requestAnimationFrame(loop);
   }
