@@ -1,15 +1,24 @@
 ---
-// Atmospheric layers: rain, crows, fog, lightning, vignette
+// Atmospheric layers: rain, crows, fog, lightning, vignette (night)
+// and autumn leaves, foggy city skyline (day) — with a day/night switch
 ---
 
 <canvas id="rain-canvas" aria-hidden="true"></canvas>
+<canvas id="leaf-canvas" aria-hidden="true"></canvas>
 <canvas id="crow-canvas" aria-hidden="true"></canvas>
+<div class="day-city" aria-hidden="true"></div>
+<div class="day-fog" aria-hidden="true"></div>
 <div class="fog" aria-hidden="true"></div>
 <div class="vignette" aria-hidden="true"></div>
 <div class="lightning" id="lightning" aria-hidden="true"></div>
+<button id="theme-toggle" type="button" aria-label="Switch between stormy night and autumn day" title="Switch day / night">
+  <span class="icon-night" aria-hidden="true">☾</span>
+  <span class="icon-day" aria-hidden="true">☀</span>
+</button>
 
 <style>
   #rain-canvas,
+  #leaf-canvas,
   #crow-canvas {
     position: fixed;
     inset: 0;
@@ -18,7 +27,46 @@
     pointer-events: none;
   }
   #rain-canvas { z-index: 50; opacity: 0.55; }
+  #leaf-canvas { z-index: 50; display: none; }
   #crow-canvas { z-index: 4; }
+
+  :global([data-theme='day']) #rain-canvas { display: none; }
+  :global([data-theme='day']) #leaf-canvas { display: block; }
+
+  /* ── Daytime: Mordheim skyline shrouded in fog, far background ── */
+  .day-city {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 42vh;
+    z-index: 1;
+    pointer-events: none;
+    display: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 300' preserveAspectRatio='none'%3E%3Cpath fill='%23343e4a' d='M0 300V190l18-8 6-34 8 34 14 6v-58l10-14 4-38 6 38 10 14v52l26-10V96l14-10 6-42 8 42 12 10v70l22 12v-48l16-16 8-44 6 44 14 16v66l30-8V110l12-8 8-52 6 52 14 8v92l24 6v-64l18-12 4-30 8 30 16 12v78l28-14V78l16-12 6-36 10 36 12 12v118l24 8v-52l14-10 6-40 8 40 12 10v66l26-8V118l12-10 6-46 8 46 14 10v76l24 12v-60l16-14 6-34 6 34 16 14v72l28-6V96l14-12 8-40 6 40 12 12v104l22 8v-46l14-12 6-36 8 36 14 12v58l24-6V128l12-10 6-42 10 42 12 10v82l20 10V160l14-8 6-30 6 30 16 8v60H800v80z' opacity='0.55'/%3E%3Cpath fill='%232a323c' d='M0 300V236l30-10 8-40 10 40 24 8v-32l18-14 8-46 8 46 16 14v42l36-12v-56l22-16 10-52 10 52 20 16v66l40 10v-40l20-14 10-44 8 44 18 14v34l38-14v-52l24-14 8-56 12 56 20 14v62l42 12v-44l18-12 10-48 10 48 20 12v38l36-10v-58l20-16 10-50 10 50 22 16v54l40 14v-36l18-14 8-42 10 42 20 14v42l34-10v-50l22-14 10-46 8 46 20 14v56l38 8v-30l16-12 8-38 10 38 18 12v44H800v36z' opacity='0.7'/%3E%3C/svg%3E");
+    background-size: 200% 100%;
+    background-repeat: repeat-x;
+    background-position: bottom;
+    filter: blur(1.5px);
+  }
+  :global([data-theme='day']) .day-city { display: block; }
+
+  .day-fog {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 48vh;
+    z-index: 2;
+    pointer-events: none;
+    display: none;
+    background:
+      linear-gradient(to top, rgba(196, 206, 210, 0.55), rgba(196, 206, 210, 0.25) 45%, transparent),
+      radial-gradient(ellipse 70% 50% at 30% 100%, rgba(210, 218, 222, 0.4), transparent),
+      radial-gradient(ellipse 60% 45% at 75% 95%, rgba(200, 210, 216, 0.35), transparent);
+    animation: fog-drift 50s ease-in-out infinite alternate;
+  }
+  :global([data-theme='day']) .day-fog { display: block; }
 
   .fog {
     position: fixed;
@@ -34,6 +82,7 @@
     from { transform: translateX(-2%); }
     to   { transform: translateX(2%); }
   }
+  :global([data-theme='day']) .fog { display: none; }
 
   .vignette {
     position: fixed;
@@ -41,6 +90,9 @@
     z-index: 60;
     pointer-events: none;
     background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+  }
+  :global([data-theme='day']) .vignette {
+    background: radial-gradient(ellipse at center, transparent 65%, rgba(40, 52, 64, 0.35) 100%);
   }
 
   .lightning {
@@ -52,14 +104,57 @@
     transition: background 0.08s;
   }
   .lightning.flash { background: rgba(200, 215, 235, 0.12); }
+  :global([data-theme='day']) .lightning { display: none; }
+
+  /* ── Minimalistic day/night switch ── */
+  #theme-toggle {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 100;
+    width: 2.4rem;
+    height: 2.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    line-height: 1;
+    color: var(--gold);
+    background: rgba(20, 23, 28, 0.7);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: color 0.25s, box-shadow 0.25s;
+  }
+  #theme-toggle:hover {
+    color: var(--parchment);
+    box-shadow: 0 0 12px rgba(184, 150, 62, 0.35);
+  }
+  #theme-toggle .icon-day { display: none; }
+  :global([data-theme='day']) #theme-toggle .icon-day { display: inline; }
+  :global([data-theme='day']) #theme-toggle .icon-night { display: none; }
 
   @media (prefers-reduced-motion: reduce) {
-    #rain-canvas, #crow-canvas { display: none; }
+    #rain-canvas, #leaf-canvas, #crow-canvas { display: none !important; }
   }
 </style>
 
 <script>
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ── Day/night switch ── */
+  const root = document.documentElement;
+  const isDay = () => root.dataset.theme === 'day';
+
+  document.getElementById('theme-toggle')!.addEventListener('click', () => {
+    if (isDay()) {
+      delete root.dataset.theme;
+      localStorage.setItem('mordheim-theme', 'night');
+    } else {
+      root.dataset.theme = 'day';
+      localStorage.setItem('mordheim-theme', 'day');
+    }
+  });
 
   /* ── Rain ── */
   const rainCanvas = document.getElementById('rain-canvas') as HTMLCanvasElement;
@@ -99,6 +194,71 @@
       if (d.y > rainCanvas.height) {
         d.y = -d.len;
         d.x = Math.random() * (rainCanvas.width + 100);
+      }
+    }
+  }
+
+  /* ── Autumn leaves ── */
+  const leafCanvas = document.getElementById('leaf-canvas') as HTMLCanvasElement;
+  const leafCtx = leafCanvas.getContext('2d')!;
+
+  const LEAF_COLORS = ['#a5622a', '#b8842c', '#8a3d1f', '#c49a3c', '#7d4a22', '#994f18'];
+
+  interface Leaf {
+    x: number; y: number; vx: number; vy: number;
+    size: number; angle: number; spin: number;
+    sway: number; swaySpeed: number; color: string;
+  }
+  let leaves: Leaf[] = [];
+
+  function spawnLeaf(offscreen = true): Leaf {
+    return {
+      x: offscreen ? leafCanvas.width + 20 + Math.random() * 120 : Math.random() * leafCanvas.width,
+      y: Math.random() * leafCanvas.height,
+      vx: -(0.8 + Math.random() * 1.8),
+      vy: 0.3 + Math.random() * 0.7,
+      size: 4 + Math.random() * 6,
+      angle: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.08,
+      sway: Math.random() * Math.PI * 2,
+      swaySpeed: 0.02 + Math.random() * 0.03,
+      color: LEAF_COLORS[Math.floor(Math.random() * LEAF_COLORS.length)]!,
+    };
+  }
+
+  function initLeaves() {
+    sizeCanvas(leafCanvas);
+    const count = Math.floor((leafCanvas.width * leafCanvas.height) / 28000);
+    leaves = Array.from({ length: count }, () => spawnLeaf(false));
+  }
+
+  function drawLeaf(l: Leaf) {
+    leafCtx.save();
+    leafCtx.translate(l.x, l.y);
+    leafCtx.rotate(l.angle);
+    leafCtx.fillStyle = l.color;
+    leafCtx.globalAlpha = 0.85;
+    leafCtx.beginPath();
+    leafCtx.ellipse(0, 0, l.size, l.size * 0.45, 0, 0, Math.PI * 2);
+    leafCtx.fill();
+    leafCtx.restore();
+  }
+
+  function drawLeaves() {
+    leafCtx.clearRect(0, 0, leafCanvas.width, leafCanvas.height);
+    for (let i = 0; i < leaves.length; i++) {
+      const l = leaves[i]!;
+      drawLeaf(l);
+      l.sway += l.swaySpeed;
+      l.x += l.vx + Math.sin(l.sway) * 0.6;
+      l.y += l.vy + Math.cos(l.sway * 0.7) * 0.4;
+      l.angle += l.spin;
+      if (l.x < -30 || l.y > leafCanvas.height + 30) {
+        leaves[i] = spawnLeaf();
+        if (Math.random() < 0.4) {
+          leaves[i]!.x = Math.random() * leafCanvas.width;
+          leaves[i]!.y = -20;
+        }
       }
     }
   }
@@ -159,13 +319,15 @@
   function scheduleLightning() {
     const delay = 8000 + Math.random() * 18000;
     setTimeout(() => {
-      lightning.classList.add('flash');
-      setTimeout(() => lightning.classList.remove('flash'), 90);
-      if (Math.random() < 0.5) {
-        setTimeout(() => {
-          lightning.classList.add('flash');
-          setTimeout(() => lightning.classList.remove('flash'), 60);
-        }, 180);
+      if (!isDay()) {
+        lightning.classList.add('flash');
+        setTimeout(() => lightning.classList.remove('flash'), 90);
+        if (Math.random() < 0.5) {
+          setTimeout(() => {
+            lightning.classList.add('flash');
+            setTimeout(() => lightning.classList.remove('flash'), 60);
+          }, 180);
+        }
       }
       scheduleLightning();
     }, delay);
@@ -173,17 +335,23 @@
 
   /* ── Loop ── */
   function loop() {
-    drawRain();
+    if (isDay()) {
+      drawLeaves();
+    } else {
+      drawRain();
+    }
     drawCrows();
     requestAnimationFrame(loop);
   }
 
   if (!reduced) {
     initRain();
+    initLeaves();
     initCrows();
     scheduleLightning();
     window.addEventListener('resize', () => {
       initRain();
+      initLeaves();
       sizeCanvas(crowCanvas);
     });
     requestAnimationFrame(loop);
