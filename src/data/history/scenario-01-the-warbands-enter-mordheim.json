@@ -4,6 +4,44 @@
   "date": "Kaldezeit 21, 1999",
   "scenario": "The Warbands Enter Mordheim",
   "summary": "Two companies pass the shattered gates within a day of one another. A lurking horror in the shadow of the gates claims the campaign's first grave.",
+  "report": {
+    "rulebookScenario": null,
+    "winCondition": null,
+    "outcome": "The campaign ledger records an Oathbound victory: they entered in good order and recovered their first wyrdstone. The Wolves reached and looted the eastern gatehouse first, but lost Olga. The original rulebook scenario and the exact winning condition were not recorded.",
+    "prologue": "The shattered gates stand open, but the approaches are not safe. Two companies are entering Mordheim within a day of one another, seeking a foothold among the gatehouses and the first fragments of wyrdstone. Rain obscures the rooftops; something moves in the shadows below.",
+    "battle": [
+      "The Oathbound made an orderly passage through the gates. Thorgrim pried a wyrdstone shard from a gargoyle's mouth, while Grimnir marked safe rooftop routes on the company map. Snorri stepped over a pressure plate without noticing it, sparing the vanguard behind him.",
+      "Borri fired the campaign's first shot, dropping a lurking shape from a bell tower at extreme range. Dagna went alone into the gatehouse shadows and returned dragging a dead ghoul. Okri remained steady at his weapon, unaware of the screaming in the dark or the recall horn that followed.",
+      "At the eastern gatehouse, the Wolves secured an early advantage. Boris negotiated passage without a toll and Yuri shouldered a fallen portcullis aside for the wagon. Olga scouted ahead and marked a safe route, but a lurking horror caught her in the shadows. Anya's arrow struck its eye too late to save her.",
+      "The day's gains were carried into camp, along with the cost of entering the city. The dwarfs had lost no warriors, though rain had ruined Borri's lantern plans. The Wolves had looted the gatehouse before dusk, but their first expedition ended with a grave."
+    ],
+    "epilogue": "Both companies establish a foothold inside the city. The Oathbound receive the ledger's victory; Olga's death becomes the campaign's first lasting loss.",
+    "perspectives": [
+      {
+        "warbandId": "grimhammer",
+        "prologue": "We have come from Karak Kadrin under an oath, not on a treasure-seeker's whim. Beyond these gates lies the wealth owed to our vaults. Keep the company together, mark the roofs, and let the first shard prove that this march was not in vain.",
+        "epilogue": "Every dwarf has come through alive, and Thorgrim has the first shard in his own hand. Yet the Wolves reached the eastern gatehouse before our scouts. There is already an entry in the grudge ledger, and Borri's soaked plans must wait for a drier day.",
+        "accomplishments": "Established a foothold without losing a warrior, recovered the first wyrdstone, and mapped safe routes through the gate district."
+      },
+      {
+        "warbandId": "wolfensteins",
+        "prologue": "Beyond the gates is the money that might buy our lands back. We must reach the gatehouse before the dwarfs and bring the wagon through in one piece. Ludmilla says the shadows are hungry; there is little comfort in the crows gathering above us.",
+        "epilogue": "The eastern gatehouse was ours before dusk, but Olga will never share its spoils. Yuri arrived too late and Anya's shot could not undo it. Boris has given the clan a new law: no Wolf scouts alone again.",
+        "accomplishments": "Reached and looted the eastern gatehouse first, brought the wagon through, and avoided the road-wardens' toll."
+      }
+    ],
+    "loot": [
+      "First wyrdstone recovered by the Oathbound; their post-scenario holdings are 3 shards.",
+      "The Wolves looted the eastern gatehouse; their post-scenario holdings are 1 shard. An itemised haul was not recorded."
+    ],
+    "campaignNotes": [
+      "Olga the Axe-Widow was killed by a lurking horror and buried with her axe. No opposing warband member is credited with her death.",
+      "Boris decreed that no Wolf scouts alone again.",
+      "Thorgrim's first grudge records the Wolves beating his scouts to the eastern gatehouse.",
+      "Borri's wyrdstone-lantern schematics were ruined by rain."
+    ],
+    "outOfAction": []
+  },
   "warbands": [
     {
       "warbandId": "grimhammer",

@@ -48,6 +48,31 @@ export interface WarbandSnapshot {
   members: MemberSnapshot[];
 }
 
+export interface BattleReport {
+  /** Use the rulebook title, not the campaign chapter title; null means not recorded. */
+  rulebookScenario: string | null;
+  winCondition: string | null;
+  outcome: string;
+  prologue: string;
+  battle: string[];
+  epilogue: string;
+  perspectives: {
+    warbandId: string;
+    prologue: string;
+    epilogue: string;
+    accomplishments: string;
+  }[];
+  loot: string[];
+  campaignNotes: string[];
+  /** Only confirmed out-of-action results; an empty list does not mean none occurred. */
+  outOfAction: {
+    attackerId: string;
+    target: string;
+    targetId?: string;
+    detail: string;
+  }[];
+}
+
 /** One scenario played in the campaign, with a snapshot of every participating warband. */
 export interface ScenarioRecord {
   id: string;
@@ -57,6 +82,7 @@ export interface ScenarioRecord {
   date: string;
   scenario: string;
   summary: string;
+  report: BattleReport;
   warbands: WarbandSnapshot[];
 }
 
@@ -67,6 +93,10 @@ export const history: ScenarioRecord[] = [
   scenario03,
   scenario04,
 ] as ScenarioRecord[];
+
+export function getScenarioUrl(id: string): string {
+  return `${import.meta.env.BASE_URL.replace(/\/$/, '')}/scenarios/${id}/`;
+}
 
 /** One chapter in a member's story: their snapshot in a single scenario. */
 export interface MemberStoryEntry {

@@ -4,6 +4,46 @@
   "date": "Vorhexen 12, 1999",
   "scenario": "Battle of the Merchant Quarter",
   "summary": "Grimhammer's Oathbound defeat Wolfenstein's Wolves in a brutal street fight among the counting-houses. The dwarfs claim the quarter and a cache of 5 wyrdstone shards.",
+  "report": {
+    "rulebookScenario": null,
+    "winCondition": null,
+    "outcome": "The Oathbound broke the Ostlander line at the counting-house steps, claimed the Merchant Quarter, and recovered its wyrdstone cache. The Wolves made a fighting withdrawal. This establishes the ledger's dwarf victory, but no formal rulebook win condition or rout-test result was recorded.",
+    "prologue": "The counting-houses of the Merchant Quarter still conceal wealth beneath their broken floors. The companies are closing on the market square and its approaches, where balconies command the streets and narrow alleys offer routes around the flanks. Neither side intends to leave the quarter's riches to the other.",
+    "battle": [
+      "Dagna cleared the market square gate alone, her flail driving Yuri over a stall. Thorgrim broke the Ostlander line at the counting-house steps. From a balcony above the square, Borri's handgun brought down three Wolves, though the record gives neither their names nor their final combat status.",
+      "Anya answered through the balcony shutters, keeping Borri's gun quiet for half the fight before her quiver ran empty. Beneath the counting-houses, Snorri fell through a floor and landed unharmed on the five-shard cache. Mikhail found twelve crowns in a strong-drawer, then dropped seven while vaulting a wall under threat of a dwarf crossbow.",
+      "Ludmilla's crows revealed a dwarf flanking party in the alleys before the Wolves could be encircled. Boris held the clan together through a fighting retreat down three streets. Pavel stood at the mouth of the retreat alley until every Wolf had passed, and Yuri carried two wounded kinsmen out under his arms.",
+      "The Oathbound secured the quarter, but their success did not bring every dwarf home. Grimnir covered his kin's retreat, dragging two Ostlander axemen into a collapsing cellar with him. The record confirms his death, not the axemen's identities or fate. His deeds earned entries in both Thorgrim's Book of Grudges and Book of Honour."
+    ],
+    "epilogue": "The Oathbound hold the Merchant Quarter and its spoils. The Wolves escape encirclement, while Grimnir's sacrifice becomes a debt of honour carried beyond the battle.",
+    "perspectives": [
+      {
+        "warbandId": "grimhammer",
+        "prologue": "The counting-houses are within reach, and with them another payment toward our oath. Take the square, cover the approaches from above, and keep the Wolves from the vaults. After the bridge, there is more than gold to settle between us.",
+        "epilogue": "The quarter is ours, with five shards and counting-house gold. Grimnir will not see the reckoning. His silence in life has become a deed that fills two books, and Snorri, the last to see him alive, has grown quieter too.",
+        "accomplishments": "Broke the Ostlander line, captured the Merchant Quarter, and recovered a cache of 5 wyrdstone shards plus 32 crowns."
+      },
+      {
+        "warbandId": "wolfensteins",
+        "prologue": "One victory at the bridge will not buy back the family lands. There is money in these counting-houses, if we can keep the dwarfs from driving us out. Watch the balconies and listen when Ludmilla's crows speak; the alleys are too many to guard at once.",
+        "epilogue": "We have lost the quarter, not the clan. The crows exposed the flank, Pavel held the alley, and Yuri brought the wounded through. Eighteen crowns go on wounds and broken gear; the old lands are further away again.",
+        "accomplishments": "Avoided encirclement and brought every living Wolf out through a coordinated fighting retreat, including the wounded."
+      }
+    ],
+    "loot": [
+      "The Oathbound claimed a cache of 5 wyrdstone shards and 32 gold crowns from the counting-houses.",
+      "Mikhail took 12 crowns from a strong-drawer but dropped 7 escaping, retaining 5.",
+      "The Wolves spent 18 crowns repairing gear and tending wounds."
+    ],
+    "campaignNotes": [
+      "Grimnir Coalfist died covering his kin's retreat and was entered in both the Book of Grudges and the Book of Honour.",
+      "Two unnamed Ostlander axemen went into the collapsing cellar with Grimnir; their fate is not recorded.",
+      "Borri's account reports three Wolves down, without names or confirmed out-of-action results. These are not counted as confirmed takedowns.",
+      "Ludmilla's third recorded crow warning saved the Wolves from encirclement.",
+      "Borri briefly demonstrated a working wyrdstone lantern, singeing half his beard."
+    ],
+    "outOfAction": []
+  },
   "warbands": [
     {
       "warbandId": "grimhammer",
