@@ -1,0 +1,240 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Base from '../../layouts/Base.astro';
+import { history, getScenarioUrl, type ScenarioRecord } from '../../data/history';
+
+export const getStaticPaths = (() =>
+  history.map((scenario) => ({
+    params: { id: scenario.id },
+    props: { scenario },
+  }))) satisfies GetStaticPaths;
+
+interface Props {
+  scenario: ScenarioRecord;
+}
+
+const { scenario } = Astro.props;
+const { report } = scenario;
+const home = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/`;
+const chapters = [...history].sort((a, b) => a.sequence - b.sequence);
+const chapterIndex = chapters.findIndex((chapter) => chapter.id === scenario.id);
+const previous = chapters[chapterIndex - 1];
+const next = chapters[chapterIndex + 1];
+const winners = scenario.warbands.filter((warband) => warband.result === 'victory');
+const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
+const statusLabel = { active: 'Active', injured: 'Injured', dead: 'Fell in this battle' } as const;
+const perspectives = scenario.warbands.map((warband) => ({
+  warband,
+  perspective: report.perspectives.find((entry) => entry.warbandId === warband.warbandId),
+}));
+---
+
+<Base title={`${scenario.scenario} — Mordheim`} description={scenario.summary}>
+  <main id="main-content" class="battle-report">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href={home}>Mordheim</a><span aria-hidden="true">/</span>
+      <a href={`${home}#chronicle`}>The Chronicle</a><span aria-hidden="true">/</span>
+      <span aria-current="page">Scenario {String(scenario.sequence).padStart(2, '0')}</span>
+    </nav>
+
+    <header class="report-header">
+      <p class="section-kicker">From the campaign archives · {scenario.date}</p>
+      <h1>{scenario.scenario}</h1>
+      <p class="summary">{scenario.summary}</p>
+      <div class="participants" aria-label="Participating warbands">
+        {scenario.warbands.map((warband) => (
+          <a href={`#${warband.warbandId}`} class:list={['participant', warband.result]}>
+            {warband.name}<span>{resultLabel[warband.result]}</span>
+          </a>
+        ))}
+      </div>
+    </header>
+
+    <nav class="report-nav" aria-label="Battle report sections">
+      <a href="#outcome">Outcome</a>
+      <a href="#prologue">Prologue</a>
+      <a href="#battle">The battle</a>
+      <a href="#epilogue">Epilogue</a>
+      <a href="#campaign">Campaign consequences</a>
+      <a href="#muster">Warbands &amp; warriors</a>
+    </nav>
+
+    <section id="outcome" class="panel">
+      <h2>Scenario &amp; outcome</h2>
+      <dl class="outcome-facts">
+        <div><dt>Rulebook scenario</dt><dd>{report.rulebookScenario ?? 'Not recorded'}</dd></div>
+        <div><dt>Win condition</dt><dd>{report.winCondition ?? 'Not recorded'}</dd></div>
+        <div><dt>Winner</dt><dd>{winners.length ? winners.map((warband) => warband.name).join(' & ') : 'No winner — draw'}</dd></div>
+      </dl>
+      <h3>How the outcome was decided</h3>
+      <p>{report.outcome}</p>
+      {(!report.rulebookScenario || !report.winCondition) && (
+        <p class="archive-note">The chapter title is not a rulebook scenario name. Missing rules information is left unconfirmed rather than inferred from the story.</p>
+      )}
+    </section>
+
+    <section id="prologue">
+      <p class="section-kicker">Before the first blow</p>
+      <h2 class="section-title">Prologue</h2>
+      <p class="neutral">{report.prologue}</p>
+      <div class="perspectives">
+        {perspectives.map(({ warband, perspective }) => (
+          <article class="panel perspective">
+            <p class="voice-label">From their perspective</p>
+            <h3>{warband.name}</h3>
+            <p>{perspective?.prologue ?? 'This perspective has not yet been recorded.'}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section id="battle" class="battle-narrative">
+      <p class="section-kicker">An account of blood &amp; wyrdstone</p>
+      <h2 class="section-title">The battle</h2>
+      {report.battle.map((paragraph) => <p>{paragraph}</p>)}
+    </section>
+
+    <section id="epilogue">
+      <p class="section-kicker">When the fighting ends</p>
+      <h2 class="section-title">Epilogue</h2>
+      <p class="neutral">{report.epilogue}</p>
+      <div class="perspectives">
+        {perspectives.map(({ warband, perspective }) => (
+          <article class="panel perspective">
+            <p class="voice-label">From their perspective</p>
+            <h3>{warband.name}</h3>
+            <p>{perspective?.epilogue ?? 'This perspective has not yet been recorded.'}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section id="campaign" class="panel">
+      <h2>What the campaign carries forward</h2>
+      <h3>Noteworthy loot &amp; costs</h3>
+      {report.loot.length ? <ul>{report.loot.map((item) => <li>{item}</li>)}</ul> : <p>No noteworthy loot recorded.</p>}
+      <h3>Lasting consequences &amp; unresolved records</h3>
+      {report.campaignNotes.length ? <ul>{report.campaignNotes.map((note) => <li>{note}</li>)}</ul> : <p>No lasting consequences recorded.</p>}
+    </section>
+
+    <section id="muster">
+      <p class="section-kicker">The final reckoning</p>
+      <h2 class="section-title">Warbands &amp; warriors</h2>
+      <p class="neutral archive-note">Treasury and ratings are post-battle totals, not loot earned in this battle. Only explicitly recorded out-of-action results are credited; a hit, a fall, or a bow notch alone is not confirmation. “Not recorded” does not mean none occurred.</p>
+      <div class="warband-summaries">
+        {perspectives.map(({ warband, perspective }) => {
+          const takedowns = report.outOfAction.filter((event) => warband.members.some((member) => member.memberId === event.attackerId));
+          return (
+            <article id={warband.warbandId} class="panel warband-summary">
+              <p class:list={['voice-label', warband.result]}>{resultLabel[warband.result]}</p>
+              <h3>{warband.name}</h3>
+              <h4>Accomplishments</h4>
+              <p>{perspective?.accomplishments ?? warband.highlights.join(' ')}</p>
+              <dl class="snapshot-stats">
+                <div><dt>Rating</dt><dd>{warband.rating}</dd></div>
+                <div><dt>Battles</dt><dd>{warband.battles}</dd></div>
+                <div><dt>Victories</dt><dd>{warband.victories}</dd></div>
+                <div><dt>Wyrdstone</dt><dd>{warband.wyrdstone} shards</dd></div>
+                <div><dt>Treasury</dt><dd>{warband.gold} crowns</dd></div>
+              </dl>
+              <h4 class="finest">Finest moments</h4>
+              <ul>{warband.highlights.map((highlight) => <li>{highlight}</li>)}</ul>
+              <h4 class="darkest">Darkest moments</h4>
+              <ul>{warband.lowlights.map((lowlight) => <li>{lowlight}</li>)}</ul>
+              <h4>Opponents put out of action</h4>
+              {takedowns.length ? (
+                <ul>{takedowns.map((event) => (
+                  <li><a href={`#member-${event.attackerId}`}>{warband.members.find((member) => member.memberId === event.attackerId)?.name}</a> → {event.target}</li>
+                ))}</ul>
+              ) : <p class="archive-note">Not recorded.</p>}
+
+              <h4 class="roster-title">Every warrior's battle record</h4>
+              {warband.members.map((member) => {
+                const events = report.outOfAction.filter((event) => event.attackerId === member.memberId);
+                return (
+                  <article id={`member-${member.memberId}`} class="member-record">
+                    <h5>{member.name}</h5>
+                    <p class="member-meta">{member.rank} · {member.role} · <span class:list={{ darkest: member.status !== 'active' }}>{statusLabel[member.status]}</span></p>
+                    <p><strong class="finest">Accomplishment &amp; finest moment:</strong> {member.highlight}</p>
+                    <p><strong class="darkest">Darkest moment:</strong> {member.lowlight}</p>
+                    <p><strong>Put out of action:</strong> {events.length === 0 && 'Not recorded.'}</p>
+                    {events.length > 0 && (
+                      <ul>{events.map((event) => (
+                        <li>
+                          {event.targetId ? <a href={`#member-${event.targetId}`}>{event.target}</a> : event.target}
+                          {' — '}{event.detail}
+                        </li>
+                      ))}</ul>
+                    )}
+                  </article>
+                );
+              })}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+
+    <nav class="chapter-nav" aria-label="Scenario navigation">
+      {previous && <a href={getScenarioUrl(previous.id)}>← Previous: {previous.scenario}</a>}
+      <a href={`${home}#chronicle`}>Back to the Chronicle</a>
+      {next && <a href={getScenarioUrl(next.id)}>Next: {next.scenario} →</a>}
+    </nav>
+  </main>
+</Base>
+
+<style>
+  .battle-report { padding-top: 2rem; }
+  a { color: var(--gold); text-underline-offset: .25em; }
+  a:hover { color: var(--parchment); }
+  .breadcrumb { display: flex; flex-wrap: wrap; gap: .6rem; padding-right: 3rem; font-size: .85rem; color: var(--ink-dim); }
+  .report-header { text-align: center; margin: 4rem auto 2rem; max-width: 900px; }
+  h1 { color: var(--parchment); font: clamp(2.5rem, 6vw, 4.5rem)/1.1 'Pirata One', Georgia, serif; margin: 1rem 0 1.5rem; }
+  .summary { max-width: 740px; margin: auto; font-size: 1.15rem; color: var(--ink); }
+  .participants { display: flex; justify-content: center; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; }
+  .participant { border: 1px solid var(--gold-dim); padding: .75rem 1.25rem; background: var(--bg-panel); text-decoration: none; }
+  .participant span { display: block; font-size: .8rem; color: var(--ink-dim); }
+  .report-nav, .chapter-nav { display: flex; justify-content: center; flex-wrap: wrap; gap: .8rem 1.5rem; padding: 1.25rem 0; border-block: 1px solid var(--border); }
+  .report-nav { font-size: .9rem; }
+  section { margin: 3.5rem 0; }
+  .panel { padding: 1.75rem; background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); border: 1px solid var(--gold-dim); min-width: 0; }
+  h2:not(.section-title) { font: 2rem/1.3 'Pirata One', Georgia, serif; color: var(--parchment); margin-bottom: 1rem; }
+  h3 { font: 1.7rem/1.3 'Pirata One', Georgia, serif; color: var(--parchment); margin-bottom: 1rem; }
+  h4 { color: var(--gold); font-size: 1rem; margin: 1.25rem 0 .4rem; }
+  p + p { margin-top: 1rem; }
+  ul { padding-left: 1.25rem; }
+  li { margin-bottom: .5rem; }
+  ul + h3 { margin-top: 1.75rem; }
+  .outcome-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+  dt { color: var(--ink-dim); font-size: .8rem; }
+  dd { color: var(--parchment); }
+  .archive-note { font-size: .9rem; color: var(--ink-dim); }
+  .neutral { max-width: 760px; margin: 0 auto 2rem; text-align: center; }
+  .perspectives, .warband-summaries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; align-items: start; }
+  .perspectives { align-items: stretch; }
+  .perspective { border-top: 3px solid var(--gold-dim); }
+  .perspective p:last-child { font-style: italic; }
+  .voice-label { text-transform: uppercase; letter-spacing: .12em; font-size: .65rem; color: var(--gold); margin-bottom: .65rem; }
+  .battle-narrative { max-width: 760px; margin-inline: auto; }
+  .battle-narrative > p:not(.section-kicker) { line-height: 1.9; }
+  .snapshot-stats { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; border-block: 1px solid var(--border); padding: 1rem 0; margin-top: 1.5rem; }
+  .snapshot-stats dd { color: var(--gold); }
+  .finest, .victory { color: var(--gold); }
+  .darkest, .defeat { color: var(--blood-bright); }
+  .roster-title { border-top: 1px solid var(--gold-dim); padding-top: 1.5rem; }
+  .member-record { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); scroll-margin-top: 2rem; }
+  .member-record h5 { font: 1.4rem/1.3 'Pirata One', Georgia, serif; color: var(--parchment); }
+  .member-meta { color: var(--ink-dim); font-size: .8rem; margin: .4rem 0 1rem; }
+  .member-record strong { font-weight: normal; color: var(--gold); }
+  .member-record strong.darkest { color: var(--blood-bright); }
+  .member-record p { font-size: .95rem; }
+  .warband-summary { scroll-margin-top: 2rem; }
+  .chapter-nav { font-size: .9rem; margin-top: 3rem; }
+  @media (max-width: 700px) {
+    .perspectives, .warband-summaries, .outcome-facts { grid-template-columns: 1fr; }
+    .panel { padding: 1.25rem; }
+    .report-header { margin-top: 3rem; }
+    .breadcrumb { font-size: .75rem; }
+    .chapter-nav { flex-direction: column; text-align: center; }
+  }
+</style>
