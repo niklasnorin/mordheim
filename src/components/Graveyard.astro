@@ -8,36 +8,148 @@ const fallen = warbands
       .map((m) => ({ ...m, warbandName: wb.name }))
   )
   .sort((a, b) => (b.death?.order ?? 0) - (a.death?.order ?? 0));
+
+/* Graves are dug scenario by scenario. Everyone who fell in the same battle
+   shares a row; the most recent battle stands in the foreground and older
+   scenarios recede toward the horizon. */
+const rows: { date: string; graves: typeof fallen }[] = [];
+for (const m of fallen) {
+  const date = m.death?.date ?? 'Unknown';
+  const row = rows.find((r) => r.date === date);
+  if (row) row.graves.push(m);
+  else rows.push({ date, graves: [m] });
+}
+
+/* The nameless dead of Mordheim — stones too weathered to read. The deeper
+   into the field, the more of them crowd the ground. */
+const wornEpitaphs = [
+  '⸖⸎⸏ ⸎⸏⸖⸎',
+  '⸏⸖⸎⸏⸖ ⸎⸏',
+  '⸎⸖⸏ ⸏⸎⸖⸎⸏',
+  '⸏⸎ ⸖⸏⸎⸖',
+  '⸖⸎⸏⸖ ⸏⸎',
+  '⸎⸏⸖⸎ ⸏⸖',
+];
+const shapes = ['round', 'cross', 'broken', 'slab'];
+const namelessFor = (depth: number, count: number) =>
+  Array.from({ length: count }, (_, n) => {
+    const seed = depth * 7 + n * 3;
+    return {
+      key: `${depth}-${n}`,
+      text: wornEpitaphs[seed % wornEpitaphs.length],
+      shape: shapes[seed % shapes.length],
+      tilt: ((seed % 5) - 2) * 1.6,
+      crow: seed % 4 === 0,
+    };
+  });
+
+/* Two extra rows of forgotten graves behind the campaign's own dead. */
+const backRows = [rows.length, rows.length + 1];
 ---
 
 <section id="graveyard" class="graveyard reveal">
   <h2 class="section-title"><span class="ornament">⚰</span> The Graveyard <span class="ornament">⚰</span></h2>
   <p class="section-intro">
-    Here lie the fallen of the campaign. Mordheim keeps what it takes — but their names are
-    remembered.
+    Here lie the fallen of the campaign, row upon row among the nameless dead of Mordheim. The
+    freshest graves stand nearest; older battles recede into the fog.
   </p>
   <div class="graveyard-ground">
-    <div class="tombstone-row">
+    <div class="grave-field">
       {
-        fallen.map((m, i) => (
-          <figure class="tombstone" style={`--depth: ${i}`}>
-            <div class="tombstone-stone">
-              <span class="tombstone-cross" aria-hidden="true">✝</span>
-              <span class="tombstone-portrait" aria-hidden="true">{m.portrait}</span>
-              <span class="tombstone-name">{m.name}</span>
-              <span class="tombstone-meta">
-                {m.role} of {m.warbandName}
-              </span>
-              {m.death && <span class="tombstone-date">✝ {m.death.date}</span>}
-              {m.death && <figcaption class="tombstone-epitaph">{m.death.epitaph}</figcaption>}
+        backRows
+          .slice()
+          .reverse()
+          .map((depth) => (
+            <div class="grave-row grave-row-nameless" style={`--depth: ${depth}`}>
+              {namelessFor(depth, 6 + depth).map((s) => (
+                <div
+                  class={`nameless nameless-${s.shape}`}
+                  style={`--tilt: ${s.tilt}deg`}
+                  aria-hidden="true"
+                >
+                  {s.crow && (
+                    <span class="crow">
+                      <svg viewBox="0 0 40 24" role="presentation">
+                        <path d="M6 22c1-6 4-10 9-12 3-1.4 5-3.6 6-6.4.9 2.6 2.6 4.4 5 5.2 4.6 1.6 7.4 5.6 8 13.2-3-3.4-6.4-5.2-10.4-5.4-4.6-.2-8.6 1.6-11.6 5.4z" />
+                        <path d="M20 3.6 26.6.6l-1.4 4z" />
+                      </svg>
+                    </span>
+                  )}
+                  <span class="nameless-text">{s.text}</span>
+                </div>
+              ))}
             </div>
-            <div class="tombstone-mound" aria-hidden="true" />
-          </figure>
-        ))
+          ))
       }
-      {fallen.length === 0 && (
-        <p class="graveyard-empty">No graves yet. Mordheim is patient.</p>
-      )}
+      {
+        rows
+          .slice()
+          .reverse()
+          .map((row, idx) => {
+            const depth = rows.length - 1 - idx;
+            return (
+              <div class="grave-row" style={`--depth: ${depth}`}>
+                {namelessFor(depth + 11, depth).map((s) => (
+                  <div
+                    class={`nameless nameless-${s.shape}`}
+                    style={`--tilt: ${s.tilt}deg`}
+                    aria-hidden="true"
+                  >
+                    <span class="nameless-text">{s.text}</span>
+                  </div>
+                ))}
+                {row.graves.map((m, gi) => (
+                  <figure class={`tombstone tombstone-${m.rank}`}>
+                    <div class="tombstone-stone">
+                      {m.rank === 'hero' && (
+                        <span class="tombstone-flourish" aria-hidden="true">
+                          ❧ ✠ ❦
+                        </span>
+                      )}
+                      {(depth + gi) % 3 === 0 && (
+                        <span class="crow crow-stone">
+                          <svg viewBox="0 0 40 24" role="presentation">
+                            <path d="M6 22c1-6 4-10 9-12 3-1.4 5-3.6 6-6.4.9 2.6 2.6 4.4 5 5.2 4.6 1.6 7.4 5.6 8 13.2-3-3.4-6.4-5.2-10.4-5.4-4.6-.2-8.6 1.6-11.6 5.4z" />
+                            <path d="M20 3.6 26.6.6l-1.4 4z" />
+                          </svg>
+                        </span>
+                      )}
+                      {m.rank === 'henchman' && (
+                        <span class="tombstone-cross" aria-hidden="true">✝</span>
+                      )}
+                      <span class="tombstone-portrait" aria-hidden="true">{m.portrait}</span>
+                      <span class="tombstone-name">{m.name}</span>
+                      <span class="tombstone-meta">
+                        {m.role} of {m.warbandName}
+                      </span>
+                      {m.death && <span class="tombstone-date">✝ {m.death.date}</span>}
+                      {m.death && <figcaption class="tombstone-epitaph">{m.death.epitaph}</figcaption>}
+                    </div>
+                    <div class="tombstone-mound" aria-hidden="true" />
+                  </figure>
+                ))}
+                {namelessFor(depth + 23, depth).map((s) => (
+                  <div
+                    class={`nameless nameless-${s.shape}`}
+                    style={`--tilt: ${s.tilt}deg`}
+                    aria-hidden="true"
+                  >
+                    {s.crow && (
+                      <span class="crow">
+                        <svg viewBox="0 0 40 24" role="presentation">
+                          <path d="M6 22c1-6 4-10 9-12 3-1.4 5-3.6 6-6.4.9 2.6 2.6 4.4 5 5.2 4.6 1.6 7.4 5.6 8 13.2-3-3.4-6.4-5.2-10.4-5.4-4.6-.2-8.6 1.6-11.6 5.4z" />
+                          <path d="M20 3.6 26.6.6l-1.4 4z" />
+                        </svg>
+                      </span>
+                    )}
+                    <span class="nameless-text">{s.text}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })
+      }
+      {fallen.length === 0 && <p class="graveyard-empty">No graves yet. Mordheim is patient.</p>}
     </div>
     <div class="fog fog-1" aria-hidden="true"></div>
     <div class="fog fog-2" aria-hidden="true"></div>
@@ -56,28 +168,47 @@ const fallen = warbands
     overflow: hidden;
   }
 
-  .tombstone-row {
+  /* Rows of graves stacked from the horizon down to the front of the field. */
+  .grave-field {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 3.6rem;
+  }
+
+  /* Depth: the newest scenario (--depth: 0) stands in front — larger and
+     sharper; older scenarios recede — smaller, dimmer, hazier, and pulled
+     upward toward the horizon so the rows overlap like a real field. */
+  .grave-row {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     align-items: flex-end;
-    gap: 2rem;
-    perspective: 800px;
-  }
-
-  /* Depth: most recent (--depth: 0) in front — larger, sharper; older graves
-     recede back — smaller, dimmer, raised toward the horizon. */
-  .tombstone {
+    gap: 1.6rem;
+    width: 100%;
     position: relative;
     z-index: calc(20 - var(--depth));
-    transform: scale(calc(1 - var(--depth) * 0.12))
-      translateY(calc(var(--depth) * -1.4rem));
-    opacity: calc(1 - var(--depth) * 0.15);
-    filter: brightness(calc(1 - var(--depth) * 0.12));
+    transform-origin: 50% 100%;
+    transform: scale(calc(1 - var(--depth) * 0.1));
+    opacity: calc(1 - var(--depth) * 0.11);
+    filter: brightness(calc(1 - var(--depth) * 0.08)) blur(calc(var(--depth) * 0.35px));
+    /* Pull the next row up over this one: compensate for the scaling, then
+       overlap, so the stones crowd together into a field. */
+    margin-bottom: calc(var(--depth) * -1.7rem - 3.6rem);
+  }
+
+  .grave-row-nameless {
+    gap: 1.1rem;
+    margin-bottom: calc(var(--depth) * -0.65rem - 1.6rem);
+  }
+
+  .tombstone {
+    position: relative;
     margin: 0;
   }
 
   .tombstone-stone {
+    position: relative;
     width: 200px;
     padding: 1.6rem 1.1rem 1.3rem;
     text-align: center;
@@ -88,6 +219,89 @@ const fallen = warbands
       inset 0 2px 6px rgba(255, 255, 255, 0.06),
       inset 0 -14px 24px rgba(0, 0, 0, 0.45),
       0 10px 26px rgba(0, 0, 0, 0.7);
+  }
+
+  /* ── Heroes: carved, ornamented monuments ── */
+  .tombstone-hero .tombstone-stone {
+    width: 214px;
+    padding: 1.3rem 1.2rem 1.4rem;
+    background: linear-gradient(165deg, #474b52 0%, #2c3036 55%, #1f2226 100%);
+    border: 1px solid #5a5f68;
+    border-radius: 107px 107px 6px 6px;
+    box-shadow:
+      inset 0 0 0 5px rgba(0, 0, 0, 0.28),
+      inset 0 0 0 6px rgba(190, 175, 130, 0.16),
+      inset 0 2px 8px rgba(255, 255, 255, 0.08),
+      inset 0 -16px 26px rgba(0, 0, 0, 0.45),
+      0 12px 30px rgba(0, 0, 0, 0.75);
+  }
+  /* Carved wings flanking the monument */
+  .tombstone-hero .tombstone-stone::before,
+  .tombstone-hero .tombstone-stone::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    width: 18px;
+    height: 46%;
+    background: linear-gradient(165deg, #3d4149 0%, #24272c 100%);
+    border: 1px solid #4e535b;
+    border-bottom: none;
+  }
+  .tombstone-hero .tombstone-stone::before {
+    left: -19px;
+    border-radius: 9px 0 0 0;
+  }
+  .tombstone-hero .tombstone-stone::after {
+    right: -19px;
+    border-radius: 0 9px 0 0;
+  }
+
+  .tombstone-flourish {
+    display: block;
+    font-size: 0.85rem;
+    letter-spacing: 0.35em;
+    color: rgba(198, 176, 118, 0.55);
+    margin-bottom: 0.35rem;
+  }
+
+  .tombstone-hero .tombstone-name {
+    font-size: 1.3rem;
+    color: var(--parchment);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  }
+  .tombstone-hero .tombstone-portrait {
+    border: 1px solid rgba(198, 176, 118, 0.45);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.35);
+  }
+  .tombstone-hero .tombstone-epitaph {
+    border-top: 1px solid rgba(198, 176, 118, 0.3);
+  }
+  .tombstone-hero .tombstone-mound {
+    height: 0.95rem;
+  }
+
+  /* ── Henchmen: plain, unadorned markers ── */
+  .tombstone-henchman .tombstone-stone {
+    width: 168px;
+    padding: 1.1rem 0.9rem 1rem;
+    background: linear-gradient(170deg, #343740 0%, #24272c 60%, #1c1f22 100%);
+    border: 1px solid #3d4046;
+    border-radius: 8px 8px 0 0;
+    box-shadow:
+      inset 0 -10px 18px rgba(0, 0, 0, 0.45),
+      0 8px 20px rgba(0, 0, 0, 0.65);
+  }
+  .tombstone-henchman .tombstone-name {
+    font-size: 1rem;
+  }
+  .tombstone-henchman .tombstone-portrait {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1.35rem;
+    border-radius: 4px;
+  }
+  .tombstone-henchman .tombstone-epitaph {
+    font-size: 0.72rem;
   }
 
   .tombstone-cross {
@@ -146,10 +360,94 @@ const fallen = warbands
     border-radius: 50%;
   }
 
+  /* ── The nameless dead: stones worn past reading ── */
+  .nameless {
+    position: relative;
+    width: 74px;
+    height: 96px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 1rem;
+    transform: rotate(var(--tilt, 0deg));
+    background: linear-gradient(165deg, #4b4f56 0%, #35383e 60%, #26292d 100%);
+    border: 1px solid #52565d;
+    border-radius: 37px 37px 0 0;
+    box-shadow:
+      inset 0 -10px 18px rgba(0, 0, 0, 0.45),
+      0 8px 18px rgba(0, 0, 0, 0.6);
+  }
+  .nameless-slab {
+    border-radius: 6px 6px 0 0;
+    width: 62px;
+    height: 78px;
+  }
+  .nameless-cross {
+    border-radius: 4px;
+    width: 54px;
+    height: 84px;
+  }
+  .nameless-cross::before {
+    content: '';
+    position: absolute;
+    top: 16px;
+    left: -14px;
+    right: -14px;
+    height: 14px;
+    background: inherit;
+    border: 1px solid #3c3f45;
+    border-radius: 3px;
+  }
+  .nameless-broken {
+    width: 66px;
+    height: 62px;
+    border-radius: 33px 8px 0 0;
+    transform: rotate(calc(var(--tilt, 0deg) + 4deg));
+  }
+
+  .nameless-text {
+    font-family: 'Pirata One', cursive;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    color: rgba(214, 210, 194, 0.42);
+    filter: blur(1.2px);
+    user-select: none;
+  }
+
   .graveyard-empty {
     font-style: italic;
     color: var(--ink-dim);
     padding: 2rem 0;
+  }
+
+  /* ── Crows perched on the stones ── */
+  .crow {
+    position: absolute;
+    top: -14px;
+    right: 12%;
+    width: 26px;
+    color: #0b0c0f;
+    transform-origin: 50% 100%;
+    animation: crow-bob 5.5s ease-in-out infinite;
+  }
+  .crow-stone {
+    top: -19px;
+    right: 15%;
+    width: 30px;
+    animation-duration: 7s;
+  }
+  .crow svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    fill: currentColor;
+    filter: drop-shadow(0 0 2px rgba(190, 196, 202, 0.45)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.65));
+  }
+
+  @keyframes crow-bob {
+    0%, 84%, 100% { transform: none; }
+    88% { transform: translateY(-2px) rotate(-4deg); }
+    94% { transform: translateY(-1px) rotate(3deg); }
   }
 
   /* ── Fog among the tombstones ── */
@@ -198,8 +496,13 @@ const fallen = warbands
     to { transform: translateX(6%); }
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .crow { animation: none; }
+  }
+
   @media (max-width: 700px) {
-    .tombstone-row { gap: 1.2rem; }
+    .grave-row { gap: 1.2rem; }
     .tombstone-stone { width: 165px; }
+    .grave-row-nameless { display: none; }
   }
 </style>
