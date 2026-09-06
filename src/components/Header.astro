@@ -1,13 +1,14 @@
 ---
 import { warbands } from '../data/warbands';
 import { history } from '../data/history';
+import Icon from './Icon.astro';
 
 const fallen = warbands.reduce((total, warband) => total + warband.members.filter((member) => member.dead).length, 0);
 ---
 
 <header class="site-header">
   <div class="header-bar">
-    <a class="wordmark" href="#top" aria-label="Mordheim home"><span aria-hidden="true">✠</span> Mordheim <span class="wordmark-note">Campaign archive</span></a>
+    <a class="wordmark" href="#top" aria-label="Mordheim home"><Icon name="cross" size={18} /> Mordheim <span class="wordmark-note">Campaign archive</span></a>
     <nav class="site-nav" aria-label="Campaign sections">
       <a href="#town-cryer">Town Cryer</a>
       <a href="#warbands">Warbands</a>
@@ -25,9 +26,9 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
         <span class="logo-main">Mordheim</span>
         <span class="logo-sub">City of the Damned</span>
       </h1>
-      <div class="hero-rule" aria-hidden="true"><span>✦</span></div>
+      <div class="hero-rule" aria-hidden="true"><Icon name="diamond" size={10} /></div>
       <p class="tagline">The comet has fallen. The gates lie broken.<br />And still, the brave and the desperate come.</p>
-      <a class="hero-link" href="#town-cryer">Enter the city <span aria-hidden="true">↓</span></a>
+      <a class="hero-link" href="#town-cryer">Enter the city <Icon name="arrow-down" size={15} /></a>
     </div>
     <div class="hero-caption" aria-hidden="true"><span>Reikland · The ruined city</span><span>A chronicle of fortune & ruin</span></div>
   </div>
@@ -55,7 +56,7 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
     border-bottom: 1px solid var(--border);
   }
   .wordmark { color: var(--parchment); text-decoration: none; font-family: 'Pirata One', Georgia, serif; font-size: 1.55rem; white-space: nowrap; }
-  .wordmark > span:first-child { color: var(--gold); margin-right: .45rem; }
+  .wordmark > :global(svg) { color: var(--gold); margin-right: .45rem; }
   .wordmark-note { display: block; margin-left: 2rem; font: .55rem/1.5 Georgia, serif; text-transform: uppercase; letter-spacing: .23em; color: var(--ink-dim); }
   .site-nav { display: flex; gap: 1.8rem; flex-wrap: wrap; }
   .site-nav a { position: relative; padding: .5rem 0; color: var(--ink-dim); text-decoration: none; font-size: .8rem; letter-spacing: .06em; transition: color .2s; }
@@ -78,7 +79,7 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
   .tagline { color: #c5c4b3; font-style: italic; font-size: 1.05rem; line-height: 1.7; text-shadow: 0 2px 8px #000; }
   .hero-link { display: inline-flex; align-items: center; gap: 2rem; padding: .8rem 1.6rem; margin-top: 2rem; border: 1px solid #ac916077; background: #0b110fcc; text-decoration: none; color: var(--parchment); font-size: .75rem; text-transform: uppercase; letter-spacing: .16em; transition: background .2s, border-color .2s; }
   .hero-link:hover { background: #283126; border-color: var(--gold); }
-  .hero-link span { color: var(--gold); font-size: 1rem; }
+  .hero-link :global(svg) { color: var(--gold); }
   .hero-caption { position: absolute; bottom: 1.5rem; left: 3rem; right: 3rem; display: flex; justify-content: space-between; gap: 1rem; color: #b5b8a5; text-transform: uppercase; letter-spacing: .17em; font-size: .55rem; }
   .campaign-bar { display: flex; justify-content: space-between; align-items: center; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 1.5rem 2rem; border-block: 1px solid var(--border); background: #101713ee; }
   .campaign-label { color: var(--ink-dim); text-transform: uppercase; letter-spacing: .13em; font-size: .6rem; display: flex; align-items: center; gap: .6rem; }

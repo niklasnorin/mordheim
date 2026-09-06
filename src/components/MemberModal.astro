@@ -1,6 +1,7 @@
 ---
 import { warbands } from '../data/warbands';
 import { getMemberStory, getScenarioUrl } from '../data/history';
+import Icon from './Icon.astro';
 
 const statKeys = ['M', 'WS', 'BS', 'S', 'T', 'W', 'I', 'A', 'Ld'] as const;
 
@@ -8,7 +9,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
 ---
 
 <dialog id="member-dialog" class="member-dialog">
-  <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+  <button class="modal-close" id="modal-close" aria-label="Close"><Icon name="close" size={16} /></button>
   {
     warbands.map((wb) =>
       wb.members.map((m) => (
@@ -24,7 +25,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
               <h3>{m.name}</h3>
               <span class="member-role">
                 {m.role} — {wb.name}
-                {m.dead && <span class="dead-marker"> ✝ Fallen</span>}
+                {m.dead && <span class="dead-marker"> <Icon name="cross" size={12} /> Fallen</span>}
               </span>
             </div>
           </div>
@@ -49,11 +50,11 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
             <p class="profile-lore">{m.lore}</p>
             <details class="storyline" data-default-open={m.rank === 'hero' ? 'true' : 'false'} open={m.rank === 'hero'}>
               <summary>
-                <span class="storyline-toggle">Follow their story <span aria-hidden="true">↓</span></span>
+                <span class="storyline-toggle">Follow their story <Icon name="arrow-down" size={14} /></span>
               </summary>
               <ol class="story-timeline">
                 <li class="story-chapter story-backstory">
-                  <span class="story-marker" aria-hidden="true">✦</span>
+                  <span class="story-marker" aria-hidden="true"><Icon name="diamond" size={12} /></span>
                   <h5>The Tale Begins</h5>
                   <span class="story-meta">{m.epithet} — {wb.name}</span>
                   <p class="story-text">{m.lore}</p>
@@ -66,7 +67,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
                     ]}
                   >
                     <span class="story-marker" aria-hidden="true">
-                      {entry.snapshot.status === 'dead' ? '✝' : '⚔'}
+                      {entry.snapshot.status === 'dead' ? <Icon name="cross" size={14} /> : <Icon name="swords" size={14} />}
                     </span>
                     <h5><a href={getScenarioUrl(entry.scenario.id)}>{entry.scenario.scenario}</a></h5>
                     <span class="story-meta">
@@ -75,7 +76,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
                         {resultLabel[entry.warband.result]}
                       </span>
                       {entry.snapshot.status === 'dead' && (
-                        <span class="dead-marker"> ✝ Fell in battle</span>
+                        <span class="dead-marker"> <Icon name="cross" size={12} /> Fell in battle</span>
                       )}
                     </span>
                     <p class="story-text story-highlight">
@@ -88,14 +89,14 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
                 ))}
                 {m.dead && m.death ? (
                   <li class="story-chapter story-grave">
-                    <span class="story-marker" aria-hidden="true">✝</span>
+                    <span class="story-marker" aria-hidden="true"><Icon name="cross" size={14} /></span>
                     <h5>The Tale Ends</h5>
                     <span class="story-meta">Laid to rest — {m.death.date}</span>
                     <p class="story-text story-epitaph">{m.death.epitaph}</p>
                   </li>
                 ) : (
                   <li class="story-chapter story-alive">
-                    <span class="story-marker" aria-hidden="true">✧</span>
+                    <span class="story-marker" aria-hidden="true"><Icon name="diamond" size={12} /></span>
                     <h5>The Tale Continues…</h5>
                     <span class="story-meta">Still walks the streets of Mordheim</span>
                   </li>
@@ -153,6 +154,8 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
     height: 2rem;
     cursor: pointer;
     transition: all 0.2s;
+    display: grid;
+    place-items: center;
   }
   .modal-close:hover {
     color: var(--blood-bright);
@@ -213,7 +216,17 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
     font-size: 0.95rem;
   }
   .profile-section ul { list-style: none; padding: 0; margin: 0; }
-  .profile-section li::before { content: '⚔ '; color: var(--gold-dim); }
+  .profile-section li { position: relative; padding-left: 1rem; }
+  .profile-section li::before {
+    content: '';
+    position: absolute;
+    left: .2rem;
+    top: .65em;
+    width: .28rem;
+    height: .28rem;
+    border: 1px solid var(--gold-dim);
+    transform: rotate(45deg);
+  }
   .profile-lore {
     font-style: italic;
     color: var(--ink-dim);
@@ -243,6 +256,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
     display: inline-block;
     transition: all 0.25s;
   }
+  .storyline-toggle :global(svg) { margin-left: .45rem; }
   .storyline summary:hover .storyline-toggle,
   .storyline summary:focus-visible .storyline-toggle {
     color: var(--parchment);

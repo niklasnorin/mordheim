@@ -8,6 +8,7 @@ import Standings from '../components/Standings.astro';
 import Chronicle from '../components/Chronicle.astro';
 import Graveyard from '../components/Graveyard.astro';
 import { warbands } from '../data/warbands';
+import Icon from '../components/Icon.astro';
 ---
 
 <Base title="Mordheim — City of the Damned | Campaign Chronicle">
@@ -18,7 +19,7 @@ import { warbands } from '../data/warbands';
 
     <section id="warbands" class="warbands">
       <p class="section-kicker">I · Those who enter the gates</p>
-      <h2 class="section-title"><span class="ornament" aria-hidden="true">✦</span> The Warbands <span class="ornament" aria-hidden="true">✦</span></h2>
+      <h2 class="section-title"><span class="ornament" aria-hidden="true"><Icon name="diamond" /></span> The Warbands <span class="ornament" aria-hidden="true"><Icon name="diamond" /></span></h2>
       <p class="section-intro">
         These brave — or foolish — souls have entered the shattered gates of Mordheim in search of
         wyrdstone, gold, and glory. Most will find only death. Click a warrior to read their tale.
@@ -34,7 +35,7 @@ import { warbands } from '../data/warbands';
   </main>
 
   <footer class="site-footer">
-    <a class="footer-mark" href="#top" aria-label="Return to the gates of Mordheim">✠</a>
+    <a class="footer-mark" href="#top" aria-label="Return to the gates of Mordheim"><Icon name="cross" size={28} /></a>
     <p class="footer-quote">“The dead walk the streets of Mordheim, and the living envy them.”</p>
     <p class="footer-note">
       A fan-made campaign page for our game group. Mordheim is © Games Workshop — this is a
@@ -59,7 +60,7 @@ import { warbands } from '../data/warbands';
     border-top: 1px solid var(--border);
     background: linear-gradient(transparent, #070c0a);
   }
-  .footer-mark { display: inline-block; color: var(--gold); font-size: 2rem; margin-bottom: 1.5rem; text-decoration: none; }
+  .footer-mark { display: inline-block; color: var(--gold); margin-bottom: 1.5rem; text-decoration: none; }
   .footer-quote {
     font-family: 'UnifrakturMaguntia', cursive;
     font-size: 1.3rem;

@@ -1,6 +1,7 @@
 ---
 import type { GetStaticPaths } from 'astro';
 import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
 import { history, getScenarioUrl, type ScenarioRecord } from '../../data/history';
 
 export const getStaticPaths = (() =>
@@ -144,7 +145,7 @@ const perspectives = scenario.warbands.map((warband) => ({
               <h4>Opponents put out of action</h4>
               {takedowns.length ? (
                 <ul>{takedowns.map((event) => (
-                  <li><a href={`#member-${event.attackerId}`}>{warband.members.find((member) => member.memberId === event.attackerId)?.name}</a> → {event.target}</li>
+                  <li><a href={`#member-${event.attackerId}`}>{warband.members.find((member) => member.memberId === event.attackerId)?.name}</a> defeated {event.target}</li>
                 ))}</ul>
               ) : <p class="archive-note">Not recorded.</p>}
 
@@ -176,9 +177,9 @@ const perspectives = scenario.warbands.map((warband) => ({
     </section>
 
     <nav class="chapter-nav" aria-label="Scenario navigation">
-      {previous && <a href={getScenarioUrl(previous.id)}>← Previous: {previous.scenario}</a>}
+      {previous && <a href={getScenarioUrl(previous.id)}><Icon name="arrow-left" size={14} /> Previous: {previous.scenario}</a>}
       <a href={`${home}#chronicle`}>Back to the Chronicle</a>
-      {next && <a href={getScenarioUrl(next.id)}>Next: {next.scenario} →</a>}
+      {next && <a href={getScenarioUrl(next.id)}>Next: {next.scenario} <Icon name="arrow-right" size={14} /></a>}
     </nav>
   </main>
 </Base>

@@ -1,0 +1,52 @@
+---
+interface Props {
+  name: 'arrow-down' | 'arrow-left' | 'arrow-right' | 'arrow-up-right' | 'close' | 'cross' | 'diamond' | 'moon' | 'sun' | 'swords' | 'tombstone';
+  class?: string;
+  size?: number;
+}
+
+const { name, class: className, size = 16 } = Astro.props;
+---
+
+<svg
+  class:list={['line-icon', className]}
+  viewBox="0 0 24 24"
+  width={size}
+  height={size}
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.5"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+>
+  {name === 'arrow-down' && <path d="M12 4v16m-6-6 6 6 6-6" />}
+  {name === 'arrow-left' && <path d="M20 12H4m6-6-6 6 6 6" />}
+  {name === 'arrow-right' && <path d="M4 12h16m-6-6 6 6-6 6" />}
+  {name === 'arrow-up-right' && <path d="M5 19 19 5M9 5h10v10" />}
+  {name === 'close' && <path d="m6 6 12 12M18 6 6 18" />}
+  {name === 'cross' && <path d="M12 3v18M6 9h12" />}
+  {name === 'diamond' && <path d="m12 4 6 8-6 8-6-8 6-8Z" />}
+  {name === 'moon' && <path d="M19 15.5A8 8 0 0 1 8.5 5a8 8 0 1 0 10.5 10.5Z" />}
+  {name === 'sun' && (
+    <>
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4" />
+    </>
+  )}
+  {name === 'swords' && (
+    <>
+      <path d="m5 3 5 5-2 2-5-5 2-2Zm4 6 11 11M19 3l2 2-5 5-2-2 5-5ZM3 21l7-7" />
+      <path d="m5 17 2 2m10-14 2 2" />
+    </>
+  )}
+  {name === 'tombstone' && <path d="M6 21V10a6 6 0 0 1 12 0v11M4 21h16M12 7v8m-3-5h6" />}
+</svg>
+
+<style>
+  .line-icon {
+    display: inline-block;
+    flex: none;
+    vertical-align: -0.15em;
+  }
+</style>
