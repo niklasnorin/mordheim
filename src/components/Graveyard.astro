@@ -48,6 +48,15 @@ const backRows = [rows.length, rows.length + 1];
 ---
 
 <section id="graveyard" class="graveyard reveal">
+  <div class="memorial-mark" aria-hidden="true">
+    <svg viewBox="0 0 100 112" fill="none" stroke="currentColor">
+      <path d="M18 100V48Q18 15 50 5q32 10 32 43v52M24 100V49q0-28 26-37 26 9 26 37v51M12 101h76M8 106h84"/>
+      <path d="M47 84V35h6v49l-3 10-3-10ZM37 45h26M40 49h20M50 23v7M45 27h10M33 88h7m20 0h7"/>
+      <path d="M31 69v14m-3-15q3-9 6 0c0 4-6 4-6 0Zm38 1v14m-3-15q3-9 6 0c0 4-6 4-6 0ZM29 85h4m31 0h4" stroke-width=".8"/>
+      <path d="M18 55h6m-6 12h6m-6 12h6m-6 12h6m52-36h6m-6 12h6m-6 12h6m-6 12h6" stroke-width=".6"/>
+    </svg>
+  </div>
+  <p class="memorial-label">In memoriam</p>
   <h2 class="section-title"><span class="ornament">⚰</span> The Graveyard <span class="ornament">⚰</span></h2>
   <p class="section-intro">
     Here lie the fallen of the campaign, row upon row among the nameless dead of Mordheim. The
@@ -155,16 +164,48 @@ const backRows = [rows.length, rows.length + 1];
     <div class="fog fog-2" aria-hidden="true"></div>
     <div class="fog fog-3" aria-hidden="true"></div>
   </div>
+  <p class="memorial-footer">Their names endure where their footsteps do not.</p>
 </section>
 
 <style>
+  .memorial-mark {
+    width: 66px;
+    margin: 0 auto 0.8rem;
+    color: #b69a62;
+    opacity: 0.75;
+  }
+  .memorial-mark svg { display: block; width: 100%; }
+  .memorial-label, .memorial-footer {
+    text-align: center;
+    color: #b69a62;
+    font: 0.62rem/1.8 Georgia, serif;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .memorial-footer {
+    padding: 1.4rem 1rem 0;
+    font-style: italic;
+    text-transform: none;
+    letter-spacing: 0.04em;
+    color: #a6aa99;
+    font-size: 0.8rem;
+  }
+  .graveyard .section-intro {
+    max-width: 550px;
+    margin-left: auto;
+    margin-right: auto;
+    color: #b8b9a9;
+    font-size: 0.9rem;
+    line-height: 1.8;
+  }
   .graveyard-ground {
     position: relative;
     padding: 3rem 1rem 2.5rem;
     background:
-      radial-gradient(ellipse at 50% 100%, #161a14 0%, transparent 70%),
-      linear-gradient(to bottom, transparent 0%, #101310 100%);
-    border-bottom: 1px solid var(--border);
+      radial-gradient(ellipse at 50% 30%, #222920 0%, transparent 65%),
+      linear-gradient(to bottom, transparent 0%, #101715 100%);
+    border-bottom: 1px solid #444636;
     overflow: hidden;
   }
 
@@ -173,33 +214,30 @@ const backRows = [rows.length, rows.length + 1];
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding-bottom: 3.6rem;
+    padding-bottom: 1rem;
   }
 
-  /* Depth: the newest scenario (--depth: 0) stands in front — larger and
-     sharper; older scenarios recede — smaller, dimmer, hazier, and pulled
-     upward toward the horizon so the rows overlap like a real field. */
+  /* Keep named stones readable; only the nameless rows recede into the mist. */
   .grave-row {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     align-items: flex-end;
-    gap: 1.6rem;
+    gap: 2.6rem;
     width: 100%;
     position: relative;
     z-index: calc(20 - var(--depth));
-    transform-origin: 50% 100%;
-    transform: scale(calc(1 - var(--depth) * 0.1));
-    opacity: calc(1 - var(--depth) * 0.11);
-    filter: brightness(calc(1 - var(--depth) * 0.08)) blur(calc(var(--depth) * 0.35px));
-    /* Pull the next row up over this one: compensate for the scaling, then
-       overlap, so the stones crowd together into a field. */
-    margin-bottom: calc(var(--depth) * -1.7rem - 3.6rem);
+    margin-bottom: 2.5rem;
   }
 
   .grave-row-nameless {
     gap: 1.1rem;
     margin-bottom: calc(var(--depth) * -0.65rem - 1.6rem);
+    transform-origin: 50% 100%;
+    transform: scale(max(0.5, calc(1 - var(--depth) * 0.1)));
+    opacity: 0.3;
+    filter: blur(0.8px);
+    pointer-events: none;
   }
 
   .tombstone {
@@ -209,11 +247,11 @@ const backRows = [rows.length, rows.length + 1];
 
   .tombstone-stone {
     position: relative;
-    width: 200px;
-    padding: 1.6rem 1.1rem 1.3rem;
+    width: 220px;
+    padding: 2rem 1.25rem 1.5rem;
     text-align: center;
-    background: linear-gradient(165deg, #3a3d42 0%, #26292e 55%, #1d2024 100%);
-    border: 1px solid #45484e;
+    background: linear-gradient(165deg, #343b32 0%, #252b25 55%, #1b211d 100%);
+    border: 1px solid #55584a;
     border-radius: 95px 95px 0 0;
     box-shadow:
       inset 0 2px 6px rgba(255, 255, 255, 0.06),
@@ -223,10 +261,10 @@ const backRows = [rows.length, rows.length + 1];
 
   /* ── Heroes: carved, ornamented monuments ── */
   .tombstone-hero .tombstone-stone {
-    width: 214px;
-    padding: 1.3rem 1.2rem 1.4rem;
-    background: linear-gradient(165deg, #474b52 0%, #2c3036 55%, #1f2226 100%);
-    border: 1px solid #5a5f68;
+    width: 236px;
+    padding: 2rem 1.5rem 1.7rem;
+    background: linear-gradient(165deg, #3b4136 0%, #2b3129 55%, #1d241e 100%);
+    border: 1px solid #66654f;
     border-radius: 107px 107px 6px 6px;
     box-shadow:
       inset 0 0 0 5px rgba(0, 0, 0, 0.28),
@@ -243,8 +281,8 @@ const backRows = [rows.length, rows.length + 1];
     bottom: 0;
     width: 18px;
     height: 46%;
-    background: linear-gradient(165deg, #3d4149 0%, #24272c 100%);
-    border: 1px solid #4e535b;
+    background: linear-gradient(165deg, #363d33 0%, #242b24 100%);
+    border: 1px solid #515647;
     border-bottom: none;
   }
   .tombstone-hero .tombstone-stone::before {
@@ -266,7 +304,7 @@ const backRows = [rows.length, rows.length + 1];
 
   .tombstone-hero .tombstone-name {
     font-size: 1.3rem;
-    color: var(--parchment);
+    color: #e7dcc5;
     text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
   }
   .tombstone-hero .tombstone-portrait {
@@ -282,10 +320,10 @@ const backRows = [rows.length, rows.length + 1];
 
   /* ── Henchmen: plain, unadorned markers ── */
   .tombstone-henchman .tombstone-stone {
-    width: 168px;
-    padding: 1.1rem 0.9rem 1rem;
-    background: linear-gradient(170deg, #343740 0%, #24272c 60%, #1c1f22 100%);
-    border: 1px solid #3d4046;
+    width: 210px;
+    padding: 1.5rem 1.15rem 1.3rem;
+    background: linear-gradient(170deg, #32392f 0%, #252c25 60%, #1c231e 100%);
+    border: 1px solid #515647;
     border-radius: 8px 8px 0 0;
     box-shadow:
       inset 0 -10px 18px rgba(0, 0, 0, 0.45),
@@ -301,12 +339,12 @@ const backRows = [rows.length, rows.length + 1];
     border-radius: 4px;
   }
   .tombstone-henchman .tombstone-epitaph {
-    font-size: 0.72rem;
+    font-size: 0.8rem;
   }
 
   .tombstone-cross {
     display: block;
-    color: var(--ink-dim);
+    color: #b8b9a9;
     font-size: 1.1rem;
     margin-bottom: 0.3rem;
   }
@@ -320,37 +358,38 @@ const backRows = [rows.length, rows.length + 1];
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.35);
     border: 1px solid #45484e;
-    filter: grayscale(0.7);
+    filter: grayscale(1) sepia(0.35);
     margin-bottom: 0.5rem;
   }
   .tombstone-name {
     display: block;
-    font-family: 'Pirata One', cursive;
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: 1.15rem;
-    color: var(--parchment-dark);
-    line-height: 1.2;
+    color: #e7dcc5;
+    line-height: 1.35;
   }
   .tombstone-meta {
     display: block;
-    font-size: 0.68rem;
-    color: var(--ink-dim);
+    font-size: 0.72rem;
+    color: #c0c1ae;
     font-variant: small-caps;
     letter-spacing: 0.1em;
     margin-top: 0.25rem;
   }
   .tombstone-date {
     display: block;
-    font-size: 0.7rem;
-    color: var(--blood-bright);
-    margin-top: 0.3rem;
+    font-size: 0.72rem;
+    color: #c5aa87;
+    margin-top: 0.6rem;
   }
   .tombstone-epitaph {
-    font-size: 0.78rem;
+    font-size: 0.82rem;
+    line-height: 1.7;
     font-style: italic;
-    color: var(--ink-dim);
-    margin-top: 0.6rem;
-    border-top: 1px solid #3a3d42;
-    padding-top: 0.5rem;
+    color: #c0c1ae;
+    margin-top: 0.8rem;
+    border-top: 1px solid #4a5042;
+    padding-top: 0.8rem;
   }
 
   .tombstone-mound {
@@ -370,8 +409,8 @@ const backRows = [rows.length, rows.length + 1];
     justify-content: center;
     padding-bottom: 1rem;
     transform: rotate(var(--tilt, 0deg));
-    background: linear-gradient(165deg, #4b4f56 0%, #35383e 60%, #26292d 100%);
-    border: 1px solid #52565d;
+    background: linear-gradient(165deg, #464d41 0%, #343c32 60%, #262e27 100%);
+    border: 1px solid #51584b;
     border-radius: 37px 37px 0 0;
     box-shadow:
       inset 0 -10px 18px rgba(0, 0, 0, 0.45),
@@ -467,6 +506,7 @@ const backRows = [rows.length, rows.length + 1];
     filter: blur(14px);
     animation: fog-drift 26s ease-in-out infinite alternate;
     z-index: 30;
+    opacity: 0.4;
   }
   .fog-2 {
     height: 32%;
@@ -497,12 +537,20 @@ const backRows = [rows.length, rows.length + 1];
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .crow { animation: none; }
+    .crow, .fog { animation: none; }
   }
 
   @media (max-width: 700px) {
-    .grave-row { gap: 1.2rem; }
-    .tombstone-stone { width: 165px; }
+    .graveyard-ground { padding: 2rem 1.5rem 1rem; }
+    .grave-row { gap: 2rem; margin-bottom: 2rem; }
+    .tombstone { max-width: 100%; }
+    .tombstone-stone,
+    .tombstone-hero .tombstone-stone,
+    .tombstone-henchman .tombstone-stone { width: min(220px, 100%); box-sizing: border-box; }
+    .tombstone-hero .tombstone-stone::before { width: 10px; left: -11px; }
+    .tombstone-hero .tombstone-stone::after { width: 10px; right: -11px; }
     .grave-row-nameless { display: none; }
+    .grave-row > .nameless { display: none; }
+    .tombstone-name, .tombstone-meta { overflow-wrap: anywhere; }
   }
 </style>

@@ -26,8 +26,8 @@
     height: 100%;
     pointer-events: none;
   }
-  #rain-canvas { z-index: 50; opacity: 0.55; }
-  #leaf-canvas { z-index: 50; display: none; }
+  #rain-canvas { z-index: 5; opacity: 0.35; }
+  #leaf-canvas { z-index: 5; display: none; }
   #crow-canvas { z-index: 4; }
 
   :global([data-theme='day']) #rain-canvas { display: none; }
@@ -87,7 +87,7 @@
   .vignette {
     position: fixed;
     inset: 0;
-    z-index: 60;
+    z-index: 6;
     pointer-events: none;
     background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
   }
@@ -98,7 +98,7 @@
   .lightning {
     position: fixed;
     inset: 0;
-    z-index: 55;
+    z-index: 6;
     pointer-events: none;
     background: rgba(200, 215, 235, 0);
     transition: background 0.08s;
@@ -109,20 +109,20 @@
   /* ── Minimalistic day/night switch ── */
   #theme-toggle {
     position: fixed;
-    top: 1rem;
+    top: 1.35rem;
     right: 1rem;
     z-index: 100;
-    width: 2.4rem;
-    height: 2.4rem;
+    width: 2.75rem;
+    height: 2.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.2rem;
     line-height: 1;
     color: var(--gold);
-    background: rgba(20, 23, 28, 0.7);
+    background: #111915ee;
     border: 1px solid var(--border);
-    border-radius: 50%;
+    border-radius: 2px;
     cursor: pointer;
     transition: color 0.25s, box-shadow 0.25s;
   }
@@ -149,11 +149,12 @@
   document.getElementById('theme-toggle')!.addEventListener('click', () => {
     if (isDay()) {
       delete root.dataset.theme;
-      localStorage.setItem('mordheim-theme', 'night');
     } else {
       root.dataset.theme = 'day';
-      localStorage.setItem('mordheim-theme', 'day');
     }
+    try {
+      localStorage.setItem('mordheim-theme', isDay() ? 'day' : 'night');
+    } catch {}
   });
 
   /* ── Rain ── */

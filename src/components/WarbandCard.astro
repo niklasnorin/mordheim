@@ -6,12 +6,16 @@ interface Props {
 }
 
 const { warband } = Astro.props;
+const crest = warband.id === 'grimhammer' ? 'crest-hammer.svg' : warband.id === 'wolfensteins' ? 'crest-wolf.svg' : null;
 ---
 
-<article class="warband-card reveal">
+<article class="warband-card reveal" class:list={{ 'warband-ostland': warband.id === 'wolfensteins' }}>
   <div class="warband-header">
-    <span class="warband-sigil" aria-hidden="true">{warband.sigil}</span>
+    <span class="warband-sigil" aria-hidden="true">
+      {crest ? <img src={`${import.meta.env.BASE_URL}/${crest}`} width="120" height="140" alt="" loading="lazy" /> : warband.sigil}
+    </span>
     <div class="warband-title">
+      <span class="warband-register">Registered company · {warband.members.length} souls</span>
       <h3>{warband.name}</h3>
       <span class="warband-type">{warband.type} — led by {warband.player}</span>
     </div>
@@ -21,22 +25,27 @@ const { warband } = Astro.props;
     </div>
   </div>
   <p class="warband-lore">{warband.lore}</p>
+  <div class="roster-heading"><span>The muster roll</span><span>Select a warrior to uncover their tale</span></div>
   <div class="member-grid">
     {
-      warband.members.map((m) => (
+      warband.members.map((m, index) => (
         <button
           class:list={['member-card', { 'member-dead': m.dead }]}
           data-warband={warband.id}
           data-member={m.id}
           type="button"
         >
-          <span class="member-portrait" aria-hidden="true">{m.portrait}</span>
+          <span class="member-portrait" aria-hidden="true">
+            <span class="member-number">{(index + 1).toString().padStart(2, '0')}</span>
+            {m.dead ? '✝' : m.rank === 'hero' ? '✦' : '✧'}
+          </span>
           <span class="member-name">{m.name}</span>
           <span class="member-role">{m.role}</span>
           <span class="member-tag">
             {m.epithet}
             {m.dead && <span class="dead-marker"> ✝ Fallen</span>}
           </span>
+          <span class="member-open" aria-hidden="true">Read the record <span>↗</span></span>
         </button>
       ))
     }
@@ -45,28 +54,34 @@ const { warband } = Astro.props;
 
 <style>
   .warband-card {
+    position: relative;
     background: linear-gradient(160deg, var(--bg-panel2), var(--bg-panel));
-    border: 1px solid var(--border);
+    border: 1px solid #79623c70;
     box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
     overflow: hidden;
   }
+  .warband-card::before { content: ''; position: absolute; top: 0; left: 1.5rem; right: 1.5rem; height: 2px; background: linear-gradient(90deg, transparent, var(--gold-dim), transparent); }
+  .warband-register { display: block; font-size: .55rem; color: var(--ink-dim); text-transform: uppercase; letter-spacing: .15em; margin-bottom: .45rem; }
 
   .warband-header {
     display: flex;
     align-items: center;
     gap: 1.2rem;
-    padding: 1.4rem 1.6rem;
+    padding: 1.8rem 2rem;
     border-bottom: 1px solid var(--border);
-    background: linear-gradient(90deg, rgba(138, 26, 26, 0.12), transparent 60%);
+    background: repeating-linear-gradient(120deg, transparent 0 5px, #b69a6203 5px 6px), linear-gradient(90deg, #68744b18, transparent 70%);
   }
+  .warband-ostland .warband-header { background-color: #773a2714; }
+  .warband-sigil img { display: block; width: 76px; height: auto; }
   .warband-sigil {
     font-size: 2.6rem;
     line-height: 1;
-    filter: drop-shadow(0 0 10px rgba(184, 150, 62, 0.35));
+    flex-shrink: 0;
+    filter: drop-shadow(0 5px 8px #0007);
   }
   .warband-title h3 {
     font-family: 'Pirata One', cursive;
-    font-size: 1.8rem;
+    font-size: 2rem;
     letter-spacing: 0.05em;
     color: var(--parchment);
     font-weight: normal;
@@ -80,35 +95,38 @@ const { warband } = Astro.props;
   .warband-stats {
     margin-left: auto;
     text-align: right;
-    font-size: 0.8rem;
+    font-size: 0.65rem;
     color: var(--ink-dim);
     white-space: nowrap;
   }
   .warband-stats .rating {
     display: block;
     font-family: 'Pirata One', cursive;
-    font-size: 1.5rem;
+    font-size: 2.5rem;
+    line-height: 1.3;
     color: var(--gold);
   }
 
   .warband-lore {
-    padding: 1.2rem 1.6rem;
+    padding: 1.5rem 2rem;
     font-style: italic;
     color: var(--ink-dim);
     border-bottom: 1px solid var(--border);
     font-size: 0.95rem;
   }
+  .roster-heading { padding: .75rem 2rem; display: flex; justify-content: space-between; gap: 1rem; color: var(--gold); font-size: .6rem; letter-spacing: .14em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .roster-heading span:last-child { color: var(--ink-dim); letter-spacing: .03em; text-transform: none; }
 
   .member-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
     gap: 1px;
     background: var(--border);
   }
 
   .member-card {
     background: var(--bg-panel);
-    padding: 1.1rem 1.2rem;
+    padding: 1.3rem 1.5rem;
     cursor: pointer;
     transition: background 0.25s, transform 0.25s;
     border: none;
@@ -122,7 +140,7 @@ const { warband } = Astro.props;
   }
   .member-card:hover,
   .member-card:focus-visible {
-    background: #1e232c;
+    background: #242e23;
     transform: translateY(-2px);
   }
   .member-card:hover .member-name,
@@ -130,11 +148,15 @@ const { warband } = Astro.props;
     color: var(--gold);
   }
   .member-card .member-portrait {
-    font-size: 2rem;
+    font-size: 1.2rem;
     float: right;
-    opacity: 0.85;
-    filter: grayscale(0.4) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+    color: var(--gold-dim);
+    margin-left: .7rem;
+    text-align: center;
   }
+  .member-number { display: block; font: .6rem/1.8 Georgia, serif; letter-spacing: .1em; color: var(--ink-dim); }
+  .member-open { display: flex; justify-content: space-between; margin-top: 1.2rem; border-top: 1px solid #343b2e80; padding-top: .55rem; color: var(--gold); font-size: .6rem; letter-spacing: .09em; text-transform: uppercase; }
+  .member-open > span { font-size: .9rem; line-height: 1; }
   .member-name {
     display: block;
     font-family: 'Pirata One', cursive;
@@ -156,12 +178,25 @@ const { warband } = Astro.props;
     margin-top: 0.35rem;
     display: block;
   }
-  .member-dead { opacity: 0.5; }
+  .member-dead { background: #101411; }
   .member-dead .member-name { text-decoration: line-through; }
   .dead-marker { color: var(--blood-bright); font-style: normal; }
 
   @media (max-width: 700px) {
     .warband-header { flex-wrap: wrap; }
     .warband-stats { margin-left: 0; text-align: left; }
+  }
+  @media (max-width: 540px) {
+    .warband-header { padding: 1.4rem 1rem; gap: 1rem; }
+    .warband-sigil img { width: 56px; }
+    .warband-title { flex: 1; min-width: 0; }
+    .warband-title h3 { font-size: 1.6rem; }
+    .warband-title .warband-type { font-size: .7rem; }
+    .warband-stats { width: 100%; border-top: 1px solid var(--border); padding-top: .6rem; display: flex; align-items: center; gap: .7rem; }
+    .warband-stats .rating { font-size: 1.5rem; }
+    .warband-lore { padding: 1rem; }
+    .roster-heading { padding-inline: 1rem; }
+    .roster-heading span:last-child { display: none; }
+    .member-grid { grid-template-columns: 1fr; }
   }
 </style>

@@ -14,8 +14,13 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
       wb.members.map((m) => (
         <div class="profile" data-profile={`${wb.id}:${m.id}`} hidden>
           <div class="profile-header">
-            <span class="profile-portrait" aria-hidden="true">{m.portrait}</span>
+            <span class="profile-portrait" aria-hidden="true">
+              {wb.id === 'grimhammer' || wb.id === 'wolfensteins' ? (
+                <img src={`${import.meta.env.BASE_URL}/${wb.id === 'grimhammer' ? 'crest-hammer.svg' : 'crest-wolf.svg'}`} alt="" width="120" height="140" loading="lazy" />
+              ) : wb.sigil}
+            </span>
             <div>
+              <p class="profile-label">From the campaign archives · {m.rank}</p>
               <h3>{m.name}</h3>
               <span class="member-role">
                 {m.role} — {wb.name}
@@ -44,7 +49,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
             <p class="profile-lore">{m.lore}</p>
             <details class="storyline" data-default-open={m.rank === 'hero' ? 'true' : 'false'} open={m.rank === 'hero'}>
               <summary>
-                <span class="storyline-toggle">📜 Follow their story</span>
+                <span class="storyline-toggle">Follow their story <span aria-hidden="true">↓</span></span>
               </summary>
               <ol class="story-timeline">
                 <li class="story-chapter story-backstory">
@@ -83,14 +88,14 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
                 ))}
                 {m.dead && m.death ? (
                   <li class="story-chapter story-grave">
-                    <span class="story-marker" aria-hidden="true">🪦</span>
+                    <span class="story-marker" aria-hidden="true">✝</span>
                     <h5>The Tale Ends</h5>
                     <span class="story-meta">Laid to rest — {m.death.date}</span>
                     <p class="story-text story-epitaph">{m.death.epitaph}</p>
                   </li>
                 ) : (
                   <li class="story-chapter story-alive">
-                    <span class="story-marker" aria-hidden="true">🕯</span>
+                    <span class="story-marker" aria-hidden="true">✧</span>
                     <h5>The Tale Continues…</h5>
                     <span class="story-meta">Still walks the streets of Mordheim</span>
                   </li>
@@ -109,12 +114,20 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
     background: linear-gradient(160deg, var(--bg-panel2), var(--bg-panel));
     border: 1px solid var(--gold-dim);
     box-shadow: 0 0 80px rgba(0, 0, 0, 0.9), 0 0 30px rgba(184, 150, 62, 0.1);
-    max-width: 560px;
+    max-width: 640px;
+    margin: auto;
     width: calc(100% - 2rem);
     max-height: 88vh;
     overflow-y: auto;
-    padding: 2rem;
+    padding: 2.5rem;
     color: var(--ink);
+  }
+  .profile-label { font-size: .55rem; text-transform: uppercase; letter-spacing: .14em; color: var(--gold); margin-bottom: .4rem; }
+  .profile-portrait { flex-shrink: 0; }
+  .profile-portrait img { display: block; width: 70px; height: auto; }
+  @media (max-width: 540px) {
+    .member-dialog { padding: 2.7rem 1rem 1.5rem; }
+    .profile-portrait img { width: 48px; }
   }
   .member-dialog::backdrop {
     background: rgba(5, 6, 8, 0.85);

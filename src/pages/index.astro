@@ -13,11 +13,12 @@ import { warbands } from '../data/warbands';
 <Base title="Mordheim — City of the Damned | Campaign Chronicle">
   <Header />
 
-  <main>
+  <main id="main-content">
     <TownCryer />
 
     <section id="warbands" class="warbands">
-      <h2 class="section-title"><span class="ornament">☠</span> The Warbands <span class="ornament">☠</span></h2>
+      <p class="section-kicker">I · Those who enter the gates</p>
+      <h2 class="section-title"><span class="ornament" aria-hidden="true">✦</span> The Warbands <span class="ornament" aria-hidden="true">✦</span></h2>
       <p class="section-intro">
         These brave — or foolish — souls have entered the shattered gates of Mordheim in search of
         wyrdstone, gold, and glory. Most will find only death. Click a warrior to read their tale.
@@ -33,6 +34,7 @@ import { warbands } from '../data/warbands';
   </main>
 
   <footer class="site-footer">
+    <a class="footer-mark" href="#top" aria-label="Return to the gates of Mordheim">✠</a>
     <p class="footer-quote">“The dead walk the streets of Mordheim, and the living envy them.”</p>
     <p class="footer-note">
       A fan-made campaign page for our game group. Mordheim is © Games Workshop — this is a
@@ -53,9 +55,11 @@ import { warbands } from '../data/warbands';
     position: relative;
     z-index: 10;
     text-align: center;
-    padding: 3rem 1rem 4rem;
+    padding: 4rem 1rem;
     border-top: 1px solid var(--border);
+    background: linear-gradient(transparent, #070c0a);
   }
+  .footer-mark { display: inline-block; color: var(--gold); font-size: 2rem; margin-bottom: 1.5rem; text-decoration: none; }
   .footer-quote {
     font-family: 'UnifrakturMaguntia', cursive;
     font-size: 1.3rem;
@@ -64,7 +68,9 @@ import { warbands } from '../data/warbands';
   }
   .footer-note {
     font-size: 0.75rem;
-    color: #55504a;
+    color: var(--ink-dim);
+    max-width: 560px;
+    margin-inline: auto;
   }
 </style>
 

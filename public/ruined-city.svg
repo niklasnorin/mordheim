@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="850" viewBox="0 0 1600 850" fill="none">
+  <defs>
+    <linearGradient id="sky" x2="0" y2="850" gradientUnits="userSpaceOnUse"><stop stop-color="#111c1c"/><stop offset=".5" stop-color="#46554a"/><stop offset="1" stop-color="#111916"/></linearGradient>
+    <radialGradient id="haze"><stop stop-color="#bac5a0" stop-opacity=".45"/><stop offset="1" stop-color="#6d856b" stop-opacity="0"/></radialGradient>
+    <linearGradient id="stone" x2="1" y2="1"><stop stop-color="#2f3830"/><stop offset="1" stop-color="#101916"/></linearGradient>
+    <linearGradient id="water" x2="0" y2="1"><stop stop-color="#66745b"/><stop offset="1" stop-color="#101816"/></linearGradient>
+    <linearGradient id="tail"><stop stop-color="#b9d5a0" stop-opacity="0"/><stop offset="1" stop-color="#dce7b8"/></linearGradient>
+    <pattern id="etch" width="7" height="7" patternUnits="userSpaceOnUse"><path d="m0 7 7-7" stroke="#b0aa85" stroke-opacity=".09" stroke-width=".7"/></pattern>
+    <pattern id="masonry" width="42" height="26" patternUnits="userSpaceOnUse"><path d="M0 0h42M0 26h42M21 0v13M0 13h42M7 13v13" stroke="#99a18a" stroke-opacity=".12"/></pattern>
+    <g id="spire">
+      <path d="M-35 0v-152h8v-58h9l18-109 18 109h9v58h8V0Z" fill="url(#stone)" stroke="#6c7560" stroke-width="1.2"/>
+      <path d="M0-335v32m-9-19H9M-27-152h54M-18-210h36M-23-142v126M23-142v126M0-206v51" stroke="#7d8269" stroke-opacity=".6"/>
+      <path d="M-9-90v-37q9-22 18 0v37Zm0 67v-34q9-22 18 0v34Z" fill="#0b1412" stroke="#5f6a57"/>
+      <path d="M-5-95v-27m10 27v-27" stroke="#ac9862" stroke-opacity=".6"/>
+    </g>
+    <g id="house">
+      <path d="M-42 0v-95l-10-2 52-70 49 71-10 1V0Z" fill="url(#stone)" stroke="#64705e"/>
+      <path d="m-46-96 46-62 42 62M-35-91h69M-35-47h69M0-150V0m-33-89L0-49l34-40M-33-44 0-5l34-39" stroke="#8d9074" stroke-opacity=".45" stroke-width="3"/>
+      <path d="M-24-77h12v20h-12zm36 0h12v20H12zM-8-123H8v23H-8zM-24-35h12v20h-12zm36 0h12v20H12z" fill="#b4a071" fill-opacity=".32"/>
+    </g>
+    <g id="ruin">
+      <path d="M0 0v-228l19-11 7 27 18-5 8-45 17 7 9 44 17-8 14 15v-74l17 6 11 43 21-11V0Z" fill="url(#stone)" stroke="#6f7965"/>
+      <path d="M0 0v-205h158V0" fill="url(#masonry)"/>
+      <path d="M27-19v-116q25-68 50 0v116m29 0v-122q16-45 31 0v122" fill="#0d1714" stroke="#80856a" stroke-width="3"/>
+      <path d="m12-210 18 57-8 23 14 41M105-191l-13 25 7 13-18 41" stroke="#0a1311" stroke-width="4"/>
+    </g>
+    <g id="bird"><path d="M-15 0Q-8-8 0 0 8-8 15 0" stroke="#0a1312" stroke-width="2"/></g>
+  </defs>
+  <path fill="url(#sky)" d="M0 0h1600v850H0z"/>
+  <ellipse cx="920" cy="335" rx="760" ry="450" fill="url(#haze)"/>
+  <circle cx="1178" cy="176" r="66" fill="#b9bea0" opacity=".18"/>
+  <circle cx="1190" cy="163" r="61" fill="#34443e"/>
+  <path d="M1480 0 1020 281 1441 0Z" fill="url(#tail)" opacity=".25"/>
+  <path d="m1410 0-390 281L1315 0Z" fill="url(#tail)" opacity=".15"/>
+  <path d="m1018 277 8 4-10 9-4-5Z" fill="#dae5b4"/>
+  <g opacity=".35" fill="#23372f">
+    <path d="M0 490V352l45-37 30 18v-53l20-16 9-95 14 96 20 15v82l49-29 40 36v-89l22-38 10-96 15 97 25 34v79l30-28 53 44v-42l41-26 48 41v-65l35-30 14-101 13 102 27 29v83l57-26 51 34 61-55 32 26v-84l24-14 10-76 11 76 23 14v98l63-33 48 37 58-49 48 38v-132l27-34 10-102 13 104 25 32v97l32-31 57 55v-92l33-24 11-66 12 66 31 24v128l38-42 46 33v-83l24-24 14-89 12 90 25 23v137l37-24 56 21v-70l30-23 10-70 12 70 34 23v94l70-28v212H0Z"/>
+  </g>
+  <g opacity=".62">
+    <use href="#spire" transform="translate(192 581) scale(.85)"/>
+    <use href="#spire" transform="translate(452 580) scale(.68)"/>
+    <use href="#spire" transform="translate(1270 606) scale(1.1)"/>
+    <use href="#house" transform="translate(328 594) scale(.9)"/>
+    <use href="#house" transform="translate(532 611)"/>
+    <use href="#house" transform="translate(1090 605)"/>
+    <use href="#house" transform="translate(1420 586)"/>
+    <path d="M0 570q270-91 520 20t520-3 560-43v306H0Z" fill="#20322a"/>
+  </g>
+  <path d="M749 556h89l170 294H548Z" fill="url(#water)" opacity=".65"/>
+  <g stroke="#bbc5a0" stroke-opacity=".2">
+    <path d="M751 602h93m-108 16h126m-119 27h119m-153 29h194m-181 33h172m-222 31h279m-295 35h245m-263 32h347"/>
+  </g>
+  <g fill="url(#stone)" stroke="#77816a">
+    <path d="M435 637v-48q366-108 728 0v48h-56v-30q-36-27-71-12v54h-37v-61q-46-22-88-9v70h-35v-75q-58-17-112-1v76h-35v-72q-45-11-84 8v64h-34v-55q-33-7-58 14v29Z"/>
+    <path d="M435 589q366-108 728 0v-15q-366-108-728 0Z"/>
+  </g>
+  <g>
+    <use href="#house" transform="translate(45 672) scale(1.5)"/>
+    <use href="#house" transform="translate(144 649) scale(1.15)"/>
+    <use href="#house" transform="translate(252 690) scale(1.7)"/>
+    <use href="#house" transform="translate(380 664) scale(1.1)"/>
+    <use href="#house" transform="translate(485 672) scale(.8)"/>
+    <use href="#house" transform="translate(1129 691) scale(1.1)"/>
+    <use href="#house" transform="translate(1240 700) scale(1.4)"/>
+    <use href="#house" transform="translate(1380 693) scale(1.5)"/>
+    <use href="#house" transform="translate(1510 701) scale(1.7)"/>
+    <use href="#spire" transform="translate(104 657) scale(1.35)"/>
+    <use href="#ruin" transform="translate(1400 726) scale(1.35)"/>
+  </g>
+  <path d="M0 712 193 665l255 20 234-28-60 51-150 30-43 112H0Zm1600-26-200 19-167-29-345-30 77 44 152 45 67 115h416Z" fill="#111c17"/>
+  <g stroke="#67715b" stroke-opacity=".5">
+    <path d="m0 724 193-46 255 20 201-32M1600 699l-200 19-167-29-304-34M412 850l47-120 168-36M1167 850l-62-104-122-46"/>
+    <path d="m38 765 83-18m43-9 96-19m-149 74 179-38m104-39-92 22m-150 85 179-51m14 57 47-14m966-53 92 15m-150 13 113 28m36-55 114 24m-67 26 136 35"/>
+  </g>
+  <g fill="#0a1210">
+    <path d="M0 850V410l35-18 9-142 11 139 38 23v438Zm64-432 71-26 35 29 31-59 42 18v38l39-10 35 27v415H64Z"/>
+    <path d="M1478 850V454l45-15 12-119 13 122 52 17v391Z"/>
+  </g>
+  <g stroke="#63715b" stroke-opacity=".5">
+    <path d="M43 424v310m32-291v312m12-309 43-19 39 19 31-53 31 15m-110 74v106m25-94v83"/>
+    <path d="m20 560 9-23 9 23v49H20Zm90 80 14-26 13 26v68h-27Z"/>
+  </g>
+  <g stroke="#0a1210" stroke-width="8" stroke-linecap="round">
+    <path d="m1583 767-25-209-39-82 7-70m33 169 33-57 8-65m-69 41-47-14-31-37m103 187-63-36-25-50"/>
+  </g>
+  <g opacity=".8">
+    <use href="#bird" transform="translate(305 234) rotate(-12)"/>
+    <use href="#bird" transform="translate(345 257) scale(.7)"/>
+    <use href="#bird" transform="translate(284 272) scale(.5)"/>
+    <use href="#bird" transform="translate(1107 330) scale(.7)"/>
+    <use href="#bird" transform="translate(1140 311) scale(.45)"/>
+  </g>
+  <path d="M0 0h1600v850H0z" fill="url(#etch)"/>
+</svg>
