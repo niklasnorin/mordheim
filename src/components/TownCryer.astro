@@ -1,5 +1,6 @@
 ---
 import { news, issue } from '../data/news';
+import Icon from './Icon.astro';
 ---
 
 <section id="town-cryer" class="town-cryer reveal">
@@ -17,7 +18,7 @@ import { news, issue } from '../data/news';
     <div class="cryer-issue">{issue}</div>
   </div>
   <div class="cryer-banner">
-    <span>✠ HEAR YE! HEAR YE! ALL THE NEWS FROM THE CITY OF THE DAMNED ✠</span>
+    <span><Icon name="cross" size={12} /> HEAR YE! HEAR YE! ALL THE NEWS FROM THE CITY OF THE DAMNED <Icon name="cross" size={12} /></span>
   </div>
   <div class="cryer-columns">
     {

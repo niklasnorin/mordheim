@@ -1,4 +1,5 @@
 ---
+import Icon from './Icon.astro';
 // Atmospheric layers: rain, crows, fog, lightning, vignette (night)
 // and autumn leaves, foggy city skyline (day) — with a day/night switch
 ---
@@ -22,8 +23,8 @@
 <div class="vignette" aria-hidden="true"></div>
 <div class="lightning" id="lightning" aria-hidden="true"></div>
 <button id="theme-toggle" type="button" aria-label="Switch between stormy night and autumn day" title="Switch day / night">
-  <span class="icon-night" aria-hidden="true">☾</span>
-  <span class="icon-day" aria-hidden="true">☀</span>
+  <span class="icon-night" aria-hidden="true"><Icon name="moon" size={18} /></span>
+  <span class="icon-day" aria-hidden="true"><Icon name="sun" size={18} /></span>
 </button>
 
 <style>

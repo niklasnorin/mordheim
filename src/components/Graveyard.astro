@@ -1,5 +1,6 @@
 ---
 import { warbands } from '../data/warbands';
+import Icon from './Icon.astro';
 
 const fallen = warbands
   .flatMap((wb) =>
@@ -57,7 +58,7 @@ const backRows = [rows.length, rows.length + 1];
     </svg>
   </div>
   <p class="memorial-label">In memoriam</p>
-  <h2 class="section-title"><span class="ornament">⚰</span> The Graveyard <span class="ornament">⚰</span></h2>
+  <h2 class="section-title"><span class="ornament"><Icon name="tombstone" /></span> The Graveyard <span class="ornament"><Icon name="tombstone" /></span></h2>
   <p class="section-intro">
     Here lie the fallen of the campaign, row upon row among the nameless dead of Mordheim. The
     freshest graves stand nearest; older battles recede into the fog.
@@ -111,9 +112,7 @@ const backRows = [rows.length, rows.length + 1];
                   <figure class={`tombstone tombstone-${m.rank}`}>
                     <div class="tombstone-stone">
                       {m.rank === 'hero' && (
-                        <span class="tombstone-flourish" aria-hidden="true">
-                          ❧ ✠ ❦
-                        </span>
+                        <span class="tombstone-flourish" aria-hidden="true"><i></i><Icon name="cross" size={14} /><i></i></span>
                       )}
                       {(depth + gi) % 3 === 0 && (
                         <span class="crow crow-stone">
@@ -124,14 +123,14 @@ const backRows = [rows.length, rows.length + 1];
                         </span>
                       )}
                       {m.rank === 'henchman' && (
-                        <span class="tombstone-cross" aria-hidden="true">✝</span>
+                        <span class="tombstone-cross" aria-hidden="true"><Icon name="cross" size={18} /></span>
                       )}
                       <span class="tombstone-portrait" aria-hidden="true">{m.portrait}</span>
                       <span class="tombstone-name">{m.name}</span>
                       <span class="tombstone-meta">
                         {m.role} of {m.warbandName}
                       </span>
-                      {m.death && <span class="tombstone-date">✝ {m.death.date}</span>}
+                      {m.death && <span class="tombstone-date"><Icon name="cross" size={11} /> {m.death.date}</span>}
                       {m.death && <figcaption class="tombstone-epitaph">{m.death.epitaph}</figcaption>}
                     </div>
                     <div class="tombstone-mound" aria-hidden="true" />
@@ -295,12 +294,14 @@ const backRows = [rows.length, rows.length + 1];
   }
 
   .tombstone-flourish {
-    display: block;
-    font-size: 0.85rem;
-    letter-spacing: 0.35em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .45rem;
     color: rgba(198, 176, 118, 0.55);
     margin-bottom: 0.35rem;
   }
+  .tombstone-flourish i { width: 1rem; height: 1px; background: currentColor; }
 
   .tombstone-hero .tombstone-name {
     font-size: 1.3rem;
@@ -343,7 +344,8 @@ const backRows = [rows.length, rows.length + 1];
   }
 
   .tombstone-cross {
-    display: block;
+    display: flex;
+    justify-content: center;
     color: #b8b9a9;
     font-size: 1.1rem;
     margin-bottom: 0.3rem;
@@ -377,7 +379,9 @@ const backRows = [rows.length, rows.length + 1];
     margin-top: 0.25rem;
   }
   .tombstone-date {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 0.72rem;
     color: #c5aa87;
     margin-top: 0.6rem;

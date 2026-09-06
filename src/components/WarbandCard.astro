@@ -1,5 +1,6 @@
 ---
 import type { Warband } from '../data/warbands';
+import Icon from './Icon.astro';
 
 interface Props {
   warband: Warband;
@@ -37,15 +38,15 @@ const crest = warband.id === 'grimhammer' ? 'crest-hammer.svg' : warband.id === 
         >
           <span class="member-portrait" aria-hidden="true">
             <span class="member-number">{(index + 1).toString().padStart(2, '0')}</span>
-            {m.dead ? '✝' : m.rank === 'hero' ? '✦' : '✧'}
+            {m.dead ? <Icon name="cross" size={16} /> : <Icon name="diamond" size={14} />}
           </span>
           <span class="member-name">{m.name}</span>
           <span class="member-role">{m.role}</span>
           <span class="member-tag">
             {m.epithet}
-            {m.dead && <span class="dead-marker"> ✝ Fallen</span>}
+            {m.dead && <span class="dead-marker"> <Icon name="cross" size={11} /> Fallen</span>}
           </span>
-          <span class="member-open" aria-hidden="true">Read the record <span>↗</span></span>
+          <span class="member-open" aria-hidden="true">Read the record <Icon name="arrow-up-right" size={14} /></span>
         </button>
       ))
     }
@@ -156,7 +157,6 @@ const crest = warband.id === 'grimhammer' ? 'crest-hammer.svg' : warband.id === 
   }
   .member-number { display: block; font: .6rem/1.8 Georgia, serif; letter-spacing: .1em; color: var(--ink-dim); }
   .member-open { display: flex; justify-content: space-between; margin-top: 1.2rem; border-top: 1px solid #343b2e80; padding-top: .55rem; color: var(--gold); font-size: .6rem; letter-spacing: .09em; text-transform: uppercase; }
-  .member-open > span { font-size: .9rem; line-height: 1; }
   .member-name {
     display: block;
     font-family: 'Pirata One', cursive;

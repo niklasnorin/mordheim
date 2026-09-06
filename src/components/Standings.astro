@@ -1,12 +1,13 @@
 ---
 import { warbands } from '../data/warbands';
+import Icon from './Icon.astro';
 
 const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
 ---
 
 <section id="standings" class="standings reveal">
   <div class="ledger-heading"><span>The balance of power</span><span>Campaign ledger</span></div>
-  <h2 class="section-title"><span class="ornament">⚜</span> Campaign Standings <span class="ornament">⚜</span></h2>
+  <h2 class="section-title"><span class="ornament"><Icon name="diamond" /></span> Campaign Standings <span class="ornament"><Icon name="diamond" /></span></h2>
   <div class="standings-table-wrap" tabindex="0" role="region" aria-label="Campaign standings, scroll horizontally to view all columns">
     <table class="standings-table">
       <thead>
@@ -91,7 +92,7 @@ const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
   .standings-table tbody tr:last-child > * { border-bottom: 0; }
   .standings-table tbody tr:hover { background: rgba(182, 154, 98, 0.09); }
   .ledger-rank { color: #b69a62; font-size: 0.65rem; margin-right: 1rem; }
-  .ledger-sigil { display: inline-block; margin-right: 0.45rem; filter: grayscale(1); }
+  .ledger-sigil { display: inline-block; margin-right: 0.45rem; color: #b69a62; font-size: .65rem; letter-spacing: .08em; }
   .standings-table .ledger-rating { color: #e7dcc5; font-size: 1.15rem; }
   .standings-table .wyrd { color: #a8b69b; }
   @media (max-width: 700px) {
