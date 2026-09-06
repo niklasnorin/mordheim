@@ -1,0 +1,205 @@
+---
+import { warbands } from '../data/warbands';
+
+const fallen = warbands
+  .flatMap((wb) =>
+    wb.members
+      .filter((m) => m.dead)
+      .map((m) => ({ ...m, warbandName: wb.name }))
+  )
+  .sort((a, b) => (b.death?.order ?? 0) - (a.death?.order ?? 0));
+---
+
+<section id="graveyard" class="graveyard reveal">
+  <h2 class="section-title"><span class="ornament">⚰</span> The Graveyard <span class="ornament">⚰</span></h2>
+  <p class="section-intro">
+    Here lie the fallen of the campaign. Mordheim keeps what it takes — but their names are
+    remembered.
+  </p>
+  <div class="graveyard-ground">
+    <div class="tombstone-row">
+      {
+        fallen.map((m, i) => (
+          <figure class="tombstone" style={`--depth: ${i}`}>
+            <div class="tombstone-stone">
+              <span class="tombstone-cross" aria-hidden="true">✝</span>
+              <span class="tombstone-portrait" aria-hidden="true">{m.portrait}</span>
+              <span class="tombstone-name">{m.name}</span>
+              <span class="tombstone-meta">
+                {m.role} of {m.warbandName}
+              </span>
+              {m.death && <span class="tombstone-date">✝ {m.death.date}</span>}
+              {m.death && <figcaption class="tombstone-epitaph">{m.death.epitaph}</figcaption>}
+            </div>
+            <div class="tombstone-mound" aria-hidden="true" />
+          </figure>
+        ))
+      }
+      {fallen.length === 0 && (
+        <p class="graveyard-empty">No graves yet. Mordheim is patient.</p>
+      )}
+    </div>
+    <div class="fog fog-1" aria-hidden="true"></div>
+    <div class="fog fog-2" aria-hidden="true"></div>
+    <div class="fog fog-3" aria-hidden="true"></div>
+  </div>
+</section>
+
+<style>
+  .graveyard-ground {
+    position: relative;
+    padding: 3rem 1rem 2.5rem;
+    background:
+      radial-gradient(ellipse at 50% 100%, #161a14 0%, transparent 70%),
+      linear-gradient(to bottom, transparent 0%, #101310 100%);
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .tombstone-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 2rem;
+    perspective: 800px;
+  }
+
+  /* Depth: most recent (--depth: 0) in front — larger, sharper; older graves
+     recede back — smaller, dimmer, raised toward the horizon. */
+  .tombstone {
+    position: relative;
+    z-index: calc(20 - var(--depth));
+    transform: scale(calc(1 - var(--depth) * 0.12))
+      translateY(calc(var(--depth) * -1.4rem));
+    opacity: calc(1 - var(--depth) * 0.15);
+    filter: brightness(calc(1 - var(--depth) * 0.12));
+    margin: 0;
+  }
+
+  .tombstone-stone {
+    width: 200px;
+    padding: 1.6rem 1.1rem 1.3rem;
+    text-align: center;
+    background: linear-gradient(165deg, #3a3d42 0%, #26292e 55%, #1d2024 100%);
+    border: 1px solid #45484e;
+    border-radius: 95px 95px 0 0;
+    box-shadow:
+      inset 0 2px 6px rgba(255, 255, 255, 0.06),
+      inset 0 -14px 24px rgba(0, 0, 0, 0.45),
+      0 10px 26px rgba(0, 0, 0, 0.7);
+  }
+
+  .tombstone-cross {
+    display: block;
+    color: var(--ink-dim);
+    font-size: 1.1rem;
+    margin-bottom: 0.3rem;
+  }
+  .tombstone-portrait {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.1rem;
+    height: 3.1rem;
+    font-size: 1.7rem;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid #45484e;
+    filter: grayscale(0.7);
+    margin-bottom: 0.5rem;
+  }
+  .tombstone-name {
+    display: block;
+    font-family: 'Pirata One', cursive;
+    font-size: 1.15rem;
+    color: var(--parchment-dark);
+    line-height: 1.2;
+  }
+  .tombstone-meta {
+    display: block;
+    font-size: 0.68rem;
+    color: var(--ink-dim);
+    font-variant: small-caps;
+    letter-spacing: 0.1em;
+    margin-top: 0.25rem;
+  }
+  .tombstone-date {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--blood-bright);
+    margin-top: 0.3rem;
+  }
+  .tombstone-epitaph {
+    font-size: 0.78rem;
+    font-style: italic;
+    color: var(--ink-dim);
+    margin-top: 0.6rem;
+    border-top: 1px solid #3a3d42;
+    padding-top: 0.5rem;
+  }
+
+  .tombstone-mound {
+    height: 0.7rem;
+    margin: 0 -0.9rem;
+    background: radial-gradient(ellipse at 50% 0%, #1b1e19 0%, #101310 70%, transparent 100%);
+    border-radius: 50%;
+  }
+
+  .graveyard-empty {
+    font-style: italic;
+    color: var(--ink-dim);
+    padding: 2rem 0;
+  }
+
+  /* ── Fog among the tombstones ── */
+  .fog {
+    position: absolute;
+    left: -50%;
+    width: 200%;
+    height: 45%;
+    bottom: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at 50% 100%,
+      rgba(178, 190, 195, 0.14) 0%,
+      rgba(178, 190, 195, 0.07) 45%,
+      transparent 75%
+    );
+    filter: blur(14px);
+    animation: fog-drift 26s ease-in-out infinite alternate;
+    z-index: 30;
+  }
+  .fog-2 {
+    height: 32%;
+    animation-duration: 19s;
+    animation-delay: -7s;
+    animation-direction: alternate-reverse;
+    background: radial-gradient(
+      ellipse at 35% 100%,
+      rgba(178, 190, 195, 0.11) 0%,
+      transparent 70%
+    );
+  }
+  .fog-3 {
+    height: 58%;
+    z-index: 5; /* behind the front tombstones, among the back rows */
+    animation-duration: 33s;
+    animation-delay: -14s;
+    background: radial-gradient(
+      ellipse at 65% 100%,
+      rgba(178, 190, 195, 0.1) 0%,
+      transparent 70%
+    );
+  }
+
+  @keyframes fog-drift {
+    from { transform: translateX(-6%); }
+    to { transform: translateX(6%); }
+  }
+
+  @media (max-width: 700px) {
+    .tombstone-row { gap: 1.2rem; }
+    .tombstone-stone { width: 165px; }
+  }
+</style>
