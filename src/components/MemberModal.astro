@@ -1,0 +1,169 @@
+---
+import { warbands } from '../data/warbands';
+
+const statKeys = ['M', 'WS', 'BS', 'S', 'T', 'W', 'I', 'A', 'Ld'] as const;
+---
+
+<dialog id="member-dialog" class="member-dialog">
+  <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+  {
+    warbands.map((wb) =>
+      wb.members.map((m) => (
+        <div class="profile" data-profile={`${wb.id}:${m.id}`} hidden>
+          <div class="profile-header">
+            <span class="profile-portrait" aria-hidden="true">{m.portrait}</span>
+            <div>
+              <h3>{m.name}</h3>
+              <span class="member-role">
+                {m.role} — {wb.name}
+                {m.dead && <span class="dead-marker"> ✝ Fallen</span>}
+              </span>
+            </div>
+          </div>
+          <table class="statline">
+            <thead>
+              <tr>{statKeys.map((k) => <th>{k}</th>)}</tr>
+            </thead>
+            <tbody>
+              <tr>{statKeys.map((k) => <td>{m.stats[k]}</td>)}</tr>
+            </tbody>
+          </table>
+          <div class="profile-section">
+            <h4>Equipment</h4>
+            <ul>{m.equipment.map((e) => <li>{e}</li>)}</ul>
+            {m.skills.length > 0 && (
+              <>
+                <h4>Skills & Special Rules</h4>
+                <ul>{m.skills.map((s) => <li>{s}</li>)}</ul>
+              </>
+            )}
+            <h4>Tale</h4>
+            <p class="profile-lore">{m.lore}</p>
+          </div>
+        </div>
+      ))
+    )
+  }
+</dialog>
+
+<style>
+  .member-dialog {
+    background: linear-gradient(160deg, var(--bg-panel2), var(--bg-panel));
+    border: 1px solid var(--gold-dim);
+    box-shadow: 0 0 80px rgba(0, 0, 0, 0.9), 0 0 30px rgba(184, 150, 62, 0.1);
+    max-width: 560px;
+    width: calc(100% - 2rem);
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 2rem;
+    color: var(--ink);
+  }
+  .member-dialog::backdrop {
+    background: rgba(5, 6, 8, 0.85);
+    backdrop-filter: blur(3px);
+  }
+  .member-dialog[open] {
+    animation: modal-in 0.3s ease;
+  }
+  @keyframes modal-in {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 0.8rem;
+    right: 0.9rem;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--ink-dim);
+    font-size: 1rem;
+    width: 2rem;
+    height: 2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .modal-close:hover {
+    color: var(--blood-bright);
+    border-color: var(--blood);
+  }
+
+  .profile-header {
+    display: flex;
+    gap: 1.2rem;
+    align-items: center;
+    border-bottom: 2px solid var(--gold-dim);
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+  }
+  .profile-portrait {
+    font-size: 3.4rem;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.7));
+  }
+  .profile-header h3 {
+    font-family: 'Pirata One', cursive;
+    font-size: 1.9rem;
+    color: var(--parchment);
+    font-weight: normal;
+  }
+  .profile-header .member-role {
+    font-size: 0.9rem;
+    color: var(--blood-bright);
+    font-variant: small-caps;
+    letter-spacing: 0.1em;
+  }
+  .dead-marker { color: var(--blood-bright); }
+
+  .statline {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+  .statline th,
+  .statline td {
+    border: 1px solid var(--border);
+    text-align: center;
+    padding: 0.35rem 0.2rem;
+    font-size: 0.9rem;
+  }
+  .statline th {
+    font-family: 'Pirata One', cursive;
+    color: var(--gold);
+    background: rgba(184, 150, 62, 0.06);
+    letter-spacing: 0.05em;
+    font-weight: normal;
+  }
+
+  .profile-section h4 {
+    font-variant: small-caps;
+    letter-spacing: 0.15em;
+    color: var(--blood-bright);
+    margin: 1rem 0 0.3rem;
+    font-size: 0.95rem;
+  }
+  .profile-section ul { list-style: none; padding: 0; margin: 0; }
+  .profile-section li::before { content: '⚔ '; color: var(--gold-dim); }
+  .profile-lore {
+    font-style: italic;
+    color: var(--ink-dim);
+    font-size: 0.95rem;
+  }
+</style>
+
+<script>
+  const dialog = document.getElementById('member-dialog') as HTMLDialogElement;
+  const profiles = dialog.querySelectorAll<HTMLElement>('[data-profile]');
+
+  document.querySelectorAll<HTMLElement>('.member-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      const key = `${card.dataset.warband}:${card.dataset.member}`;
+      profiles.forEach((p) => (p.hidden = p.dataset.profile !== key));
+      dialog.showModal();
+    });
+  });
+
+  document.getElementById('modal-close')!.addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+</script>

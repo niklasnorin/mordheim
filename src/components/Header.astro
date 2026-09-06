@@ -1,0 +1,101 @@
+---
+---
+
+<header class="site-header">
+  <div class="comet" aria-hidden="true">☄</div>
+  <h1 class="logo">
+    <span class="logo-main">MORDHEIM</span>
+    <span class="logo-sub">City of the Damned</span>
+  </h1>
+  <p class="tagline">「 A Campaign Chronicle — In the year of Sigmar 2000, wyrdstone rains upon the damned 」</p>
+  <nav class="site-nav">
+    <a href="#town-cryer">Town Cryer</a>
+    <a href="#warbands">Warbands</a>
+    <a href="#standings">Standings</a>
+    <a href="#chronicle">Chronicle</a>
+  </nav>
+</header>
+
+<style>
+  .site-header {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 6rem 1rem 3rem;
+  }
+
+  .comet {
+    position: absolute;
+    top: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.6rem;
+    color: var(--green-wyrd);
+    text-shadow: 0 0 14px #5fa063, 0 0 30px #2c5230;
+    animation: comet-pulse 5s ease-in-out infinite;
+  }
+  @keyframes comet-pulse {
+    0%, 100% { opacity: 0.5; text-shadow: 0 0 10px #5fa063; }
+    50%      { opacity: 1;   text-shadow: 0 0 22px #7fc784, 0 0 44px #2c5230; }
+  }
+
+  .logo { line-height: 1; }
+  .logo-main {
+    display: block;
+    font-family: 'Pirata One', cursive;
+    font-size: clamp(3.2rem, 11vw, 7.5rem);
+    letter-spacing: 0.08em;
+    color: var(--parchment);
+    text-shadow:
+      0 0 2px #000,
+      0 2px 0 #3a2f1c,
+      0 4px 6px rgba(0, 0, 0, 0.9),
+      0 0 40px rgba(184, 150, 62, 0.15);
+    animation: logo-flicker 9s linear infinite;
+  }
+  @keyframes logo-flicker {
+    0%, 91%, 95%, 100% { opacity: 1; }
+    92%, 94% { opacity: 0.86; }
+  }
+  .logo-sub {
+    display: block;
+    font-family: 'UnifrakturMaguntia', cursive;
+    font-size: clamp(1.1rem, 3vw, 1.8rem);
+    color: var(--blood-bright);
+    margin-top: 0.4rem;
+    letter-spacing: 0.25em;
+    text-shadow: 0 0 12px rgba(138, 26, 26, 0.6);
+  }
+
+  .tagline {
+    margin-top: 1.2rem;
+    font-style: italic;
+    color: var(--ink-dim);
+    font-size: 0.95rem;
+  }
+
+  .site-nav {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .site-nav a {
+    font-family: 'Pirata One', cursive;
+    font-size: 1.15rem;
+    letter-spacing: 0.1em;
+    color: var(--gold);
+    text-decoration: none;
+    padding: 0.4rem 1.2rem;
+    border: 1px solid var(--border);
+    background: rgba(20, 23, 28, 0.7);
+    transition: all 0.25s;
+  }
+  .site-nav a:hover {
+    color: var(--parchment);
+    border-color: var(--gold-dim);
+    box-shadow: 0 0 16px rgba(184, 150, 62, 0.25);
+    text-shadow: 0 0 8px rgba(216, 207, 192, 0.5);
+  }
+</style>
