@@ -36,6 +36,11 @@ body {
   min-height: 100vh;
 }
 
+/* ── Daytime: chilly autumn day ── */
+[data-theme='day'] body {
+  background: linear-gradient(to bottom, #5d7185 0%, #7e91a0 45%, #93a29e 100%) fixed;
+}
+
 main {
   position: relative;
   z-index: 10;

@@ -27,6 +27,11 @@ const {
       href="https://fonts.googleapis.com/css2?family=Pirata+One&family=IM+Fell+English:ital@0;1&family=UnifrakturMaguntia&display=swap"
       rel="stylesheet"
     />
+    <script is:inline>
+      if (localStorage.getItem('mordheim-theme') === 'day') {
+        document.documentElement.dataset.theme = 'day';
+      }
+    </script>
   </head>
   <body>
     <Atmosphere />
