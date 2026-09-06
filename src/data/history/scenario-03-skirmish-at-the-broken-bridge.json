@@ -1,0 +1,193 @@
+{
+  "id": "scenario-03",
+  "sequence": 3,
+  "date": "Vorhexen 5, 1999",
+  "scenario": "Skirmish at the Broken Bridge",
+  "summary": "Both warbands race for a toppled wagon rumoured to carry a noble's strongbox. The Wolves seize the prize — 30 gold crowns and a very surprised chicken — but the bridge takes its toll on both sides.",
+  "warbands": [
+    {
+      "warbandId": "grimhammer",
+      "name": "Grimhammer's Oathbound",
+      "result": "defeat",
+      "rating": 103,
+      "battles": 3,
+      "victories": 2,
+      "wyrdstone": 6,
+      "gold": 55,
+      "highlights": ["The vanguard reached the wagon first and held it against the first two Ostlander rushes."],
+      "lowlights": ["Okri Stonebrow fell to an Ostlander arrow as he calmly reloaded, humming a song only he could hear."],
+      "members": [
+        {
+          "memberId": "thorgrim",
+          "name": "Thorgrim Grimhammer",
+          "role": "Noble",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 3, "WS": 5, "BS": 4, "S": 4, "T": 4, "W": 2, "I": 3, "A": 2, "Ld": 10 },
+          "equipment": ["Gromril axe", "Double-handed hammer", "Gromril armour", "Lucky charm"],
+          "skills": ["Mighty Blow", "Resilient", "Wyrdstone Hunter"],
+          "highlight": "Anchored the rearguard on the bridge's last standing arch so every surviving dwarf came home.",
+          "lowlight": "Watched the strongbox — and the ledger's due — carried off by Ostlanders. The grudge entry filled half a page."
+        },
+        {
+          "memberId": "borri",
+          "name": "Borri Forkbeard",
+          "role": "Engineer",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 3, "WS": 4, "BS": 5, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 9 },
+          "equipment": ["Handgun", "Pistol", "Axe", "Heavy armour"],
+          "skills": ["Weapons Expert", "Hunter"],
+          "highlight": "Splintered the wagon wheel Anya was using for cover with a single shot from across the river.",
+          "lowlight": "Stood beside Okri for twenty years of powder-smoke, and now stands beside his grave."
+        },
+        {
+          "memberId": "dagna",
+          "name": "Dagna Ironmaid",
+          "role": "Troll Slayer",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 3, "WS": 4, "BS": 3, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 9 },
+          "equipment": ["Twin axes", "Flail"],
+          "skills": ["Ferocious Charge", "Fearsome"],
+          "highlight": "Charged the length of the broken span under arrow-fire, scattering the Ostlander line at the wagon.",
+          "lowlight": "The bridge collapsed behind her instead of under her. Denied again."
+        },
+        {
+          "memberId": "snorri",
+          "name": "Snorri Halfpint",
+          "role": "Beardling",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 3, "WS": 3, "BS": 3, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 8 },
+          "equipment": ["Axe", "Shield", "Light armour"],
+          "skills": [],
+          "highlight": "The span he was standing on was the only part of the bridge that did not move all day.",
+          "lowlight": "Reached out for the strongbox and caught the chicken instead."
+        },
+        {
+          "memberId": "grimnir",
+          "name": "Grimnir Coalfist",
+          "role": "Beardling",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 3, "WS": 3, "BS": 3, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 8 },
+          "equipment": ["Axe", "Dagger"],
+          "skills": [],
+          "highlight": "Carried Okri's body back across the ruined span so no dwarf was left in the river.",
+          "lowlight": "Took an arrow through the cloak a hand's breadth from the heart."
+        },
+        {
+          "memberId": "okri",
+          "name": "Okri Stonebrow",
+          "role": "Thunderer",
+          "rank": "henchman",
+          "status": "dead",
+          "stats": { "M": 3, "WS": 3, "BS": 4, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 9 },
+          "equipment": ["Handgun", "Axe"],
+          "skills": [],
+          "highlight": "His last shot knocked an Ostlander kinsman off the wagon and bought the vanguard time to regroup.",
+          "lowlight": "An Ostlander arrow found him at the Broken Bridge as he calmly reloaded. He never heard the shot that took him."
+        }
+      ]
+    },
+    {
+      "warbandId": "wolfensteins",
+      "name": "Wolfenstein's Wolves",
+      "result": "victory",
+      "rating": 99,
+      "battles": 3,
+      "victories": 1,
+      "wyrdstone": 4,
+      "gold": 60,
+      "highlights": ["Seized the noble's strongbox — 30 gold crowns — and a very surprised chicken, since adopted as the clan mascot."],
+      "lowlights": ["Dmitri Wolfenstein was lost when the Broken Bridge gave way beneath him. The strongbox, the clan notes bitterly, floated."],
+      "members": [
+        {
+          "memberId": "boris",
+          "name": "Boris Wolfenstein",
+          "role": "Elder",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 4, "WS": 4, "BS": 4, "S": 3, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 8 },
+          "equipment": ["Sword", "Pistol", "Heavy armour", "Hunting arrows"],
+          "skills": ["Streetwise", "Tactician"],
+          "highlight": "Out-thought the dwarfs at last: sent Pavel down the riverbed while the vanguards brawled on the span.",
+          "lowlight": "Won the clan's first victory and buried a grandson the same evening."
+        },
+        {
+          "memberId": "yuri",
+          "name": "Yuri Wolfenstein",
+          "role": "Blood Brother",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 4, "WS": 4, "BS": 3, "S": 4, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 7 },
+          "equipment": ["Double-handed axe", "Dagger", "Bearskin cloak"],
+          "skills": ["Mighty Blow"],
+          "highlight": "Hacked the wagon's axle in two so no dwarf could drag the prize away.",
+          "lowlight": "Dived into the river after Dmitri and came up with only the strongbox."
+        },
+        {
+          "memberId": "anya",
+          "name": "Anya Wolfenstein",
+          "role": "Blood Brother",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 4, "WS": 3, "BS": 4, "S": 3, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 7 },
+          "equipment": ["Bow", "Sword", "Dagger"],
+          "skills": ["Eagle Eyes"],
+          "highlight": "Her arrows drove back the dwarf vanguard and won the day — five new notches on a bow running out of room.",
+          "lowlight": "One of those five notches was for Okri Stonebrow, and she carved it without pride."
+        },
+        {
+          "memberId": "ludmilla",
+          "name": "Ludmilla the Crow-Mother",
+          "role": "Priestess of Taal",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 4, "WS": 2, "BS": 2, "S": 3, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 7 },
+          "equipment": ["Staff", "Holy relic", "Herb pouch"],
+          "skills": ["Blessing of Taal"],
+          "highlight": "Her crows led the clan away from a dwarf ambush at the north bank — the second of her three warnings.",
+          "lowlight": "The crows fell silent when Dmitri stepped onto the span, and she understood too late what that meant."
+        },
+        {
+          "memberId": "pavel",
+          "name": "Pavel the Slow",
+          "role": "Kinsman",
+          "rank": "henchman",
+          "status": "active",
+          "stats": { "M": 4, "WS": 3, "BS": 2, "S": 4, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 6 },
+          "equipment": ["Club", "Shield", "Light armour"],
+          "skills": [],
+          "highlight": "Waded the riverbed with the strongbox under one arm and the chicken under the other, unhurried as ever.",
+          "lowlight": "Was too far downstream to reach Dmitri when the span gave way."
+        },
+        {
+          "memberId": "mikhail",
+          "name": "Mikhail Halfhand",
+          "role": "Kinsman",
+          "rank": "henchman",
+          "status": "active",
+          "stats": { "M": 4, "WS": 3, "BS": 3, "S": 3, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 6 },
+          "equipment": ["Sword", "Dagger", "Loaded dice"],
+          "skills": [],
+          "highlight": "Picked the strongbox's lock while it was still being carried, to 'check the rumour was worth it.' It was.",
+          "lowlight": "Wagered his share of the 30 crowns on a coin toss with Yuri and lost — to his own loaded coin."
+        },
+        {
+          "memberId": "dmitri",
+          "name": "Dmitri Wolfenstein",
+          "role": "Blood Brother",
+          "rank": "henchman",
+          "status": "dead",
+          "stats": { "M": 4, "WS": 4, "BS": 3, "S": 3, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 7 },
+          "equipment": ["Sword", "Shield", "Light armour"],
+          "skills": [],
+          "highlight": "First to reach the toppled wagon, he held the span alone against the dwarf vanguard until his kin arrived.",
+          "lowlight": "The Broken Bridge itself gave way beneath him. He survived the wolf winter of '94 and three of Borri's misfires — but not this."
+        }
+      ]
+    }
+  ]
+}

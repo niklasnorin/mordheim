@@ -1,0 +1,205 @@
+{
+  "id": "scenario-02",
+  "sequence": 2,
+  "date": "Kaldezeit 28, 1999",
+  "scenario": "First Blood in the Fallen City",
+  "summary": "The Oathbound and the Wolves clash for the first time in the shadow of the Rock. An inconclusive brawl in the rain ends when a tenement collapses between the two forces.",
+  "warbands": [
+    {
+      "warbandId": "grimhammer",
+      "name": "Grimhammer's Oathbound",
+      "result": "victory",
+      "rating": 100,
+      "battles": 2,
+      "victories": 2,
+      "wyrdstone": 6,
+      "gold": 45,
+      "highlights": ["Held the field when the tenement came down and picked three shards of wyrdstone from the rubble."],
+      "lowlights": ["Durgin Alebelly was lost when the tenement collapsed — reaching for a barrel, as he lived."],
+      "members": [
+        {
+          "memberId": "thorgrim",
+          "name": "Thorgrim Grimhammer",
+          "role": "Noble",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 3, "WS": 5, "BS": 4, "S": 4, "T": 4, "W": 2, "I": 3, "A": 2, "Ld": 10 },
+          "equipment": ["Gromril axe", "Double-handed hammer", "Gromril armour", "Lucky charm"],
+          "skills": ["Mighty Blow", "Resilient"],
+          "highlight": "Traded blows with Yuri Wolfenstein in the rain and sent the bear-wrestler reeling with the flat of his hammer.",
+          "lowlight": "Entered Durgin's death in the ledger — the first name owed to the vault that gold cannot repay."
+        },
+        {
+          "memberId": "borri",
+          "name": "Borri Forkbeard",
+          "role": "Engineer",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 3, "WS": 4, "BS": 5, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 9 },
+          "equipment": ["Handgun", "Pistol", "Axe", "Heavy armour"],
+          "skills": ["Weapons Expert"],
+          "highlight": "Shot Yuri's best boot clean off his foot at thirty paces, ending the Ostlander charge in a heap of cursing.",
+          "lowlight": "'Grudge-Settler' misfired once in the rain, which Borri insists never happened."
+        },
+        {
+          "memberId": "dagna",
+          "name": "Dagna Ironmaid",
+          "role": "Troll Slayer",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 3, "WS": 4, "BS": 3, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 9 },
+          "equipment": ["Twin axes", "Flail"],
+          "skills": ["Ferocious Charge"],
+          "highlight": "Stood in the doorway of the collapsing tenement, axes crossed, daring it to fall on her. It fell around her instead.",
+          "lowlight": "Denied her doom again — the building missed."
+        },
+        {
+          "memberId": "snorri",
+          "name": "Snorri Halfpint",
+          "role": "Beardling",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 3, "WS": 3, "BS": 3, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 8 },
+          "equipment": ["Axe", "Shield", "Light armour"],
+          "skills": [],
+          "highlight": "Survived his first building collapse without a scratch, emerging from the dust holding someone else's helmet.",
+          "lowlight": "Could not reach Durgin in the cellar before the roof came down."
+        },
+        {
+          "memberId": "grimnir",
+          "name": "Grimnir Coalfist",
+          "role": "Beardling",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 3, "WS": 3, "BS": 3, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 8 },
+          "equipment": ["Axe", "Dagger"],
+          "skills": [],
+          "highlight": "Held the left flank alone against two Ostlander kinsmen without a word or a step back.",
+          "lowlight": "Took a club to the shoulder from Pavel that left his axe-arm stiff for a week."
+        },
+        {
+          "memberId": "okri",
+          "name": "Okri Stonebrow",
+          "role": "Thunderer",
+          "rank": "henchman",
+          "status": "active",
+          "stats": { "M": 3, "WS": 3, "BS": 4, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 9 },
+          "equipment": ["Handgun", "Axe"],
+          "skills": [],
+          "highlight": "Kept firing through the thunder of the collapsing tenement, entirely unbothered — he heard none of it.",
+          "lowlight": "Never heard Durgin calling from the cellar."
+        },
+        {
+          "memberId": "durgin",
+          "name": "Durgin Alebelly",
+          "role": "Clansman",
+          "rank": "henchman",
+          "status": "dead",
+          "stats": { "M": 3, "WS": 4, "BS": 3, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 9 },
+          "equipment": ["Hammer", "Shield"],
+          "skills": [],
+          "highlight": "Found the only cellar in Mordheim with the roof still on — an intact brewery stock, exactly as the rumours promised.",
+          "lowlight": "Died as he lived — underground, in the dark, reaching for a barrel — when the tenement came down."
+        }
+      ]
+    },
+    {
+      "warbandId": "wolfensteins",
+      "name": "Wolfenstein's Wolves",
+      "result": "defeat",
+      "rating": 92,
+      "battles": 2,
+      "victories": 0,
+      "wyrdstone": 2,
+      "gold": 25,
+      "highlights": ["Gave as good as they got in the brawl and withdrew in good order when the tenement fell."],
+      "lowlights": ["The tenement claimed two swords, a helmet, and Yuri's best boot."],
+      "members": [
+        {
+          "memberId": "boris",
+          "name": "Boris Wolfenstein",
+          "role": "Elder",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 4, "WS": 4, "BS": 4, "S": 3, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 8 },
+          "equipment": ["Sword", "Pistol", "Heavy armour"],
+          "skills": ["Streetwise", "Tactician"],
+          "highlight": "Read the groaning timbers before anyone else and pulled the clan back moments before the tenement fell.",
+          "lowlight": "Declared victory over a pile of rubble, which convinced no one, including himself."
+        },
+        {
+          "memberId": "yuri",
+          "name": "Yuri Wolfenstein",
+          "role": "Blood Brother",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 4, "WS": 4, "BS": 3, "S": 4, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 7 },
+          "equipment": ["Double-handed axe", "Dagger", "Bearskin cloak"],
+          "skills": ["Mighty Blow"],
+          "highlight": "Went axe-to-hammer with Thorgrim Grimhammer himself and walked away to tell of it.",
+          "lowlight": "Lost his best boot to the rubble and finished the battle hopping."
+        },
+        {
+          "memberId": "anya",
+          "name": "Anya Wolfenstein",
+          "role": "Blood Brother",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 4, "WS": 3, "BS": 4, "S": 3, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 7 },
+          "equipment": ["Bow", "Sword", "Dagger"],
+          "skills": ["Eagle Eyes"],
+          "highlight": "Pinned the dwarf gun-line behind cover for half the battle with nothing but patience and a full quiver.",
+          "lowlight": "The rain warped her spare bowstring, and three notches' worth of shots went wide."
+        },
+        {
+          "memberId": "ludmilla",
+          "name": "Ludmilla the Crow-Mother",
+          "role": "Priestess of Taal",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 4, "WS": 2, "BS": 2, "S": 3, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 7 },
+          "equipment": ["Staff", "Holy relic", "Herb pouch"],
+          "skills": ["Blessing of Taal"],
+          "highlight": "The crows shrieked a warning seconds before the tenement fell — the first of her three famous warnings.",
+          "lowlight": "Spent the night setting Yuri's toes and listening to him describe the boot."
+        },
+        {
+          "memberId": "pavel",
+          "name": "Pavel the Slow",
+          "role": "Kinsman",
+          "rank": "henchman",
+          "status": "active",
+          "stats": { "M": 4, "WS": 3, "BS": 2, "S": 4, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 6 },
+          "equipment": ["Club", "Shield", "Light armour"],
+          "skills": [],
+          "highlight": "Knocked the beardling Grimnir's axe-arm numb with one unhurried swing of his club.",
+          "lowlight": "A falling beam bounced off his shield and flattened the clan cooking pot."
+        },
+        {
+          "memberId": "mikhail",
+          "name": "Mikhail Halfhand",
+          "role": "Kinsman",
+          "rank": "henchman",
+          "status": "active",
+          "stats": { "M": 4, "WS": 3, "BS": 3, "S": 3, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 6 },
+          "equipment": ["Sword", "Dagger", "Loaded dice"],
+          "skills": [],
+          "highlight": "Slipped through the dust cloud and lifted a purse of 5 crowns from the battlefield before the rubble settled.",
+          "lowlight": "One of the two swords the tenement claimed was his."
+        },
+        {
+          "memberId": "dmitri",
+          "name": "Dmitri Wolfenstein",
+          "role": "Blood Brother",
+          "rank": "henchman",
+          "status": "active",
+          "stats": { "M": 4, "WS": 4, "BS": 3, "S": 3, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 7 },
+          "equipment": ["Sword", "Shield", "Light armour"],
+          "skills": [],
+          "highlight": "Dragged Mikhail clear of the falling masonry by his collar.",
+          "lowlight": "The helmet the tenement claimed was the one he was wearing at the time. He was fine. The helmet was not."
+        }
+      ]
+    }
+  ]
+}
