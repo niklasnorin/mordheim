@@ -30,6 +30,12 @@ All content lives in plain TypeScript data files — no HTML editing required:
 | `src/data/warbands.ts` | Warbands, members, statlines, equipment, lore |
 | `src/data/news.ts` | Town Cryer articles and notices |
 | `src/data/chronicle.ts` | Campaign timeline entries |
+| `src/data/history/*.json` | Per-scenario snapshot database: warband stats and every hero/henchman (statline, equipment, skills, status) with highlights and lowlights |
+| `src/data/history.ts` | Types and helpers (`getMemberStory`, `getWarbandStory`) to follow any warrior or warband across the campaign |
+
+### Campaign history database
+
+Each scenario played gets one JSON file in `src/data/history/` recording a snapshot of both warbands as they stood after the battle — rating, gold, wyrdstone, and a per-member snapshot of stats, equipment, skills, and status (`active`, `injured`, or `dead`), plus a highlight and a lowlight for every warrior and each warband. Add a new file per scenario and register it in `src/data/history.ts` to extend the storyline.
 
 ## Deployment
 
