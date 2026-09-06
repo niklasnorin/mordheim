@@ -9,6 +9,14 @@ export interface Member {
   portrait: string;
   epithet: string;
   dead?: boolean;
+  death?: {
+    /** Date the warrior fell, in Imperial calendar. */
+    date: string;
+    /** Higher = more recent. Used to order graves front-to-back. */
+    order: number;
+    /** Quote carved on the tombstone. */
+    epitaph: string;
+  };
   stats: Statline;
   equipment: string[];
   skills: string[];
@@ -100,6 +108,11 @@ export const warbands: Warband[] = [
         portrait: '🪓',
         epithet: 'The Quiet One',
         dead: true,
+        death: {
+          date: 'Vorhexen 12, 1999',
+          order: 1,
+          epitaph: '“He said nothing in life. His deeds speak for him now.”',
+        },
         stats: { M: 3, WS: 3, BS: 3, S: 3, T: 4, W: 1, I: 2, A: 1, Ld: 8 },
         equipment: ['Axe', 'Dagger'],
         skills: [],
