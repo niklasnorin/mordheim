@@ -5,20 +5,21 @@ const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
 ---
 
 <section id="standings" class="standings reveal">
+  <div class="ledger-heading"><span>The balance of power</span><span>Campaign ledger</span></div>
   <h2 class="section-title"><span class="ornament">⚜</span> Campaign Standings <span class="ornament">⚜</span></h2>
-  <div class="standings-table-wrap">
+  <div class="standings-table-wrap" tabindex="0" role="region" aria-label="Campaign standings, scroll horizontally to view all columns">
     <table class="standings-table">
       <thead>
         <tr>
-          <th>Warband</th><th>Rating</th><th>Battles</th><th>Victories</th><th>Wyrdstone</th><th>Gold Crowns</th>
+          <th scope="col">Warband</th><th scope="col">Rating</th><th scope="col">Battles</th><th scope="col">Victories</th><th scope="col">Wyrdstone</th><th scope="col">Gold Crowns</th>
         </tr>
       </thead>
       <tbody>
         {
-          sorted.map((wb) => (
+          sorted.map((wb, index) => (
             <tr>
-              <td>{wb.sigil} {wb.name}</td>
-              <td>{wb.rating}</td>
+              <th scope="row"><span class="ledger-rank" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><span class="ledger-sigil">{wb.sigil}</span> {wb.name}</th>
+              <td class="ledger-rating">{wb.rating}</td>
               <td>{wb.battles}</td>
               <td>{wb.victories}</td>
               <td class="wyrd">{wb.wyrdstone} shards</td>
@@ -29,36 +30,73 @@ const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
       </tbody>
     </table>
   </div>
+  <div class="ledger-footer"><span>Ranked by warband rating</span><span>Fortune favours the living</span></div>
 </section>
 
 <style>
-  .standings-table-wrap { overflow-x: auto; }
+  .ledger-heading, .ledger-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    color: #b69a62;
+    font: 0.62rem/1.6 Georgia, serif;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .ledger-heading { margin-bottom: 1rem; }
+  .ledger-footer { padding-top: 0.8rem; color: #a9aa98; font-size: 0.58rem; }
+  .standings-table-wrap {
+    overflow-x: auto;
+    border: 1px solid #514936;
+    border-top: 3px double #b69a62;
+    scrollbar-color: #b69a62 #101715;
+  }
+  .standings-table-wrap:focus-visible { outline: 2px solid #b69a62; outline-offset: 5px; }
   .standings-table {
     width: 100%;
+    min-width: 660px;
     border-collapse: collapse;
-    background: var(--bg-panel);
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+    background: #141b18;
+    color: #c9c4b3;
+    font-variant-numeric: tabular-nums;
   }
   .standings-table th,
   .standings-table td {
-    border: 1px solid var(--border);
-    padding: 0.7rem 1rem;
+    border-bottom: 1px solid #363b30;
+    border-right: 1px solid rgba(182, 154, 98, 0.1);
+    padding: 1.15rem 1rem;
     text-align: center;
   }
-  .standings-table th {
-    font-family: 'Pirata One', cursive;
-    letter-spacing: 0.08em;
-    color: var(--gold);
-    background: rgba(184, 150, 62, 0.07);
+  .standings-table thead th {
+    font-family: Georgia, serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #b69a62;
+    background: rgba(182, 154, 98, 0.055);
     font-weight: normal;
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
   }
-  .standings-table td:first-child {
+  .standings-table th:first-child {
     text-align: left;
-    font-family: 'Pirata One', cursive;
-    color: var(--parchment);
   }
-  .standings-table .wyrd {
-    color: var(--green-wyrd);
-    text-shadow: 0 0 8px rgba(74, 122, 77, 0.5);
+  .standings-table tbody th {
+    font-family: Georgia, serif;
+    font-size: 0.96rem;
+    font-weight: normal;
+    color: #e7dcc5;
+  }
+  .standings-table tbody tr:first-child { background: rgba(182, 154, 98, 0.055); }
+  .standings-table tbody tr:last-child > * { border-bottom: 0; }
+  .standings-table tbody tr:hover { background: rgba(182, 154, 98, 0.09); }
+  .ledger-rank { color: #b69a62; font-size: 0.65rem; margin-right: 1rem; }
+  .ledger-sigil { display: inline-block; margin-right: 0.45rem; filter: grayscale(1); }
+  .standings-table .ledger-rating { color: #e7dcc5; font-size: 1.15rem; }
+  .standings-table .wyrd { color: #a8b69b; }
+  @media (max-width: 700px) {
+    .ledger-heading, .ledger-footer { font-size: 0.55rem; letter-spacing: 0.07em; }
+    .standings-table th, .standings-table td { padding: 1rem 0.8rem; }
+    .standings-table tbody th { max-width: 220px; }
   }
 </style>

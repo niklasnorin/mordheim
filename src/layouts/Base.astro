@@ -28,12 +28,15 @@ const {
       rel="stylesheet"
     />
     <script is:inline>
-      if (localStorage.getItem('mordheim-theme') === 'day') {
-        document.documentElement.dataset.theme = 'day';
-      }
+      try {
+        if (localStorage.getItem('mordheim-theme') === 'day') {
+          document.documentElement.dataset.theme = 'day';
+        }
+      } catch {}
     </script>
   </head>
-  <body>
+  <body id="top">
+    <a class="skip-link" href="#main-content">Skip to campaign content</a>
     <Atmosphere />
     <slot />
   </body>
