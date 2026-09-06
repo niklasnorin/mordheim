@@ -318,62 +318,111 @@ import Icon from './Icon.astro';
   const leafCanvas = document.getElementById('leaf-canvas') as HTMLCanvasElement;
   const leafCtx = leafCanvas.getContext('2d')!;
 
-  const LEAF_COLORS = ['#a5622a', '#b8842c', '#8a3d1f', '#c49a3c', '#7d4a22', '#994f18'];
+  const LEAF_COLORS = ['#b96b32', '#ce9845', '#a34f32', '#d5ae59', '#94603b', '#bf7839'];
+  const leafShapes = [
+    new Path2D('M -1 0 C -.6 -.55 .2 -.7 1 0 C .35 .55 -.45 .65 -1 0 Z'),
+    new Path2D('M -1 0 L -.65 -.18 L -.78 -.48 L -.33 -.4 L -.25 -.8 L .06 -.48 L .55 -.85 L .48 -.32 L 1 0 L .48 .26 L .55 .7 L .05 .48 L -.28 .72 L -.36 .35 L -.8 .42 L -.65 .15 Z'),
+  ];
 
   interface Leaf {
     x: number; y: number; vx: number; vy: number;
     size: number; angle: number; spin: number;
     sway: number; swaySpeed: number; color: string;
+    tumble: number; tumbleSpeed: number; depth: number; shape: number;
   }
   let leaves: Leaf[] = [];
+  let leafW = 0;
+  let leafH = 0;
+  let leafDpr = 0;
 
   function spawnLeaf(offscreen = true): Leaf {
+    const depth = 0.45 + Math.random() * 0.55;
     return {
-      x: offscreen ? leafCanvas.width + 20 + Math.random() * 120 : Math.random() * leafCanvas.width,
-      y: Math.random() * leafCanvas.height,
-      vx: -(0.8 + Math.random() * 1.8),
-      vy: 0.3 + Math.random() * 0.7,
-      size: 4 + Math.random() * 6,
+      x: offscreen ? leafW + 30 + Math.random() * 100 : Math.random() * leafW,
+      y: Math.random() * leafH,
+      vx: -(24 + Math.random() * 32) * depth,
+      vy: (20 + Math.random() * 25) * depth,
+      size: (8 + Math.random() * 7) * depth,
       angle: Math.random() * Math.PI * 2,
-      spin: (Math.random() - 0.5) * 0.08,
+      spin: (Math.random() - 0.5) * 1.2,
       sway: Math.random() * Math.PI * 2,
-      swaySpeed: 0.02 + Math.random() * 0.03,
+      swaySpeed: 0.7 + Math.random() * 0.8,
       color: LEAF_COLORS[Math.floor(Math.random() * LEAF_COLORS.length)]!,
+      tumble: Math.random() * Math.PI * 2,
+      tumbleSpeed: 0.8 + Math.random() * 1.3,
+      depth,
+      shape: Math.random() < 0.55 ? 0 : 1,
     };
   }
 
-  function initLeaves() {
-    sizeCanvas(leafCanvas);
-    const count = Math.floor((leafCanvas.width * leafCanvas.height) / 28000);
-    leaves = Array.from({ length: count }, () => spawnLeaf(false));
+  function resizeLeaves() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    if (width === leafW && height === leafH && dpr === leafDpr) return;
+    const initial = leafW === 0;
+    leafW = width;
+    leafH = height;
+    leafDpr = dpr;
+    leafCanvas.width = Math.round(width * dpr);
+    leafCanvas.height = Math.round(height * dpr);
+    leafCanvas.style.width = `${width}px`;
+    leafCanvas.style.height = `${height}px`;
+    leafCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const count = Math.min(70, Math.ceil(width * height / 28000));
+    // Mobile browser chrome resizes the viewport while scrolling. Keep existing
+    // particles in CSS-pixel coordinates instead of reseeding or stretching them.
+    while (leaves.length < count) leaves.push(spawnLeaf(!initial));
   }
 
   function drawLeaf(l: Leaf) {
+    const turn = Math.cos(l.tumble);
     leafCtx.save();
     leafCtx.translate(l.x, l.y);
-    leafCtx.rotate(l.angle);
+    leafCtx.rotate(l.angle + Math.sin(l.sway) * 0.3);
+    leafCtx.scale(l.size, l.size * (0.18 + Math.abs(turn) * 0.82));
     leafCtx.fillStyle = l.color;
-    leafCtx.globalAlpha = 0.85;
+    leafCtx.globalAlpha = 0.5 + l.depth * 0.4;
+    leafCtx.fill(leafShapes[l.shape]!);
+    leafCtx.fillStyle = turn > 0 ? 'rgba(255, 221, 148, 0.16)' : 'rgba(70, 32, 19, 0.2)';
+    leafCtx.fill(leafShapes[l.shape]!);
+    leafCtx.strokeStyle = 'rgba(80, 42, 24, 0.55)';
+    leafCtx.lineWidth = 0.055;
+    leafCtx.lineCap = 'round';
+    leafCtx.stroke(leafShapes[l.shape]!);
     leafCtx.beginPath();
-    leafCtx.ellipse(0, 0, l.size, l.size * 0.45, 0, 0, Math.PI * 2);
-    leafCtx.fill();
+    leafCtx.moveTo(-1.28, 0.12);
+    leafCtx.quadraticCurveTo(-0.6, -0.05, 0.85, 0);
+    for (const x of [-0.45, -0.05, 0.35]) {
+      leafCtx.moveTo(x - 0.15, 0);
+      leafCtx.lineTo(x + 0.12, -0.26);
+      leafCtx.moveTo(x - 0.15, 0);
+      leafCtx.lineTo(x + 0.12, 0.26);
+    }
+    leafCtx.stroke();
     leafCtx.restore();
   }
 
-  function drawLeaves() {
-    leafCtx.clearRect(0, 0, leafCanvas.width, leafCanvas.height);
-    for (let i = 0; i < leaves.length; i++) {
+  function drawLeaves(dt: number) {
+    leafCtx.clearRect(0, 0, leafW, leafH);
+    const count = Math.min(70, Math.ceil(leafW * leafH / 28000));
+    for (let i = leaves.length - 1; i >= 0; i--) {
       const l = leaves[i]!;
+      l.sway += l.swaySpeed * dt;
+      l.tumble += l.tumbleSpeed * dt;
+      l.x += (l.vx + Math.sin(l.sway) * 18 * l.depth) * dt;
+      l.y += (l.vy + Math.cos(l.sway * 0.7) * 10 * l.depth) * dt;
+      l.angle += l.spin * dt;
       drawLeaf(l);
-      l.sway += l.swaySpeed;
-      l.x += l.vx + Math.sin(l.sway) * 0.6;
-      l.y += l.vy + Math.cos(l.sway * 0.7) * 0.4;
-      l.angle += l.spin;
-      if (l.x < -30 || l.y > leafCanvas.height + 30) {
+      if (l.x < -40 || l.y > leafH + 40) {
+        if (leaves.length > count) {
+          leaves.splice(i, 1);
+          continue;
+        }
         leaves[i] = spawnLeaf();
         if (Math.random() < 0.4) {
-          leaves[i]!.x = Math.random() * leafCanvas.width;
-          leaves[i]!.y = -20;
+          leaves[i]!.x = Math.random() * leafW;
+          leaves[i]!.y = -30;
         }
       }
     }
@@ -381,7 +430,7 @@ import Icon from './Icon.astro';
 
   /* ── Crows ──
      Distant flock stays in the sky. Nearer birds fly across the page,
-     land on UI edges, sit / caw / flap, then take off again. */
+     land on UI edges, settle / look / stretch, then take off again. */
   const crowCanvas = document.getElementById('crow-canvas') as HTMLCanvasElement;
   const crowFrontCanvas = document.getElementById('crow-canvas-front') as HTMLCanvasElement;
   const crowBackCtx = crowCanvas.getContext('2d')!;
@@ -389,7 +438,7 @@ import Icon from './Icon.astro';
   let crowCtx = crowBackCtx;
 
   type CrowState = 'flying' | 'approaching' | 'landing' | 'perched' | 'taking-off';
-  type PerchAction = 'idle' | 'caw' | 'flap';
+  type PerchAction = 'idle' | 'look' | 'stretch';
 
   interface PerchSpot {
     id: string;
@@ -421,6 +470,11 @@ import Icon from './Icon.astro';
     flySize: number;
     approachDist: number;
     phase: number;
+    motionTime: number;
+    flightTimer: number;
+    gliding: boolean;
+    glideMix: number;
+    landingBlend: number;
     flapSpeed: number;
     facing: number;
     canLand: boolean;
@@ -539,10 +593,15 @@ import Icon from './Icon.astro';
       flySize,
       approachDist: 0,
       phase: Math.random() * Math.PI * 2,
-      flapSpeed: 0.11 + Math.random() * 0.08,
+      motionTime: Math.random() * 600,
+      flightTimer: 90 + Math.random() * 110,
+      gliding: false,
+      glideMix: 0,
+      landingBlend: 0,
+      flapSpeed: 0.17 + Math.random() * 0.055,
       facing,
       canLand,
-      alpha: canLand ? 0.92 : 0.55,
+      alpha: canLand ? 0.96 : 0.68,
       state: 'flying',
       target: null,
       flyTimer: canLand ? 90 + Math.random() * 220 : 99999,
@@ -580,13 +639,24 @@ import Icon from './Icon.astro';
     c.beakOpen = 0;
     c.headAngle = 0;
     c.approachDist = 0;
+    c.glideMix = 0;
+    c.gliding = false;
+    c.flightTimer = 80 + Math.random() * 120;
+    c.y -= c.size * 1.05 * 0.82;
   }
 
   function updateFlying(c: Crow) {
     c.size = easeToward(c.size, c.flySize, 0.05);
-    c.x += c.vx;
-    c.y += Math.sin(c.phase * 0.28) * (c.canLand ? 0.35 : 0.22);
-    c.phase += c.flapSpeed;
+    c.flightTimer -= 1;
+    if (c.flightTimer <= 0) {
+      c.gliding = !c.gliding;
+      c.flightTimer = c.gliding ? 45 + Math.random() * 100 : 100 + Math.random() * 140;
+    }
+    c.glideMix = easeToward(c.glideMix, c.gliding ? 1 : 0, 0.055);
+    c.x += c.vx * (1 + Math.sin(c.motionTime * 0.017) * 0.08);
+    c.vy = easeToward(c.vy, Math.sin(c.motionTime * 0.013) * 0.32 + c.glideMix * 0.045, 0.035);
+    c.y += c.vy;
+    c.phase += c.flapSpeed * (1 - c.glideMix * 0.82);
     c.facing = c.vx >= 0 ? 1 : -1;
     c.flyTimer -= 1;
 
@@ -625,7 +695,8 @@ import Icon from './Icon.astro';
     }
 
     const destX = p.x;
-    const destY = p.y + (c.target.edge === 'bottom' ? -22 : 22);
+    // Flight is body-centred; the ledge pose is anchored at the feet.
+    const destY = p.y - LAND_SIZE * 1.05 * 0.82;
     const dx = destX - c.x;
     const dy = destY - c.y;
     const dist = Math.hypot(dx, dy) || 1;
@@ -634,18 +705,18 @@ import Icon from './Icon.astro';
     const eased = t * t * (3 - 2 * t);
     c.size = c.flySize + (LAND_SIZE - c.flySize) * eased;
 
-    if (dist < 14) {
-      c.x = p.x;
-      c.y = p.y - (c.target.edge === 'bottom' ? -4 : 4);
-      c.size = LAND_SIZE;
+    c.glideMix = easeToward(c.glideMix, 0, 0.12);
+    if (dist < 2) {
+      c.y += c.size * 1.05 * 0.82;
+      c.landingBlend = 0;
       c.state = 'landing';
       return;
     }
 
-    const speed = Math.min(2.4, 1.1 + dist * 0.045);
-    c.vx = (dx / dist) * speed;
-    c.vy = (dy / dist) * speed;
-    c.facing = c.vx >= 0 ? 1 : -1;
+    const speed = Math.min(2.4, 0.16 + dist * 0.035);
+    c.vx = easeToward(c.vx, (dx / dist) * speed, 0.12);
+    c.vy = easeToward(c.vy, (dy / dist) * speed, 0.12);
+    if (Math.abs(c.vx) > 0.12) c.facing = c.vx >= 0 ? 1 : -1;
     c.x += c.vx;
     c.y += c.vy;
     c.phase += c.flapSpeed * 1.15;
@@ -657,12 +728,16 @@ import Icon from './Icon.astro';
       return;
     }
     const p = perchPos(c.target);
-    c.size = LAND_SIZE;
+    if (!p.visible || !hasOpaqueFill(c.target.el)) {
+      startTakeoff(c);
+      return;
+    }
+    c.size = easeToward(c.size, LAND_SIZE, 0.2);
+    c.landingBlend = Math.min(1, c.landingBlend + 0.055);
     c.x = easeToward(c.x, p.x, 0.2);
     c.y = easeToward(c.y, p.y, 0.2);
     c.phase += c.flapSpeed * 0.55;
-    c.facing = c.vx >= 0 ? 1 : c.facing;
-    if (Math.hypot(p.x - c.x, p.y - c.y) < 2.4) {
+    if (Math.hypot(p.x - c.x, p.y - c.y) < 0.3 && c.landingBlend === 1) {
       c.x = p.x;
       c.y = p.y;
       c.vx = 0;
@@ -670,7 +745,7 @@ import Icon from './Icon.astro';
       c.state = 'perched';
       c.perchTimer = 200 + Math.random() * 260;
       c.perchAction = 'idle';
-      c.actionTimer = 36 + Math.random() * 40;
+      c.actionTimer = 90 + Math.random() * 120;
       c.wingRaise = 0;
     }
   }
@@ -691,19 +766,14 @@ import Icon from './Icon.astro';
     c.perchTimer -= 1;
     c.actionTimer -= 1;
 
-    if (c.perchAction === 'caw') {
-      const cycle = ((c.actionTimer % 26) + 26) % 26;
-      const open = cycle > 10 && cycle < 22;
-      c.headAngle = open ? -0.55 : -0.08;
-      c.beakOpen = open ? 1 : 0.1;
-      c.wingRaise *= 0.85;
-    } else if (c.perchAction === 'flap') {
-      c.wingRaise = 0.45 + 0.55 * Math.abs(Math.sin(c.actionTimer * 0.38));
-      c.phase += 0.22;
-      c.headAngle *= 0.88;
-      c.beakOpen *= 0.8;
+    if (c.perchAction === 'look') {
+      c.headAngle = easeToward(c.headAngle, c.actionTimer > 35 ? -0.24 : 0.1, 0.065);
+      c.wingRaise *= 0.9;
+    } else if (c.perchAction === 'stretch') {
+      c.wingRaise = easeToward(c.wingRaise, Math.sin(Math.PI * Math.max(0, c.actionTimer) / 90) * 0.65, 0.1);
+      c.headAngle = easeToward(c.headAngle, 0.08, 0.06);
     } else {
-      c.headAngle = easeToward(c.headAngle, Math.sin(c.perchTimer * 0.03) * 0.12, 0.08);
+      c.headAngle = easeToward(c.headAngle, Math.sin(c.motionTime * 0.016) * 0.045, 0.04);
       c.beakOpen *= 0.8;
       c.wingRaise *= 0.88;
     }
@@ -714,15 +784,15 @@ import Icon from './Icon.astro';
         return;
       }
       const roll = Math.random();
-      if (roll < 0.38) {
-        c.perchAction = 'caw';
-        c.actionTimer = 52;
-      } else if (roll < 0.72) {
-        c.perchAction = 'flap';
-        c.actionTimer = 48;
+      if (roll < 0.35) {
+        c.perchAction = 'look';
+        c.actionTimer = 75;
+      } else if (roll < 0.48) {
+        c.perchAction = 'stretch';
+        c.actionTimer = 90;
       } else {
         c.perchAction = 'idle';
-        c.actionTimer = 55 + Math.random() * 70;
+        c.actionTimer = 110 + Math.random() * 150;
       }
     }
   }
@@ -747,36 +817,73 @@ import Icon from './Icon.astro';
   }
 
   function fillCrow(alpha: number) {
-    const color = isDay() ? `rgba(22, 16, 12, ${alpha})` : `rgba(8, 8, 11, ${alpha})`;
+    const color = isDay() ? `rgba(30, 28, 29, ${alpha})` : `rgba(53, 59, 69, ${alpha})`;
     crowCtx.fillStyle = color;
     crowCtx.strokeStyle = color;
   }
 
+  function featherHighlight(alpha: number) {
+    crowCtx.strokeStyle = isDay()
+      ? `rgba(114, 119, 125, ${alpha * 0.24})`
+      : `rgba(145, 157, 175, ${alpha * 0.4})`;
+    crowCtx.lineWidth = 0.65;
+  }
+
+  function drawCrowWing(s: number, lift: number, sweep: number, alpha: number) {
+    const wristX = -s * (0.48 + sweep);
+    const wristY = lift * s;
+    fillCrow(alpha);
+    crowCtx.beginPath();
+    crowCtx.moveTo(s * 0.2, 0);
+    crowCtx.quadraticCurveTo(s * 0.14, wristY * 0.5, -s * 0.12, wristY * 0.7);
+    crowCtx.quadraticCurveTo(-s * 0.3, wristY * 1.02, wristX, wristY);
+    // Unequal primary tips leave a fingered edge without a sawtooth outline.
+    crowCtx.lineTo(wristX - s * 0.45, wristY - s * 0.04);
+    crowCtx.quadraticCurveTo(wristX - s * 0.54, wristY, wristX - s * 0.25, wristY + s * 0.1);
+    crowCtx.lineTo(wristX - s * 0.58, wristY + s * 0.12);
+    crowCtx.quadraticCurveTo(wristX - s * 0.64, wristY + s * 0.18, wristX - s * 0.29, wristY + s * 0.2);
+    crowCtx.lineTo(wristX - s * 0.59, wristY + s * 0.27);
+    crowCtx.quadraticCurveTo(wristX - s * 0.59, wristY + s * 0.33, wristX - s * 0.24, wristY + s * 0.29);
+    crowCtx.lineTo(wristX - s * 0.46, wristY + s * 0.39);
+    crowCtx.quadraticCurveTo(wristX - s * 0.46, wristY + s * 0.44, wristX - s * 0.12, wristY + s * 0.36);
+    crowCtx.quadraticCurveTo(-s * 0.36, wristY * 0.35 + s * 0.26, -s * 0.22, s * 0.18);
+    crowCtx.closePath();
+    crowCtx.fill();
+    featherHighlight(alpha);
+    crowCtx.beginPath();
+    crowCtx.moveTo(s * 0.1, -s * 0.025);
+    crowCtx.quadraticCurveTo(-s * 0.08, wristY * 0.62, wristX, wristY + s * 0.06);
+    crowCtx.stroke();
+  }
+
   function drawFlyingCrow(c: Crow) {
     const s = c.size;
-    const flap = Math.sin(c.phase);
+    const beat = Math.sin(c.phase + Math.sin(c.phase) * 0.24);
+    const lift = (-0.18 - beat * 1.05) * (1 - c.glideMix) - c.glideMix * 0.48;
+    const sweep = 0.08 + (Math.sin(c.phase - 0.55) + 1) * 0.1 * (1 - c.glideMix);
     crowCtx.save();
     crowCtx.translate(c.x, c.y);
     crowCtx.scale(c.facing, 1);
+    crowCtx.rotate(Math.max(-0.2, Math.min(0.2, c.vy * 0.1)) + Math.sin(c.motionTime * 0.019) * 0.025);
     fillCrow(c.alpha);
     crowCtx.lineJoin = 'round';
     crowCtx.lineCap = 'round';
 
     // Far wing
-    crowCtx.beginPath();
-    crowCtx.moveTo(-s * 0.05, 0);
-    crowCtx.quadraticCurveTo(-s * 0.15, -flap * s * 0.85, -s * 0.95, -flap * s * 1.05);
-    crowCtx.lineTo(-s * 1.15, -flap * s * 1.05 + s * 0.18);
-    crowCtx.lineTo(-s * 0.7, -flap * s * 0.55);
-    crowCtx.quadraticCurveTo(-s * 0.15, s * 0.08, 0, s * 0.06);
-    crowCtx.fill();
+    crowCtx.save();
+    crowCtx.translate(s * 0.16, -s * 0.08);
+    drawCrowWing(s * 0.88, lift - Math.cos(c.phase) * 0.12 * (1 - c.glideMix), sweep - 0.16, c.alpha * 0.8);
+    crowCtx.restore();
+    fillCrow(c.alpha);
 
     // Tail
     crowCtx.beginPath();
     crowCtx.moveTo(-s * 0.45, 0);
-    crowCtx.lineTo(-s * 1.15, -s * 0.18);
-    crowCtx.lineTo(-s * 0.95, 0.02 * s);
-    crowCtx.lineTo(-s * 1.12, s * 0.22);
+    crowCtx.lineTo(-s * 1.14, -s * 0.12);
+    crowCtx.lineTo(-s * 1.2, -s * 0.01);
+    crowCtx.lineTo(-s * 1.17, s * 0.1);
+    crowCtx.lineTo(-s * 1.06, s * 0.2);
+    crowCtx.lineTo(-s * 0.4, s * 0.16);
     crowCtx.closePath();
     crowCtx.fill();
 
@@ -797,14 +904,7 @@ import Icon from './Icon.astro';
     crowCtx.fill();
 
     // Near wing
-    crowCtx.beginPath();
-    crowCtx.moveTo(s * 0.08, 0);
-    crowCtx.quadraticCurveTo(s * 0.2, flap * s * 0.9, s * 0.15, -flap * s * 0.15);
-    crowCtx.quadraticCurveTo(-s * 0.05, -flap * s * 1.15, -s * 0.85, -flap * s * 1.25);
-    crowCtx.lineTo(-s * 1.05, -flap * s * 1.2 + s * 0.2);
-    crowCtx.lineTo(-s * 0.55, -flap * s * 0.45);
-    crowCtx.quadraticCurveTo(s * 0.05, s * 0.12, s * 0.2, s * 0.04);
-    crowCtx.fill();
+    drawCrowWing(s, lift, sweep, c.alpha);
 
     crowCtx.restore();
   }
@@ -825,49 +925,64 @@ import Icon from './Icon.astro';
 
     crowCtx.lineCap = 'round';
     crowCtx.lineJoin = 'round';
-    crowCtx.lineWidth = Math.max(1.1, s * 0.08);
+    crowCtx.lineWidth = Math.max(0.85, s * 0.055);
 
     // Legs + feet
     crowCtx.beginPath();
     crowCtx.moveTo(-s * 0.1, -s * 0.42);
     crowCtx.lineTo(-s * 0.14, 0);
     crowCtx.lineTo(-s * 0.28, 0);
+    crowCtx.moveTo(-s * 0.14, 0);
+    crowCtx.lineTo(-s * 0.03, s * 0.025);
     crowCtx.moveTo(s * 0.1, -s * 0.4);
     crowCtx.lineTo(s * 0.12, 0);
     crowCtx.lineTo(s * 0.26, 0);
+    crowCtx.moveTo(s * 0.12, 0);
+    crowCtx.lineTo(s * 0.04, s * 0.025);
     crowCtx.stroke();
 
-    const bodyY = -s * 0.82;
+    const bodyY = -s * 0.82 + Math.sin(c.motionTime * 0.035) * s * 0.008;
 
     // Tail
     crowCtx.beginPath();
     crowCtx.moveTo(-s * 0.2, bodyY);
-    crowCtx.lineTo(-s * 0.95, bodyY - s * 0.22);
-    crowCtx.lineTo(-s * 0.72, bodyY + s * 0.08);
-    crowCtx.lineTo(-s * 0.98, bodyY + s * 0.28);
+    crowCtx.lineTo(-s * 0.98, bodyY + s * 0.24);
+    crowCtx.lineTo(-s * 0.99, bodyY + s * 0.34);
+    crowCtx.lineTo(-s * 0.88, bodyY + s * 0.39);
+    crowCtx.lineTo(-s * 0.79, bodyY + s * 0.38);
+    crowCtx.lineTo(-s * 0.1, bodyY + s * 0.22);
     crowCtx.closePath();
     crowCtx.fill();
 
     // Body
     crowCtx.beginPath();
-    crowCtx.ellipse(0, bodyY, s * 0.42, s * 0.36, -0.35, 0, Math.PI * 2);
+    crowCtx.ellipse(0, bodyY, s * 0.43, s * 0.33, -0.48, 0, Math.PI * 2);
     crowCtx.fill();
 
     // Wing — folded, or raised while stretching
     if (c.wingRaise > 0.12) {
-      const lift = bodyY - c.wingRaise * s * 1.15;
-      crowCtx.beginPath();
-      crowCtx.moveTo(-s * 0.05, bodyY);
-      crowCtx.quadraticCurveTo(-s * 0.35, lift, s * 0.12, lift - s * 0.12);
-      crowCtx.lineTo(s * 0.28, lift + s * 0.08);
-      crowCtx.quadraticCurveTo(s * 0.05, bodyY - s * 0.1, s * 0.18, bodyY + s * 0.05);
-      crowCtx.closePath();
-      crowCtx.fill();
-    } else {
-      crowCtx.beginPath();
-      crowCtx.ellipse(s * 0.04, bodyY + s * 0.04, s * 0.32, s * 0.2, 0.45, 0, Math.PI * 2);
-      crowCtx.fill();
+      crowCtx.save();
+      crowCtx.translate(0, bodyY);
+      drawCrowWing(s * 0.85, -c.wingRaise * 1.4, 0.06, c.alpha);
+      crowCtx.restore();
     }
+    crowCtx.fillStyle = isDay() ? `rgba(43, 43, 46, ${c.alpha})` : `rgba(64, 72, 85, ${c.alpha})`;
+    crowCtx.beginPath();
+    crowCtx.moveTo(s * 0.16, bodyY - s * 0.15);
+    crowCtx.bezierCurveTo(-s * 0.1, bodyY - s * 0.3, -s * 0.4, bodyY - s * 0.12, -s * 0.62, bodyY + s * 0.25);
+    crowCtx.quadraticCurveTo(-s * 0.16, bodyY + s * 0.3, s * 0.16, bodyY + s * 0.06);
+    crowCtx.closePath();
+    crowCtx.fill();
+    featherHighlight(c.alpha);
+    crowCtx.beginPath();
+    crowCtx.moveTo(s * 0.1, bodyY - s * 0.15);
+    crowCtx.quadraticCurveTo(-s * 0.17, bodyY - s * 0.2, -s * 0.41, bodyY + s * 0.1);
+    crowCtx.moveTo(-s * 0.09, bodyY + s * 0.05);
+    crowCtx.lineTo(-s * 0.43, bodyY + s * 0.2);
+    crowCtx.moveTo(-s * 0.02, bodyY + s * 0.12);
+    crowCtx.lineTo(-s * 0.33, bodyY + s * 0.23);
+    crowCtx.stroke();
+    fillCrow(c.alpha);
 
     // Head
     crowCtx.save();
@@ -877,48 +992,49 @@ import Icon from './Icon.astro';
     crowCtx.ellipse(0, 0, s * 0.26, s * 0.22, 0.1, 0, Math.PI * 2);
     crowCtx.fill();
 
-    // Beak (opens when cawing)
+    // Heavy, slightly curved bill.
     crowCtx.beginPath();
     crowCtx.moveTo(s * 0.2, -s * 0.04);
-    crowCtx.lineTo(s * 0.5, -s * 0.06 - c.beakOpen * s * 0.1);
+    crowCtx.quadraticCurveTo(s * 0.37, -s * 0.075, s * 0.5, s * 0.015);
     crowCtx.lineTo(s * 0.2, s * 0.03);
     crowCtx.closePath();
     crowCtx.fill();
-    if (c.beakOpen > 0.35) {
-      crowCtx.beginPath();
-      crowCtx.moveTo(s * 0.2, s * 0.02);
-      crowCtx.lineTo(s * 0.48, s * 0.1 + c.beakOpen * s * 0.08);
-      crowCtx.lineTo(s * 0.2, s * 0.08);
-      crowCtx.closePath();
-      crowCtx.fill();
-
-      crowCtx.strokeStyle = 'rgba(210, 200, 180, 0.4)';
-      crowCtx.lineWidth = 1;
-      crowCtx.beginPath();
-      crowCtx.moveTo(s * 0.52, -s * 0.16);
-      crowCtx.lineTo(s * 0.78, -s * 0.3);
-      crowCtx.moveTo(s * 0.54, -s * 0.02);
-      crowCtx.lineTo(s * 0.82, -s * 0.08);
-      crowCtx.stroke();
-    }
+    featherHighlight(c.alpha * 0.65);
+    crowCtx.beginPath();
+    crowCtx.arc(-s * 0.015, -s * 0.015, s * 0.2, Math.PI * 1.15, Math.PI * 1.75);
+    crowCtx.stroke();
+    crowCtx.fillStyle = `rgba(14, 17, 22, ${c.alpha})`;
+    crowCtx.beginPath();
+    crowCtx.arc(s * 0.1, -s * 0.055, s * 0.033, 0, Math.PI * 2);
+    crowCtx.fill();
     crowCtx.restore();
     crowCtx.restore();
   }
 
   function drawCrow(c: Crow) {
-    if (c.state === 'perched' || c.state === 'landing') drawPerchedCrow(c);
+    if (c.state === 'landing') {
+      crowCtx.save();
+      crowCtx.globalAlpha = 1 - c.landingBlend;
+      drawFlyingCrow({ ...c, y: c.y - c.size * 1.05 * 0.82 });
+      crowCtx.globalAlpha = c.landingBlend;
+      drawPerchedCrow(c);
+      crowCtx.restore();
+    } else if (c.state === 'perched') drawPerchedCrow(c);
     else drawFlyingCrow(c);
   }
 
-  function drawCrows() {
+  function drawCrows(update = true) {
     crowBackCtx.clearRect(0, 0, logicalW, logicalH);
     crowFrontCtx.clearRect(0, 0, logicalW, logicalH);
     for (const c of crows) {
-      if (c.state === 'flying') updateFlying(c);
-      else if (c.state === 'approaching') updateApproaching(c);
-      else if (c.state === 'landing') updateLanding(c);
-      else if (c.state === 'perched') updatePerched(c);
-      else updateTakeoff(c);
+      if (update) {
+        c.motionTime += 1;
+        if (c.state === 'flying') updateFlying(c);
+        else if (c.state === 'approaching') updateApproaching(c);
+        else if (c.state === 'landing') updateLanding(c);
+        else if (c.state === 'perched') updatePerched(c);
+        else updateTakeoff(c);
+      }
       const onLedge = c.state === 'perched' || c.state === 'landing';
       crowCtx = onLedge ? crowFrontCtx : crowBackCtx;
       drawCrow(c);
@@ -950,24 +1066,31 @@ import Icon from './Icon.astro';
   }
 
   /* ── Loop ── */
-  function loop() {
+  let lastFrame = 0;
+  let crowTime = 0;
+  function loop(now: number) {
+    const dt = lastFrame ? Math.min((now - lastFrame) / 1000, 0.05) : 0;
+    lastFrame = now;
+    crowTime += dt * 60;
+    const steps = Math.floor(crowTime);
+    crowTime -= steps;
     if (isDay()) {
-      drawLeaves();
+      drawLeaves(dt);
     } else {
-      drawRain();
+      for (let i = 0; i < steps; i++) drawRain();
     }
-    drawCrows();
+    drawCrows(steps);
     requestAnimationFrame(loop);
   }
 
   if (!reduced) {
     initRain();
-    initLeaves();
+    resizeLeaves();
     initCrows();
     scheduleLightning();
     window.addEventListener('resize', () => {
       initRain();
-      initLeaves();
+      resizeLeaves();
       sizeCrowCanvas();
     });
     requestAnimationFrame(loop);
