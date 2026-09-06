@@ -1,6 +1,6 @@
 ---
 import { warbands } from '../data/warbands';
-import { getMemberStory } from '../data/history';
+import { getMemberStory, getScenarioUrl } from '../data/history';
 
 const statKeys = ['M', 'WS', 'BS', 'S', 'T', 'W', 'I', 'A', 'Ld'] as const;
 
@@ -68,7 +68,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
                     <span class="story-marker" aria-hidden="true">
                       {entry.snapshot.status === 'dead' ? '✝' : '⚔'}
                     </span>
-                    <h5>{entry.scenario.scenario}</h5>
+                    <h5><a href={getScenarioUrl(entry.scenario.id)}>{entry.scenario.scenario}</a></h5>
                     <span class="story-meta">
                       {entry.scenario.date} —{' '}
                       <span class:list={['story-result', entry.warband.result]}>
@@ -297,6 +297,8 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
     font-weight: normal;
     letter-spacing: 0.04em;
   }
+  .story-chapter h5 a { color: inherit; text-underline-offset: .2em; }
+  .story-chapter h5 a:hover { color: var(--gold); }
   .story-meta {
     display: block;
     font-size: 0.78rem;

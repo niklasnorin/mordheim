@@ -4,6 +4,52 @@
   "date": "Vorhexen 5, 1999",
   "scenario": "Skirmish at the Broken Bridge",
   "summary": "Both warbands race for a toppled wagon rumoured to carry a noble's strongbox. The Wolves seize the prize — 30 gold crowns and a very surprised chicken — but the bridge takes its toll on both sides.",
+  "report": {
+    "rulebookScenario": null,
+    "winCondition": null,
+    "outcome": "The Wolves won the contest for the noble's strongbox and carried off its 30 crowns and a chicken. Boris sent Pavel along the riverbed while the vanguards fought on the span. Recovering the prize explains the recorded victory, but the original rulebook scenario and formal win condition are not specified.",
+    "prologue": "A toppled wagon lies at the Broken Bridge, rumoured to hold a noble's strongbox. Both companies are converging on the crossing. The prize is within reach, but the damaged span offers little room to fight and no assurance that it will bear the struggle.",
+    "battle": [
+      "The fight gathered around the wagon and the narrow bridge. The dwarf vanguard held against two Ostlander rushes; Dmitri's own account credits him with reaching the wagon first and holding the span until his kin arrived. Both records describe a hard contest for the same cramped ground.",
+      "Dagna charged along the broken span under arrow-fire and scattered the line at the wagon. Across the river, Borri splintered the wheel sheltering Anya. Her arrows nevertheless drove the dwarf vanguard back. Okri's final shot knocked an unnamed Ostlander off the wagon; an arrow then caught him as he reloaded. Anya's tally records his name.",
+      "Boris turned the fight on the bridge into a distraction, sending Pavel down the riverbed. Yuri hacked through the wagon axle to stop the dwarfs dragging it away. Snorri reached for the strongbox and caught the chicken instead, while Mikhail picked the lock as the prize was being carried.",
+      "When the bridge gave way beneath Dmitri, Yuri dived after him and surfaced with only the strongbox. Pavel carried the box and chicken along the riverbed, but was too far downstream to help. Thorgrim anchored the dwarf rearguard on the last standing arch, and Grimnir brought Okri's body back so no dwarf was left in the river."
+    ],
+    "epilogue": "The Wolves secure their first recorded victory and the strongbox. Both companies leave a place empty in their ranks: Okri falls to an arrow, and Dmitri is lost with the bridge.",
+    "perspectives": [
+      {
+        "warbandId": "grimhammer",
+        "prologue": "A noble's strongbox belongs in a sound vault, not in a wagon over a rotten river. Get the vanguard to the prize, hold the crossing, and keep the Wolves back. The bridge is narrow enough that steady feet should count for more than their haste.",
+        "epilogue": "The Ostlanders have the box. We have brought every surviving dwarf home, and Grimnir has brought Okri with them. Borri has lost the companion of twenty years of powder-smoke. Thorgrim's account of what the Wolves owe us has grown by half a page.",
+        "accomplishments": "Held the wagon against two rushes, secured the survivors' withdrawal, and recovered Okri's body from the broken crossing."
+      },
+      {
+        "warbandId": "wolfensteins",
+        "prologue": "Thirty crowns, if the rumour is true, would bring the old lands a little nearer. Let the dwarfs watch the span; Boris sees another approach through the riverbed. Anya must keep their heads down long enough for the clan to reach the wagon.",
+        "epilogue": "At last we have won, and the box holds the promised crowns. The chicken is ours too. But Yuri could not bring Dmitri back, and Boris must bury a grandson on the evening of his first victory. Anya cuts Okri's notch without pride.",
+        "accomplishments": "Outflanked the bridge defenders, secured the noble's strongbox and its 30 crowns, and brought home the clan's new chicken mascot."
+      }
+    ],
+    "loot": [
+      "The Wolves secured the noble's strongbox containing 30 gold crowns.",
+      "A chicken recovered with the prize has been adopted as the Wolves' clan mascot."
+    ],
+    "campaignNotes": [
+      "Anya's arrow killed Okri Stonebrow; Grimnir recovered his body.",
+      "Dmitri Wolfenstein was lost when the bridge collapsed. No opposing warrior is credited with this environmental casualty.",
+      "Ludmilla's crows warned the clan away from an ambush on the north bank.",
+      "The records disagree about who reached the wagon first; both accounts are preserved rather than choosing one.",
+      "Okri knocked an unnamed Ostlander from the wagon. Neither that warrior's identity nor an out-of-action result is recorded."
+    ],
+    "outOfAction": [
+      {
+        "attackerId": "anya",
+        "target": "Okri Stonebrow",
+        "targetId": "okri",
+        "detail": "Killed by an arrow while reloading at the Broken Bridge; Anya's battle tally identifies Okri."
+      }
+    ]
+  },
   "warbands": [
     {
       "warbandId": "grimhammer",
