@@ -1,0 +1,167 @@
+---
+import type { Warband } from '../data/warbands';
+
+interface Props {
+  warband: Warband;
+}
+
+const { warband } = Astro.props;
+---
+
+<article class="warband-card reveal">
+  <div class="warband-header">
+    <span class="warband-sigil" aria-hidden="true">{warband.sigil}</span>
+    <div class="warband-title">
+      <h3>{warband.name}</h3>
+      <span class="warband-type">{warband.type} — led by {warband.player}</span>
+    </div>
+    <div class="warband-stats">
+      <span class="rating">{warband.rating}</span>
+      Warband Rating
+    </div>
+  </div>
+  <p class="warband-lore">{warband.lore}</p>
+  <div class="member-grid">
+    {
+      warband.members.map((m) => (
+        <button
+          class:list={['member-card', { 'member-dead': m.dead }]}
+          data-warband={warband.id}
+          data-member={m.id}
+          type="button"
+        >
+          <span class="member-portrait" aria-hidden="true">{m.portrait}</span>
+          <span class="member-name">{m.name}</span>
+          <span class="member-role">{m.role}</span>
+          <span class="member-tag">
+            {m.epithet}
+            {m.dead && <span class="dead-marker"> ✝ Fallen</span>}
+          </span>
+        </button>
+      ))
+    }
+  </div>
+</article>
+
+<style>
+  .warband-card {
+    background: linear-gradient(160deg, var(--bg-panel2), var(--bg-panel));
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+  }
+
+  .warband-header {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1.4rem 1.6rem;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(90deg, rgba(138, 26, 26, 0.12), transparent 60%);
+  }
+  .warband-sigil {
+    font-size: 2.6rem;
+    line-height: 1;
+    filter: drop-shadow(0 0 10px rgba(184, 150, 62, 0.35));
+  }
+  .warband-title h3 {
+    font-family: 'Pirata One', cursive;
+    font-size: 1.8rem;
+    letter-spacing: 0.05em;
+    color: var(--parchment);
+    font-weight: normal;
+  }
+  .warband-title .warband-type {
+    font-size: 0.85rem;
+    color: var(--gold);
+    font-variant: small-caps;
+    letter-spacing: 0.12em;
+  }
+  .warband-stats {
+    margin-left: auto;
+    text-align: right;
+    font-size: 0.8rem;
+    color: var(--ink-dim);
+    white-space: nowrap;
+  }
+  .warband-stats .rating {
+    display: block;
+    font-family: 'Pirata One', cursive;
+    font-size: 1.5rem;
+    color: var(--gold);
+  }
+
+  .warband-lore {
+    padding: 1.2rem 1.6rem;
+    font-style: italic;
+    color: var(--ink-dim);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.95rem;
+  }
+
+  .member-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .member-card {
+    background: var(--bg-panel);
+    padding: 1.1rem 1.2rem;
+    cursor: pointer;
+    transition: background 0.25s, transform 0.25s;
+    border: none;
+    text-align: left;
+    font-family: inherit;
+    color: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    display: block;
+    width: 100%;
+  }
+  .member-card:hover,
+  .member-card:focus-visible {
+    background: #1e232c;
+    transform: translateY(-2px);
+  }
+  .member-card:hover .member-name,
+  .member-card:focus-visible .member-name {
+    color: var(--gold);
+  }
+  .member-card .member-portrait {
+    font-size: 2rem;
+    float: right;
+    opacity: 0.85;
+    filter: grayscale(0.4) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  }
+  .member-name {
+    display: block;
+    font-family: 'Pirata One', cursive;
+    font-size: 1.15rem;
+    color: var(--parchment);
+    transition: color 0.25s;
+  }
+  .member-role {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--blood-bright);
+    font-variant: small-caps;
+    letter-spacing: 0.1em;
+  }
+  .member-tag {
+    font-size: 0.8rem;
+    color: var(--ink-dim);
+    font-style: italic;
+    margin-top: 0.35rem;
+    display: block;
+  }
+  .member-dead { opacity: 0.5; }
+  .member-dead .member-name { text-decoration: line-through; }
+  .dead-marker { color: var(--blood-bright); font-style: normal; }
+
+  @media (max-width: 700px) {
+    .warband-header { flex-wrap: wrap; }
+    .warband-stats { margin-left: 0; text-align: left; }
+  }
+</style>

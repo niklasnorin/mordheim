@@ -1,0 +1,64 @@
+---
+import { warbands } from '../data/warbands';
+
+const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
+---
+
+<section id="standings" class="standings reveal">
+  <h2 class="section-title"><span class="ornament">⚜</span> Campaign Standings <span class="ornament">⚜</span></h2>
+  <div class="standings-table-wrap">
+    <table class="standings-table">
+      <thead>
+        <tr>
+          <th>Warband</th><th>Rating</th><th>Battles</th><th>Victories</th><th>Wyrdstone</th><th>Gold Crowns</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          sorted.map((wb) => (
+            <tr>
+              <td>{wb.sigil} {wb.name}</td>
+              <td>{wb.rating}</td>
+              <td>{wb.battles}</td>
+              <td>{wb.victories}</td>
+              <td class="wyrd">{wb.wyrdstone} shards</td>
+              <td>{wb.gold} gc</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+  .standings-table-wrap { overflow-x: auto; }
+  .standings-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-panel);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+  }
+  .standings-table th,
+  .standings-table td {
+    border: 1px solid var(--border);
+    padding: 0.7rem 1rem;
+    text-align: center;
+  }
+  .standings-table th {
+    font-family: 'Pirata One', cursive;
+    letter-spacing: 0.08em;
+    color: var(--gold);
+    background: rgba(184, 150, 62, 0.07);
+    font-weight: normal;
+  }
+  .standings-table td:first-child {
+    text-align: left;
+    font-family: 'Pirata One', cursive;
+    color: var(--parchment);
+  }
+  .standings-table .wyrd {
+    color: var(--green-wyrd);
+    text-shadow: 0 0 8px rgba(74, 122, 77, 0.5);
+  }
+</style>

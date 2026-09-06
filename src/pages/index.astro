@@ -1,0 +1,83 @@
+---
+import Base from '../layouts/Base.astro';
+import Header from '../components/Header.astro';
+import TownCryer from '../components/TownCryer.astro';
+import WarbandCard from '../components/WarbandCard.astro';
+import MemberModal from '../components/MemberModal.astro';
+import Standings from '../components/Standings.astro';
+import Chronicle from '../components/Chronicle.astro';
+import { warbands } from '../data/warbands';
+---
+
+<Base title="Mordheim — City of the Damned | Campaign Chronicle">
+  <Header />
+
+  <main>
+    <TownCryer />
+
+    <section id="warbands" class="warbands">
+      <h2 class="section-title"><span class="ornament">☠</span> The Warbands <span class="ornament">☠</span></h2>
+      <p class="section-intro">
+        These brave — or foolish — souls have entered the shattered gates of Mordheim in search of
+        wyrdstone, gold, and glory. Most will find only death. Click a warrior to read their tale.
+      </p>
+      <div class="warband-grid">
+        {warbands.map((wb) => <WarbandCard warband={wb} />)}
+      </div>
+    </section>
+
+    <Standings />
+    <Chronicle />
+  </main>
+
+  <footer class="site-footer">
+    <p class="footer-quote">“The dead walk the streets of Mordheim, and the living envy them.”</p>
+    <p class="footer-note">
+      A fan-made campaign page for our game group. Mordheim is © Games Workshop — this is a
+      non-commercial hobby project.
+    </p>
+  </footer>
+
+  <MemberModal />
+</Base>
+
+<style>
+  .warband-grid {
+    display: grid;
+    gap: 2.5rem;
+  }
+
+  .site-footer {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 3rem 1rem 4rem;
+    border-top: 1px solid var(--border);
+  }
+  .footer-quote {
+    font-family: 'UnifrakturMaguntia', cursive;
+    font-size: 1.3rem;
+    color: var(--ink-dim);
+    margin-bottom: 1rem;
+  }
+  .footer-note {
+    font-size: 0.75rem;
+    color: #55504a;
+  }
+</style>
+
+<script>
+  // Scroll-reveal animation
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      }
+    },
+    { threshold: 0.08 }
+  );
+  document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+</script>

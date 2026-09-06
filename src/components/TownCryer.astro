@@ -1,0 +1,157 @@
+---
+import { news, issue } from '../data/news';
+---
+
+<section id="town-cryer" class="town-cryer reveal">
+  <div class="cryer-masthead">
+    <div class="cryer-price">Price: 2 Shillings</div>
+    <h2 class="cryer-title">The Town Cryer</h2>
+    <div class="cryer-issue">{issue}</div>
+  </div>
+  <div class="cryer-banner">
+    <span>✠ HEAR YE! HEAR YE! ALL THE NEWS FROM THE CITY OF THE DAMNED ✠</span>
+  </div>
+  <div class="cryer-columns">
+    {
+      news.map((article) =>
+        article.notice ? (
+          <div class="cryer-notice">
+            <strong>{article.headline}</strong>
+            {article.body}
+          </div>
+        ) : (
+          <article class="cryer-article">
+            <h3>{article.headline}</h3>
+            {article.byline && <div class="byline">{article.byline}</div>}
+            <p>{article.body}</p>
+          </article>
+        )
+      )
+    }
+  </div>
+  <div class="cryer-footer">
+    <em>
+      Printed under license of the Grand Theogonist — All heresies reported herein are for the
+      entertainment of the faithful only
+    </em>
+  </div>
+</section>
+
+<style>
+  .town-cryer {
+    background: var(--parchment);
+    background-image:
+      radial-gradient(ellipse at 15% 10%, rgba(90, 70, 40, 0.14), transparent 45%),
+      radial-gradient(ellipse at 85% 90%, rgba(90, 70, 40, 0.16), transparent 45%),
+      radial-gradient(ellipse at 60% 40%, rgba(120, 95, 60, 0.06), transparent 60%),
+      linear-gradient(var(--parchment), var(--parchment-dark));
+    color: #241b10;
+    padding: 2rem 2.5rem 1.5rem;
+    box-shadow:
+      0 0 0 1px #3a2f1c,
+      0 0 60px rgba(0, 0, 0, 0.85),
+      inset 0 0 80px rgba(90, 70, 40, 0.25);
+    transform: rotate(-0.4deg);
+  }
+
+  .cryer-masthead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 4px double #241b10;
+    padding-bottom: 0.6rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .cryer-title {
+    font-family: 'UnifrakturMaguntia', cursive;
+    font-size: clamp(2.2rem, 7vw, 4rem);
+    letter-spacing: 0.02em;
+    text-align: center;
+    flex: 1;
+    font-weight: normal;
+  }
+  .cryer-price,
+  .cryer-issue {
+    font-size: 0.8rem;
+    font-style: italic;
+    white-space: nowrap;
+  }
+
+  .cryer-banner {
+    text-align: center;
+    border-bottom: 1px solid #241b10;
+    padding: 0.35rem 0;
+    font-size: 0.82rem;
+    letter-spacing: 0.14em;
+    font-variant: small-caps;
+  }
+
+  .cryer-columns {
+    columns: 2;
+    column-gap: 2.2rem;
+    column-rule: 1px solid rgba(36, 27, 16, 0.4);
+    padding: 1.4rem 0 1rem;
+  }
+
+  .cryer-article {
+    break-inside: avoid;
+    margin-bottom: 1.6rem;
+  }
+  .cryer-article h3 {
+    font-family: 'UnifrakturMaguntia', cursive;
+    font-size: 1.5rem;
+    line-height: 1.15;
+    margin-bottom: 0.3rem;
+    border-bottom: 1px solid rgba(36, 27, 16, 0.5);
+    padding-bottom: 0.25rem;
+    font-weight: normal;
+  }
+  .cryer-article .byline {
+    font-size: 0.75rem;
+    font-style: italic;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+    color: #4a3a22;
+  }
+  .cryer-article p {
+    font-size: 0.92rem;
+    text-align: justify;
+    hyphens: auto;
+  }
+  .cryer-article p::first-letter {
+    font-family: 'UnifrakturMaguntia', cursive;
+    font-size: 2.2em;
+    float: left;
+    line-height: 0.8;
+    padding-right: 0.12em;
+    color: var(--blood);
+  }
+  .cryer-notice {
+    border: 2px solid #241b10;
+    padding: 0.8rem 1rem;
+    text-align: center;
+    font-size: 0.85rem;
+    margin-bottom: 1.6rem;
+    break-inside: avoid;
+  }
+  .cryer-notice strong {
+    display: block;
+    font-variant: small-caps;
+    letter-spacing: 0.15em;
+    font-size: 1rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .cryer-footer {
+    border-top: 4px double #241b10;
+    text-align: center;
+    padding-top: 0.5rem;
+    font-size: 0.72rem;
+  }
+
+  @media (max-width: 700px) {
+    .cryer-columns { columns: 1; }
+    .town-cryer { padding: 1.4rem 1.2rem 1rem; }
+  }
+</style>

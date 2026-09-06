@@ -1,0 +1,35 @@
+---
+import Atmosphere from '../components/Atmosphere.astro';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const {
+  title,
+  description = 'A grimdark campaign chronicle for our Mordheim game group. Warbands, news, and tales from the City of the Damned.',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}/favicon.svg`} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pirata+One&family=IM+Fell+English:ital@0;1&family=UnifrakturMaguntia&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <Atmosphere />
+    <slot />
+  </body>
+</html>

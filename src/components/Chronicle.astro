@@ -1,0 +1,68 @@
+---
+import { chronicle } from '../data/chronicle';
+---
+
+<section id="chronicle" class="chronicle reveal">
+  <h2 class="section-title"><span class="ornament">✝</span> The Chronicle <span class="ornament">✝</span></h2>
+  <div class="timeline">
+    {
+      chronicle.map((entry) => (
+        <div class="timeline-entry">
+          <span class="timeline-date">{entry.date}</span>
+          <h3>{entry.title}</h3>
+          <p>{entry.body}</p>
+        </div>
+      ))
+    }
+  </div>
+</section>
+
+<style>
+  .timeline {
+    position: relative;
+    max-width: 720px;
+    margin: 0 auto;
+    padding-left: 2rem;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.55rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(var(--gold-dim), var(--blood), transparent);
+  }
+  .timeline-entry {
+    position: relative;
+    margin-bottom: 2rem;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    padding: 1.1rem 1.4rem;
+  }
+  .timeline-entry::before {
+    content: '✦';
+    position: absolute;
+    left: -1.95rem;
+    top: 1rem;
+    color: var(--gold);
+    text-shadow: 0 0 8px rgba(184, 150, 62, 0.6);
+  }
+  .timeline-date {
+    font-size: 0.78rem;
+    color: var(--gold);
+    font-variant: small-caps;
+    letter-spacing: 0.12em;
+  }
+  .timeline-entry h3 {
+    font-family: 'Pirata One', cursive;
+    font-size: 1.3rem;
+    color: var(--parchment);
+    margin: 0.2rem 0 0.4rem;
+    font-weight: normal;
+  }
+  .timeline-entry p {
+    font-size: 0.92rem;
+    color: var(--ink-dim);
+  }
+</style>
