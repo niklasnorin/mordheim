@@ -42,7 +42,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
             )}
             <h4>Tale</h4>
             <p class="profile-lore">{m.lore}</p>
-            <details class="storyline">
+            <details class="storyline" data-default-open={m.rank === 'hero' ? 'true' : 'false'} open={m.rank === 'hero'}>
               <summary>
                 <span class="storyline-toggle">📜 Follow their story</span>
               </summary>
@@ -331,7 +331,9 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
       const key = `${card.dataset.warband}:${card.dataset.member}`;
       profiles.forEach((p) => {
         p.hidden = p.dataset.profile !== key;
-        p.querySelectorAll<HTMLDetailsElement>('.storyline').forEach((d) => (d.open = false));
+        p.querySelectorAll<HTMLDetailsElement>('.storyline').forEach(
+          (d) => (d.open = d.dataset.defaultOpen === 'true')
+        );
       });
       dialog.showModal();
     });
