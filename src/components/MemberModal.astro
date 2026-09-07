@@ -16,8 +16,8 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
         <div class="profile" data-profile={`${wb.id}:${m.id}`} hidden>
           <div class="profile-header">
             <span class="profile-portrait" aria-hidden="true">
-              {wb.id === 'grimhammer' || wb.id === 'wolfensteins' ? (
-                <img src={`${import.meta.env.BASE_URL}/${wb.id === 'grimhammer' ? 'crest-hammer.svg' : 'crest-wolf.svg'}`} alt="" width="120" height="140" loading="lazy" />
+              {wb.crest ? (
+                <img src={`${import.meta.env.BASE_URL}/${wb.crest}`} alt="" width="120" height="140" loading="lazy" />
               ) : wb.sigil}
             </span>
             <div>
@@ -44,6 +44,18 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
               <>
                 <h4>Skills & Special Rules</h4>
                 <ul>{m.skills.map((s) => <li>{s}</li>)}</ul>
+              </>
+            )}
+            {m.prayers && m.prayers.length > 0 && (
+              <>
+                <h4>Prayers of Taal</h4>
+                <ul>{m.prayers.map((p) => <li>{p}</li>)}</ul>
+              </>
+            )}
+            {m.injuries && m.injuries.length > 0 && (
+              <>
+                <h4>Old Wounds</h4>
+                <ul class="injury-list">{m.injuries.map((i) => <li>{i}</li>)}</ul>
               </>
             )}
             <h4>Tale</h4>
@@ -227,6 +239,8 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
     border: 1px solid var(--gold-dim);
     transform: rotate(45deg);
   }
+  .injury-list li { color: var(--ink-dim); }
+  .injury-list li::before { border-color: var(--blood-bright); }
   .profile-lore {
     font-style: italic;
     color: var(--ink-dim);

@@ -1,10 +1,5 @@
 import type { Statline } from './warbands';
 
-import scenario01 from './history/scenario-01-the-warbands-enter-mordheim.json';
-import scenario02 from './history/scenario-02-first-blood-in-the-fallen-city.json';
-import scenario03 from './history/scenario-03-skirmish-at-the-broken-bridge.json';
-import scenario04 from './history/scenario-04-battle-of-the-merchant-quarter.json';
-
 /** A member's condition at the end of a scenario. */
 export type MemberStatus = 'active' | 'injured' | 'dead';
 
@@ -86,13 +81,11 @@ export interface ScenarioRecord {
   warbands: WarbandSnapshot[];
 }
 
-/** All scenarios played, ordered oldest first. */
-export const history: ScenarioRecord[] = [
-  scenario01,
-  scenario02,
-  scenario03,
-  scenario04,
-] as ScenarioRecord[];
+/**
+ * All scenarios played, ordered oldest first. Add one JSON file per battle under
+ * ./history/ and import it here as the campaign progresses.
+ */
+export const history: ScenarioRecord[] = [];
 
 export function getScenarioUrl(id: string): string {
   return `${import.meta.env.BASE_URL.replace(/\/$/, '')}/scenarios/${id}/`;

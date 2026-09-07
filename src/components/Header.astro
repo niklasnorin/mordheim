@@ -33,7 +33,7 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
     <div class="hero-caption" aria-hidden="true"><span>Reikland · The ruined city</span><span>A chronicle of fortune & ruin</span></div>
   </div>
   <div class="campaign-bar" aria-label="Campaign overview">
-    <div class="campaign-label"><span class="status-light" aria-hidden="true"></span> The campaign continues</div>
+    <div class="campaign-label"><span class="status-light" aria-hidden="true"></span> {history.length === 0 ? 'The campaign begins' : 'The campaign continues'}</div>
     <dl>
       <div><dt>Warbands</dt><dd>{warbands.length.toString().padStart(2, '0')}</dd></div>
       <div><dt>Scenarios recorded</dt><dd>{history.length.toString().padStart(2, '0')}</dd></div>

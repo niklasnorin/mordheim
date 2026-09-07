@@ -7,6 +7,12 @@ import Icon from './Icon.astro';
 <section id="chronicle" class="chronicle reveal">
   <p class="chronicle-label">An account of blood &amp; wyrdstone</p>
   <h2 class="section-title"><span class="ornament"><Icon name="cross" /></span> The Chronicle <span class="ornament"><Icon name="cross" /></span></h2>
+  {chronicle.length === 0 ? (
+    <p class="chronicle-empty">
+      No battle has yet been recorded. The first page of this chronicle is still blank, and the
+      ink is waiting.
+    </p>
+  ) : (
   <div class="timeline">
     {
       chronicle.map((entry, index) => (
@@ -22,6 +28,7 @@ import Icon from './Icon.astro';
       ))
     }
   </div>
+  )}
 </section>
 
 <style>
@@ -35,6 +42,16 @@ import Icon from './Icon.astro';
     font: 0.62rem/1.6 Georgia, serif;
     letter-spacing: 0.18em;
     text-transform: uppercase;
+  }
+  .chronicle-empty {
+    max-width: 620px;
+    margin: 0 auto;
+    text-align: center;
+    font-style: italic;
+    color: #b8b9a9;
+    border-top: 1px solid #444636;
+    border-bottom: 1px solid rgba(182, 154, 98, 0.1);
+    padding: 2.2rem 1.5rem;
   }
   .timeline {
     position: relative;

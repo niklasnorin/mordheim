@@ -7,13 +7,12 @@ interface Props {
 }
 
 const { warband } = Astro.props;
-const crest = warband.id === 'grimhammer' ? 'crest-hammer.svg' : warband.id === 'wolfensteins' ? 'crest-wolf.svg' : null;
 ---
 
-<article class="warband-card reveal" class:list={{ 'warband-ostland': warband.id === 'wolfensteins' }}>
+<article class="warband-card reveal" class:list={{ 'warband-ostland': warband.type === 'Ostlanders' }}>
   <div class="warband-header">
     <span class="warband-sigil" aria-hidden="true">
-      {crest ? <img src={`${import.meta.env.BASE_URL}/${crest}`} width="120" height="140" alt="" loading="lazy" /> : warband.sigil}
+      {warband.crest ? <img src={`${import.meta.env.BASE_URL}/${warband.crest}`} width="120" height="140" alt="" loading="lazy" /> : warband.sigil}
     </span>
     <div class="warband-title">
       <span class="warband-register">Registered company · {warband.members.length} souls</span>

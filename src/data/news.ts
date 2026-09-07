@@ -5,13 +5,13 @@ export interface NewsArticle {
   notice?: boolean;
 }
 
-export const issue = 'Issue XIII — Vorhexen, 1999';
+export const issue = 'Issue I — Nachexen, 2000';
 
 export const news: NewsArticle[] = [
   {
-    headline: 'Dwarfen Company Seizes the Merchant Quarter!',
+    headline: 'Northern Family Arrives at the Gates; Declines to Say Why',
     byline: 'From our correspondent in the ruins, who wishes to remain both anonymous and alive',
-    body: "Word reaches this humble publication that the dwarfen sellswords styling themselves Grimhammer's Oathbound have driven the Ostlander clan Wolfenstein from the shattered counting-houses of the old Merchant Quarter. Witnesses — a mad beggar and a one-eyed cat — report that the dwarf lord Thorgrim felled three men with a single sweep of his hammer before the Ostlanders withdrew in what their patriarch later described as 'a strategic redistribution of courage.' A young dwarf, Grimnir Coalfist by name, gave his life in the taking. His kin were heard singing in the deep tongue late into the night.",
+    body: "A company of Ostlanders styling themselves the Nordost Kin passed the eastern gate this week, seven strong and one ogre heavier than expected. Their elder, a grey-bearded man named Agnar, registered the warband with the customary two crowns and answered every question about their reasons for leaving the north with the same word, which this publication cannot print for reasons of space. They have taken lodging in a roofless granary and have already been observed measuring the walls of it, which the neighbourhood finds either reassuring or ominous depending on the hour.",
   },
   {
     headline: 'Wyrdstone Prices Soar as Winter Closes In',
@@ -24,9 +24,9 @@ export const news: NewsArticle[] = [
     body: 'Godly citizens are once more warned against venturing near the sewer mouths after dusk. Three treasure hunters of the Breucker company entered the drains beneath the Rock a fortnight past. Only their boots were recovered — neatly arranged, which somehow made matters worse. Sightings of man-sized vermin walking upright continue, and continue to be officially denied by authorities who no longer exist.',
   },
   {
-    headline: 'Ostlander Camp Claims Bear Sighting; Bear Unavailable for Comment',
+    headline: 'Priest of Taal Preaches in the Ruins; Congregation Chiefly Crows',
     byline: 'By our tavern correspondent',
-    body: "Members of the Wolfenstein clan swear upon several saints that a great bear now dens in the ruins of the Temple of Shallya, and that it spoke to their kinsman Yuri in the tongue of Ostland, demanding tribute of honey and strong drink. This publication notes that the clan's vodka stores had run notably low that same evening, and offers no further comment on the matter of talking bears.",
+    body: "A shaven-headed priest of Taal, one Skalle, has taken to holding service upon a collapsed rooftop in the eastern quarter, on the grounds that a city is merely a forest that has forgotten itself. Attendance is reported as four members of his adopted family, one ogre who slept throughout, and a great many crows. The priest was seen to cross a twelve-foot gap between tenements without visible effort, a feat the faithful attribute to the god of wild places and the sceptical attribute to a very long run-up.",
   },
   {
     notice: true,
