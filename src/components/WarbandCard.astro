@@ -17,7 +17,7 @@ const { warband } = Astro.props;
     <div class="warband-title">
       <span class="warband-register">Registered company · {warband.members.length} souls</span>
       <h3>{warband.name}</h3>
-      <span class="warband-type">{warband.type} — led by {warband.player}</span>
+      <span class="warband-type">{warband.type}{warband.player && ` — led by ${warband.player}`}</span>
     </div>
     <div class="warband-stats">
       <span class="rating">{warband.rating}</span>
