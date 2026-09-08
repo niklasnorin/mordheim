@@ -158,17 +158,19 @@ export const warbands: Warband[] = [
     ],
   },
   {
-    id: 'dwarf-treasure-hunters',
-    name: 'Dwarf Treasure Hunters',
+    id: 'bitterbrow-expedition',
+    name: 'The Bitterbrow Expedition',
     type: 'Dwarf Treasure Hunters',
-    sigil: 'DTH',
+    sigil: 'BE',
+    crest: 'crest-bitterbrow.png',
     player: '',
     rating: 0,
     battles: 0,
     victories: 0,
     wyrdstone: 0,
     gold: 0,
-    lore: '',
+    lore:
+      'The Bitterbrow Expedition says little of why it came west from Karak Barazund. It is rumored that old entries in the clan’s book of grudges have led them to Mordheim, and that certain debts can be paid only among the ruins. His companions whisper that if enough names are struck from the ledger, he may one day return beneath the deep-teal banners and ascend the throne.',
     members: [
       {
         id: 'jorgrim',
@@ -180,7 +182,8 @@ export const warbands: Warband[] = [
         stats: { M: 3, WS: 5, BS: 4, S: 3, T: 4, W: 1, I: 2, A: 1, Ld: 9 },
         equipment: [],
         skills: [],
-        lore: '',
+        lore:
+          'Jorgrim was raised in the dark-water halls of Karak Barazund, heir to the Bitterbrows’ stubborn traditions and a throne he does not yet claim. Their kings may not truly ascend until old grudges from the Battle of a Thousand Woes are answered; which entries brought him to Mordheim, he refuses to say. He calls this merely an expedition. The others call him the uncrowned — though never within earshot.',
       },
       {
         id: 'norri',
