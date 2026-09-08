@@ -35,8 +35,8 @@ export const news: NewsArticle[] = [
     body: 'The Sisterhood of Sigmar offers 50 gold crowns for the safe return of any relics looted from the Convent of the Rock. No questions shall be asked. Sigmar, however, sees all, and He has questions.',
   },
   {
-    headline: 'The Comet Grows Brighter, Say Doomsayers; Doomsayers Grow Louder, Say Everyone',
-    byline: 'By the Editor',
-    body: 'The twin-tailed shadow that hangs above the City of the Damned has, by all accounts, grown brighter these past weeks. The Cult of the Purple Hand claims it heralds the end of all things. The Cult of the Red Dawn claims it heralds the beginning of all things. The landlord of the Last Drop tavern claims it makes for excellent drinking light, and his prices have risen accordingly.',
+    headline: 'Teal-Bannered Dwarfs Enter Mordheim; Purpose Filed Under “Old Business”',
+    byline: 'By our correspondent at the eastern gate, from a respectful distance',
+    body: 'A company of dwarfs calling itself the Bitterbrow Expedition entered Mordheim beneath a deep-teal sigil and with rather less luggage than weaponry. Their leader, Jorgrim Bitterbrow, has been seen comparing street names with entries in a heavy iron-bound book, though whether he seeks treasure, debtors, or something old enough to be both remains unclear. Asked what business brought them to the city, one clansman replied that the business had brought itself; our correspondent judged this answer complete and withdrew.',
   },
 ];
