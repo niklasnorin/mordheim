@@ -4,15 +4,25 @@ import { getMemberStory, getScenarioUrl } from '../data/history';
 import Icon from './Icon.astro';
 
 const statKeys = ['M', 'WS', 'BS', 'S', 'T', 'W', 'I', 'A', 'Ld'] as const;
+const statNames = {
+  M: 'Movement', WS: 'Weapon Skill', BS: 'Ballistic Skill', S: 'Strength',
+  T: 'Toughness', W: 'Wounds', I: 'Initiative', A: 'Attacks', Ld: 'Leadership',
+};
 
 const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
 ---
 
 <dialog id="member-dialog" class="member-dialog">
-  <button class="modal-close" id="modal-close" aria-label="Close"><Icon name="close" size={16} /></button>
+  <div class="dialog-toolbar">
+    <button type="button" class="modal-close" id="modal-close">Close <Icon name="close" size={16} /></button>
+  </div>
+  <div class="dialog-body">
   {
     warbands.map((wb) =>
-      wb.members.map((m) => (
+      wb.members.map((m) => {
+        const story = getMemberStory(m.id);
+        const openStory = m.rank === 'hero' && story.length > 0;
+        return (
         <div class="profile" data-profile={`${wb.id}:${m.id}`} hidden>
           <div class="profile-header">
             <span class="profile-portrait" aria-hidden="true">
@@ -22,7 +32,8 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
             </span>
             <div>
               <p class="profile-label">From the campaign archives · {m.rank}</p>
-              <h3>{m.name}</h3>
+              <h3 id={`profile-title-${wb.id}-${m.id}`} tabindex="-1">{m.name}</h3>
+              {m.epithet && <p class="profile-epithet">{m.epithet}</p>}
               <span class="member-role">
                 {m.role} — {wb.name}
                 {m.dead && <span class="dead-marker"> <Icon name="cross" size={12} /> Fallen</span>}
@@ -30,13 +41,23 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
             </div>
           </div>
           <table class="statline">
+            <caption class="visually-hidden">{m.name}'s statline</caption>
             <thead>
-              <tr>{statKeys.map((k) => <th>{k}</th>)}</tr>
+              <tr>{statKeys.map((k) => (
+                <th scope="col">
+                  <abbr title={statNames[k]} aria-hidden="true">{k}</abbr>
+                  <span class="visually-hidden">{statNames[k]}</span>
+                </th>
+              ))}</tr>
             </thead>
             <tbody>
               <tr>{statKeys.map((k) => <td>{m.stats[k]}</td>)}</tr>
             </tbody>
           </table>
+          <details class="stat-guide">
+            <summary>Stat abbreviations</summary>
+            <dl>{statKeys.map((k) => <div><dt>{k}</dt><dd>{statNames[k]}</dd></div>)}</dl>
+          </details>
           <div class="profile-section">
             <h4>Equipment</h4>
             <ul>{m.equipment.map((e) => <li>{e}</li>)}</ul>
@@ -58,20 +79,19 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
                 <ul class="injury-list">{m.injuries.map((i) => <li>{i}</li>)}</ul>
               </>
             )}
-            <h4>Tale</h4>
-            <p class="profile-lore">{m.lore}</p>
-            <details class="storyline" data-default-open={m.rank === 'hero' ? 'true' : 'false'} open={m.rank === 'hero'}>
+            {m.lore.trim() && (
+              <>
+                <h4>Tale</h4>
+                <p class="profile-lore">{m.lore}</p>
+              </>
+            )}
+            {story.length > 0 || (m.dead && m.death) ? (
+            <details class="storyline" data-default-open={openStory ? 'true' : 'false'} open={openStory}>
               <summary>
                 <span class="storyline-toggle">Follow their story <Icon name="arrow-down" size={14} /></span>
               </summary>
               <ol class="story-timeline">
-                <li class="story-chapter story-backstory">
-                  <span class="story-marker" aria-hidden="true"><Icon name="diamond" size={12} /></span>
-                  <h5>The Tale Begins</h5>
-                  <span class="story-meta">{m.epithet} — {wb.name}</span>
-                  <p class="story-text">{m.lore}</p>
-                </li>
-                {getMemberStory(m.id).map((entry) => (
+                {story.map((entry) => (
                   <li
                     class:list={[
                       'story-chapter',
@@ -115,11 +135,17 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
                 )}
               </ol>
             </details>
+            ) : (
+              <p class="story-empty">
+                {m.dead ? 'Their tale has ended. No battles have yet been recorded.' : 'The tale continues. No battles have yet been recorded.'}
+              </p>
+            )}
           </div>
         </div>
-      ))
+      ); })
     )
   }
+  </div>
 </dialog>
 
 <style>
@@ -131,15 +157,19 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
     margin: auto;
     width: calc(100% - 2rem);
     max-height: 88vh;
-    overflow-y: auto;
-    padding: 2.5rem;
+    max-height: 88dvh;
+    overflow: hidden;
+    padding: 0;
     color: var(--ink);
   }
-  .profile-label { font-size: .55rem; text-transform: uppercase; letter-spacing: .14em; color: var(--gold); margin-bottom: .4rem; }
+  .dialog-toolbar { display: flex; justify-content: flex-end; flex-shrink: 0; padding: .5rem .75rem; border-bottom: 1px solid var(--border); }
+  .dialog-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1.5rem 2rem 2rem; }
+  .profile-label { font: var(--text-meta)/1.6 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; color: var(--gold); margin-bottom: .4rem; }
+  .profile-epithet { color: var(--ink-dim); font-size: var(--text-ui); font-style: italic; margin: .25rem 0; }
   .profile-portrait { flex-shrink: 0; }
   .profile-portrait img { display: block; width: 70px; height: auto; }
   @media (max-width: 540px) {
-    .member-dialog { padding: 2.7rem 1rem 1.5rem; }
+    .dialog-body { padding: 1.25rem 1rem 1.5rem; }
     .profile-portrait img { width: 48px; }
   }
   .member-dialog::backdrop {
@@ -147,6 +177,8 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
     backdrop-filter: blur(3px);
   }
   .member-dialog[open] {
+    display: flex;
+    flex-direction: column;
     animation: modal-in 0.3s ease;
   }
   @keyframes modal-in {
@@ -155,19 +187,19 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
   }
 
   .modal-close {
-    position: absolute;
-    top: 0.8rem;
-    right: 0.9rem;
     background: none;
     border: 1px solid var(--border);
     color: var(--ink-dim);
-    font-size: 1rem;
-    width: 2rem;
-    height: 2rem;
+    font: var(--text-ui)/1.5 var(--font-utility);
+    min-width: var(--control-size);
+    min-height: var(--control-size);
+    padding: .5rem .75rem;
     cursor: pointer;
     transition: all 0.2s;
-    display: grid;
-    place-items: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
   }
   .modal-close:hover {
     color: var(--blood-bright);
@@ -183,12 +215,14 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
     margin-bottom: 1rem;
   }
   .profile-portrait {
-    font-size: 3.4rem;
+    font: 1.5rem/1 var(--font-utility);
     filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.7));
   }
+  .profile-header > div { min-width: 0; }
   .profile-header h3 {
     font-family: 'Pirata One', cursive;
     font-size: 1.9rem;
+    overflow-wrap: anywhere;
     color: var(--parchment);
     font-weight: normal;
   }
@@ -196,12 +230,13 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
     font-size: 0.9rem;
     color: var(--blood-bright);
     font-variant: small-caps;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.04em;
   }
   .dead-marker { color: var(--blood-bright); }
 
   .statline {
     width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
     margin: 1rem 0;
   }
@@ -210,22 +245,27 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
     border: 1px solid var(--border);
     text-align: center;
     padding: 0.35rem 0.2rem;
-    font-size: 0.9rem;
+    font: var(--text-ui)/1.6 var(--font-utility);
+    font-variant-numeric: tabular-nums;
   }
   .statline th {
-    font-family: 'Pirata One', cursive;
     color: var(--gold);
     background: rgba(184, 150, 62, 0.06);
-    letter-spacing: 0.05em;
     font-weight: normal;
   }
+  .statline abbr { text-decoration: none; }
+  .stat-guide { font: var(--text-ui)/1.6 var(--font-utility); }
+  .stat-guide summary { cursor: pointer; color: var(--gold); min-height: var(--control-size); padding: .65rem 0; }
+  .stat-guide dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .5rem 1rem; margin-bottom: 1rem; }
+  .stat-guide dl div { display: flex; gap: .5rem; }
+  .stat-guide dt { min-width: 2rem; color: var(--gold); }
 
   .profile-section h4 {
     font-variant: small-caps;
     letter-spacing: 0.15em;
     color: var(--blood-bright);
     margin: 1rem 0 0.3rem;
-    font-size: 0.95rem;
+    font-size: var(--text-body);
   }
   .profile-section ul { list-style: none; padding: 0; margin: 0; }
   .profile-section li { position: relative; padding-left: 1rem; }
@@ -244,8 +284,9 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
   .profile-lore {
     font-style: italic;
     color: var(--ink-dim);
-    font-size: 0.95rem;
+    font-size: var(--text-body);
   }
+  .story-empty { color: var(--ink-dim); border-top: 1px solid var(--border); margin-top: 1.5rem; padding-top: 1rem; font-size: var(--text-body); }
 
   .storyline {
     margin-top: 1.4rem;
@@ -267,6 +308,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
     color: var(--gold);
     border: 1px solid var(--gold-dim);
     padding: 0.45rem 1rem;
+    min-height: var(--control-size);
     display: inline-block;
     transition: all 0.25s;
   }
@@ -304,7 +346,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
   .story-chapter:last-child {
     padding-bottom: 0;
   }
-  .story-chapter::before {
+  .profile-section .story-chapter::before {
     content: none;
   }
   .story-marker {
@@ -329,9 +371,9 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
   .story-chapter h5 a:hover { color: var(--gold); }
   .story-meta {
     display: block;
-    font-size: 0.78rem;
+    font-size: var(--text-ui);
     font-variant: small-caps;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.04em;
     color: var(--ink-dim);
     margin-bottom: 0.35rem;
   }
@@ -339,7 +381,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
   .story-result.defeat { color: var(--blood-bright); }
   .story-result.draw { color: var(--ink-dim); }
   .story-text {
-    font-size: 0.88rem;
+    font-size: var(--text-body);
     color: var(--ink-dim);
     margin: 0.25rem 0;
   }
@@ -350,9 +392,6 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
   }
   .story-highlight strong { color: var(--gold); }
   .story-lowlight strong { color: var(--blood-bright); }
-  .story-backstory .story-text {
-    font-style: italic;
-  }
   .story-fell .story-marker,
   .story-fell h5 {
     color: var(--blood-bright);
@@ -366,24 +405,35 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
 </style>
 
 <script>
-  const dialog = document.getElementById('member-dialog') as HTMLDialogElement;
-  const profiles = dialog.querySelectorAll<HTMLElement>('[data-profile]');
+  const dialog = document.querySelector<HTMLDialogElement>('#member-dialog')!;
+  const body = dialog.querySelector<HTMLElement>('.dialog-body')!;
+  const profiles = [...dialog.querySelectorAll<HTMLElement>('[data-profile]')];
+  let opener: HTMLButtonElement | null = null;
 
-  document.querySelectorAll<HTMLElement>('.member-card').forEach((card) => {
+  document.querySelectorAll<HTMLButtonElement>('.member-card').forEach((card) => {
     card.addEventListener('click', () => {
       const key = `${card.dataset.warband}:${card.dataset.member}`;
+      const profile = profiles.find((p) => p.dataset.profile === key);
+      const heading = profile?.querySelector<HTMLElement>('h3');
+      if (!profile || !heading) throw new Error(`Missing warrior profile: ${key}`);
+      opener = card;
       profiles.forEach((p) => {
-        p.hidden = p.dataset.profile !== key;
-        p.querySelectorAll<HTMLDetailsElement>('.storyline').forEach(
+        p.hidden = p !== profile;
+        p.querySelectorAll<HTMLDetailsElement>('details').forEach(
           (d) => (d.open = d.dataset.defaultOpen === 'true')
         );
       });
+      dialog.setAttribute('aria-labelledby', heading.id);
       dialog.showModal();
+      heading.focus({ preventScroll: true });
+      body.scrollTop = 0;
     });
   });
 
   document.getElementById('modal-close')!.addEventListener('click', () => dialog.close());
+  dialog.addEventListener('close', () => opener?.focus({ preventScroll: true }));
   dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) dialog.close();
+    const bounds = dialog.getBoundingClientRect();
+    if (e.target === dialog && (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom)) dialog.close();
   });
 </script>

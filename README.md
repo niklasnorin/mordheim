@@ -9,6 +9,7 @@ A grimdark, interactive campaign chronicle for our Mordheim game group, built wi
 - 🌧 Rainy, moody atmosphere — canvas rain, flying crows, drifting fog, and distant lightning
 - 📰 **Town Cryer** — a parchment broadsheet with news from the City of the Damned
 - ⚔ **Warbands** — rosters with clickable warrior profiles (statlines, equipment, skills, and lore)
+- **Quick reference** — persistent section navigation, compact mobile rosters, scrollable standings with pinned warband names, and accessible warrior dialogs with stat definitions
 - 🏆 **Campaign Standings** — ratings, battles, wyrdstone, and gold
 - 📜 **The Chronicle** — a timeline of campaign events
 - ⚔ **Battle reports** — open any Chronicle chapter or warrior story entry for scenario outcomes, paired warband prologues and epilogues, the battle narrative, campaign consequences, and every participant's accomplishments

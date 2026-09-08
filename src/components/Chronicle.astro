@@ -6,12 +6,15 @@ import Icon from './Icon.astro';
 
 <section id="chronicle" class="chronicle reveal">
   <p class="chronicle-label">An account of blood &amp; wyrdstone</p>
-  <h2 class="section-title"><span class="ornament"><Icon name="cross" /></span> The Chronicle <span class="ornament"><Icon name="cross" /></span></h2>
+  <h2 class="section-title"><span class="ornament" aria-hidden="true"><Icon name="cross" /></span> The Chronicle <span class="ornament" aria-hidden="true"><Icon name="cross" /></span></h2>
   {chronicle.length === 0 ? (
-    <p class="chronicle-empty">
+    <div class="chronicle-empty empty-state">
+    <p>
       No battle has yet been recorded. The first page of this chronicle is still blank, and the
       ink is waiting.
     </p>
+    <a href="#warbands">Meet the warbands</a>
+    </div>
   ) : (
   <div class="timeline">
     {
@@ -34,24 +37,18 @@ import Icon from './Icon.astro';
 <style>
   h3 a { color: inherit; text-decoration: none; }
   h3 a:hover { color: var(--gold); text-decoration: underline; }
-  .report-link { display: inline-flex; align-items: center; gap: .4rem; margin-top: 1rem; color: var(--gold); text-underline-offset: .25em; }
+  .report-link { display: inline-flex; align-items: center; min-height: var(--control-size); gap: .4rem; margin-top: 1rem; color: var(--gold); text-underline-offset: .25em; }
   .chronicle-label {
     text-align: center;
     margin-bottom: 0.8rem;
     color: #b69a62;
-    font: 0.62rem/1.6 Georgia, serif;
+    font: var(--text-meta)/1.6 var(--font-utility);
     letter-spacing: 0.18em;
     text-transform: uppercase;
   }
   .chronicle-empty {
     max-width: 620px;
     margin: 0 auto;
-    text-align: center;
-    font-style: italic;
-    color: #b8b9a9;
-    border-top: 1px solid #444636;
-    border-bottom: 1px solid rgba(182, 154, 98, 0.1);
-    padding: 2.2rem 1.5rem;
   }
   .timeline {
     position: relative;
@@ -98,7 +95,7 @@ import Icon from './Icon.astro';
     font-style: italic;
   }
   .timeline-date {
-    font-size: 0.68rem;
+    font-size: var(--text-ui);
     color: #b69a62;
     font-variant: small-caps;
     letter-spacing: 0.12em;
@@ -112,7 +109,7 @@ import Icon from './Icon.astro';
     font-weight: normal;
   }
   .timeline-entry p {
-    font-size: 0.94rem;
+    font-size: var(--text-body);
     line-height: 1.85;
     color: #b8b9a9;
   }
@@ -131,7 +128,7 @@ import Icon from './Icon.astro';
     .timeline-entry { padding: 1.2rem 1rem; }
     .timeline-entry::before { left: -1.48rem; top: 1.5rem; }
     .timeline-number { position: static; float: right; font-size: 1.2rem; margin-left: 0.6rem; }
-    .timeline-date { font-size: 0.62rem; letter-spacing: 0.08em; }
-    .chronicle-label { font-size: 0.55rem; letter-spacing: 0.1em; }
+    .timeline-date { letter-spacing: 0.04em; }
+    .chronicle-label { letter-spacing: 0.1em; }
   }
 </style>

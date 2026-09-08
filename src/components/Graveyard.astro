@@ -63,7 +63,14 @@ const backRows = [rows.length, rows.length + 1];
     </svg>
   </div>
   <p class="memorial-label">In memoriam</p>
-  <h2 class="section-title"><span class="ornament"><Icon name="tombstone" /></span> The Graveyard <span class="ornament"><Icon name="tombstone" /></span></h2>
+  <h2 class="section-title"><span class="ornament" aria-hidden="true"><Icon name="tombstone" /></span> The Graveyard <span class="ornament" aria-hidden="true"><Icon name="tombstone" /></span></h2>
+  {fallen.length === 0 ? (
+    <div class="graveyard-empty empty-state">
+      <p>No graves yet. Mordheim is patient.</p>
+      <a href="#warbands">Return to the living</a>
+    </div>
+  ) : (
+  <>
   <p class="section-intro">
     Here lie the fallen of the campaign, row upon row among the nameless dead of Mordheim. The
     freshest graves stand nearest; older battles recede into the fog.
@@ -167,13 +174,14 @@ const backRows = [rows.length, rows.length + 1];
             );
           })
       }
-      {fallen.length === 0 && <p class="graveyard-empty">No graves yet. Mordheim is patient.</p>}
     </div>
     <div class="fog fog-1" aria-hidden="true"></div>
     <div class="fog fog-2" aria-hidden="true"></div>
     <div class="fog fog-3" aria-hidden="true"></div>
   </div>
   <p class="memorial-footer">Their names endure where their footsteps do not.</p>
+  </>
+  )}
 </section>
 
 <style>
@@ -187,7 +195,7 @@ const backRows = [rows.length, rows.length + 1];
   .memorial-label, .memorial-footer {
     text-align: center;
     color: #b69a62;
-    font: 0.62rem/1.8 Georgia, serif;
+    font: var(--text-meta)/1.8 var(--font-utility);
     letter-spacing: 0.2em;
     text-transform: uppercase;
     margin-bottom: 0.75rem;
@@ -198,14 +206,14 @@ const backRows = [rows.length, rows.length + 1];
     text-transform: none;
     letter-spacing: 0.04em;
     color: #a6aa99;
-    font-size: 0.8rem;
+    font-size: var(--text-body);
   }
   .graveyard .section-intro {
     max-width: 550px;
     margin-left: auto;
     margin-right: auto;
     color: #b8b9a9;
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     line-height: 1.8;
   }
   .grave-toolbar {
@@ -214,10 +222,8 @@ const backRows = [rows.length, rows.length + 1];
     margin: 1.2rem 0 0.4rem;
   }
   .spread-toggle {
-    font: inherit;
-    font-size: 0.72rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+    font: var(--text-ui)/1.5 var(--font-utility);
+    min-height: var(--control-size);
     color: var(--gold);
     background: #111915ee;
     border: 1px solid var(--border);
@@ -471,9 +477,8 @@ const backRows = [rows.length, rows.length + 1];
   }
 
   .graveyard-empty {
-    font-style: italic;
-    color: var(--ink-dim);
-    padding: 2rem 0;
+    max-width: 620px;
+    margin-inline: auto;
   }
 
   /* ── Crows perched on the stones ── */

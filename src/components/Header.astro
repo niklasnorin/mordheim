@@ -6,17 +6,25 @@ import Icon from './Icon.astro';
 const fallen = warbands.reduce((total, warband) => total + warband.members.filter((member) => member.dead).length, 0);
 ---
 
-<header class="site-header">
-  <div class="header-bar">
+  <div class="header-bar" id="campaign-navigation">
     <a class="wordmark" href="#top" aria-label="Mordheim home"><Icon name="cross" size={18} /> Mordheim <span class="wordmark-note">Campaign archive</span></a>
     <nav class="site-nav" aria-label="Campaign sections">
-      <a href="#town-cryer">Town Cryer</a>
+      <a class="secondary-section" href="#town-cryer">Town Cryer</a>
       <a href="#warbands">Warbands</a>
       <a href="#standings">Standings</a>
-      <a href="#chronicle">Chronicle</a>
-      <a href="#graveyard">Graveyard</a>
+      <a class="secondary-section" href="#chronicle">Chronicle</a>
+      <a class="secondary-section" href="#graveyard">Graveyard</a>
+      <details class="section-menu">
+        <summary>Sections <Icon name="arrow-down" size={14} /></summary>
+        <div class="section-menu-links">
+          <a href="#town-cryer">Town Cryer</a>
+          <a href="#chronicle">Chronicle</a>
+          <a href="#graveyard">Graveyard</a>
+        </div>
+      </details>
     </nav>
   </div>
+<header class="site-header">
   <div class="hero">
     <img class="hero-city" src={`${import.meta.env.BASE_URL}/ruined-city.jpg`} alt="" width="1536" height="1024" fetchpriority="high" />
     <div class="hero-shade" aria-hidden="true"></div>
@@ -45,6 +53,9 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
 <style>
   .site-header { position: relative; z-index: 10; }
   .header-bar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
     min-height: 84px;
     display: flex;
     align-items: center;
@@ -52,23 +63,30 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
     gap: 2rem;
     padding: 1rem max(2rem, calc((100vw - 1240px) / 2));
     padding-right: max(5rem, calc((100vw - 1240px) / 2));
-    background: #0c110ff2;
+    background: #0c110f;
     border-bottom: 1px solid var(--border);
   }
   .wordmark { color: var(--parchment); text-decoration: none; font-family: 'Pirata One', Georgia, serif; font-size: 1.55rem; white-space: nowrap; }
   .wordmark > :global(svg) { color: var(--gold); margin-right: .45rem; }
-  .wordmark-note { display: block; margin-left: 2rem; font: .55rem/1.5 Georgia, serif; text-transform: uppercase; letter-spacing: .23em; color: var(--ink-dim); }
-  .site-nav { display: flex; gap: 1.8rem; flex-wrap: wrap; }
-  .site-nav a { position: relative; padding: .5rem 0; color: var(--ink-dim); text-decoration: none; font-size: .8rem; letter-spacing: .06em; transition: color .2s; }
+  .wordmark-note { display: block; margin-left: 2rem; font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; color: var(--ink-dim); }
+  .site-nav { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; }
+  .site-nav a, .section-menu summary { display: flex; align-items: center; gap: .5rem; min-height: var(--control-size); position: relative; padding: .5rem .25rem; color: var(--ink-dim); text-decoration: none; font: var(--text-ui)/1.5 var(--font-utility); transition: color .2s; }
   .site-nav a::after { content: ''; position: absolute; height: 1px; bottom: 0; left: 0; right: 100%; background: var(--gold); transition: right .2s; }
-  .site-nav a:hover { color: var(--parchment); }
-  .site-nav a:hover::after { right: 0; }
+  .site-nav a:hover, .site-nav a[aria-current], .section-menu summary:hover { color: var(--parchment); }
+  .site-nav a:hover::after, .site-nav a[aria-current]::after { right: 0; }
+  .section-menu { display: none; position: relative; }
+  .section-menu summary { cursor: pointer; list-style: none; }
+  .section-menu summary::-webkit-details-marker { display: none; }
+  .section-menu[open] summary { color: var(--parchment); }
+  .section-menu[open] summary :global(svg) { transform: rotate(180deg); }
+  .section-menu-links { position: absolute; top: calc(100% + .5rem); right: 0; min-width: 12rem; padding: .5rem; border: 1px solid var(--gold-dim); background: var(--bg-panel); box-shadow: 0 8px 24px #0006; }
+  .section-menu-links a { padding-inline: .75rem; }
   .hero { position: relative; min-height: clamp(440px, 36vw, 580px); display: grid; place-items: center; overflow: hidden; isolation: isolate; }
   .hero-city, .hero-shade { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; }
   .hero-city { object-fit: cover; object-position: center 60%; }
   .hero-shade { background: linear-gradient(180deg, #0b110f30, #0b110f10 45%, #0b110fdb), radial-gradient(ellipse at 50% 35%, #09110f70, transparent 65%); }
   .hero-content { text-align: center; padding: 3rem 1.5rem 4.5rem; }
-  .eyebrow { display: flex; align-items: center; justify-content: center; gap: 1rem; text-transform: uppercase; color: #c6b58e; font: .65rem/1.5 Georgia, serif; letter-spacing: .28em; margin-bottom: 1.8rem; }
+  .eyebrow { display: flex; align-items: center; justify-content: center; gap: 1rem; text-transform: uppercase; color: #c6b58e; font: var(--text-meta)/1.5 var(--font-utility); letter-spacing: .18em; margin-bottom: 1.8rem; }
   .eyebrow span { width: 34px; height: 1px; background: #b69a6260; }
   .logo { font-weight: normal; line-height: 1; }
   .logo-main { display: block; font-family: 'Pirata One', Georgia, serif; font-size: clamp(5rem, 12vw, 10rem); letter-spacing: .035em; color: #e7dcc5; text-shadow: 0 2px 0 #76654c, 0 6px 24px #0009; }
@@ -77,36 +95,89 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
   .hero-rule::before, .hero-rule::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-dim)); }
   .hero-rule::after { transform: rotate(180deg); }
   .tagline { color: #c5c4b3; font-style: italic; font-size: 1.05rem; line-height: 1.7; text-shadow: 0 2px 8px #000; }
-  .hero-link { display: inline-flex; align-items: center; gap: 2rem; padding: .8rem 1.6rem; margin-top: 2rem; border: 1px solid #ac916077; background: #0b110fcc; text-decoration: none; color: var(--parchment); font-size: .75rem; text-transform: uppercase; letter-spacing: .16em; transition: background .2s, border-color .2s; }
+  .hero-link { display: inline-flex; align-items: center; min-height: var(--control-size); gap: 2rem; padding: .8rem 1.6rem; margin-top: 2rem; border: 1px solid #ac916077; background: #0b110fcc; text-decoration: none; color: var(--parchment); font: var(--text-ui)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; transition: background .2s, border-color .2s; }
   .hero-link:hover { background: #283126; border-color: var(--gold); }
   .hero-link :global(svg) { color: var(--gold); }
-  .hero-caption { position: absolute; bottom: 1.5rem; left: 3rem; right: 3rem; display: flex; justify-content: space-between; gap: 1rem; color: #b5b8a5; text-transform: uppercase; letter-spacing: .17em; font-size: .55rem; }
+  .hero-caption { position: absolute; bottom: 1.5rem; left: 3rem; right: 3rem; display: flex; justify-content: space-between; gap: 1rem; color: #b5b8a5; text-transform: uppercase; letter-spacing: .1em; font-size: var(--text-meta); }
   .campaign-bar { display: flex; justify-content: space-between; align-items: center; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 1.5rem 2rem; border-block: 1px solid var(--border); background: #101713ee; }
-  .campaign-label { color: var(--ink-dim); text-transform: uppercase; letter-spacing: .13em; font-size: .6rem; display: flex; align-items: center; gap: .6rem; }
+  .campaign-label { color: var(--ink-dim); text-transform: uppercase; letter-spacing: .1em; font-size: var(--text-meta); display: flex; align-items: center; gap: .6rem; }
   .status-light { width: 5px; height: 5px; background: #97af79; box-shadow: 0 0 9px #97af7970; transform: rotate(45deg); }
   dl { display: flex; gap: 3rem; }
   dl div { display: flex; flex-direction: row-reverse; align-items: center; gap: .7rem; }
-  dt { color: var(--ink-dim); font-size: .65rem; }
-  dd { color: var(--gold); font-size: 1.45rem; line-height: 1; font-variant-numeric: tabular-nums; }
+  dt { color: var(--ink-dim); font: var(--text-ui)/1.5 var(--font-utility); }
+  dd { color: var(--gold); font: 1.45rem/1 var(--font-utility); font-variant-numeric: tabular-nums; }
   :global([data-theme='day']) .hero-city { filter: brightness(1.35) saturate(.75); }
-  @media (max-width: 900px) {
-    .header-bar { flex-direction: column; align-items: flex-start; gap: .8rem; padding: 1rem 4.5rem 1rem 1.5rem; }
-    .wordmark-note { display: inline; margin-left: 1rem; }
-    .site-nav { gap: 1.5rem; }
+  @media (max-width: 1100px) {
     .campaign-bar { justify-content: center; flex-wrap: wrap; gap: 1rem; }
+  }
+  @media (max-width: 900px) {
+    .header-bar { flex-direction: column; align-items: stretch; gap: .25rem; padding: .5rem 1rem; }
+    .wordmark { min-height: var(--control-size); padding-right: 3.5rem; display: flex; align-items: center; }
+    .wordmark-note { margin-left: 1rem; }
+    .site-nav { justify-content: space-between; gap: .5rem; }
+    .site-nav .secondary-section { display: none; }
+    .section-menu { display: block; }
   }
   @media (max-width: 540px) {
     .hero { min-height: 480px; }
+    .logo-main { font-size: clamp(4rem, 21vw, 5rem); }
     .hero-content { padding-inline: 1rem; }
     .hero-caption { left: 1rem; right: 1rem; justify-content: center; }
     .hero-caption span:last-child { display: none; }
-    .eyebrow { font-size: .55rem; letter-spacing: .19em; }
-    .site-nav { gap: .35rem 1rem; }
-    .site-nav a { font-size: .73rem; }
-    .wordmark-note { font-size: .5rem; }
+    .eyebrow { letter-spacing: .1em; gap: .5rem; }
+    .eyebrow span { width: 20px; flex-shrink: 0; }
+    .wordmark-note { display: none; }
     .campaign-bar { padding: 1.2rem 1rem; }
     dl { width: 100%; justify-content: space-around; gap: .8rem; }
     dl div { flex-direction: column-reverse; gap: .4rem; }
-    dt { font-size: .6rem; }
+    dt { text-align: center; }
   }
 </style>
+
+<script>
+  const navigation = document.querySelector<HTMLElement>('#campaign-navigation')!;
+  const menu = navigation.querySelector<HTMLDetailsElement>('.section-menu')!;
+  const summary = menu.querySelector('summary')!;
+  const links = [...navigation.querySelectorAll<HTMLAnchorElement>('.site-nav a')];
+  const sections = [...document.querySelectorAll<HTMLElement>('main > section[id]')];
+  let queued = false;
+
+  function updateNavigation() {
+    queued = false;
+    const offset = navigation.getBoundingClientRect().height + 16;
+    document.documentElement.style.setProperty('--section-offset', `${offset}px`);
+    const atBottom = window.scrollY > 0 && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+    const current = atBottom ? sections.at(-1) : sections.filter((section) => section.getBoundingClientRect().top <= offset + 16).at(-1);
+    for (const link of links) {
+      if (link.hash === `#${current?.id}`) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    }
+  }
+
+  function queueUpdate() {
+    if (!queued) {
+      queued = true;
+      requestAnimationFrame(updateNavigation);
+    }
+  }
+
+  window.addEventListener('scroll', queueUpdate, { passive: true });
+  new ResizeObserver(queueUpdate).observe(navigation);
+  updateNavigation();
+
+  menu.addEventListener('click', (event) => {
+    if (event.target instanceof Element && event.target.closest('a')) {
+      menu.open = false;
+      summary.focus({ preventScroll: true });
+    }
+  });
+  document.addEventListener('click', (event) => {
+    if (event.target instanceof Node && !menu.contains(event.target)) menu.open = false;
+  });
+  menu.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      menu.open = false;
+      summary.focus();
+    }
+  });
+</script>

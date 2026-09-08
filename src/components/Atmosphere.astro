@@ -22,7 +22,7 @@ import Icon from './Icon.astro';
 <div class="fog" aria-hidden="true"></div>
 <div class="vignette" aria-hidden="true"></div>
 <div class="lightning" id="lightning" aria-hidden="true"></div>
-<button id="theme-toggle" type="button" aria-label="Switch between stormy night and autumn day" title="Switch day / night">
+<button id="theme-toggle" type="button" aria-label="Autumn day" aria-pressed="false" title="Switch to autumn day">
   <span class="icon-night" aria-hidden="true"><Icon name="moon" size={18} /></span>
   <span class="icon-day" aria-hidden="true"><Icon name="sun" size={18} /></span>
 </button>
@@ -210,6 +210,10 @@ import Icon from './Icon.astro';
   :global([data-theme='day']) #theme-toggle .icon-day { display: inline; }
   :global([data-theme='day']) #theme-toggle .icon-night { display: none; }
 
+  @media (max-width: 900px) {
+    #theme-toggle { top: .5rem; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     #rain-canvas, #leaf-canvas, #crow-canvas, #crow-canvas-front { display: none !important; }
   }
@@ -221,13 +225,20 @@ import Icon from './Icon.astro';
   /* ── Day/night switch ── */
   const root = document.documentElement;
   const isDay = () => root.dataset.theme === 'day';
+  const themeToggle = document.getElementById('theme-toggle')!;
+  function updateThemeControl() {
+    themeToggle.setAttribute('aria-pressed', String(isDay()));
+    themeToggle.title = isDay() ? 'Switch to stormy night' : 'Switch to autumn day';
+  }
+  updateThemeControl();
 
-  document.getElementById('theme-toggle')!.addEventListener('click', () => {
+  themeToggle.addEventListener('click', () => {
     if (isDay()) {
       delete root.dataset.theme;
     } else {
       root.dataset.theme = 'day';
     }
+    updateThemeControl();
     try {
       localStorage.setItem('mordheim-theme', isDay() ? 'day' : 'night');
     } catch {}

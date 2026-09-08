@@ -7,8 +7,9 @@ const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
 
 <section id="standings" class="standings reveal">
   <div class="ledger-heading"><span>The balance of power</span><span>Campaign ledger</span></div>
-  <h2 class="section-title"><span class="ornament"><Icon name="diamond" /></span> Campaign Standings <span class="ornament"><Icon name="diamond" /></span></h2>
-  <div class="standings-table-wrap" tabindex="0" role="region" aria-label="Campaign standings, scroll horizontally to view all columns">
+  <h2 class="section-title"><span class="ornament" aria-hidden="true"><Icon name="diamond" /></span> Campaign Standings <span class="ornament" aria-hidden="true"><Icon name="diamond" /></span></h2>
+  <p class="scroll-hint" id="standings-scroll-hint" hidden>Scroll sideways to see all standings <Icon name="arrow-right" size={14} /></p>
+  <div class="standings-table-wrap" tabindex="0" role="region" aria-label="Campaign standings">
     <table class="standings-table">
       <thead>
         <tr>
@@ -40,12 +41,14 @@ const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
     justify-content: space-between;
     gap: 1rem;
     color: #b69a62;
-    font: 0.62rem/1.6 Georgia, serif;
-    letter-spacing: 0.16em;
+    font: var(--text-meta)/1.6 var(--font-utility);
+    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   .ledger-heading { margin-bottom: 1rem; }
-  .ledger-footer { padding-top: 0.8rem; color: #a9aa98; font-size: 0.58rem; }
+  .ledger-footer { padding-top: 0.8rem; color: #a9aa98; }
+  .scroll-hint { color: var(--ink-dim); font: var(--text-ui)/1.6 var(--font-utility); margin-bottom: .75rem; }
+  .scroll-hint :global(svg) { margin-left: .25rem; }
   .standings-table-wrap {
     overflow-x: auto;
     border: 1px solid #514936;
@@ -56,10 +59,12 @@ const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
   .standings-table {
     width: 100%;
     min-width: 660px;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     background: #141b18;
     color: #c9c4b3;
     font-variant-numeric: tabular-nums;
+    font-family: var(--font-utility);
   }
   .standings-table th,
   .standings-table td {
@@ -70,9 +75,7 @@ const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
   }
   .standings-table thead th {
     font-family: Georgia, serif;
-    font-size: 0.65rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    font-size: var(--text-ui);
     color: #b69a62;
     background: rgba(182, 154, 98, 0.055);
     font-weight: normal;
@@ -80,8 +83,16 @@ const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
     padding-bottom: 0.85rem;
   }
   .standings-table th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: #141b18;
     text-align: left;
+    box-shadow: 1px 0 0 var(--border);
   }
+  .standings-table thead th:first-child,
+  .standings-table tbody tr:first-child th:first-child { background: #1d221c; }
+  .standings-table tbody tr:hover th:first-child { background: #23261f; }
   .standings-table tbody th {
     font-family: Georgia, serif;
     font-size: 0.96rem;
@@ -91,13 +102,28 @@ const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
   .standings-table tbody tr:first-child { background: rgba(182, 154, 98, 0.055); }
   .standings-table tbody tr:last-child > * { border-bottom: 0; }
   .standings-table tbody tr:hover { background: rgba(182, 154, 98, 0.09); }
-  .ledger-rank { color: #b69a62; font-size: 0.65rem; margin-right: 1rem; }
-  .ledger-sigil { display: inline-block; margin-right: 0.45rem; color: #b69a62; font-size: .65rem; letter-spacing: .08em; }
+  .ledger-rank { color: #b69a62; font-size: var(--text-meta); margin-right: .5rem; }
+  .ledger-sigil { display: inline-block; margin-right: 0.45rem; color: #b69a62; font-size: var(--text-meta); letter-spacing: .04em; }
   .standings-table .ledger-rating { color: #e7dcc5; font-size: 1.15rem; }
   .standings-table .wyrd { color: #a8b69b; }
   @media (max-width: 700px) {
-    .ledger-heading, .ledger-footer { font-size: 0.55rem; letter-spacing: 0.07em; }
+    .ledger-heading, .ledger-footer { flex-wrap: wrap; gap: .35rem 1rem; letter-spacing: .04em; }
     .standings-table th, .standings-table td { padding: 1rem 0.8rem; }
-    .standings-table tbody th { max-width: 220px; }
+    .standings-table th:first-child { min-width: 8.5rem; width: 8.5rem; max-width: 8.5rem; overflow-wrap: anywhere; }
   }
 </style>
+
+<script>
+  const scroller = document.querySelector<HTMLElement>('.standings-table-wrap')!;
+  const hint = document.getElementById('standings-scroll-hint')!;
+  function updateOverflow() {
+    const overflowing = scroller.scrollWidth > scroller.clientWidth + 1;
+    hint.hidden = !overflowing;
+    if (overflowing) scroller.setAttribute('aria-describedby', hint.id);
+    else scroller.removeAttribute('aria-describedby');
+  }
+  const observer = new ResizeObserver(updateOverflow);
+  observer.observe(scroller);
+  observer.observe(scroller.querySelector('table')!);
+  updateOverflow();
+</script>

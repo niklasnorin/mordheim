@@ -68,7 +68,7 @@ import Icon from './Icon.astro';
     gap: 1rem;
     padding-bottom: 0.65rem;
     border-bottom: 1px solid #776b50;
-    font: 0.62rem/1.5 Georgia, serif;
+    font: var(--text-meta)/1.5 var(--font-utility);
     text-transform: uppercase;
     letter-spacing: 0.16em;
   }
@@ -98,7 +98,7 @@ import Icon from './Icon.astro';
   }
   .cryer-price,
   .cryer-issue {
-    font-size: 0.72rem;
+    font-size: var(--text-meta);
     font-style: italic;
     text-align: center;
     flex: 0 0 108px;
@@ -108,7 +108,7 @@ import Icon from './Icon.astro';
     text-align: center;
     border-bottom: 1px solid #241b10;
     padding: 0.65rem 0;
-    font-size: 0.65rem;
+    font-size: var(--text-meta);
     line-height: 1.7;
     letter-spacing: 0.14em;
     font-variant: small-caps;
@@ -134,14 +134,14 @@ import Icon from './Icon.astro';
     font-weight: 600;
   }
   .cryer-article .byline {
-    font-size: 0.75rem;
+    font-size: var(--text-ui);
     font-style: italic;
     letter-spacing: 0.05em;
     margin-bottom: 0.4rem;
     color: #4a3a22;
   }
   .cryer-article p {
-    font-size: 0.9rem;
+    font-size: var(--text-body);
     line-height: 1.8;
     text-align: justify;
     hyphens: auto;
@@ -159,7 +159,7 @@ import Icon from './Icon.astro';
     background: rgba(89, 62, 30, 0.045);
     padding: 1rem;
     text-align: center;
-    font-size: 0.85rem;
+    font-size: var(--text-body);
     margin-bottom: 1.6rem;
     break-inside: avoid;
   }
@@ -175,7 +175,7 @@ import Icon from './Icon.astro';
     border-top: 4px double #241b10;
     text-align: center;
     padding-top: 0.8rem;
-    font-size: 0.68rem;
+    font-size: var(--text-meta);
     line-height: 1.7;
   }
 
@@ -188,7 +188,7 @@ import Icon from './Icon.astro';
     .cryer-price { display: flex; align-items: center; gap: 0.5rem; text-align: left; }
     .cryer-engraving { width: 44px; height: 36px; margin: 0; flex-shrink: 0; }
     .cryer-issue { text-align: right; }
-    .cryer-edition { font-size: 0.56rem; letter-spacing: 0.08em; }
+    .cryer-edition { letter-spacing: 0.04em; }
     .cryer-article p { text-align: left; }
   }
 </style>
