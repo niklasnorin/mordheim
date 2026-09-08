@@ -9,6 +9,11 @@ export const issue = 'Issue I — Nachexen, 2000';
 
 export const news: NewsArticle[] = [
   {
+    headline: 'Teal-Bannered Dwarfs Enter Mordheim; Purpose Filed Under “Old Business”',
+    byline: 'By our correspondent at the eastern gate, from a respectful distance',
+    body: 'A company of dwarfs calling itself the Bitterbrow Expedition entered Mordheim beneath a deep-teal sigil and with rather less luggage than weaponry. Their leader, Jorgrim Bitterbrow, has been seen comparing street names with entries in a heavy iron-bound book, though whether he seeks treasure, debtors, or something old enough to be both remains unclear. Asked what business brought them to the city, one clansman replied that the business had brought itself; our correspondent judged this answer complete and withdrew.',
+  },
+  {
     headline: 'Northern Family Arrives at the Gates; Declines to Say Why',
     byline: 'From our correspondent in the ruins, who wishes to remain both anonymous and alive',
     body: "A company of Ostlanders styling themselves the Nordost Kin passed the eastern gate this week, seven strong and one ogre heavier than expected. Their elder, a grey-bearded man named Agnar, registered the warband with the customary two crowns and answered every question about their reasons for leaving the north with the same word, which this publication cannot print for reasons of space. They have taken lodging in a roofless granary and have already been observed measuring the walls of it, which the neighbourhood finds either reassuring or ominous depending on the hour.",
@@ -33,10 +38,5 @@ export const news: NewsArticle[] = [
     headline: 'NOTICE OF REWARD',
     byline: '',
     body: 'The Sisterhood of Sigmar offers 50 gold crowns for the safe return of any relics looted from the Convent of the Rock. No questions shall be asked. Sigmar, however, sees all, and He has questions.',
-  },
-  {
-    headline: 'Teal-Bannered Dwarfs Enter Mordheim; Purpose Filed Under “Old Business”',
-    byline: 'By our correspondent at the eastern gate, from a respectful distance',
-    body: 'A company of dwarfs calling itself the Bitterbrow Expedition entered Mordheim beneath a deep-teal sigil and with rather less luggage than weaponry. Their leader, Jorgrim Bitterbrow, has been seen comparing street names with entries in a heavy iron-bound book, though whether he seeks treasure, debtors, or something old enough to be both remains unclear. Asked what business brought them to the city, one clansman replied that the business had brought itself; our correspondent judged this answer complete and withdrew.',
   },
 ];
