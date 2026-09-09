@@ -1,4 +1,5 @@
 import type { Statline } from './warbands';
+import merchantsDebt from './history/scenario-01-the-merchants-debt.json';
 
 /** A member's condition at the end of a scenario. */
 export type MemberStatus = 'active' | 'injured' | 'dead';
@@ -85,7 +86,7 @@ export interface ScenarioRecord {
  * All scenarios played, ordered oldest first. Add one JSON file per battle under
  * ./history/ and import it here as the campaign progresses.
  */
-export const history: ScenarioRecord[] = [];
+export const history: ScenarioRecord[] = [merchantsDebt as ScenarioRecord];
 
 export function getScenarioUrl(id: string): string {
   return `${import.meta.env.BASE_URL.replace(/\/$/, '')}/scenarios/${id}/`;

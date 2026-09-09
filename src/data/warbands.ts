@@ -55,8 +55,8 @@ export const warbands: Warband[] = [
     crest: 'crest-nordost.svg',
     player: 'Niklas',
     rating: 79,
-    battles: 0,
-    victories: 0,
+    battles: 1,
+    victories: 1,
     wyrdstone: 0,
     gold: 0,
     lore:
@@ -77,7 +77,7 @@ export const warbands: Warband[] = [
       },
       {
         id: 'mjolnir',
-        name: 'Mjolnir Nordost',
+        name: 'Mjølnir Nordost',
         role: 'Blood Brother',
         rank: 'hero',
         portrait: 'MJ',
@@ -87,7 +87,7 @@ export const warbands: Warband[] = [
         skills: [],
         injuries: ['Lost a hand — may only ever wield a single one-handed weapon.'],
         lore:
-          'The strongest of the brothers, and now the simplest to arm: one hammer, one hand, no shield and no argument. He lost the other on the road south and refuses to say to what. Those who have fought beside him report that the arithmetic still works out in his favour, and that he swings as though owed something.',
+          'The strongest of the brothers, and now the simplest to arm: one hammer, one hand, no shield and no argument. Gammling Gubbsson put him out of action in the watchtower during the kin’s first battle for the abandoned market; the wound cost him the other hand. Baldur avenged him and held the tower, but that is not the same as getting it back. Mjølnir means to make the remaining hand count.',
       },
       {
         id: 'biorn',
@@ -165,7 +165,7 @@ export const warbands: Warband[] = [
     crest: 'crest-bitterbrow.png',
     player: '',
     rating: 0,
-    battles: 0,
+    battles: 1,
     victories: 0,
     wyrdstone: 0,
     gold: 0,
@@ -207,11 +207,12 @@ export const warbands: Warband[] = [
         stats: { M: 3, WS: 4, BS: 3, S: 3, T: 4, W: 1, I: 2, A: 1, Ld: 9 },
         equipment: [],
         skills: [],
-        lore: '',
+        lore:
+          'Grakki greets a broken bridge as a route worth trying and an abandoned market as a place worth exploring. Even the drowned vines that nearly rooted him in the canal could not extinguish his appetite for adventure. Biorn Nordost ended his first battle before he had finished looking round; Grakki would call that an interrupted expedition, not a lesson in caution.',
       },
       {
         id: 'gamling',
-        name: 'Gamling Gubbsson',
+        name: 'Gammling Gubbsson',
         role: 'Clansman',
         rank: 'henchman',
         portrait: 'GG',
@@ -219,7 +220,8 @@ export const warbands: Warband[] = [
         stats: { M: 3, WS: 4, BS: 3, S: 3, T: 4, W: 1, I: 2, A: 1, Ld: 9 },
         equipment: [],
         skills: [],
-        lore: '',
+        lore:
+          'Gammling has seen better stonework, better weather and better enemies, and will explain the failings of all three while climbing a tower to fight. A jaded old clansman with a complaint for every step, he remains dangerous enough to make younger warriors regret mistaking grumbling for exhaustion. He put Mjølnir Nordost out of action in the market watchtower before Baldur answered the blow. Human swordsmanship is now another subject upon which he has objections.',
       },
       {
         id: 'flint',
