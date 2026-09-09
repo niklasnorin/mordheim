@@ -61,6 +61,15 @@ export interface BattleReport {
   }[];
   loot: string[];
   campaignNotes: string[];
+  puzzle?: {
+    title: string;
+    introduction: string;
+    clues: { source: string; text: string }[];
+    seals: string[];
+    solution: string[];
+    hints: string[];
+    revelation: string[];
+  };
   /** Only confirmed out-of-action results; an empty list does not mean none occurred. */
   outOfAction: {
     attackerId: string;

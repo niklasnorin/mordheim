@@ -23,18 +23,18 @@
       "In the rear ruin, Flint made himself a final, stubborn obstacle. Biorn charged him and found that a beardling behind a good stretch of broken wall could be very difficult to shift. Flint held bravely, turning the confined approach against the more experienced fighter. Then Ragnar charged in as well. There was room to keep Biorn at bay, or room to avoid an ogre, but not both. Ragnar put Flint out of action, and the rear position was lost to the Bitterbrows.",
       "When the fighting ended, Baldur still stood on the watchtower, with damaged stonework about him and no intention of coming down until someone properly relieved him. Torgrim remained in the merchant’s shop, counting what arrows he could still see. Biorn and Ragnar had broken the defence of the rear ruin. The kin had won the ground. Below the shop, the cellar door had contributed nothing to the argument, and had not yet been asked to."
     ],
-    "epilogue": "The old market had changed hands without becoming any less abandoned. Mjølnir’s wound made the cost plain; Baldur’s revenge could not restore what Gammling had taken. The Bitterbrows had found neither a debtor to answer their questions nor a reason to close the book. The kin had secured an approach to the promised cellar, not proof of its riches. Whatever had kept other looters away remained an unanswered part of the bargain.",
+    "epilogue": "The old market had changed hands without becoming any less abandoned. Mjølnir’s wound made the cost plain; Baldur’s revenge could not restore what Gammling had taken. Later, a dispatch leaf found by the kin and a boatman’s testimony bought by the Bitterbrows suggested the same unwelcome truth: the merchant had moved his gems before the disaster. He had complained that something beneath the cellar was knocking back when he counted them. Each warband now possessed a cryptic delivery mark, but neither had recovered a single stone. The campaign archivist has set their separate accounts beside one another below; the rivals themselves have shared nothing.",
     "perspectives": [
       {
         "warbandId": "nordost",
         "prologue": "The informant had been very clear about the gem merchant’s basement and very unclear about why it might still be full. ‘Most people keep away. Reasons,’ was the whole explanation. Agnar had spent the road south learning what a family could afford to fear. A cellar of unclaimed valuables might buy walls, a roof, perhaps even land. He took the lead, if not the reassurance, and brought his kin to the market. Dwarfs approaching the same shop were an unwelcome detail.",
-        "epilogue": "Agnar counted his people before he counted buildings. Mjølnir had lost a hand; Skalle had been struck down; Baldur had grown quieter atop the tower. Torgrim reported possession of the shop and carefully omitted any claim about his shooting. Ragnar wanted to know whether winning came with supper. They had gained the ground they needed, but Agnar would not call a closed cellar a fortune. The informant’s ‘reasons’ still waited below.",
+        "epilogue": "Agnar counted his people before he counted buildings. Once relieved at his window, Torgrim found a dispatch leaf tucked inside the shop’s false-bottomed cash drawer. Its date preceded the disaster. ‘Remove every gem. The knocking beneath the cellar has begun to answer the tally. Keep the destination under the three seals.’ An impression of the merchant’s routing plate lay beneath it, with a peculiar instruction about a toll, a river and a threshold. Agnar folded it away. Perhaps they had fought for directions rather than treasure. Whatever had knocked below could keep the cellar for tonight.",
         "accomplishments": "Held the watchtower through Baldur’s defence, occupied the gem merchant’s shop through Torgrim, and overcame Flint’s rear-ruin defence through Biorn and Ragnar. Skalle’s entangling vines delayed the canal crossing, and the kin’s coordinated fighting put five Bitterbrows out of action."
       },
       {
         "warbandId": "bitterbrow-expedition",
         "prologue": "The merchant’s great-great-grandfather had tricked an ancestor of Jorgrim Bitterbrow. Humans might regard that as history; the Bitterbrows regarded it as an unpaid account. If the present merchant could be found, he would hear the particulars. If he could not, there were other ways to settle a debt. Grakki welcomed the prospect of searching a forgotten market. Gammling said a merchant’s promises were worthless even before the roof fell in. Neither had expected Ostlanders to stand between the clan and its reckoning.",
-        "epilogue": "Jorgrim had put the meddling priest down, but not recovered the buildings or settled the older wrong. Gammling’s success against Mjølnir had been answered by Baldur; the canal fight and Flint’s last defence had gone against the expedition. No merchant had been brought to account. The grudge remained open, now with a northern family inconveniently entered in the margin.",
+        "epilogue": "Jorgrim had put the meddling priest down, but not recovered the buildings or settled the older wrong. Back beyond the fighting, he questioned an old canal boatman who recognised the merchant’s name. Before the disaster, the man had ferried sealed gem coffers out of the market: the merchant had paid double and said the cellar was answering his counting. The boatman still carried a brass routing token in lieu of the rest of his fee. Jorgrim obtained a rubbing and the old man’s recollection of its three-seal instructions. The debtor had left a trail. Following it might yet furnish something worth entering on the other side of the account.",
         "accomplishments": "Forced the canal despite Skalle’s vines, stormed the watchtower, and made the kin fight for every approach. Gammling put Mjølnir out of action, Jorgrim evaded Baldur and silenced Skalle, and Flint held the rear ruin against Biorn until Ragnar joined the assault."
       }
     ],
@@ -51,8 +51,34 @@
       "Recorded Nordost experience: Agnar 24, Mjølnir 13, Biorn 15, Skalle 13, Torgrim 2, Baldur 3 and Ragnar 4. Biorn has +1 Strength, Agnar +1 Toughness, Torgrim +1 Attack, Baldur +1 Wound and Ragnar +1 Leadership; the snapshot statlines include these advances once.",
       "Baldur is promoted Hero Kin with access to Combat and Shooting skills, not two newly learned skills. Mjølnir’s injury is listed as Severe Arm Wound. Free daggers are included where listed in the export; owning a dagger and hammer does not let Mjølnir wield both at once.",
       "The date, exact finishing turn and any voluntary rout were not recorded. The Nordost victory follows the reported objective positions.",
-      "The cellar’s contents, the reason scavengers avoid it, the merchant’s whereabouts and the final settlement of the ancestral grudge remain unresolved."
+      "Separate clues suggest the merchant moved his gems before the disaster because something beneath the cellar answered his counting. The Nordost found a dispatch leaf; the Bitterbrows obtained a boatman’s testimony and a rubbing of his routing token. Neither warband has shared its discovery.",
+      "The routing-seal puzzle offers an optional lead for a future scenario, not a battle already played. The gems’ present location, the truth behind the knocking, the merchant’s whereabouts and the ancestral grudge remain unresolved."
     ],
+    "puzzle": {
+      "title": "The Merchant’s Three Seals",
+      "introduction": "The merchant concealed delivery addresses beneath rotating routing seals. Reconstruct the three-symbol route to read his instruction. Both warbands have enough to pursue the cipher independently; you can compare their evidence here. Choose three different seals, in order from left to right. One of the four symbols is a decoy.",
+      "clues": [
+        {
+          "source": "Nordost evidence — the dispatch leaf",
+          "text": "A rubbing shows four labelled emblems: Bell — toll; Boat — river; Key — threshold; Candle — vigil. In the margin: ‘No vigil for this cargo. Pay the toll before taking the river; take the river before opening the threshold.’ Beneath it: ‘All gem coffers dispatched before the falling star. I will not count them over that knocking again.’"
+        },
+        {
+          "source": "Bitterbrow evidence — the boatman’s token",
+          "text": "The boatman’s rubbing bears the same four emblems. He remembers the merchant’s warning: ‘Carry no candle. The key must follow the boat, and the boat must follow the bell. Three marks, no repeats. Let no clerk speak the address aloud.’ He swears the coffers travelled before the disaster, not in the looting afterwards."
+        }
+      ],
+      "seals": ["Key", "Candle", "Bell", "Boat"],
+      "solution": ["Bell", "Boat", "Key"],
+      "hints": [
+        "A vigil is kept by candlelight. Both accounts exclude the Candle, leaving three useful seals.",
+        "The toll is the Bell, the river is the Boat, and the threshold is the Key. Put those three stages in the order described."
+      ],
+      "revelation": [
+        "The seals align. Beneath the merchant’s cipher, the address reads: ‘Drowned Bell counting-house. Third arch below the old towpath. Deliver the gem coffers to the keeper who casts no reflection. Do not answer if the stones begin to count.’",
+        "The dispatch predates the disaster. It suggests the merchant moved the gems out of fear of the answering knocks beneath his shop, not because he foresaw the city’s destruction. Whether the warning described a haunting, a trick or a guilty man’s fancy is still unknown.",
+        "A possible next expedition: seek the Drowned Bell and search the third arch. The Nordost could follow the promise of missing gems; the Bitterbrows could trace the consignment to the debtor or claim it against the old fraud. Neither has yet followed the route, and nothing proves the coffers are still there."
+      ]
+    },
     "outOfAction": [
       {
         "attackerId": "gamling",
