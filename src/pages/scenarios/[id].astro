@@ -56,6 +56,7 @@ const perspectives = scenario.warbands.map((warband) => ({
       <a href="#prologue">Prologue</a>
       <a href="#battle">The battle</a>
       <a href="#epilogue">Epilogue</a>
+      {report.puzzle && <a href="#merchant-puzzle">The sealed clue</a>}
       <a href="#campaign">Campaign consequences</a>
       <a href="#muster">Warbands &amp; warriors</a>
     </nav>
@@ -110,6 +111,53 @@ const perspectives = scenario.warbands.map((warband) => ({
       </div>
     </section>
 
+    {report.puzzle && (
+      <section id="merchant-puzzle" class="panel seal-puzzle" aria-labelledby="puzzle-title">
+        <p class="section-kicker">An unfinished account</p>
+        <h2 id="puzzle-title">{report.puzzle.title}</h2>
+        <p id="puzzle-instructions">{report.puzzle.introduction}</p>
+        <div class="perspectives puzzle-evidence">
+          {report.puzzle.clues.map((clue) => (
+            <article class="evidence">
+              <h3>{clue.source}</h3>
+              <p>{clue.text}</p>
+            </article>
+          ))}
+        </div>
+        <form data-seal-form aria-describedby="puzzle-instructions">
+          <fieldset disabled>
+            <legend>Set the routing seals</legend>
+            <div class="seal-controls">
+              {report.puzzle.solution.map((answer, index) => (
+                <label>
+                  Seal {index + 1}
+                  <select required data-answer={answer} name={`seal-${index + 1}`}>
+                    <option value="">Choose a symbol</option>
+                    {report.puzzle!.seals.map((seal) => <option value={seal}>{seal}</option>)}
+                  </select>
+                </label>
+              ))}
+            </div>
+            <div class="seal-actions">
+              <button type="submit">Turn the seals</button>
+              <button type="reset">Reset puzzle</button>
+            </div>
+          </fieldset>
+        </form>
+        <noscript><p>The clues can be solved on paper. Enable JavaScript to turn the seals and reveal the hidden dispatch.</p></noscript>
+        <p data-puzzle-feedback role="status" aria-live="polite" aria-atomic="true"></p>
+        <div class="puzzle-hints">
+          {report.puzzle.hints.map((hint, index) => (
+            <details><summary>Hint {index + 1}</summary><p>{hint}</p></details>
+          ))}
+        </div>
+        <div data-puzzle-revelation class="dispatch" hidden>
+          <h3 tabindex="-1">The hidden dispatch</h3>
+          {report.puzzle.revelation.map((paragraph) => <p>{paragraph}</p>)}
+        </div>
+      </section>
+    )}
+
     <section id="campaign" class="panel">
       <h2>What the campaign carries forward</h2>
       <h3>Noteworthy loot &amp; costs</h3>
@@ -156,6 +204,7 @@ const perspectives = scenario.warbands.map((warband) => ({
                   <article id={`member-${member.memberId}`} class="member-record">
                     <h5>{member.name}</h5>
                     <p class="member-meta">{member.rank} · {member.role} · <span class:list={{ darkest: member.status !== 'active' }}>{statusLabel[member.status]}</span></p>
+                    {member.experience !== undefined && <p><strong>Experience:</strong> {member.experience}</p>}
                     <p><strong class="finest">Accomplishment &amp; finest moment:</strong> {member.highlight}</p>
                     <p><strong class="darkest">Darkest moment:</strong> {member.lowlight}</p>
                     <p><strong>Put out of action:</strong> {events.length === 0 && 'Not recorded.'}</p>
@@ -184,7 +233,63 @@ const perspectives = scenario.warbands.map((warband) => ({
   </main>
 </Base>
 
+<script>
+  const puzzle = document.querySelector<HTMLElement>('.seal-puzzle');
+  if (puzzle) {
+    const form = puzzle.querySelector<HTMLFormElement>('[data-seal-form]')!;
+    const fieldset = form.querySelector('fieldset')!;
+    const seals = [...form.querySelectorAll<HTMLSelectElement>('select')];
+    const feedback = puzzle.querySelector<HTMLElement>('[data-puzzle-feedback]')!;
+    const revelation = puzzle.querySelector<HTMLElement>('[data-puzzle-revelation]')!;
+    fieldset.disabled = false;
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (new Set(seals.map((seal) => seal.value)).size !== seals.length) {
+        feedback.textContent = 'The same seal cannot mark two stages. Choose three different symbols.';
+        return;
+      }
+      if (!seals.every((seal) => seal.value === seal.dataset.answer)) {
+        feedback.textContent = 'The seals resist. Re-read the order of the journey, or open a hint below.';
+        return;
+      }
+      feedback.textContent = 'The seals yield. The hidden dispatch is revealed.';
+      revelation.hidden = false;
+      revelation.querySelector('h3')?.focus();
+    });
+
+    form.addEventListener('change', () => {
+      revelation.hidden = true;
+      feedback.textContent = '';
+    });
+
+    form.addEventListener('reset', () => {
+      revelation.hidden = true;
+      feedback.textContent = 'The dispatch is sealed again.';
+      puzzle.querySelectorAll('details').forEach((hint) => { hint.open = false; });
+      seals[0]?.focus();
+    });
+  }
+</script>
+
 <style>
+  .puzzle-evidence { margin: 1.5rem 0; }
+  .evidence { border-left: 2px solid var(--gold-dim); padding-left: 1rem; }
+  .evidence h3 { font-size: 1.4rem; }
+  .seal-puzzle fieldset { border: 1px solid var(--gold-dim); padding: 1rem; min-width: 0; }
+  .seal-puzzle legend { padding: 0 .5rem; color: var(--gold); }
+  .seal-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+  .seal-controls label { display: grid; gap: .5rem; color: var(--parchment); }
+  .seal-puzzle select, .seal-puzzle button { font: inherit; color: var(--parchment); background: var(--bg-panel2); border: 1px solid var(--gold-dim); padding: .75rem; }
+  .seal-puzzle select { width: 100%; min-width: 0; }
+  .seal-puzzle button, .puzzle-hints summary { cursor: pointer; }
+  .seal-puzzle :is(select, button, summary):focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+  .seal-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+  .seal-puzzle [role="status"] { margin: 1rem 0; color: var(--gold); }
+  .puzzle-hints details { margin-top: .75rem; }
+  .puzzle-hints summary { color: var(--gold); }
+  .dispatch { margin-top: 1.5rem; padding: 1.5rem; border: 1px solid var(--gold-dim); background: var(--bg-panel2); }
+  .dispatch[hidden] { display: none; }
   .battle-report { padding-top: 2rem; }
   a { color: var(--gold); text-underline-offset: .25em; }
   a:hover { color: var(--parchment); }
@@ -232,6 +337,7 @@ const perspectives = scenario.warbands.map((warband) => ({
   .warband-summary { scroll-margin-top: 2rem; }
   .chapter-nav { font-size: .9rem; margin-top: 3rem; }
   @media (max-width: 700px) {
+    .seal-controls { grid-template-columns: 1fr; }
     .perspectives, .warband-summaries, .outcome-facts { grid-template-columns: 1fr; }
     .panel { padding: 1.25rem; }
     .report-header { margin-top: 3rem; }

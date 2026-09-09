@@ -1,0 +1,336 @@
+{
+  "id": "scenario-01-the-merchants-debt",
+  "sequence": 1,
+  "date": "Date unrecorded",
+  "scenario": "The Merchant’s Debt",
+  "summary": "A whispered promise of gems brings the Nordost Kin to an abandoned market; an ancestral fraud brings the Bitterbrows to the same doorstep. Three buildings decide their first battle, and Mjølnir pays for the watchtower with a hand.",
+  "report": {
+    "rulebookScenario": "Occupy",
+    "winCondition": "The special-rule roll designated three objective buildings: the watchtower, the ruined gem merchant’s shop, and the rear ruin. A building is occupied when it contains at least one standing friendly model and no enemy models. Occupy lasts up to eight turns, with no compulsory Rout tests; the warband occupying the most objectives at the end wins. Equal totals mean a draw. A voluntary rout ends the battle immediately and awards all objectives to the opponent.",
+    "outcome": "Victory to the Nordost Kin on the reported positions: Baldur held the watchtower to the end, Torgrim occupied the merchant’s shop, and Biorn and Ragnar overcame Flint at the rear ruin. The exact finishing turn and whether either warband voluntarily routed were not recorded.",
+    "prologue": "Once, the market had supplied a neighbourhood rich enough to complain about the colour of its pearls. Carved lintels still advertised silks, spices and discreet credit; beneath them, weeds grew through the sockets where brass doorplates had been prised away. The canal that had carried deliveries was choked with a collapsed crossing. Most counters had been stripped long ago, but the gem merchant’s shop stood curiously unpicked beneath its broken upper windows. Around it, a watchtower and a rear ruin offered command of the approaches. Three buildings worth holding. One cellar that sensible scavengers apparently preferred not to open.",
+    "battle": [
+      "The two companies sighted each other across the old market and reached the same conclusion: the strangers were heading for their building. Agnar pointed towards the watchtower. Mjølnir and Baldur broke away through the stalls, climbed the narrow stair and emerged among the roof battlements. Baldur tested the room for his great blade and clipped a stone ornament off the parapet. Mjølnir told him the next one had better have a beard.",
+      "Below, the Bitterbrows entered the collapsed canal. Grakki went eagerly, describing it as a promising shortcut; Gammling described it as a ditch and supplied several observations about the generation that had built it. Then Skalle raised his hands. Green light filled his eyes, and something beneath the drowned masonry answered. Vines lashed out of the water, winding round boots and knees until the dwarfs’ advance became an argument conducted almost entirely in place. Grakki’s shortcut had acquired a grip.",
+      "The reprieve bought Torgrim his opening. He sprinted into the merchant’s shop, found the stairs and took a second-floor window above the street. From there he rained arrows upon the dwarfs. One struck a shutter, another vanished into canal mud, and the rest established beyond dispute that the neighbourhood was unsafe for woodwork. Not one wounded an enemy. Torgrim stayed at his window all the same: an occupied house did not require an impressive body count.",
+      "The vines could delay the Bitterbrows, not persuade them. Jorgrim and Gammling forced their way through and rushed the watchtower. The old clansman complained about every stair without noticeably slowing on any of them. At the battlements Mjølnir met him hammer-first, driving him back a pace and cracking stone where his head had been. Gammling answered with the sour patience of a man who had already seen everything and disliked it the first time.",
+      "A cramped exchange against the parapet ended with Mjølnir down and out of the fight. The wound would cost him a hand. Baldur’s next swing had none of the careless enthusiasm of his first: he caught Gammling and put the old dwarf out of action in turn. Then he turned on Jorgrim. The lord slipped one broad stroke, then another, while Baldur’s blade made expensive alterations to the battlements. Neither could finish the other.",
+      "At the canal’s broken lip, Agnar, Biorn and Ragnar charged the advancing Norri, Orri and Grakki head-on. Agnar took the first clash on his shield, only to discover that good footing had been an optimistic assumption. Orri pressed him hard before the elder recovered. Grakki came out of the water grinning, delighted to have found a fight at the far end of his adventure. Ragnar swung into the knot of dwarfs with enough force to make the old market stalls shudder.",
+      "Norri proved maddeningly difficult to hit. The slayer ducked where a man should have stumbled, twisted between blows and left Ragnar battering empty air. Biorn’s first attempt to catch him ended in a fistful of nothing and a mouthful of canal water. Eventually Biorn abandoned elegance, closed bodily and wrangled Norri down. For one brief moment the slayer had nowhere left to slip. Ragnar put him out of action.",
+      "Beside them, Orri kept coming at Agnar with a beardling’s determination not to be treated as one. He nearly forced the elder back into the water; Agnar steadied himself against a broken mooring stone and put Orri out of action. Grakki tried to turn Biorn’s exposed flank, finding one last opportunity where a more cautious dwarf might have seen a warning. Biorn met him and brought him down. The canal had been crossed, but its far bank belonged to the kin.",
+      "Skalle worked behind them, calling strength into weary limbs and squirrels into places where squirrels had no reasonable business being. Tiny claws scratched through the wrecked stalls as his kin renewed their efforts. One creature paused on a shattered weighing scale as though assessing the service. The priest was so intent upon his prayers that he did not see the danger leaving the tower.",
+      "Jorgrim had heard his kin fighting below. With another of Baldur’s swings passing behind him, he broke away and ran down to reinforce the struggle for the merchant’s house. Baldur reached the stair, looked back across the battlements, and chose the objective over pursuit. Jorgrim found Skalle before he could mend the battle elsewhere. No squirrel intercepted him. The furious lord put the priest out of action, cutting short a prayer and giving the watching wildlife cause to reconsider its allegiance.",
+      "In the rear ruin, Flint made himself a final, stubborn obstacle. Biorn charged him and found that a beardling behind a good stretch of broken wall could be very difficult to shift. Flint held bravely, turning the confined approach against the more experienced fighter. Then Ragnar charged in as well. There was room to keep Biorn at bay, or room to avoid an ogre, but not both. Ragnar put Flint out of action, and the rear position was lost to the Bitterbrows.",
+      "When the fighting ended, Baldur still stood on the watchtower, with damaged stonework about him and no intention of coming down until someone properly relieved him. Torgrim remained in the merchant’s shop, counting what arrows he could still see. Biorn and Ragnar had broken the defence of the rear ruin. The kin had won the ground. Below the shop, the cellar door had contributed nothing to the argument, and had not yet been asked to."
+    ],
+    "epilogue": "The old market had changed hands without becoming any less abandoned. Mjølnir’s wound made the cost plain; Baldur’s revenge could not restore what Gammling had taken. Later, a dispatch leaf found by the kin and a boatman’s testimony bought by the Bitterbrows suggested the same unwelcome truth: the merchant had moved his gems before the disaster. He had complained that something beneath the cellar was knocking back when he counted them. Each warband now possessed a cryptic delivery mark, but neither had recovered a single stone. The campaign archivist has set their separate accounts beside one another below; the rivals themselves have shared nothing.",
+    "perspectives": [
+      {
+        "warbandId": "nordost",
+        "prologue": "The informant had been very clear about the gem merchant’s basement and very unclear about why it might still be full. ‘Most people keep away. Reasons,’ was the whole explanation. Agnar had spent the road south learning what a family could afford to fear. A cellar of unclaimed valuables might buy walls, a roof, perhaps even land. He took the lead, if not the reassurance, and brought his kin to the market. Dwarfs approaching the same shop were an unwelcome detail.",
+        "epilogue": "Agnar counted his people before he counted buildings. Once relieved at his window, Torgrim found a dispatch leaf tucked inside the shop’s false-bottomed cash drawer. Its date preceded the disaster. ‘Remove every gem. The knocking beneath the cellar has begun to answer the tally. Keep the destination under the three seals.’ An impression of the merchant’s routing plate lay beneath it, with a peculiar instruction about a toll, a river and a threshold. Agnar folded it away. Perhaps they had fought for directions rather than treasure. Whatever had knocked below could keep the cellar for tonight.",
+        "accomplishments": "Held the watchtower through Baldur’s defence, occupied the gem merchant’s shop through Torgrim, and overcame Flint’s rear-ruin defence through Biorn and Ragnar. Skalle’s entangling vines delayed the canal crossing, and the kin’s coordinated fighting put five Bitterbrows out of action."
+      },
+      {
+        "warbandId": "bitterbrow-expedition",
+        "prologue": "The merchant’s great-great-grandfather had tricked an ancestor of Jorgrim Bitterbrow. Humans might regard that as history; the Bitterbrows regarded it as an unpaid account. If the present merchant could be found, he would hear the particulars. If he could not, there were other ways to settle a debt. Grakki welcomed the prospect of searching a forgotten market. Gammling said a merchant’s promises were worthless even before the roof fell in. Neither had expected Ostlanders to stand between the clan and its reckoning.",
+        "epilogue": "Jorgrim had put the meddling priest down, but not recovered the buildings or settled the older wrong. Back beyond the fighting, he questioned an old canal boatman who recognised the merchant’s name. Before the disaster, the man had ferried sealed gem coffers out of the market: the merchant had paid double and said the cellar was answering his counting. The boatman still carried a brass routing token in lieu of the rest of his fee. Jorgrim obtained a rubbing and the old man’s recollection of its three-seal instructions. The debtor had left a trail. Following it might yet furnish something worth entering on the other side of the account.",
+        "accomplishments": "Forced the canal despite Skalle’s vines, stormed the watchtower, and made the kin fight for every approach. Gammling put Mjølnir out of action, Jorgrim evaded Baldur and silenced Skalle, and Flint held the rear ruin against Biorn until Ragnar joined the assault."
+      }
+    ],
+    "loot": [
+      "The Nordost app export records a treasury of 72 gc. This is a stash total, not confirmed earnings from the battle; the export’s 588 gc is the overall list value, not spendable gold.",
+      "No recovered gems, wyrdstone, exploration results or purchases were reported. Occupying the shop does not establish that its cellar was looted."
+    ],
+    "campaignNotes": [
+      "Scenario rules: https://mordheimer.net/docs/campaigns/scenarios/mordheim-rulebook/occupy. The objective roll produced three buildings.",
+      "Mjølnir lost his hand after Gammling put him out of action in the watchtower. This supersedes the earlier roster story that placed the injury on the road south.",
+      "Seven out-of-action results are confirmed below. Biorn assisted Ragnar against Norri and Flint; those takedowns belong to Ragnar.",
+      "Injured status marks warriors put out of action in this account. Only Mjølnir’s missing hand is a confirmed lasting injury; no other serious-injury rolls or deaths were reported.",
+      "The Nordost post-battle snapshot has been reconciled with the supplied app export: rating 124 and treasury 72 gc. The Bitterbrows’ bookkeeping and both warbands’ wyrdstone totals remain unconfirmed roster values. Battle and victory counts reflect this first encounter.",
+      "Recorded Nordost experience: Agnar 24, Mjølnir 13, Biorn 15, Skalle 13, Torgrim 2, Baldur 3 and Ragnar 4. Biorn has +1 Strength, Agnar +1 Toughness, Torgrim +1 Attack, Baldur +1 Wound and Ragnar +1 Leadership; the snapshot statlines include these advances once.",
+      "Baldur is promoted Hero Kin with access to Combat and Shooting skills, not two newly learned skills. Mjølnir’s injury is listed as Severe Arm Wound. Free daggers are included where listed in the export; owning a dagger and hammer does not let Mjølnir wield both at once.",
+      "The date, exact finishing turn and any voluntary rout were not recorded. The Nordost victory follows the reported objective positions.",
+      "Separate clues suggest the merchant moved his gems before the disaster because something beneath the cellar answered his counting. The Nordost found a dispatch leaf; the Bitterbrows obtained a boatman’s testimony and a rubbing of his routing token. Neither warband has shared its discovery.",
+      "The routing-seal puzzle offers an optional lead for a future scenario, not a battle already played. The gems’ present location, the truth behind the knocking, the merchant’s whereabouts and the ancestral grudge remain unresolved."
+    ],
+    "puzzle": {
+      "title": "The Merchant’s Three Seals",
+      "introduction": "The merchant concealed delivery addresses beneath rotating routing seals. Reconstruct the three-symbol route to read his instruction. Both warbands have enough to pursue the cipher independently; you can compare their evidence here. Choose three different seals, in order from left to right. One of the four symbols is a decoy.",
+      "clues": [
+        {
+          "source": "Nordost evidence — the dispatch leaf",
+          "text": "A rubbing shows four labelled emblems: Bell — toll; Boat — river; Key — threshold; Candle — vigil. In the margin: ‘No vigil for this cargo. Pay the toll before taking the river; take the river before opening the threshold.’ Beneath it: ‘All gem coffers dispatched before the falling star. I will not count them over that knocking again.’"
+        },
+        {
+          "source": "Bitterbrow evidence — the boatman’s token",
+          "text": "The boatman’s rubbing bears the same four emblems. He remembers the merchant’s warning: ‘Carry no candle. The key must follow the boat, and the boat must follow the bell. Three marks, no repeats. Let no clerk speak the address aloud.’ He swears the coffers travelled before the disaster, not in the looting afterwards."
+        }
+      ],
+      "seals": ["Key", "Candle", "Bell", "Boat"],
+      "solution": ["Bell", "Boat", "Key"],
+      "hints": [
+        "A vigil is kept by candlelight. Both accounts exclude the Candle, leaving three useful seals.",
+        "The toll is the Bell, the river is the Boat, and the threshold is the Key. Put those three stages in the order described."
+      ],
+      "revelation": [
+        "The seals align. Beneath the merchant’s cipher, the address reads: ‘Drowned Bell counting-house. Third arch below the old towpath. Deliver the gem coffers to the keeper who casts no reflection. Do not answer if the stones begin to count.’",
+        "The dispatch predates the disaster. It suggests the merchant moved the gems out of fear of the answering knocks beneath his shop, not because he foresaw the city’s destruction. Whether the warning described a haunting, a trick or a guilty man’s fancy is still unknown.",
+        "A possible next expedition: seek the Drowned Bell and search the third arch. The Nordost could follow the promise of missing gems; the Bitterbrows could trace the consignment to the debtor or claim it against the old fraud. Neither has yet followed the route, and nothing proves the coffers are still there."
+      ]
+    },
+    "outOfAction": [
+      {
+        "attackerId": "gamling",
+        "target": "Mjølnir Nordost",
+        "targetId": "mjolnir",
+        "detail": "Put Mjølnir out of action in the watchtower; the wound cost him a hand."
+      },
+      {
+        "attackerId": "baldur",
+        "target": "Gammling Gubbsson",
+        "targetId": "gamling",
+        "detail": "Avenged Mjølnir by putting Gammling out of action before duelling Jorgrim."
+      },
+      {
+        "attackerId": "ragnar",
+        "target": "Norri Stonebrew",
+        "targetId": "norri",
+        "detail": "Put the elusive slayer out of action after Biorn wrangled him down."
+      },
+      {
+        "attackerId": "agnar",
+        "target": "Orri Ormsson",
+        "targetId": "orri",
+        "detail": "Defeated Orri in the melee beyond the collapsed canal."
+      },
+      {
+        "attackerId": "biorn",
+        "target": "Grakki Dourhammer",
+        "targetId": "grakki",
+        "detail": "Put Grakki out of action in the fighting at the canal."
+      },
+      {
+        "attackerId": "jorgrim",
+        "target": "Skalle",
+        "targetId": "skalle",
+        "detail": "Left the watchtower to reinforce his kin and put the priest out of action."
+      },
+      {
+        "attackerId": "ragnar",
+        "target": "Flint Mudbeard",
+        "targetId": "flint",
+        "detail": "Joined Biorn’s assault on the rear ruin and put its stubborn defender out of action."
+      }
+    ]
+  },
+  "warbands": [
+    {
+      "warbandId": "nordost",
+      "name": "The Nordost Kin",
+      "result": "victory",
+      "rating": 124,
+      "battles": 1,
+      "victories": 1,
+      "wyrdstone": 0,
+      "gold": 72,
+      "highlights": [
+        "Baldur held the watchtower, Torgrim occupied the shop, and Biorn and Ragnar overcame the rear ruin’s defender.",
+        "Skalle delayed the canal crossing, buying time for the kin to seize their positions.",
+        "Biorn and Ragnar finally caught Norri through teamwork rather than another hopeful swing."
+      ],
+      "lowlights": [
+        "Mjølnir lost a hand to the fighting in the watchtower.",
+        "Jorgrim broke away from Baldur and put Skalle out of action.",
+        "Torgrim’s elevated shooting position yielded no damage, and the cellar’s promised riches remained unconfirmed."
+      ],
+      "members": [
+        {
+          "memberId": "agnar",
+          "name": "Agnar Nordost",
+          "role": "Elder",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 4, "WS": 4, "BS": 4, "S": 3, "T": 4, "W": 1, "I": 3, "A": 1, "Ld": 8 },
+          "experience": 24,
+          "equipment": ["Sword", "Shield", "Light armour", "Helmet"],
+          "skills": ["Leader"],
+          "highlight": "Led the charge at the canal and recovered his footing under pressure to put Orri out of action.",
+          "lowlight": "Nearly let a beardling drive him back into the canal; victory still left him counting wounded kin rather than gems."
+        },
+        {
+          "memberId": "mjolnir",
+          "name": "Mjølnir Nordost",
+          "role": "Blood Brother",
+          "rank": "hero",
+          "status": "injured",
+          "stats": { "M": 4, "WS": 4, "BS": 3, "S": 3, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 7 },
+          "experience": 13,
+          "equipment": ["Dagger", "Hammer"],
+          "skills": [],
+          "highlight": "Reached the roof battlements with Baldur and met the dwarf assault with a hammer blow that drove Gammling back.",
+          "lowlight": "Gammling put him out of action in the cramped tower fight, inflicting the wound that cost him a hand."
+        },
+        {
+          "memberId": "biorn",
+          "name": "Biorn Nordost",
+          "role": "Blood Brother",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 4, "WS": 4, "BS": 3, "S": 4, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 7 },
+          "experience": 15,
+          "equipment": ["Dagger", "Axe", "Bow"],
+          "skills": [],
+          "highlight": "Wrangled Norri down for Ragnar, put Grakki out of action himself, and carried the attack onward to Flint’s ruin.",
+          "lowlight": "His first grab at Norri earned him canal water, and Flint held off his solo charge until Ragnar arrived."
+        },
+        {
+          "memberId": "baldur",
+          "name": "Baldur Nordost",
+          "role": "Hero Kin",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 4, "WS": 3, "BS": 3, "S": 3, "T": 3, "W": 2, "I": 3, "A": 1, "Ld": 7 },
+          "experience": 3,
+          "equipment": ["Dagger", "Double-handed weapon", "Helmet"],
+          "skills": ["Promoted to hero", "Skill access: Combat, Shooting"],
+          "highlight": "Avenged Mjølnir by taking Gammling out of action, then chose discipline over pursuit and held the watchtower to the end.",
+          "lowlight": "Jorgrim dodged him swing for swing and escaped downstairs; the battlements suffered more than the dwarf lord."
+        },
+        {
+          "memberId": "skalle",
+          "name": "Skalle",
+          "role": "Priest of Taal",
+          "rank": "hero",
+          "status": "injured",
+          "stats": { "M": 4, "WS": 3, "BS": 3, "S": 3, "T": 3, "W": 1, "I": 3, "A": 1, "Ld": 7 },
+          "experience": 13,
+          "equipment": ["Dagger"],
+          "skills": ["Prayer User"],
+          "highlight": "Called drowned vines around the crossing dwarfs, nearly stopping their advance, then summoned squirrels and strengthened his fighting kin.",
+          "lowlight": "Concentrated on his prayers rather than the tower stair; Jorgrim reached him and put him out of action without a squirrel coming to his rescue."
+        },
+        {
+          "memberId": "torgrim",
+          "name": "Torgrim Nordost",
+          "role": "Jaeger",
+          "rank": "henchman",
+          "status": "active",
+          "stats": { "M": 4, "WS": 3, "BS": 3, "S": 3, "T": 3, "W": 1, "I": 3, "A": 2, "Ld": 7 },
+          "experience": 2,
+          "equipment": ["Bow", "Dagger"],
+          "skills": [],
+          "highlight": "Sprinted into the merchant’s shop, claimed a second-floor window and occupied the building while the others fought outside.",
+          "lowlight": "Rained arrows from an excellent position without doing any damage; his most convincing target was a shutter."
+        },
+        {
+          "memberId": "ragnar",
+          "name": "Ragnar",
+          "role": "Ogre",
+          "rank": "henchman",
+          "status": "active",
+          "stats": { "M": 6, "WS": 3, "BS": 2, "S": 4, "T": 4, "W": 3, "I": 3, "A": 2, "Ld": 8 },
+          "experience": 4,
+          "equipment": ["Double-handed weapon"],
+          "skills": [],
+          "highlight": "Put Norri out of action once Biorn pinned him, then joined the assault on the rear ruin and took Flint out as well.",
+          "lowlight": "Spent an embarrassing stretch swinging at the space Norri had just vacated; needed Biorn to make the slayer hold still."
+        }
+      ]
+    },
+    {
+      "warbandId": "bitterbrow-expedition",
+      "name": "The Bitterbrow Expedition",
+      "result": "defeat",
+      "rating": 0,
+      "battles": 1,
+      "victories": 0,
+      "wyrdstone": 0,
+      "gold": 0,
+      "highlights": [
+        "Forced the vine-choked canal and mounted a rapid assault on the watchtower.",
+        "Gammling took Mjølnir out of action, and Jorgrim later silenced Skalle.",
+        "Norri’s evasions and Flint’s stubborn defence made the kin work for their gains."
+      ],
+      "lowlights": [
+        "Five expedition members were put out of action while the kin secured the objective positions.",
+        "The tower assault failed to dislodge Baldur, and Jorgrim’s counterattack came too late to reverse the battle.",
+        "The merchant remained unaccounted for and the ancestral debt unsettled."
+      ],
+      "members": [
+        {
+          "memberId": "jorgrim",
+          "name": "Jorgrim Bitterbrow",
+          "role": "Lord",
+          "rank": "hero",
+          "status": "active",
+          "stats": { "M": 3, "WS": 5, "BS": 4, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 9 },
+          "equipment": [],
+          "skills": [],
+          "highlight": "Dodged Baldur’s great blade repeatedly, broke away to reinforce his kin and put Skalle out of action.",
+          "lowlight": "His time in the tower left the canal fight beyond his help; striking down the priest could not recover the lost objectives or settle the grudge."
+        },
+        {
+          "memberId": "norri",
+          "name": "Norri Stonebrew",
+          "role": "Slayer",
+          "rank": "hero",
+          "status": "injured",
+          "stats": { "M": 3, "WS": 4, "BS": 3, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 9 },
+          "equipment": [],
+          "skills": [],
+          "highlight": "Made a mockery of the kin’s attempts to hit him, slipping between blows and keeping even Ragnar striking empty air.",
+          "lowlight": "Biorn finally abandoned finesse and wrangled him down; Ragnar ended the slayer’s extraordinary run of evasions."
+        },
+        {
+          "memberId": "grakki",
+          "name": "Grakki Dourhammer",
+          "role": "Clansman",
+          "rank": "henchman",
+          "status": "injured",
+          "stats": { "M": 3, "WS": 4, "BS": 3, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 9 },
+          "equipment": [],
+          "skills": [],
+          "highlight": "Kept his adventurous spirit through the grasping vines and pressed an opening against Biorn rather than surrendering the initiative.",
+          "lowlight": "His promising shortcut nearly rooted him in the canal; his final opportunity ended with Biorn putting him out of action."
+        },
+        {
+          "memberId": "gamling",
+          "name": "Gammling Gubbsson",
+          "role": "Clansman",
+          "rank": "henchman",
+          "status": "injured",
+          "stats": { "M": 3, "WS": 4, "BS": 3, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 9 },
+          "equipment": [],
+          "skills": [],
+          "highlight": "Rushed the tower with Jorgrim and put Mjølnir out of action, proving that his endless complaints had not slowed his fighting.",
+          "lowlight": "Had barely finished demonstrating the faults of human swordsmanship when Baldur avenged Mjølnir and put him out of action."
+        },
+        {
+          "memberId": "flint",
+          "name": "Flint Mudbeard",
+          "role": "Beardling",
+          "rank": "henchman",
+          "status": "injured",
+          "stats": { "M": 3, "WS": 3, "BS": 2, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 8 },
+          "equipment": [],
+          "skills": [],
+          "highlight": "Defended the rear ruin bravely against Biorn’s charge, making excellent use of the narrow approach and broken wall.",
+          "lowlight": "His position could contain one attacker, not Biorn and an ogre together; Ragnar’s additional charge put him out of action."
+        },
+        {
+          "memberId": "orri",
+          "name": "Orri Ormsson",
+          "role": "Beardling",
+          "rank": "henchman",
+          "status": "injured",
+          "stats": { "M": 3, "WS": 3, "BS": 2, "S": 3, "T": 4, "W": 1, "I": 2, "A": 1, "Ld": 8 },
+          "equipment": [],
+          "skills": [],
+          "highlight": "Met Agnar head-on at the canal and almost drove the Nordost elder back into the water.",
+          "lowlight": "Could not turn his early pressure into a finish; Agnar found firm footing and put him out of action."
+        }
+      ]
+    }
+  ]
+}
