@@ -156,10 +156,33 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
         </form>
         <noscript><p>The clues can be solved on paper using the numbered sockets and labelled seals. Enable JavaScript to arrange the seals and reveal the hidden dispatch.</p></noscript>
         <p data-puzzle-feedback role="status" aria-live="polite" aria-atomic="true"></p>
-        <div class="puzzle-hints">
-          {report.puzzle.hints.map((hint, index) => (
-            <details><summary>Hint {index + 1}</summary><p>{hint}</p></details>
-          ))}
+        <div class="margin-note">
+          <button
+            type="button"
+            class="thumbprint"
+            data-hint-trigger
+            data-hint-key={scenario.id}
+            aria-expanded="false"
+            aria-controls="clerks-margin"
+            aria-label="A greasy thumbprint in the margin — press to read the clerk&rsquo;s workings on this puzzle"
+          >
+            <Icon name="thumbprint" size={22} />
+            <span class="thumbprint-label" aria-hidden="true">A greasy thumbprint in the margin</span>
+          </button>
+        </div>
+        <div id="clerks-margin" class="clerks-margin" data-hint-ledger hidden>
+          <h3 tabindex="-1">The clerk&rsquo;s margin</h3>
+          <p class="archive-note">Someone worked the puzzle before you and left their reasoning in soot along the edge of the plate. Rub the lines back one at a time; each gives away a little more.</p>
+          <ol class="margin-workings">
+            {report.puzzle.hints.map((hint, index) => (
+              <li data-hint hidden><span class="working-index">Working {index + 1}</span><p>{hint}</p></li>
+            ))}
+          </ol>
+          <div class="margin-actions">
+            <button type="button" data-hint-next>Rub away more soot</button>
+            <button type="button" data-hint-close>Fold the margin under</button>
+          </div>
+          <p class="archive-note" data-hint-exhausted hidden>Nothing further survives in the margin.</p>
         </div>
         <div data-puzzle-revelation class="dispatch" hidden>
           <h3 tabindex="-1">The hidden dispatch</h3>
@@ -252,10 +275,61 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
     const seals = [...form.querySelectorAll<HTMLButtonElement>('[data-seal]')];
     const feedback = puzzle.querySelector<HTMLElement>('[data-puzzle-feedback]')!;
     const revelation = puzzle.querySelector<HTMLElement>('[data-puzzle-revelation]')!;
+    const hintTrigger = puzzle.querySelector<HTMLButtonElement>('[data-hint-trigger]')!;
+    const ledger = puzzle.querySelector<HTMLElement>('[data-hint-ledger]')!;
+    const workings = [...ledger.querySelectorAll<HTMLElement>('[data-hint]')];
+    const nextHint = ledger.querySelector<HTMLButtonElement>('[data-hint-next]')!;
+    const closeLedger = ledger.querySelector<HTMLButtonElement>('[data-hint-close]')!;
+    const exhausted = ledger.querySelector<HTMLElement>('[data-hint-exhausted]')!;
+    const noticedKey = `mordheim:margin-noticed:${hintTrigger.dataset.hintKey}`;
+    let failedAttempts = 0;
     const emptySymbol = sockets[0].querySelector('[data-socket-symbol]')!.firstElementChild!.cloneNode(true);
     let arrangement: (string | null)[] = sockets.map(() => null);
     let selected: string | null = null;
     fieldset.disabled = false;
+
+    /* The margin is meant to be found, not advertised: it stays a near-invisible
+       smudge until someone hovers, tabs onto it, or struggles with the plate. Once
+       a reader has found it, remember that so it stays legible on later visits. */
+    const notice = (persist: boolean) => {
+      hintTrigger.classList.add('is-noticed');
+      if (!persist) return;
+      try { localStorage.setItem(noticedKey, '1'); } catch { /* storage unavailable */ }
+    };
+
+    try { if (localStorage.getItem(noticedKey)) notice(false); } catch { /* storage unavailable */ }
+
+    const revealWorking = () => {
+      const working = workings.find((entry) => entry.hidden);
+      if (!working) return;
+      working.hidden = false;
+      const remaining = workings.filter((entry) => entry.hidden).length;
+      nextHint.hidden = remaining === 0;
+      exhausted.hidden = remaining > 0;
+      feedback.textContent = remaining
+        ? `Working ${workings.indexOf(working) + 1} of ${workings.length} rubbed clear. ${remaining} still under the soot.`
+        : `Working ${workings.length} of ${workings.length} rubbed clear. Nothing further survives in the margin.`;
+    };
+
+    const openLedger = () => {
+      notice(true);
+      ledger.hidden = false;
+      hintTrigger.setAttribute('aria-expanded', 'true');
+      if (workings.every((entry) => entry.hidden)) revealWorking();
+      ledger.querySelector('h3')?.focus();
+    };
+
+    const shutLedger = () => {
+      ledger.hidden = true;
+      hintTrigger.setAttribute('aria-expanded', 'false');
+    };
+
+    hintTrigger.addEventListener('click', () => {
+      if (ledger.hidden) openLedger();
+      else { shutLedger(); hintTrigger.focus(); }
+    });
+    nextHint.addEventListener('click', revealWorking);
+    closeLedger.addEventListener('click', () => { shutLedger(); hintTrigger.focus(); });
 
     const render = () => {
       sockets.forEach((socket, index) => {
@@ -306,10 +380,16 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
         return;
       }
       if (!sockets.every((socket, index) => arrangement[index] === socket.dataset.answer)) {
-        feedback.textContent = 'The seals resist. The mechanism gives no indication of which marks are wrong. Compare the spacing and order in the evidence, or open a hint.';
+        failedAttempts += 1;
+        const stuck = failedAttempts >= 3 && ledger.hidden;
+        if (stuck) notice(true);
+        feedback.textContent = stuck
+          ? 'The seals resist. The mechanism gives no indication of which marks are wrong — but a greasy thumbprint below the plate catches the light, where some earlier clerk worked the same puzzle.'
+          : 'The seals resist. The mechanism gives no indication of which marks are wrong. Compare the spacing and order in the evidence.';
         return;
       }
       selected = null;
+      failedAttempts = 0;
       render();
       feedback.textContent = 'The seals yield. The hidden dispatch is revealed.';
       revelation.hidden = false;
@@ -319,10 +399,14 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
     form.addEventListener('reset', () => {
       arrangement = sockets.map(() => null);
       selected = null;
+      failedAttempts = 0;
       render();
       revelation.hidden = true;
       feedback.textContent = 'The dispatch is sealed again.';
-      puzzle.querySelectorAll('details').forEach((hint) => { hint.open = false; });
+      shutLedger();
+      workings.forEach((working) => { working.hidden = true; });
+      nextHint.hidden = false;
+      exhausted.hidden = true;
       seals[0]?.focus();
     });
   }
@@ -336,8 +420,8 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
   .seal-puzzle legend { padding: 0 .5rem; color: var(--gold); }
   #seal-help { font-size: .9rem; }
   .seal-controls { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .5rem; margin-top: 1.25rem; padding-block: 1rem; border-block: 1px solid var(--gold-dim); }
-  .seal-puzzle button { font: inherit; color: var(--parchment); background: var(--bg-panel2); border: 1px solid var(--gold-dim); padding: .75rem; min-height: 48px; min-width: 0; touch-action: manipulation; }
-  .seal-puzzle button:hover { border-color: var(--parchment); background: var(--bg); }
+  .seal-puzzle button:not(.thumbprint) { font: inherit; color: var(--parchment); background: var(--bg-panel2); border: 1px solid var(--gold-dim); padding: .75rem; min-height: 48px; min-width: 0; touch-action: manipulation; }
+  .seal-puzzle button:not(.thumbprint):hover { border-color: var(--parchment); background: var(--bg); }
   .seal-puzzle button:disabled { cursor: default; opacity: .6; }
   .seal-socket, .seal-tray button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .35rem; }
   .seal-puzzle .seal-socket { border-style: dashed; background: var(--bg); }
@@ -347,12 +431,45 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
   .seal-tray { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .5rem; }
   .seal-tray small { font-size: .7rem; color: var(--ink-dim); }
   .seal-tray button[aria-pressed="true"] { outline: 2px solid var(--parchment); outline-offset: 2px; background: var(--bg); }
-  .seal-puzzle button, .puzzle-hints summary { cursor: pointer; }
-  .seal-puzzle :is(button, summary):focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+  .seal-puzzle button { cursor: pointer; }
+  .seal-puzzle button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
   .seal-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
   .seal-puzzle [role="status"] { margin: 1rem 0; color: var(--gold); }
-  .puzzle-hints details { margin-top: .75rem; }
-  .puzzle-hints summary { color: var(--gold); min-height: 48px; padding-block: .75rem; }
+  /* The clerk's margin: a smudge at the edge of the plate that only shows itself
+     to a reader who hovers over it, tabs onto it, or has failed the plate enough
+     times for the page to take pity. Never hidden from assistive technology. */
+  .margin-note { display: flex; justify-content: flex-end; margin-top: .5rem; }
+  .thumbprint {
+    position: relative; display: inline-flex; align-items: center; justify-content: center;
+    min-height: 48px; min-width: 48px; padding: .6rem;
+    color: var(--ink-dim); background: none; border: 0;
+    font: inherit; font-size: .8rem; text-align: left;
+    opacity: .09; filter: blur(.5px); transition: opacity .45s ease, color .45s ease, filter .45s ease;
+  }
+  .thumbprint.is-noticed { opacity: .45; }
+  .thumbprint:hover, .thumbprint:focus-visible, .seal-puzzle:hover .thumbprint.is-noticed {
+    opacity: 1; color: var(--gold); filter: none;
+  }
+  /* At rest the smudge is a mark, not a sentence; the wording only surfaces once
+     the reader has actually found it. It stays in the accessible name throughout. */
+  .thumbprint-label {
+    position: absolute; right: calc(100% - .25rem); top: 50%; transform: translateY(-50%);
+    width: max-content; max-width: 19ch; text-align: right;
+    opacity: 0; transition: opacity .3s ease;
+  }
+  .thumbprint:hover .thumbprint-label,
+  .thumbprint:focus-visible .thumbprint-label,
+  .seal-puzzle:hover .thumbprint.is-noticed .thumbprint-label { opacity: 1; }
+  .clerks-margin { margin-top: 1rem; padding: 1.25rem; border: 1px dashed var(--gold-dim); background: var(--bg); }
+  .clerks-margin[hidden] { display: none; }
+  .clerks-margin h3 { font-size: 1.5rem; margin-bottom: .5rem; }
+  .clerks-margin h3:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+  .margin-workings { list-style: none; padding: 0; margin-top: 1rem; }
+  .margin-workings li { border-top: 1px solid var(--border); padding-top: .75rem; margin-bottom: .75rem; }
+  .margin-workings li[hidden] { display: none; }
+  .working-index { display: block; color: var(--gold); font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; margin-bottom: .35rem; }
+  .margin-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+  .margin-actions button[hidden] { display: none; }
   .dispatch { margin-top: 1.5rem; padding: 1.5rem; border: 1px solid var(--gold-dim); background: var(--bg-panel2); }
   .dispatch[hidden] { display: none; }
   .battle-report { padding-top: 2rem; }
@@ -402,6 +519,7 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
   .warband-summary { scroll-margin-top: 2rem; }
   .chapter-nav { font-size: .9rem; margin-top: 3rem; }
   @media (max-width: 700px) {
+    .thumbprint { opacity: .12; }
     .seal-tray { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .seal-controls { gap: .25rem; }
     .seal-puzzle .seal-socket { padding: .5rem .1rem; font-size: .75rem; }
