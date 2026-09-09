@@ -34,6 +34,7 @@ All content lives in plain TypeScript data files — no HTML editing required:
 | `src/data/chronicle.ts` | Campaign timeline entries |
 | `src/data/history/*.json` | Per-scenario battle reports and snapshots: narratives, outcomes, loot, campaign consequences, and every participant's stats, highlights and lowlights |
 | `src/data/history.ts` | Types and helpers (`getMemberStory`, `getWarbandStory`) to follow any warrior or warband across the campaign |
+| `src/data/curfew/omens.json` | The CURFEW Omen deck: 30 Tarot of the Damned cards with readings and errand tilts; images in `public/curfew/omens/`, regenerated with `scripts/curfew/` |
 
 ### Campaign history database
 
