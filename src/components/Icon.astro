@@ -1,6 +1,6 @@
 ---
 interface Props {
-  name: 'arrow-down' | 'arrow-left' | 'arrow-right' | 'arrow-up-right' | 'close' | 'cross' | 'diamond' | 'moon' | 'sun' | 'swords' | 'tombstone' | 'bell' | 'boat' | 'key' | 'candle' | 'anchor' | 'crown';
+  name: 'arrow-down' | 'arrow-left' | 'arrow-right' | 'arrow-up-right' | 'close' | 'cross' | 'diamond' | 'moon' | 'sun' | 'swords' | 'tombstone' | 'bell' | 'boat' | 'key' | 'candle' | 'anchor' | 'crown' | 'thumbprint';
   class?: string;
   size?: number;
 }
@@ -47,6 +47,14 @@ const { name, class: className, size = 16 } = Astro.props;
   {name === 'candle' && <><path d="M9 10h6v10H9ZM6 21h12M12 2c-5 5-2 7 0 7s5-2 0-7Z" /></>}
   {name === 'anchor' && <><circle cx="12" cy="5" r="2" /><path d="M12 7v14M7 10h10M4 14c0 9 16 9 16 0M4 14l-2 3m2-3 3 2m13-2 2 3m-2-3-3 2" /></>}
   {name === 'crown' && <path d="m3 6 3 13h12l3-13-6 5-3-8-3 8-6-5ZM6 16h12" />}
+  {name === 'thumbprint' && (
+    <>
+      <path d="M12 21.2c-1.5-1.9-2.3-4.1-2.3-6.5a2.3 2.3 0 0 1 4.6 0c0 1.2.2 2.4.6 3.5" />
+      <path d="M6.9 17.6A9.2 9.2 0 0 1 5.7 13a6.3 6.3 0 0 1 12.6 0c0 1.5-.2 3-.6 4.4" />
+      <path d="M8.6 5.6a7.5 7.5 0 0 1 9.9 3.1" />
+      <path d="M3.6 9.2a8.6 8.6 0 0 1 2.3-3.1" />
+    </>
+  )}
 </svg>
 
 <style>
