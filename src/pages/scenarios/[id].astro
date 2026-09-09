@@ -58,8 +58,8 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
       <a href="#battle">The battle</a>
       <a href="#epilogue">Epilogue</a>
       {report.puzzle && <a href="#merchant-puzzle">The sealed clue</a>}
-      <a href="#campaign">Campaign consequences</a>
       <a href="#muster">Warbands &amp; warriors</a>
+      <a href="#campaign">Campaign consequences</a>
     </nav>
 
     <section id="outcome" class="panel">
@@ -191,14 +191,6 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
       </section>
     )}
 
-    <section id="campaign" class="panel">
-      <h2>What the campaign carries forward</h2>
-      <h3>Noteworthy loot &amp; costs</h3>
-      {report.loot.length ? <ul>{report.loot.map((item) => <li>{item}</li>)}</ul> : <p>No noteworthy loot recorded.</p>}
-      <h3>Lasting consequences &amp; unresolved records</h3>
-      {report.campaignNotes.length ? <ul>{report.campaignNotes.map((note) => <li>{note}</li>)}</ul> : <p>No lasting consequences recorded.</p>}
-    </section>
-
     <section id="muster">
       <p class="section-kicker">The final reckoning</p>
       <h2 class="section-title">Warbands &amp; warriors</h2>
@@ -257,6 +249,19 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
         })}
       </div>
     </section>
+
+    <details id="campaign" class="panel campaign-ledger">
+      <summary>
+        <h2>What the campaign carries forward</h2>
+        <span class="summary-note">Loot, costs &amp; unresolved records <Icon name="arrow-down" size={14} /></span>
+      </summary>
+      <div class="campaign-body">
+        <h3>Noteworthy loot &amp; costs</h3>
+        {report.loot.length ? <ul>{report.loot.map((item) => <li>{item}</li>)}</ul> : <p>No noteworthy loot recorded.</p>}
+        <h3>Lasting consequences &amp; unresolved records</h3>
+        {report.campaignNotes.length ? <ul>{report.campaignNotes.map((note) => <li>{note}</li>)}</ul> : <p>No lasting consequences recorded.</p>}
+      </div>
+    </details>
 
     <nav class="chapter-nav" aria-label="Scenario navigation">
       {previous && <a href={getScenarioUrl(previous.id)}><Icon name="arrow-left" size={14} /> Previous: {previous.scenario}</a>}
@@ -412,6 +417,20 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
   }
 </script>
 
+<script>
+  /* The campaign ledger sits closed at the foot of the page; anyone arriving on it
+     from the section nav or a shared link should land on it already open. */
+  const ledger = document.querySelector<HTMLDetailsElement>('#campaign');
+  if (ledger) {
+    const openOnHash = () => { if (location.hash === '#campaign') ledger.open = true; };
+    openOnHash();
+    window.addEventListener('hashchange', openOnHash);
+    document.querySelectorAll<HTMLAnchorElement>('a[href="#campaign"]').forEach((link) => {
+      link.addEventListener('click', () => { ledger.open = true; });
+    });
+  }
+</script>
+
 <style>
   .puzzle-evidence { margin: 1.5rem 0; }
   .evidence { border-left: 2px solid var(--gold-dim); padding-left: 1rem; }
@@ -470,6 +489,17 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
   .working-index { display: block; color: var(--gold); font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; margin-bottom: .35rem; }
   .margin-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
   .margin-actions button[hidden] { display: none; }
+  .campaign-ledger { margin: 3.5rem 0; scroll-margin-top: 2rem; }
+  .campaign-ledger summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .5rem 1.5rem; min-height: 48px; cursor: pointer; list-style: none; }
+  .campaign-ledger summary::-webkit-details-marker { display: none; }
+  .campaign-ledger summary h2 { margin-bottom: 0; }
+  .campaign-ledger summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+  .campaign-ledger summary:hover .summary-note { color: var(--parchment); }
+  .summary-note { color: var(--gold); font-size: .85rem; }
+  .summary-note :global(svg) { margin-left: .35rem; transition: transform .25s ease; }
+  .campaign-ledger[open] .summary-note :global(svg) { transform: rotate(180deg); }
+  .campaign-body { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+  .campaign-body h3:first-child { margin-bottom: 1rem; }
   .dispatch { margin-top: 1.5rem; padding: 1.5rem; border: 1px solid var(--gold-dim); background: var(--bg-panel2); }
   .dispatch[hidden] { display: none; }
   .battle-report { padding-top: 2rem; }
