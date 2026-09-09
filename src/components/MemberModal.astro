@@ -59,6 +59,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
             <dl>{statKeys.map((k) => <div><dt>{k}</dt><dd>{statNames[k]}</dd></div>)}</dl>
           </details>
           <div class="profile-section">
+            {m.experience !== undefined && <p><strong>Experience:</strong> {m.experience}</p>}
             <h4>Equipment</h4>
             <ul>{m.equipment.map((e) => <li>{e}</li>)}</ul>
             {m.skills.length > 0 && (

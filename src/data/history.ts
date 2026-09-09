@@ -17,6 +17,7 @@ export interface MemberSnapshot {
   /** 'dead' means the warrior fell in this scenario. */
   status: MemberStatus;
   stats: Statline;
+  experience?: number;
   equipment: string[];
   skills: string[];
   /** This warrior's finest moment in the scenario. */

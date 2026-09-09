@@ -20,6 +20,7 @@ export interface Member {
     epitaph: string;
   };
   stats: Statline;
+  experience?: number;
   equipment: string[];
   skills: string[];
   /** Prayers known, for priests and other blessed warriors. */
@@ -54,11 +55,11 @@ export const warbands: Warband[] = [
     sigil: 'NK',
     crest: 'crest-nordost.svg',
     player: 'Niklas',
-    rating: 79,
+    rating: 124,
     battles: 1,
     victories: 1,
     wyrdstone: 0,
-    gold: 0,
+    gold: 72,
     lore:
       'Nordost was a holding of longhouses and pine forest in the cold north of Ostland, and it belongs to the Nordost family no longer. What drove them out, they do not discuss with strangers. They walked south through a hard winter and buried kin at the roadside as they went — brothers, wives, children — until only this handful reached the Reik. Hardy folk, raised on thin soil and long nights, they have come to the City of the Damned because it is the one place in the Empire where a family with nothing left can still dig a fortune out of the ground. They mean to earn enough wyrdstone to buy land somewhere quiet, raise longhouses again, and never speak of the road south.',
     members: [
@@ -70,8 +71,9 @@ export const warbands: Warband[] = [
         portrait: 'AN',
         epithet: 'Who Led Them South',
         stats: { M: 4, WS: 4, BS: 4, S: 3, T: 4, W: 1, I: 3, A: 1, Ld: 8 },
+        experience: 24,
         equipment: ['Sword', 'Shield', 'Light armour', 'Helmet'],
-        skills: [],
+        skills: ['Leader'],
         lore:
           'Agnar chose the road south and counted every grave they dug along it. He carries the weight of that arithmetic and rarely raises his voice, because he has never had to. The winter that killed so many of his family only seems to have made him harder to kill: he came through it without a fever, and the kin have taken that as an omen worth following.',
       },
@@ -82,12 +84,13 @@ export const warbands: Warband[] = [
         rank: 'hero',
         portrait: 'MJ',
         epithet: 'The Left Hand',
-        stats: { M: 4, WS: 4, BS: 3, S: 4, T: 3, W: 1, I: 3, A: 1, Ld: 7 },
-        equipment: ['Hammer'],
+        stats: { M: 4, WS: 4, BS: 3, S: 3, T: 3, W: 1, I: 3, A: 1, Ld: 7 },
+        experience: 13,
+        equipment: ['Dagger', 'Hammer'],
         skills: [],
-        injuries: ['Lost a hand — may only ever wield a single one-handed weapon.'],
+        injuries: ['Severe Arm Wound — lost a hand; may only ever wield a single one-handed weapon.'],
         lore:
-          'The strongest of the brothers, and now the simplest to arm: one hammer, one hand, no shield and no argument. Gammling Gubbsson put him out of action in the watchtower during the kin’s first battle for the abandoned market; the wound cost him the other hand. Baldur avenged him and held the tower, but that is not the same as getting it back. Mjølnir means to make the remaining hand count.',
+          'One of the blood brothers, and now the simplest to arm: one weapon at a time, one hand, no shield and no argument. Gammling Gubbsson put him out of action in the watchtower during the kin’s first battle for the abandoned market; the wound cost him the other hand. Baldur avenged him and held the tower, but that is not the same as getting it back. Mjølnir means to make the remaining hand count.',
       },
       {
         id: 'biorn',
@@ -96,8 +99,9 @@ export const warbands: Warband[] = [
         rank: 'hero',
         portrait: 'BI',
         epithet: 'Axe and Arrow',
-        stats: { M: 4, WS: 4, BS: 3, S: 3, T: 3, W: 1, I: 3, A: 1, Ld: 7 },
-        equipment: ['Axe', 'Bow'],
+        stats: { M: 4, WS: 4, BS: 3, S: 4, T: 3, W: 1, I: 3, A: 1, Ld: 7 },
+        experience: 15,
+        equipment: ['Dagger', 'Axe', 'Bow'],
         skills: [],
         lore:
           'Biorn cannot decide whether he would rather settle a fight at twenty paces or at arm\'s length, so he carries the means for both and lets the street decide. In Nordost this was called indecision. In Mordheim, where an alley can turn into a rooftop chase without warning, it has begun to look like foresight.',
@@ -105,13 +109,14 @@ export const warbands: Warband[] = [
       {
         id: 'baldur',
         name: 'Baldur Nordost',
-        role: 'Kin',
+        role: 'Hero Kin',
         rank: 'hero',
         portrait: 'BA',
         epithet: 'The Wide Swing',
-        stats: { M: 4, WS: 3, BS: 3, S: 3, T: 3, W: 1, I: 3, A: 1, Ld: 7 },
-        equipment: ['Double-handed weapon', 'Helmet'],
-        skills: [],
+        stats: { M: 4, WS: 3, BS: 3, S: 3, T: 3, W: 2, I: 3, A: 1, Ld: 7 },
+        experience: 3,
+        equipment: ['Dagger', 'Double-handed weapon', 'Helmet'],
+        skills: ['Promoted to hero', 'Skill access: Combat, Shooting'],
         lore:
           'Youngest of the kin to come through the winter, and the only one who still talks about the road south as an adventure. He swings a blade meant for a bigger man and has been told, repeatedly, to check who is standing behind him first. The helmet was Agnar\'s idea, and Baldur wears it because arguing with Agnar is not a thing the family does.',
       },
@@ -123,8 +128,9 @@ export const warbands: Warband[] = [
         portrait: 'SK',
         epithet: 'Who Walks Ahead',
         stats: { M: 4, WS: 3, BS: 3, S: 3, T: 3, W: 1, I: 3, A: 1, Ld: 7 },
+        experience: 13,
         equipment: ['Dagger'],
-        skills: [],
+        skills: ['Prayer User'],
         prayers: ["Stag's Leap"],
         lore:
           'No Nordost by blood, but he found the family on the road and stayed. Skalle serves Taal, lord of the wild places, and holds that a city is only a forest that has forgotten itself — a position Mordheim tests daily. He goes lightly armed and moves over broken ground like something with four legs, which the kin have stopped finding strange.',
@@ -136,7 +142,8 @@ export const warbands: Warband[] = [
         rank: 'henchman',
         portrait: 'TN',
         epithet: 'Who Fed Them on the Road',
-        stats: { M: 4, WS: 3, BS: 4, S: 3, T: 3, W: 1, I: 3, A: 1, Ld: 7 },
+        stats: { M: 4, WS: 3, BS: 3, S: 3, T: 3, W: 1, I: 3, A: 2, Ld: 7 },
+        experience: 2,
         equipment: ['Bow', 'Dagger'],
         skills: [],
         lore:
@@ -149,7 +156,8 @@ export const warbands: Warband[] = [
         rank: 'henchman',
         portrait: 'RA',
         epithet: 'Paid in Full, Nightly',
-        stats: { M: 6, WS: 3, BS: 2, S: 4, T: 4, W: 3, I: 3, A: 2, Ld: 7 },
+        stats: { M: 6, WS: 3, BS: 2, S: 4, T: 4, W: 3, I: 3, A: 2, Ld: 8 },
+        experience: 4,
         equipment: ['Double-handed weapon'],
         skills: [],
         lore:

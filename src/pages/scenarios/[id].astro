@@ -156,6 +156,7 @@ const perspectives = scenario.warbands.map((warband) => ({
                   <article id={`member-${member.memberId}`} class="member-record">
                     <h5>{member.name}</h5>
                     <p class="member-meta">{member.rank} · {member.role} · <span class:list={{ darkest: member.status !== 'active' }}>{statusLabel[member.status]}</span></p>
+                    {member.experience !== undefined && <p><strong>Experience:</strong> {member.experience}</p>}
                     <p><strong class="finest">Accomplishment &amp; finest moment:</strong> {member.highlight}</p>
                     <p><strong class="darkest">Darkest moment:</strong> {member.lowlight}</p>
                     <p><strong>Put out of action:</strong> {events.length === 0 && 'Not recorded.'}</p>
