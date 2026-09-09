@@ -1,6 +1,6 @@
 ---
 interface Props {
-  name: 'arrow-down' | 'arrow-left' | 'arrow-right' | 'arrow-up-right' | 'close' | 'cross' | 'diamond' | 'moon' | 'sun' | 'swords' | 'tombstone';
+  name: 'arrow-down' | 'arrow-left' | 'arrow-right' | 'arrow-up-right' | 'close' | 'cross' | 'diamond' | 'moon' | 'sun' | 'swords' | 'tombstone' | 'bell' | 'boat' | 'key' | 'candle' | 'anchor' | 'crown';
   class?: string;
   size?: number;
 }
@@ -41,6 +41,12 @@ const { name, class: className, size = 16 } = Astro.props;
     </>
   )}
   {name === 'tombstone' && <path d="M6 21V10a6 6 0 0 1 12 0v11M4 21h16M12 7v8m-3-5h6" />}
+  {name === 'bell' && <path d="M5 17h14l-2-4V9a5 5 0 0 0-10 0v4l-2 4ZM10 20h4M12 2v2" />}
+  {name === 'boat' && <path d="m3 15 3 5h12l3-5H3ZM12 3v12M12 3l7 9h-7M9 6l-5 6h5" />}
+  {name === 'key' && <><circle cx="8" cy="8" r="4" /><path d="m11 11 9 9m-5-5 3-3m0 6 3-3" /></>}
+  {name === 'candle' && <><path d="M9 10h6v10H9ZM6 21h12M12 2c-5 5-2 7 0 7s5-2 0-7Z" /></>}
+  {name === 'anchor' && <><circle cx="12" cy="5" r="2" /><path d="M12 7v14M7 10h10M4 14c0 9 16 9 16 0M4 14l-2 3m2-3 3 2m13-2 2 3m-2-3-3 2" /></>}
+  {name === 'crown' && <path d="m3 6 3 13h12l3-13-6 5-3-8-3 8-6-5ZM6 16h12" />}
 </svg>
 
 <style>
