@@ -9,6 +9,15 @@ Astro 7 on Vercel. Campaign pages are prerendered; the Town Cryer, the Curfew pa
 - `npm run check` — `astro check`. Keep it at 0 errors.
 - `npm run build` — Vercel build. `npm run db:generate` after a schema change; `npm run db:reset` wipes the local database.
 
+## Content model: source first, database for the nights
+
+This is a hybrid. The campaign's record is source code, edited by people and by coding agents working in the repository: warbands and their members (`src/data/warbands.ts`), Town Cryer articles (`src/data/news.ts`), the Chronicle (`src/data/chronicle.ts`) and the battle reports (`src/data/history/*.json`). The database holds only what the Curfew nights generate: ledgers, dispatches, players, sessions, midnight runs. Pages merge the two at render time and must keep working when the database is absent:
+
+- The Town Cryer prints `news.ts` and, beneath it, the dispatches the nights produced.
+- A member's profile shows the roster entry, the battle reports, and "Nights in the City" from their ledger (`src/curfew/story.ts`); a warband card carries its tavern title.
+- Never move source content into the database or make the admin console edit rosters, scenarios or articles; those changes are commits.
+- When adding a Curfew feature, ask which half it belongs to. Deterministic story that a night produces is database; anything a game master would author is source.
+
 ## Where things are
 
 - `src/curfew/engine.ts` pure Night engine (seeded, deterministic). `ledger.ts` pure ledger ops on `WarbandState`. `cryer.ts` turns a night into Town Cryer dispatches. All three have tests beside them.

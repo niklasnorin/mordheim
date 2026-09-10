@@ -28,7 +28,7 @@ The city takes nothing from the absent. Missing a night, a week or a month costs
 - Real games are recorded afterwards as JSON battle reports in `src/data/history/`; member status there (`active`, `injured`, `dead`) is what CURFEW reads for who stays home.
 - Nights turn at local midnight. Night 1 is 2026-09-10. A Moon is seven nights; a season is about twelve Moons.
 - The Ledger is reached by direct URL only for now (`/curfew/`, `/curfew/eve/`); no navigation link from the main site.
-- Warband rosters, standings and battle reports are still content in the repository; there is no backend for editing them yet.
+- The product is deliberately hybrid. Warband rosters, standings, battle reports, the Chronicle and the Town Cryer's articles are content in the repository, authored by the group and by a coding agent working on the source; the database holds only what the Curfew nights generate. Pages merge both: the Town Cryer prints the articles and the nights' dispatches, a warrior's profile shows the roster entry, the battle reports and their nights in the city. This is the intended shape, not a stopgap.
 
 ## Capabilities and Constraints
 

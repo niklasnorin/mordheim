@@ -17,6 +17,7 @@ import {
 } from '../../curfew/ledger.ts';
 import { dispatchesForNight, type Dispatch } from '../../curfew/cryer.ts';
 import { injuredInLastBattle, rivalOf, warbandById } from '../../curfew/roster.ts';
+import { memberNights, warbandStandings, type Ledger, type MemberNights, type WarbandStanding } from '../../curfew/story.ts';
 import type { Warband } from '../../data/warbands.ts';
 
 export { LedgerError };
@@ -165,6 +166,21 @@ export async function reconcileAll(today: number, source: 'cron' | 'admin' = 'cr
   const durationMs = Date.now() - started;
   await db().insert(curfewRuns).values({ source, night: today, ledgers: rows.length, nights, dispatches, durationMs });
   return { ledgers: rows.length, nights, dispatches, durationMs };
+}
+
+// ───────────────────────── the campaign site ─────────────────────────
+
+export interface CurfewStory { members: Record<string, MemberNights>; warbands: Record<string, WarbandStanding> }
+
+/** What the nights have added to every warrior's and warband's story, for the roster pages. */
+export async function curfewStory(today: number): Promise<CurfewStory> {
+  const rows = await db().select({ warbandId: curfewLedgers.warbandId, state: curfewLedgers.state }).from(curfewLedgers);
+  const ledgers: Ledger[] = [];
+  for (const r of rows) {
+    const warband = warbandById(r.warbandId);
+    if (warband) ledgers.push({ warband, state: coerceState(r.state, warband, today) });
+  }
+  return { members: memberNights(ledgers), warbands: warbandStandings(ledgers) };
 }
 
 // ───────────────────────── the Town Cryer ─────────────────────────

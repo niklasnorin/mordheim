@@ -9,11 +9,19 @@ import Chronicle from '../components/Chronicle.astro';
 import Graveyard from '../components/Graveyard.astro';
 import { warbands } from '../data/warbands';
 import Icon from '../components/Icon.astro';
+import { hasDatabase } from '../server/db/client';
+import { curfewStory, todayFor, type CurfewStory } from '../server/curfew/service';
 
 // Rendered on request so the Town Cryer can carry the Night Watch's dispatches, and cached at the edge for a
 // few minutes: nothing on this page is personal.
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
+
+// The roster is source; what the nights have added to it comes from the ledgers. Without a database the roster stands alone.
+let story: CurfewStory = { members: {}, warbands: {} };
+if (hasDatabase()) {
+  try { story = await curfewStory(todayFor(null)); } catch (e) { console.error('[curfew] story unavailable', e); }
+}
 ---
 
 <Base title="Mordheim — City of the Damned | Campaign Chronicle">
@@ -30,7 +38,7 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-r
         wyrdstone, gold, and glory. Most will find only death. Click a warrior to read their tale.
       </p>
       <div class="warband-grid">
-        {warbands.map((wb) => <WarbandCard warband={wb} />)}
+        {warbands.map((wb) => <WarbandCard warband={wb} standing={story.warbands[wb.id]} />)}
       </div>
     </section>
 
@@ -48,7 +56,7 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-r
     </p>
   </footer>
 
-  <MemberModal />
+  <MemberModal nights={story.members} />
 </Base>
 
 <style>

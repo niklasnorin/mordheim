@@ -88,7 +88,9 @@ The [Impeccable](https://impeccable.style) design skill is checked in under `.cl
 
 ## Updating campaign content
 
-All content lives in plain TypeScript data files — no HTML editing required:
+The site is a hybrid. The campaign's record is source code, edited by people or by a coding agent working in the repository; the database holds only what the Curfew nights generate. Pages merge the two: the Town Cryer prints `news.ts` and the nights' dispatches, and a warrior's profile shows the roster entry, the battle reports and their "Nights in the City".
+
+All authored content lives in plain TypeScript data files — no HTML editing required:
 
 | File | Contents |
 | --- | --- |

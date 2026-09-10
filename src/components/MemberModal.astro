@@ -1,8 +1,17 @@
 ---
 import { warbands } from '../data/warbands';
 import { getMemberStory, getScenarioUrl } from '../data/history';
+import type { MemberNights } from '../curfew/story';
 import Icon from './Icon.astro';
-import { asset } from '../lib/site';
+import { asset, base } from '../lib/site';
+
+interface Props {
+  /** What the Curfew nights have written about each member, by member id. Empty without a database. */
+  nights?: Record<string, MemberNights>;
+}
+const { nights = {} } = Astro.props;
+const SHOWN_NIGHTS = 5;
+const outcomeLabel = { boon: 'a good night', fair: 'a fair night', poor: 'a poor night' } as const;
 
 const statKeys = ['M', 'WS', 'BS', 'S', 'T', 'W', 'I', 'A', 'Ld'] as const;
 const statNames = {
@@ -23,6 +32,8 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
       wb.members.map((m) => {
         const story = getMemberStory(m.id);
         const openStory = m.rank === 'hero' && story.length > 0;
+        const curfew = nights[m.id];
+        const recent = curfew?.entries.slice(0, SHOWN_NIGHTS) ?? [];
         return (
         <div class="profile" data-profile={`${wb.id}:${m.id}`} hidden>
           <div class="profile-header">
@@ -86,6 +97,27 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
                 <h4>Tale</h4>
                 <p class="profile-lore">{m.lore}</p>
               </>
+            )}
+            {curfew && (recent.length > 0 || curfew.epithet) && (
+              <div class="nights">
+                <h4>Nights in the City</h4>
+                <p class="nights-standing">
+                  {curfew.epithet && <>The taverns call {m.name.split(' ')[0]} <em>{m.name.split(' ')[0]} {curfew.epithet}</em> now. </>}
+                  {curfew.nightsOut > 0 && <>{curfew.nightsOut} {curfew.nightsOut === 1 ? 'night' : 'nights'} out between the battles{curfew.shards > 0 ? `, ${curfew.shards} ${curfew.shards === 1 ? 'shard' : 'shards'} of the green brought home` : ''}.</>}
+                </p>
+                {recent.length > 0 && (
+                  <ol class="nights-list">
+                    {recent.map((e) => (
+                      <li>
+                        <span class="nights-night">Night {e.night}</span>
+                        <p>{e.prose}</p>
+                        <span class="nights-meta">{e.errandLabel}, {e.standing ? 'on standing orders' : outcomeLabel[e.outcome]}{e.token ? ` · brought back ${e.token}` : ''}{e.rumour ? ' · heard a rumour' : ''}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+                {curfew.entries.length > SHOWN_NIGHTS && <p class="nights-more">{curfew.entries.length - SHOWN_NIGHTS} earlier {curfew.entries.length - SHOWN_NIGHTS === 1 ? 'night is' : 'nights are'} in <a href={`${base}/curfew/`}>the warband's ledger</a>.</p>}
+              </div>
             )}
             {story.length > 0 || (m.dead && m.death) ? (
             <details class="storyline" data-default-open={openStory ? 'true' : 'false'} open={openStory}>
@@ -288,6 +320,17 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
     color: var(--ink-dim);
     font-size: var(--text-body);
   }
+  .nights { margin-top: 1.5rem; padding-top: 1.1rem; border-top: 1px solid var(--border); }
+  .nights-standing { color: var(--ink-dim); font-size: var(--text-body); margin-bottom: .8rem; }
+  .nights-standing em { color: var(--parchment); font-style: italic; }
+  .nights-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .8rem; }
+  .profile-section .nights-list li { padding-left: 0; }
+  .profile-section .nights-list li::before { content: none; }
+  .nights-night { display: block; font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .12em; color: var(--gold); margin-bottom: .15rem; }
+  .nights-list p { font-size: var(--text-body); line-height: 1.65; max-width: 68ch; }
+  .nights-meta { display: block; margin-top: .2rem; font-size: var(--text-meta); font-style: italic; color: var(--ink-dim); }
+  .nights-more { margin-top: .8rem; font-size: var(--text-ui); color: var(--ink-dim); }
+  .nights-more a { color: var(--gold); text-underline-offset: .2em; }
   .story-empty { color: var(--ink-dim); border-top: 1px solid var(--border); margin-top: 1.5rem; padding-top: 1rem; font-size: var(--text-body); }
 
   .storyline {
