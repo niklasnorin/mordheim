@@ -44,10 +44,27 @@ test('moons: one per week, all of them appear across a cycle', () => {
   assert.equal(seen.size, MOONS.length);
 });
 
-test('tilt clamps and the Silent Moon mutes the Omen', () => {
-  const omen = { ...OMENS[0], tilt: { scavenge: 2 } };
-  assert.equal(tiltFor('scavenge', omen, { id: 'x', name: '', reading: '', tilt: { scavenge: 2 }, notes: '' }), 3);
-  assert.equal(tiltFor('scavenge', omen, { id: 'x', name: '', reading: '', tilt: {}, notes: '', flatOmen: true }), 0);
+test('the Moon adds one point to its favoured errand only, and tilt clamps', () => {
+  const omen = { ...OMENS[0], tilt: { scavenge: 2, spy: -2 } };
+  const moon = { id: 'x', name: '', reading: '', boost: 'scavenge' as const, ties: {} };
+  assert.equal(tiltFor('scavenge', omen, moon), 3);
+  assert.equal(tiltFor('spy', omen, moon), -2);
+  assert.equal(tiltFor('pray', omen, moon), 0);
+  const omen3 = { ...omen, tilt: { scavenge: 3 } };
+  assert.equal(tiltFor('scavenge', omen3, moon), 3, 'clamped');
+  for (const m of MOONS) { assert.ok(m.boost, m.id); assert.equal(Object.keys(m.ties).length, 6, `${m.id} has a tie for every errand`); }
+});
+
+test('the Moon leaves a narrative mark on some nights, never an unfilled slot', () => {
+  let tied = 0;
+  for (let n = 1; n <= 60; n++) {
+    const res = resolveNight({ warband, night: n, orders: [{ memberId: 'torgrim', errand: 'scavenge' }], state: fresh });
+    const tie = moonForNight(n).ties.scavenge!;
+    const probe = tie.replace(/\{first\}/g, 'Torgrim').replace(/\{district\}.*$/, '').slice(0, 25);
+    if (res.results[0].prose.includes(probe)) tied++;
+    assert.doesNotMatch(res.results[0].prose, /\{\w+\}/);
+  }
+  assert.ok(tied > 15 && tied < 55, `tied ${tied} of 60 nights`);
 });
 
 test('a night resolves deterministically and reads as prose with a ledger', () => {

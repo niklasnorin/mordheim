@@ -1,4 +1,4 @@
-// Card front composition: soot ground, gold frame, parchment window, title band, tilt ledger.
+// Card front composition: soot ground, gold frame, parchment window, title band. Tilts are shown by the app, not on the card.
 'use strict';
 const ERRAND_LABEL = { scavenge: 'Scavenge', carouse: 'Carouse', train: 'Train', spy: 'Spy', pray: 'Pray', trade: 'Trade' };
 
@@ -81,33 +81,6 @@ function drawTitleBand(ctx, omen) {
   ctx.font = "italic 400 38px 'EB Garamond'"; ctx.fillStyle = 'rgba(217,205,184,0.9)';
   const lines = wrap(ctx, omen.reading, W - 240);
   lines.forEach((l, i) => ctx.fillText(l, cx, ty + 104 + i * 46));
-  // tilt ledger
-  const ly = 1680;
-  ctx.font = "600 27px 'Barlow Condensed'"; ctx.fillStyle = 'rgba(217,205,184,0.55)';
-  const entries = Object.entries(omen.tilt || {});
-  if (!entries.length) {
-    ctx.letterSpacing = '4px'; ctx.fillText('A FLAT NIGHT', cx, ly);
-  } else {
-    ctx.letterSpacing = '3px';
-    const parts = entries.map(([k, v]) => ({ label: ERRAND_LABEL[k].toUpperCase(), v }));
-    const gap = 30, triW = 12; const sep = 22;
-    const widths = parts.map(p => ctx.measureText(p.label).width + 8 + Math.abs(p.v) * (triW + 3));
-    const total = widths.reduce((a, b) => a + b, 0) + (parts.length - 1) * (gap + sep);
-    let x = cx - total / 2; ctx.textAlign = 'left';
-    parts.forEach((p, i) => {
-      ctx.fillStyle = 'rgba(217,205,184,0.65)'; ctx.fillText(p.label, x, ly);
-      let tx = x + ctx.measureText(p.label).width + 10;
-      const col = p.v > 0 ? C.candle : C.blood; ctx.fillStyle = col;
-      for (let k = 0; k < Math.abs(p.v); k++) {
-        ctx.beginPath();
-        if (p.v > 0) { ctx.moveTo(tx, ly - 2); ctx.lineTo(tx + triW, ly - 2); ctx.lineTo(tx + triW / 2, ly - 15); }
-        else { ctx.moveTo(tx, ly - 15); ctx.lineTo(tx + triW, ly - 15); ctx.lineTo(tx + triW / 2, ly - 2); }
-        ctx.closePath(); ctx.fill(); tx += triW + 3;
-      }
-      x += widths[i] + gap;
-      if (i < parts.length - 1) { ctx.fillStyle = C.gold; circle(ctx, x - gap / 2 + sep / 2 - 4, ly - 7, 2); ctx.fill(); x += sep; }
-    });
-  }
   ctx.restore();
 }
 function renderFront(omen, index, sceneFn) {

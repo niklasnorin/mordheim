@@ -1,13 +1,93 @@
 {
-  "description": "One Moon is one week. The Moon shifts the whole city's odds under every Omen. Tilt values run from -2 to +2 per errand.",
+  "description": "One Moon is one week. Each Moon favours one errand by a single point; everything else about it is narrative. The tie-in lines are woven into the Dawn Report for whatever the warband actually did that night. Slots: {first} the member's first name, {district} where they went.",
   "moons": [
-    { "id": "plague-moon", "name": "Plague Moon", "reading": "Chalk on the doors. The Sisters do not sleep.", "tilt": { "pray": 2, "carouse": -2 }, "notes": "Pray lucrative, Carouse dangerous." },
-    { "id": "hunters-moon", "name": "Hunter's Moon", "reading": "Wide hats in every doorway. Nobody drinks. Nobody trades.", "tilt": { "spy": -2, "pray": -1, "trade": -1, "train": 1 }, "notes": "Witch Hunters patrol. Spy and Pray risky, Trade quiet." },
-    { "id": "green-moon", "name": "Green Moon", "reading": "The comet flares. The rubble hums.", "tilt": { "scavenge": 2, "pray": -1 }, "notes": "Sifting rich and deadly." },
-    { "id": "festival-of-hanging", "name": "Festival of Hanging", "reading": "The gibbets are full and so are the taverns.", "tilt": { "carouse": 2, "train": 2 }, "renown": 2, "notes": "Carouse and the Pit boosted. Renown doubled." },
-    { "id": "silent-moon", "name": "Silent Moon", "reading": "No Omens. No bells. Whoever is listening has stopped.", "tilt": { "spy": 1 }, "flatOmen": true, "notes": "The Omen's tilt does not apply. Whispers cheap. A rest week." },
-    { "id": "market-moon", "name": "Market Moon", "reading": "Barges on the Stir. Every fence has two prices and both are good.", "tilt": { "trade": 2 }, "bazaarMultiplier": 2, "notes": "The Bazaar buys double." },
-    { "id": "ash-moon", "name": "Ash Moon", "reading": "The wind is from the west. The streets rewrite themselves.", "tilt": { "scavenge": 1, "spy": 1, "train": -1 }, "notes": "Map ink flows. Sifting finds streets, not stones." },
-    { "id": "debtors-moon", "name": "Debtor's Moon", "reading": "Old Henrik is calling in what he is owed. So is everyone else.", "tilt": { "trade": 1, "carouse": 1, "pray": -1 }, "notes": "Market tokens likelier. Debts likelier." }
+    {
+      "id": "plague-moon", "name": "Plague Moon", "reading": "Chalk on the doors. The Sisters do not sleep.", "boost": "pray",
+      "ties": {
+        "scavenge": "The rubble in {district} had been picked over by people who did not come back for the rest.",
+        "carouse": "Half the tavern wore cloth over their faces. The other half had stopped caring.",
+        "train": "The Pit ran short-handed. Two of the regulars are under chalk.",
+        "spy": "Every second door {first} passed was marked. Nobody spoke above a whisper.",
+        "pray": "The Sisters had run out of candles by the third hour and kept praying in the dark.",
+        "trade": "Henrik weighed the coin through a cloth and did not touch it."
+      }
+    },
+    {
+      "id": "hunters-moon", "name": "Hunter's Moon", "reading": "Wide hats in every doorway. Nobody drinks. Nobody trades.", "boost": "train",
+      "ties": {
+        "scavenge": "A wide hat watched from the end of the street the whole time.",
+        "carouse": "The tavern went quiet twice. Both times a hat had come in.",
+        "train": "The Pit was the one place the hunters left alone. It was full.",
+        "spy": "{first} was not the only one listening. The other one had a torch.",
+        "pray": "A witch hunter knelt in the front row of the shrine. Nobody knelt near him.",
+        "trade": "Henrik's shutters were down. The deal was done through the letterbox."
+      }
+    },
+    {
+      "id": "green-moon", "name": "Green Moon", "reading": "The comet flares. The rubble hums.", "boost": "scavenge",
+      "ties": {
+        "scavenge": "The rubble hummed under {first}'s hands. Nobody stopped to wonder why.",
+        "carouse": "The ale had a green cast to it by candlelight. Nobody sent it back.",
+        "train": "The comet's light came through the roof of the Pit. Every shadow had two edges.",
+        "spy": "The whole quarter glowed faintly. It made the listening easier and the hiding worse.",
+        "pray": "The candle flames burned green for a moment. The Sisters did not comment.",
+        "trade": "Henrik's scale would not settle. He blamed the moon."
+      }
+    },
+    {
+      "id": "festival-of-hanging", "name": "Festival of Hanging", "reading": "The gibbets are full and so are the taverns.", "boost": "carouse",
+      "ties": {
+        "scavenge": "The crowds were all at the gibbets. {first} had {district} alone.",
+        "carouse": "The whole city was drinking to the hanged. {first} drank to them twice.",
+        "train": "The Pit drew the overflow from the gibbets. They wanted more of what they had seen.",
+        "spy": "Everyone was talking. It was hard to hear anything for the talk.",
+        "pray": "The Sisters were saying the rites for the hanged. {first} waited a long time for a candle.",
+        "trade": "The fences did brisk business in the effects of the dead."
+      }
+    },
+    {
+      "id": "silent-moon", "name": "Silent Moon", "reading": "No bells. No carts. Whoever is listening has stopped.", "boost": "spy",
+      "ties": {
+        "scavenge": "No bells, no carts. {first} could hear each stone fall.",
+        "carouse": "The tavern spoke in murmurs. Even the dice were quiet.",
+        "train": "The Pit fought without a crowd. The blows sounded louder for it.",
+        "spy": "In the silence every word carried three streets.",
+        "pray": "Nobody sang. The candles did what candles do.",
+        "trade": "Henrik wrote his price on a slate and turned it around."
+      }
+    },
+    {
+      "id": "market-moon", "name": "Market Moon", "reading": "Barges on the Stir. Every fence has two prices and both are good.", "boost": "trade",
+      "ties": {
+        "scavenge": "Barge crews were already picking at the shoreline ruins.",
+        "carouse": "The tavern was full of sailors with coin and no sense of how much.",
+        "train": "Boatmen wagered on the Pit with the day's wages. The purse was fat.",
+        "spy": "The docks were loud with strangers. Strangers talk.",
+        "pray": "The Sisters took a collection at the door. It was a good night for it.",
+        "trade": "There were three buyers for every sliver and Henrik hated all of them."
+      }
+    },
+    {
+      "id": "ash-moon", "name": "Ash Moon", "reading": "The wind is from the west. The streets rewrite themselves.", "boost": "spy",
+      "ties": {
+        "scavenge": "The wind had moved the ash overnight. Streets were there that had not been.",
+        "carouse": "Ash came in under the tavern door and settled on the ale. Nobody minded.",
+        "train": "The Pit's sand was grey by the second bout.",
+        "spy": "Footprints in the ash told {first} who had passed, and how many.",
+        "pray": "The candles guttered in the draught and had to be relit twice.",
+        "trade": "Henrik wiped ash from the scale between every weighing."
+      }
+    },
+    {
+      "id": "debtors-moon", "name": "Debtor's Moon", "reading": "Old Henrik is calling in what he is owed. So is everyone else.", "boost": "carouse",
+      "ties": {
+        "scavenge": "Someone had been through {district} already, in a hurry, owing money.",
+        "carouse": "Every table in the tavern was arguing about who owed whom.",
+        "train": "The Pit's purse was small. Half of it had been claimed before the first bout.",
+        "spy": "Debt makes people talk. {first} let them.",
+        "pray": "The shrine's poor box had been forced. The Sisters prayed for whoever did it.",
+        "trade": "Henrik was calling in what he was owed and paid quickly to be rid of the coin."
+      }
+    }
   ]
 }

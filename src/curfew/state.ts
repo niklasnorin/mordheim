@@ -25,7 +25,6 @@ export interface WarbandState extends HandState {
   orders: Record<string, Order[]>;
   /** Resolved nights, oldest first. The Chronicle. */
   nights: NightResult[];
-  standing: { members: string[]; errands: Record<string, Errand> };
   /** Members the player has marked back on their feet after the last recorded battle. */
   healed: string[];
   rumours: { night: number; text: string }[];
@@ -58,13 +57,9 @@ export function saveState(state: WarbandState): void { try { localStorage.setIte
 export function resetState(warbandId: string): void { try { localStorage.removeItem(KEY(warbandId)); } catch {} }
 
 export function freshState(warband: WarbandLike, today: number): WarbandState {
-  const alive = warband.members.filter((m) => !m.dead);
-  const errands: Record<string, Errand> = {};
-  for (const m of alive) errands[m.id] = defaultErrand(m);
   return {
     version: 1, warbandId: warband.id, favour: 0, shards: 0, renown: 0, hand: [],
     firstSeen: today, lastResolved: Math.max(0, today - 1), orders: {}, nights: [],
-    standing: { members: alive.slice(0, CAMPAIGN.membersPerNight).map((m) => m.id), errands },
     healed: [], rumours: [], epithets: {}, headlines: [], offers: [], fights: [],
   };
 }
@@ -78,13 +73,23 @@ export function giveOrders(state: WarbandState, night: number, orders: Order[]):
   state.orders[night] = orders.slice(0, CAMPAIGN.membersPerNight).map((o) => ({ memberId: o.memberId, errand: o.errand }));
 }
 
-/** Standing orders for a night: the chosen members who are available, at half yield. */
-export function standingOrders(state: WarbandState, warband: WarbandLike, recovering: string[]): Order[] {
+/** The most recent orders the player actually gave, before the given night. Null if none yet. */
+export function lastGivenOrders(state: WarbandState, before: number): { night: number; orders: Order[] } | null {
+  const nights = Object.keys(state.orders).map(Number).filter((n) => n < before && state.orders[n]?.length).sort((a, b) => b - a);
+  return nights.length ? { night: nights[0], orders: state.orders[nights[0]] } : null;
+}
+
+/**
+ * Standing orders for a night: the last selection the player made, run again at half yield for whoever is
+ * still available. Before any selection exists, the first two available members go out on the errand their role suggests.
+ */
+export function standingOrders(state: WarbandState, warband: WarbandLike, recovering: string[], night = Number.MAX_SAFE_INTEGER): Order[] {
   const avail = new Set(availability(warband, recovering).filter((a) => a.available).map((a) => a.memberId));
-  return state.standing.members
-    .filter((id) => avail.has(id))
-    .slice(0, CAMPAIGN.membersPerNight)
-    .map((id) => ({ memberId: id, errand: state.standing.errands[id] ?? 'carouse', standing: true }));
+  const last = lastGivenOrders(state, night);
+  const source: Order[] = last
+    ? last.orders
+    : warband.members.filter((m) => avail.has(m.id)).slice(0, CAMPAIGN.membersPerNight).map((m) => ({ memberId: m.id, errand: defaultErrand(m) }));
+  return source.filter((o) => avail.has(o.memberId)).slice(0, CAMPAIGN.membersPerNight).map((o) => ({ memberId: o.memberId, errand: o.errand, standing: true }));
 }
 
 /**
@@ -109,7 +114,7 @@ export function reconcile(state: WarbandState, warband: WarbandLike, today: numb
 
   for (let night = first; night <= last; night++) {
     const given = state.orders[night];
-    const orders = given && given.length ? given : standingOrders(state, warband, recovering);
+    const orders = given && given.length ? given : standingOrders(state, warband, recovering, night);
     const result = orders.length ? resolveNight({ warband, rival, night, orders, state }) : quietNight(night);
     const before = titleFor(state.renown);
     const applied = applyNight(state, result);

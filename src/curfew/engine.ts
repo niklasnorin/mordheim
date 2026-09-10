@@ -26,7 +26,8 @@ export const ERRAND_BLURB: Record<Errand, string> = {
 export type TokenType = 'fortune' | 'ground' | 'market' | 'sight';
 export interface TokenDef { id: string; type: TokenType; name: string; effect: string }
 export interface Omen { id: string; numeral: string; title: string; reading: string; tilt: Partial<Record<Errand, number>>; notes: string; image: string }
-export interface Moon { id: string; name: string; reading: string; tilt: Partial<Record<Errand, number>>; notes: string; renown?: number; flatOmen?: boolean; bazaarMultiplier?: number }
+/** A Moon favours one errand by a single point. Everything else about it is narrative, woven into the Dawn Report. */
+export interface Moon { id: string; name: string; reading: string; boost: Errand; ties: Partial<Record<Errand, string>> }
 
 export interface MemberLike { id: string; name: string; role: string; dead?: boolean }
 export interface WarbandLike { id: string; name: string; members: MemberLike[] }
@@ -114,11 +115,10 @@ export function moonForNight(night: number): Moon {
   const order = shuffle(rng(hashSeed(campaign.id, 'moons', cycle)), MOONS);
   return order[((idx % MOONS.length) + MOONS.length) % MOONS.length];
 }
-/** Combined tilt for an errand on a night: Omen plus Moon, clamped to ±3. The Silent Moon mutes the Omen. */
+/** Combined tilt for an errand on a night: the Omen's tilt plus one point for the Moon's favoured errand, clamped to ±3. */
 export function tiltFor(errand: Errand, omen: Omen, moon: Moon): number {
-  const o = moon.flatOmen ? 0 : omen.tilt[errand] ?? 0;
-  const m = moon.tilt[errand] ?? 0;
-  return Math.max(-3, Math.min(3, o + m));
+  const o = omen.tilt[errand] ?? 0;
+  return Math.max(-3, Math.min(3, o + (moon.boost === errand ? 1 : 0)));
 }
 
 // ───────────────────────── availability ─────────────────────────
@@ -204,7 +204,6 @@ export function resolveNight(input: ResolveInput): NightResult {
       const chance = outcome === 'boon' ? 1 : outcome === 'fair' ? Math.max(0.1, 0.35 + 0.1 * tilt) : 0;
       if (r() < chance) token = pick(r, TOKENS.filter((t) => t.type === type));
     }
-    if (moon.renown && renown) renown *= moon.renown;
     // favour soft cap: past it the city forgets quickly and the surplus becomes a name
     let effective = f;
     if (favour >= campaign.favourSoftCap) { effective = Math.ceil(f / 2); renown += f - effective; }
@@ -221,6 +220,9 @@ export function resolveNight(input: ResolveInput): NightResult {
     };
     let prose = fill(template, slots);
     if (i === 1 && otherMember && r() < 0.35) prose += ' ' + fill(pick(r, vignettes.pairs), { ...slots, other: firstName(member.name) });
+    // the Moon leaves its mark on one errand a night, quietly
+    const tie = moon.ties[order.errand];
+    if (i === 0 && tie && r() < 0.6) prose += ' ' + fill(tie, slots);
     results.push({ memberId: member.id, errand: order.errand, outcome, standing, favour: effective, renown, shards: gained, token, rumour, convertedShards, prose });
   });
 
