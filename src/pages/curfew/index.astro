@@ -65,7 +65,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
         <div class="cf-watch" id="watch">
           <h3 class="cf-h3">Who goes out?</h3>
-          <p class="cf-muted">Up to <span id="per-night">{campaign.membersPerNight}</span> a night. The dead and the wounded stay home.</p>
+          <p class="cf-muted">Up to <span id="per-night">{campaign.membersPerNight}</span> a night, and nobody two nights running. The dead and the wounded stay home.</p>
           <div class="cf-watch-list" id="watch-list"></div>
           <div class="cf-orders-given" id="orders-given"></div>
           <details class="cf-details cf-details-quiet">
@@ -121,7 +121,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     CAMPAIGN, ERRANDS, ERRAND_LABEL, ERRAND_BLURB, TOKEN_TYPES, HAND_SIZE, availability, moonForNight, omenForNight, tiltFor, titleFor, nextTitle, tokenById, dateForNight, statEdge, ERRAND_STATS, STAT_LABEL,
     type Errand, type MemberLike, type NightResult, type Order,
   } from '../../curfew/engine';
-  import { chooseWarband, chosenWarband, giveOrders, lastGivenOrders, loadState, reconcile, recoveringMembers, resetState, saveState, settleOffer, standingOrders, todayNight, type WarbandState } from '../../curfew/state';
+  import { chooseWarband, chosenWarband, giveOrders, lastGivenOrders, loadState, reconcile, recoveringMembers, resetState, restingMembers, saveState, settleOffer, standingOrders, todayNight, type WarbandState } from '../../curfew/state';
   import { sealSvg } from '../../curfew/glyphs';
   import { carryDate, debugEnabled, renderDebugBar, setDebug } from '../../curfew/debug';
 
@@ -146,6 +146,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     return record?.warbands.find((w) => w.warbandId === id)?.members.filter((m) => m.status === 'injured').map((m) => m.memberId) ?? [];
   }
   function recovering(): string[] { return state && warband ? recoveringMembers(state, injuredLastBattle(warband.id)) : []; }
+  function resting(): string[] { return state ? restingMembers(state, today) : []; }
   function rivalOf(id: string) { return warbands.find((w) => w.id !== id); }
   function memberName(id: string) { return warband?.members.find((m) => m.id === id)?.name ?? id; }
   function firstName(id: string) { return memberName(id).split(' ')[0]; }
@@ -330,7 +331,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   function renderWatch() {
     const w = warband!, s = state!;
     const rec = recovering();
-    const av = availability(w, rec);
+    const av = availability(w, rec, resting());
     const given = s.orders[today] ?? [];
     const standing = given.length ? [] : standingOrders(s, w, rec, today);
     const shown = given.length ? given : standing;
@@ -343,6 +344,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       if (!a.available) {
         const status = a.reason === 'dead'
           ? '<span class="cf-status dead">Dead</span>'
+          : a.reason === 'resting'
+          ? '<span class="cf-status resting" title="Went out last night. Nobody is sent two nights running.">Resting</span>'
           : `<span class="cf-status-wrap"><span class="cf-status">Recovering</span><button type="button" class="cf-btn cf-btn-ghost cf-heal" data-heal="${esc(m.id)}">Back on their feet</button></span>`;
         return `<div class="cf-member is-out">${who}${status}</div>`;
       }
@@ -369,7 +372,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       .filter((o): o is Order => o.errand !== '');
   }
   function describe(orders: Order[]) { return orders.map((o) => `${esc(firstName(o.memberId))} will ${ERRAND_LABEL[o.errand].toLowerCase()}`).join('; '); }
-  const STANDING_NOTE = '<p class="cf-orders-note">Orders stand until you change them. On nights you do not look in, the same members go out at half yield.</p>';
+  const STANDING_NOTE = '<p class="cf-orders-note">Orders stand until you change them. On nights you do not look in, the same members go out at half yield, resting every other night.</p>';
   function renderOrdersLine() {
     const s = state!, el = $('orders-given');
     if (today < 1) { el.innerHTML = `<p>The first night is ${esc(prettyDate(1))}.</p>`; return; }
@@ -378,7 +381,13 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     if (given && !given.length) { el.innerHTML = `<p><b>Nobody goes out.</b> The door stays barred tonight.</p>${STANDING_NOTE}`; return; }
     const standing = standingOrders(s, warband!, recovering(), today);
     const last = lastGivenOrders(s, today);
-    if (!standing.length) { el.innerHTML = `<p>Nobody is fit to go out. Mark someone back on their feet.</p>`; return; }
+    if (!standing.length) {
+      const rest = resting().map(firstName);
+      el.innerHTML = rest.length
+        ? `<p><b>Nobody goes out tonight</b> unless you send someone. ${esc(rest.join(' and '))} went out last night and ${rest.length > 1 ? 'are' : 'is'} resting.</p>${STANDING_NOTE}`
+        : `<p>Nobody is fit to go out. Mark someone back on their feet.</p>`;
+      return;
+    }
     el.innerHTML = `<p><b>Standing orders${last ? ` from night ${last.night}` : ''}.</b> ${describe(standing)}, at half yield, unless you change them. <button type="button" class="cf-linkbtn cf-inline" id="keep-standing">Send them in full tonight</button></p>${STANDING_NOTE}`;
   }
   function limitSelects() {

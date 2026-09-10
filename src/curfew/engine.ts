@@ -172,11 +172,13 @@ export function statEdge(warband: WarbandLike, member: MemberLike, errand: Erran
 
 // ───────────────────────── availability ─────────────────────────
 
-export interface Availability { memberId: string; available: boolean; reason?: 'dead' | 'recovering' }
-export function availability(warband: WarbandLike, recovering: string[]): Availability[] {
+export interface Availability { memberId: string; available: boolean; reason?: 'dead' | 'recovering' | 'resting' }
+/** Who can go out tonight. The dead never; the wounded not until healed; whoever went out last night rests. */
+export function availability(warband: WarbandLike, recovering: string[], resting: string[] = []): Availability[] {
   return warband.members.map((m) => {
     if (m.dead) return { memberId: m.id, available: false, reason: 'dead' };
     if (recovering.includes(m.id)) return { memberId: m.id, available: false, reason: 'recovering' };
+    if (resting.includes(m.id)) return { memberId: m.id, available: false, reason: 'resting' };
     return { memberId: m.id, available: true };
   });
 }

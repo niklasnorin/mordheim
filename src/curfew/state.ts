@@ -74,6 +74,11 @@ export function recoveringMembers(state: WarbandState, injuredInLastBattle: stri
   return injuredInLastBattle.filter((id) => !state.healed.includes(id));
 }
 
+/** Whoever went out the night before rests tonight. Nobody is sent two nights running, not even on standing orders. */
+export function restingMembers(state: WarbandState, night: number): string[] {
+  return state.nights.find((n) => n.night === night - 1)?.results.map((r) => r.memberId) ?? [];
+}
+
 export function giveOrders(state: WarbandState, night: number, orders: Order[]): void {
   state.orders[night] = orders.slice(0, CAMPAIGN.membersPerNight).map((o) => ({ memberId: o.memberId, errand: o.errand }));
 }
@@ -86,10 +91,11 @@ export function lastGivenOrders(state: WarbandState, before: number): { night: n
 
 /**
  * Standing orders for a night: the last selection the player made, run again at half yield for whoever is
- * still available. Before any selection exists, the first two available members go out on the errand their role suggests.
+ * still available. Whoever went out the night before rests, so a standing selection runs every other night.
+ * Before any selection exists, the first two available members go out on the errand their role suggests.
  */
 export function standingOrders(state: WarbandState, warband: WarbandLike, recovering: string[], night = Number.MAX_SAFE_INTEGER): Order[] {
-  const avail = new Set(availability(warband, recovering).filter((a) => a.available).map((a) => a.memberId));
+  const avail = new Set(availability(warband, recovering, restingMembers(state, night)).filter((a) => a.available).map((a) => a.memberId));
   const last = lastGivenOrders(state, night);
   const source: Order[] = last
     ? last.orders
@@ -118,7 +124,8 @@ export function reconcile(state: WarbandState, warband: WarbandLike, today: numb
   }
 
   for (let night = first; night <= last; night++) {
-    const given = state.orders[night];
+    const resting = restingMembers(state, night);
+    const given = state.orders[night]?.filter((o) => !resting.includes(o.memberId));
     const orders = given && given.length ? given : standingOrders(state, warband, recovering, night);
     const result = orders.length ? resolveNight({ warband, rival, night, orders, state }) : quietNight(night);
     const before = titleFor(state.renown);

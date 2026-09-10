@@ -33,7 +33,7 @@ Two minutes a day. A month of nights between games becomes a story instead of a 
 
 ### Dusk (whenever the player logs in)
 - **The Omen.** One card is drawn from the Tarot of the Damned. The draw is a seeded function of the campaign id and the date, so every warband sees the same omen. Each run of thirty nights is a fresh shuffle, so no card repeats within a cycle.
-- **The Watch.** One control per member: stays home, or one of the six errands. Changing it saves the night's orders at once; there is no separate confirm. Up to two go out. The dead stay home. Members injured in the last recorded battle stay home until the player marks them "back on their feet" (the roster has no current-wound field; this is the honest substitute).
+- **The Watch.** One control per member: stays home, or one of the six errands. Changing it saves the night's orders at once; there is no separate confirm. Up to two go out, and nobody two nights running: whoever went out last night is marked **Resting**. The dead stay home. Members injured in the last recorded battle stay home until the player marks them "back on their feet" (the roster has no current-wound field; this is the honest substitute).
 - Mini-games are Phase 2. Tonight the dice decide.
 
 ### Midnight
@@ -77,7 +77,7 @@ Outcome odds: a base of roughly a quarter boon, a third poor, the rest fair, shi
 - **The Hand** holds at most three tokens, one per type across four types (Fortune, Ground, Market, Sight). A token that does not fit is offered against the held one of its type, or against the oldest charm when a fourth type arrives. **Changed after the audit:** offers collapse to one decision per type, the newest find wins, and a charm is never offered against itself. Settling one takes two steps: mark the charm to keep, then confirm a sentence that names what goes in the river. Nothing is decided until the confirm, and a reload clears the mark.
 
 ### The floor
-- **Standing orders.** **Changed.** There is no separate setting. The last selection the player made stands: on a night without a change the same members go out on the same errands at half yield, no tokens, no risk, and the Ledger says so with a one-tap way to send them in full. Before any selection, the first two available members go out on the errand their role suggests. The Chronicle still writes.
+- **Standing orders.** **Changed.** There is no separate setting. The last selection the player made stands: on a night without a change the same members go out on the same errands at half yield, no tokens, no risk, and the Ledger says so with a one-tap way to send them in full. Whoever went out the night before rests, so a standing selection runs every other night; the rest are quiet nights. Before any selection, the first two available members go out on the errand their role suggests. The Chronicle still writes.
 - **The City Provides.** An empty Hand at the Eve is dealt one random token.
 - **The Return.** A gap longer than seven nights collapses into one vignette and Favour primed to 20. No summary of what was missed.
 - **Sigmar's Mercy.** **Open.** Needs a shared campaign rating, which needs a server or a shared file.
@@ -141,7 +141,7 @@ Palette, type, and motion are as first planned and now binding (recorded in `PRO
 - `src/curfew/engine.ts` is pure: calendar, seeded draws (FNV-1a hash, mulberry32), errand resolution, the Hand. Every result is a deterministic function of (campaign, night, warband, orders).
 - `src/curfew/state.ts` keeps one ledger per warband in `localStorage`: orders by night, resolved nights, standing orders, healed members, rumours, epithets, headlines, pending offers, the Eve session. On each visit it writes every dawn that is due and applies the absence rules.
 - Content is data in `src/data/curfew/*.json`; adding a card or a Moon is a text edit.
-- Tests: `node --test src/curfew/*.test.ts` (28 cases). Append `?date=YYYY-MM-DD` to a Curfew URL to view another night.
+- Tests: `node --test src/curfew/*.test.ts` (29 cases). Append `?date=YYYY-MM-DD` to a Curfew URL to view another night.
 
 ### Integration points today
 - **Members:** `dead` and `stats` from the roster; `injured` from the latest battle report until healed by the player.
