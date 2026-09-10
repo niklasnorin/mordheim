@@ -33,29 +33,42 @@ Resolution happens twice over, and both ways agree: a nightly cron writes every 
 | `src/pages/api/curfew/[action].ts`, `src/pages/api/cron/midnight.ts` | The JSON API the Ledger and Eve pages call, and the cron endpoint |
 | `public/curfew/omens/` | Card images, regenerated with `scripts/curfew/` |
 
-Set `CURFEW_DEBUG=true` (never in production) to allow `?date=YYYY-MM-DD` on Curfew URLs and the dim **Debug** toggle in the Ledger's footer, which adds previous/next-night buttons and a date picker.
+In `astro dev` (or with `CURFEW_DEBUG=true`, never in production) `?date=YYYY-MM-DD` is allowed on Curfew URLs and the dim **Debug** toggle in the Ledger's footer adds previous/next-night buttons and a date picker.
 
 ## Development
 
+Node 22 or newer (`.nvmrc` says which; `nvm use` picks it up). Then:
+
 ```sh
 npm install
-cp .env.example .env   # fill in DATABASE_URL and at least one social provider
-npm run dev            # start local dev server
+npm run dev            # http://localhost:4321 — no .env needed
+```
+
+`astro dev` is a complete local setup on its own:
+
+- **A local database.** With no `DATABASE_URL`, a real Postgres runs in-process ([PGlite](https://pglite.dev)) and keeps its files under `.pglite/`, with the checked-in migrations applied on start. `npm run db:reset` wipes it. Paste the Neon connection string into `.env` to work against the real database instead (`npx vercel env pull .env` fetches it).
+- **A dev sign-in.** The Ledger offers "Local player": type a name and you are signed in, no OAuth app needed. Two names make two players, so both warbands can be tried side by side in two browsers or a private window.
+- **Stepping through nights.** The Debug strip in the Ledger's footer and `?date=YYYY-MM-DD` are on, so a whole Moon of nights can be played through in a minute.
+
+None of the three can switch on where Vercel runs the site; `.env.example` lists the switches that turn them off locally.
+
+```sh
 npm test               # engine, ledger, Town Cryer and service tests (the service tests run on an in-memory Postgres)
 npm run check          # type-check pages and scripts
 npm run build          # build for Vercel into ./dist and ./.vercel/output
 ```
 
-Without `DATABASE_URL` the site still runs: the main page prints the news without dispatches and the Curfew pages say the ledgers are not open.
+VS Code users get the Astro extension recommended on opening the folder. There is a `CLAUDE.md` for Claude Code with the same map of the repository.
 
 ### Database
 
-Postgres, managed with [Drizzle](https://orm.drizzle.team). The schema is `src/server/db/schema.ts`; migrations are checked in under `drizzle/`.
+Postgres, managed with [Drizzle](https://orm.drizzle.team). The schema is `src/server/db/schema.ts`; migrations are checked in under `drizzle/` and are what both PGlite and Neon run.
 
 ```sh
 npm run db:generate    # write a new migration after changing the schema
-npm run db:migrate     # apply migrations to DATABASE_URL
-npm run db:studio      # browse the database
+npm run db:migrate     # apply migrations to DATABASE_URL (Neon); the local database migrates itself on start
+npm run db:studio      # browse DATABASE_URL
+npm run db:reset       # delete the local .pglite/ database
 ```
 
 ### Design skill

@@ -5,7 +5,7 @@ import { warbands } from '../../data/warbands';
 import campaign from '../../data/curfew/campaign.json';
 import { base } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
-import { PROVIDER_LABEL, enabledProviders, env } from '../../server/env';
+import { DEV_LOGIN_PASSWORD, PROVIDER_LABEL, enabledProviders, env } from '../../server/env';
 import { getViewer } from '../../server/session';
 import { listClaims, loadOwnLedger, todayFor, type Claim, type LedgerView } from '../../server/curfew/service';
 
@@ -54,13 +54,21 @@ const boot = {
         <h1 class="cf-h2">Whose ledger is this?</h1>
         <p class="cf-muted">Every real day is one night in Mordheim. At dusk you give your warband its orders. At midnight the city answers. At dawn you read what it cost them. Two minutes a day. The city takes nothing from those who stay away.</p>
         <p>Sign in, so the ledger is yours from any device and the Town Cryer knows whose night it prints.</p>
-        {providers.length ? (
+        {providers.length > 0 && (
           <div class="cf-pick cf-signin">
             {providers.map((p) => (
               <button type="button" data-provider={p}><span class="cf-sigil" aria-hidden="true">{PROVIDER_LABEL[p][0]}</span><span>Continue with {PROVIDER_LABEL[p]}</span></button>
             ))}
           </div>
-        ) : (
+        )}
+        {env.DEV_LOGIN && (
+          <form class="cf-devlogin" id="devlogin" data-password={DEV_LOGIN_PASSWORD}>
+            <label>Local player <input name="name" type="text" placeholder="Niklas" required maxlength="40" autocomplete="off" /></label>
+            <button type="submit" class="cf-btn">Sign in as this player</button>
+            <p class="cf-note">Development only: no password, any name, and the same name is the same player. Two names make two players, so both warbands can be tried.</p>
+          </form>
+        )}
+        {!providers.length && !env.DEV_LOGIN && (
           <p class="cf-empty">No way to sign in has been configured yet. Set a provider's client id and secret; see .env.example.</p>
         )}
       </section>
@@ -253,6 +261,20 @@ const boot = {
     if (error) { b.disabled = false; toast(error.message ?? 'The gate did not open.'); }
   }));
   document.getElementById('signout')?.addEventListener('click', async () => { await authClient.signOut(); location.href = location.pathname; });
+  // local development: a name becomes a player, created on first use
+  document.getElementById('devlogin')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const name = String(new FormData(form).get('name') ?? '').trim();
+    if (!name) return;
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'player';
+    const email = `${slug}@curfew.local`, password = form.dataset.password!;
+    form.querySelector('button')!.disabled = true;
+    let { error } = await authClient.signIn.email({ email, password });
+    if (error) ({ error } = await authClient.signUp.email({ email, password, name }));
+    if (error) { form.querySelector('button')!.disabled = false; toast(error.message ?? 'The gate did not open.'); return; }
+    location.href = location.pathname + location.search;
+  });
 
   // ── warband ──
   function showPicker(show: boolean) {

@@ -361,3 +361,10 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-pick button[disabled] { opacity: 0.5; cursor: not-allowed; }
 .cf-pick .cf-kept:empty { display: none; }
 .cf-pick .cf-kept { color: var(--candle-dim); font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.7rem; margin-top: 0.15rem; }
+
+/* ── dev sign-in (local development only) ── */
+.cf-devlogin { margin-top: 1.25rem; padding: 1rem 1.2rem; border: 1px dashed #4a4238; display: grid; gap: 0.7rem; max-width: 34rem; }
+.cf-devlogin label { display: grid; gap: 0.35rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem; color: var(--bone-dim); }
+.cf-devlogin input { font-family: var(--body); font-size: 1rem; background: var(--ash-deep); color: var(--bone); border: 1px solid var(--rule); padding: 0.6rem 0.7rem; min-height: 2.75rem; }
+.cf-devlogin .cf-btn { justify-self: start; }
+.cf-devlogin .cf-note { margin: 0; }

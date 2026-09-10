@@ -14,7 +14,8 @@
     "test": "node --test \"src/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:reset": "node -e \"require('fs').rmSync('.pglite', { recursive: true, force: true }); console.log('The local database is ash.')\""
   },
   "dependencies": {
     "@astrojs/vercel": "^11.0.10",
