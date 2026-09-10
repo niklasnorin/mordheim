@@ -120,8 +120,15 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-offer { margin-top: 1.2rem; padding: 1rem; border: 1px solid var(--candle-dim); background: #14120f; }
 .cf-offer-title { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.8rem; font-weight: 600; color: var(--candle); margin-bottom: 0.4rem; }
 .cf-offer .cf-hand { margin-top: 0.8rem; }
-.cf-offer button.cf-token { cursor: pointer; text-align: left; font: inherit; color: inherit; }
-.cf-offer button.cf-token:hover { border-color: var(--candle); background: #1b1813; }
+.cf-offer button.cf-token { cursor: pointer; text-align: left; font: inherit; color: inherit; transition: border-color 0.2s, background 0.2s; }
+.cf-offer button.cf-token:hover { border-color: var(--candle-dim); background: #1b1813; }
+.cf-offer button.cf-token[aria-pressed='true'] { border-color: var(--candle); background: #1f1a12; box-shadow: 0 0 0 1px var(--candle) inset; }
+.cf-offer button.cf-token[aria-pressed='true']::after { content: 'Keep'; position: absolute; right: 0.8rem; top: 0.8rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.65rem; color: var(--candle); }
+.cf-offer .cf-hand:has([aria-pressed='true']) button.cf-token[aria-pressed='false'] { opacity: 0.55; }
+.cf-offer-hint { margin-top: 0.8rem; }
+.cf-offer-confirm { margin-top: 1rem; padding-top: 0.9rem; border-top: 1px dashed var(--rule); }
+.cf-offer-confirm p { margin-bottom: 0.7rem; }
+.cf-offer-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 
 /* ── the Watch ── */
 .cf-watch-list { display: grid; gap: 0.6rem; }

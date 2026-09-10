@@ -215,16 +215,33 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       return;
     }
     let html = nightHtml(last, fresh && !reduced);
-    for (const offer of state!.offers) {
-      const inc = tokenById(offer.incoming), held = tokenById(offer.held);
-      const who = last.results.find((r) => r.token?.id === offer.incoming)?.memberId;
-      html += `<div class="cf-offer" data-night="${offer.night}" data-incoming="${esc(offer.incoming)}" data-held="${esc(offer.held)}">
-        <h4 class="cf-offer-title">The Hand is full</h4>
-        <p>${who ? esc(firstName(who)) + ' brought back' : 'The night brought'} <b>${esc(inc.name)}</b>. Keep it, or keep <b>${esc(held.name)}</b>. Over a month the Hand does not grow; it gets curated.</p>
-        <div class="cf-hand">${tokenHtml(inc.id, 'button', `data-keep="incoming" aria-label="Keep ${esc(inc.name)}, let ${esc(held.name)} go"`)}${tokenHtml(held.id, 'button', `data-keep="held" aria-label="Keep ${esc(held.name)}, let ${esc(inc.name)} go"`)}</div>
-      </div>`;
-    }
+    for (const offer of state!.offers) html += offerHtml(offer, last);
     el.innerHTML = html;
+  }
+  // Which charm the player has marked to keep, per offer, before confirming. Never saved: a reload clears it.
+  const offerPicks = new Map<string, 'incoming' | 'held'>();
+  const offerKey = (o: { night: number; incoming: string; held: string }) => `${o.night}:${o.incoming}:${o.held}`;
+  function offerHtml(offer: { night: number; incoming: string; held: string }, last: NightResult) {
+    const inc = tokenById(offer.incoming), held = tokenById(offer.held);
+    const who = last.results.find((r) => r.token?.id === offer.incoming)?.memberId;
+    const pick = offerPicks.get(offerKey(offer));
+    const keep = pick === 'incoming' ? inc : pick === 'held' ? held : null;
+    const lose = pick === 'incoming' ? held : pick === 'held' ? inc : null;
+    const footer = keep && lose
+      ? `<div class="cf-offer-confirm" role="group" aria-label="Confirm your choice">
+          <p><b>${esc(keep.name)}</b> stays in the Hand. <b>${esc(lose.name)}</b> goes in the river, and does not come back.</p>
+          <div class="cf-offer-actions"><button type="button" class="cf-btn cf-btn-blood" data-confirm="${pick}">Let ${esc(lose.name)} go</button><button type="button" class="cf-btn cf-btn-ghost" data-unpick>Not yet</button></div>
+        </div>`
+      : `<p class="cf-note cf-offer-hint">Choose the charm to keep. Nothing is decided until you confirm.</p>`;
+    return `<div class="cf-offer" data-night="${offer.night}" data-incoming="${esc(offer.incoming)}" data-held="${esc(offer.held)}">
+      <h4 class="cf-offer-title">The Hand is full</h4>
+      <p>${who ? esc(firstName(who)) + ' brought back' : 'The night brought'} <b>${esc(inc.name)}</b>. Keep it, or keep <b>${esc(held.name)}</b>. Over a month the Hand does not grow; it gets curated.</p>
+      <div class="cf-hand" role="group" aria-label="Charm to keep">
+        ${tokenHtml(inc.id, 'button', `data-keep="incoming" aria-pressed="${pick === 'incoming'}" aria-label="Keep ${esc(inc.name)}"`)}
+        ${tokenHtml(held.id, 'button', `data-keep="held" aria-pressed="${pick === 'held'}" aria-label="Keep ${esc(held.name)}"`)}
+      </div>
+      ${footer}
+    </div>`;
   }
   function tokenHtml(id: string, tag: 'div' | 'button' = 'div', attrs = '') {
     const t = tokenById(id); const type = TOKEN_TYPES[t.type];
@@ -232,13 +249,32 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     return `<${tag}${typeAttr} class="cf-token" ${attrs}><span class="cf-seal" style="--seal:${type.seal}"></span><span class="cf-type">${esc(type.name)}</span><span class="cf-token-name">${esc(t.name)}</span><span class="cf-effect">${esc(t.effect)}</span></${tag}>`;
   }
   $('dawn-report').addEventListener('click', (e) => {
-    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-keep]'); if (!t || !state) return;
-    const box = t.closest<HTMLElement>('.cf-offer')!;
+    const target = e.target as HTMLElement;
+    const box = target.closest<HTMLElement>('.cf-offer'); if (!box || !state) return;
     const offer = state.offers.find((o) => String(o.night) === box.dataset.night && o.incoming === box.dataset.incoming && o.held === box.dataset.held);
     if (!offer) return;
-    settleOffer(state, offer, t.dataset.keep as 'incoming' | 'held');
-    toast(t.dataset.keep === 'incoming' ? `${tokenById(offer.held).name} goes in the river.` : `${tokenById(offer.incoming).name} goes in the river.`);
-    renderDawn(false); renderHand();
+    const last = state.nights.at(-1)!;
+    const pickBtn = target.closest<HTMLElement>('[data-keep]');
+    const confirmBtn = target.closest<HTMLElement>('[data-confirm]');
+    const unpick = target.closest<HTMLElement>('[data-unpick]');
+    if (pickBtn) {
+      // Step one: mark the charm to keep. Tapping it again unmarks it.
+      const choice = pickBtn.dataset.keep as 'incoming' | 'held';
+      if (offerPicks.get(offerKey(offer)) === choice) offerPicks.delete(offerKey(offer)); else offerPicks.set(offerKey(offer), choice);
+      box.outerHTML = offerHtml(offer, last);
+      const fresh = $('dawn-report').querySelector<HTMLElement>(`.cf-offer[data-incoming="${offer.incoming}"]`);
+      (fresh?.querySelector<HTMLElement>('[data-confirm]') ?? fresh?.querySelector<HTMLElement>(`[data-keep="${choice}"]`))?.focus();
+    } else if (unpick) {
+      offerPicks.delete(offerKey(offer));
+      box.outerHTML = offerHtml(offer, last);
+    } else if (confirmBtn) {
+      // Step two: the decision.
+      const choice = confirmBtn.dataset.confirm as 'incoming' | 'held';
+      offerPicks.delete(offerKey(offer));
+      settleOffer(state, offer, choice);
+      toast(choice === 'incoming' ? `${tokenById(offer.held).name} goes in the river.` : `${tokenById(offer.incoming).name} goes in the river.`);
+      renderDawn(false); renderHand();
+    }
   });
 
   // 2. Tonight

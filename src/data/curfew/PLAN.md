@@ -71,7 +71,7 @@ Outcome odds: a base of roughly a quarter boon, a third poor, the rest fair, shi
 - **Favour** 0–100, soft cap 60. Past the cap the night's yield halves and the surplus becomes Renown. Spent at the Eve on one flourish (25).
 - **Shards** never rot. Five convert to a Market token when Trade succeeds.
 - **Renown** is permanent and buys titles only: Newcomers · Sifters (10) · Ratcatchers (25) · Confessors (50) · Pit-Dogs (80) · The Named (120) · Those Who Stayed (200).
-- **The Hand** holds at most three tokens, one per type across four types (Fortune, Ground, Market, Sight). A token that does not fit is offered against the held one of its type, or against the oldest charm when a fourth type arrives. **Changed after the audit:** offers collapse to one decision per type, the newest find wins, and a charm is never offered against itself.
+- **The Hand** holds at most three tokens, one per type across four types (Fortune, Ground, Market, Sight). A token that does not fit is offered against the held one of its type, or against the oldest charm when a fourth type arrives. **Changed after the audit:** offers collapse to one decision per type, the newest find wins, and a charm is never offered against itself. Settling one takes two steps: mark the charm to keep, then confirm a sentence that names what goes in the river. Nothing is decided until the confirm, and a reload clears the mark.
 
 ### The floor
 - **Standing orders.** Each member has a default errand from their role. On a night without orders the chosen members go out at half yield, no tokens, no risk. The Chronicle still writes.
