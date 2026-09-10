@@ -1,11 +1,12 @@
 /**
- * Better Auth, configured for social login. There are no passwords to keep: a player signs in with
- * Google, Discord or GitHub, whichever of them has credentials in the environment. Sessions live in
- * Postgres with a short signed cookie cache so an ordinary page view does not hit the database.
- * Off Vercel, a password-free dev sign-in can be switched on for local development.
+ * Better Auth with email and password. No emails are ever sent: the address is only the name a player
+ * signs in with, there is no verification and no reset link. Sessions live in Postgres with a short signed
+ * cookie cache so an ordinary page view does not hit the database. When CURFEW_INVITE_CODE is set, signing
+ * up needs the invite word; signing in never does.
  */
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { db } from './db/client';
 import { authSchema } from './db/schema';
 import { env } from './env';
@@ -17,19 +18,19 @@ function createAuth() {
     secret: env.BETTER_AUTH_SECRET,
     basePath: '/api/auth',
     database: drizzleAdapter(db(), { provider: 'pg', schema: authSchema }),
-    // local development only: a name is enough to sign in (see env.DEV_LOGIN; never on Vercel)
-    emailAndPassword: { enabled: env.DEV_LOGIN, minPasswordLength: 8, autoSignIn: true },
-    socialProviders: {
-      ...(env.providers.google ? { google: { ...env.providers.google, prompt: 'select_account' as const } } : {}),
-      ...(env.providers.discord ? { discord: env.providers.discord } : {}),
-      ...(env.providers.github ? { github: env.providers.github } : {}),
+    emailAndPassword: { enabled: true, minPasswordLength: 8, maxPasswordLength: 128, autoSignIn: true, requireEmailVerification: false },
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== '/sign-up/email' || !env.INVITE_CODE) return;
+        const given = String((ctx.body as { inviteCode?: unknown } | undefined)?.inviteCode ?? '').trim();
+        if (given.toLowerCase() !== env.INVITE_CODE.trim().toLowerCase()) throw new APIError('FORBIDDEN', { message: 'That is not the word at the gate.' });
+      }),
     },
     session: {
       expiresIn: 60 * 60 * 24 * 30,
       updateAge: 60 * 60 * 24,
       cookieCache: { enabled: true, maxAge: 5 * 60 },
     },
-    account: { accountLinking: { enabled: true, trustedProviders: ['google', 'discord', 'github'] } },
     trustedOrigins: [env.BASE_URL, ...(env.VERCEL_URL ? [env.VERCEL_URL] : [])],
     advanced: { useSecureCookies: env.BASE_URL.startsWith('https://') },
   });

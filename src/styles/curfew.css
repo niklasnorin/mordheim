@@ -364,8 +364,22 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-pick .cf-kept:empty { display: none; }
 .cf-pick .cf-kept { color: var(--candle-dim); font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.7rem; margin-top: 0.15rem; }
 
+/* ── sign in with email and password ── */
+.cf-auth { margin-top: 1.25rem; padding: 1.1rem 1.2rem 1.2rem; border: 1px solid var(--candle-dim); background: #14120f; display: grid; gap: 0.8rem; max-width: 30rem; }
+.cf-auth-tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--rule); margin-bottom: 0.2rem; }
+.cf-auth-tabs button { background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: 0.5rem 0.8rem; min-height: 2.75rem; color: var(--bone-dim); font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.78rem; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+.cf-auth-tabs button:hover { color: var(--bone); }
+.cf-auth-tabs button[aria-selected='true'] { color: var(--candle); border-color: var(--candle); }
+.cf-field { display: grid; gap: 0.35rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem; color: var(--bone-dim); }
+.cf-field input { font-family: var(--body); font-size: 1.05rem; background: var(--ash-deep); color: var(--bone); border: 1px solid var(--rule); padding: 0.6rem 0.7rem; min-height: 2.75rem; letter-spacing: 0; text-transform: none; }
+.cf-field input::placeholder { color: #6f665b; }
+.cf-field input:focus-visible { border-color: var(--candle-dim); }
+.cf-auth-foot { display: grid; gap: 0.7rem; margin-top: 0.2rem; }
+.cf-auth-foot .cf-btn { justify-self: start; }
+.cf-auth-note { margin: 0; font-size: 0.88rem; }
+
 /* ── dev sign-in (local development only) ── */
-.cf-devlogin { margin-top: 1.25rem; padding: 1rem 1.2rem; border: 1px dashed #4a4238; display: grid; gap: 0.7rem; max-width: 34rem; }
+.cf-devlogin { margin-top: 1.25rem; padding: 1rem 1.2rem; border: 1px dashed #4a4238; display: grid; gap: 0.7rem; max-width: 30rem; }
 .cf-devlogin label { display: grid; gap: 0.35rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem; color: var(--bone-dim); }
 .cf-devlogin input { font-family: var(--body); font-size: 1rem; background: var(--ash-deep); color: var(--bone); border: 1px solid var(--rule); padding: 0.6rem 0.7rem; min-height: 2.75rem; }
 .cf-devlogin .cf-btn { justify-self: start; }

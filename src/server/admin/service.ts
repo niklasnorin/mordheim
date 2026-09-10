@@ -4,8 +4,8 @@
  */
 import { desc, eq, gt, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { account, cryerDispatches, curfewLedgers, curfewRuns, session, user } from '../db/schema.ts';
-import { env, enabledProviders } from '../env.ts';
+import { cryerDispatches, curfewLedgers, curfewRuns, session, user } from '../db/schema.ts';
+import { env } from '../env.ts';
 import { moonForNight, omenForNight, titleFor, dateForNight, type Omen, type Moon } from '../../curfew/engine.ts';
 import { coerceState, freshState, type WarbandState } from '../../curfew/ledger.ts';
 import { warbands } from '../../data/warbands.ts';
@@ -26,7 +26,7 @@ export interface LedgerRow {
 
 export interface PlayerRow {
   id: string; name: string; email: string; image: string | null; createdAt: Date;
-  providers: string[]; sessions: number; lastSeen: Date | null; warband?: { id: string; name: string };
+  sessions: number; lastSeen: Date | null; warband?: { id: string; name: string };
   admin: boolean;
 }
 
@@ -76,11 +76,10 @@ export async function overview(today: number): Promise<Overview> {
 }
 
 function health(lastRun?: typeof curfewRuns.$inferSelect): HealthItem[] {
-  const providers = enabledProviders();
   const items: HealthItem[] = [
     { label: 'Database', ok: true, detail: env.DATABASE_URL ? 'Neon Postgres' : env.LOCAL_DB ? 'PGlite under .pglite/ (local)' : 'none' },
     { label: 'Auth secret', ok: Boolean(env.BETTER_AUTH_SECRET) && !env.BETTER_AUTH_SECRET?.includes('do-not-deploy'), detail: env.BETTER_AUTH_SECRET?.includes('do-not-deploy') ? 'development default' : env.BETTER_AUTH_SECRET ? 'set' : 'missing' },
-    { label: 'Sign-in', ok: providers.length > 0 || env.DEV_LOGIN, detail: [...providers, ...(env.DEV_LOGIN ? ['dev sign-in'] : [])].join(', ') || 'no provider configured' },
+    { label: 'Sign-up', ok: env.INVITE_CODE ? true : env.ON_VERCEL ? false : null, detail: env.INVITE_CODE ? 'needs the word at the gate' : env.DEV_LOGIN ? 'open, with the dev sign-in' : 'open to anyone with the URL: set CURFEW_INVITE_CODE' },
     { label: 'Cron secret', ok: Boolean(env.CRON_SECRET), detail: env.CRON_SECRET ? 'set' : 'missing: the nightly cron will be refused' },
     { label: 'Last midnight', ok: lastRun ? Date.now() - lastRun.ranAt.getTime() < 36 * 3600 * 1000 : null, detail: lastRun ? `${lastRun.source}, night ${lastRun.night}, ${lastRun.nights} nights written` : 'never run' },
     { label: 'Admins', ok: env.ADMIN_EMAILS.length > 0 || env.DEV_LOGIN, detail: env.ADMIN_EMAILS.length ? `${env.ADMIN_EMAILS.length} on the allowlist` : env.DEV_LOGIN ? 'everyone, under the dev sign-in' : 'nobody: set ADMIN_EMAILS' },
@@ -92,9 +91,8 @@ function health(lastRun?: typeof curfewRuns.$inferSelect): HealthItem[] {
 
 export async function listPlayers(): Promise<PlayerRow[]> {
   const d = db();
-  const [users, accounts, sessions, claims] = await Promise.all([
+  const [users, sessions, claims] = await Promise.all([
     d.select().from(user).orderBy(user.createdAt),
-    d.select({ userId: account.userId, providerId: account.providerId }).from(account),
     d.select({ userId: session.userId, updatedAt: session.updatedAt, expiresAt: session.expiresAt }).from(session),
     d.select({ warbandId: curfewLedgers.warbandId, ownerId: curfewLedgers.ownerId }).from(curfewLedgers),
   ]);
@@ -105,7 +103,6 @@ export async function listPlayers(): Promise<PlayerRow[]> {
     const warband = claim && warbands.find((w) => w.id === claim.warbandId);
     return {
       id: u.id, name: u.name, email: u.email, image: u.image, createdAt: u.createdAt,
-      providers: [...new Set(accounts.filter((a) => a.userId === u.id).map((a) => a.providerId))],
       sessions: mine.filter((s) => s.expiresAt.getTime() > now).length,
       lastSeen: mine.length ? new Date(Math.max(...mine.map((s) => s.updatedAt.getTime()))) : null,
       warband: warband ? { id: warband.id, name: warband.name } : undefined,

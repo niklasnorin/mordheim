@@ -3,7 +3,7 @@
  * either DATABASE_URL or POSTGRES_URL; both are accepted. Nothing here is ever sent to the browser.
  *
  * On a laptop, `astro dev` with no .env at all is a working setup: a local Postgres (PGlite) lives under
- * .pglite/, a password-free dev sign-in stands in for the social providers, and the Debug strip is on.
+ * .pglite/, a password-free dev sign-in stands in for real accounts, and the Debug strip is on.
  * None of those three can switch on where VERCEL is set, whatever the other variables say.
  */
 const read = (key: string): string | undefined => {
@@ -36,29 +36,13 @@ export const env = {
   CRON_SECRET: read('CRON_SECRET'),
   /** `?date=` overrides and the Debug strip. On by default in `astro dev`, never by default on Vercel. */
   CURFEW_DEBUG: flag('CURFEW_DEBUG', DEV && !ON_VERCEL),
-  /** A name-only sign-in for local development. Cannot be enabled on Vercel. */
+  /** A name-only sign-in for local development, skipping the password. Cannot be enabled on Vercel. */
   DEV_LOGIN: !ON_VERCEL && flag('CURFEW_DEV_LOGIN', DEV),
   /** Game masters, by sign-in email, lower-cased. Empty means nobody, except under the local dev sign-in. */
   ADMIN_EMAILS: (read('ADMIN_EMAILS') ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
-  providers: {
-    google: pair('GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'),
-    discord: pair('DISCORD_CLIENT_ID', 'DISCORD_CLIENT_SECRET'),
-    github: pair('GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'),
-  },
+  /** A word new players must give to sign up. Unset means anyone with the URL may. */
+  INVITE_CODE: read('CURFEW_INVITE_CODE'),
 };
-
-function pair(idKey: string, secretKey: string): { clientId: string; clientSecret: string } | undefined {
-  const clientId = read(idKey), clientSecret = read(secretKey);
-  return clientId && clientSecret ? { clientId, clientSecret } : undefined;
-}
-
-export type ProviderId = keyof typeof env.providers;
-export const PROVIDER_LABEL: Record<ProviderId, string> = { google: 'Google', discord: 'Discord', github: 'GitHub' };
-
-/** The providers with credentials configured, in the order the sign-in buttons appear. */
-export function enabledProviders(): ProviderId[] {
-  return (Object.keys(env.providers) as ProviderId[]).filter((p) => env.providers[p]);
-}
 
 /** Whether this sign-in email may open the admin console. With the dev sign-in and no allowlist, everyone may: it is a laptop. */
 export function isAdminEmail(email: string | null | undefined): boolean {
