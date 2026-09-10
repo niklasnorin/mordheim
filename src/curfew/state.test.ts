@@ -1,7 +1,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { CAMPAIGN } from './engine.ts';
-import { freshState, giveOrders, loadState, reconcile, saveState, settleOffer, standingOrders, recoveringMembers, allHeadlines, normalizeOffers, lastGivenOrders } from './state.ts';
+import { freshState, giveOrders, loadState, reconcile, saveState, settleOffer, standingOrders, recoveringMembers, allHeadlines, normalizeOffers, lastGivenOrders, restingMembers } from './state.ts';
 
 const store = new Map<string, string>();
 (globalThis as any).localStorage = {
@@ -32,13 +32,25 @@ test('the last selection becomes the standing orders, run at half yield on night
   giveOrders(s, 10, [{ memberId: 'torgrim', errand: 'scavenge' }, { memberId: 'agnar', errand: 'carouse' }]);
   assert.deepEqual(lastGivenOrders(s, 11)?.night, 10);
   assert.equal(lastGivenOrders(s, 10), null, 'only earlier nights count');
-  const written = reconcile(s, warband, 13, []);
-  assert.equal(written.length, 3);
+  const written = reconcile(s, warband, 14, []);
+  assert.equal(written.length, 4);
   assert.ok(written[0].results.every((r) => !r.standing), 'night 10 was given in full');
-  for (const n of written.slice(1)) {
-    assert.deepEqual(n.results.map((r) => r.memberId).sort(), ['agnar', 'torgrim']);
-    assert.ok(n.results.every((r) => r.standing && r.favour <= 4));
-  }
+  assert.equal(written[1].results.length, 0, 'night 11: the same two rest, nobody else stands in');
+  assert.deepEqual(written[2].results.map((r) => r.memberId).sort(), ['agnar', 'torgrim'], 'night 12: the standing orders run again');
+  assert.ok(written[2].results.every((r) => r.standing && r.favour <= 4));
+  assert.equal(written[3].results.length, 0);
+});
+
+test('nobody goes out two nights running, on given orders or standing ones', () => {
+  const s = freshState(warband, 10);
+  giveOrders(s, 10, [{ memberId: 'torgrim', errand: 'scavenge' }, { memberId: 'agnar', errand: 'carouse' }]);
+  giveOrders(s, 11, [{ memberId: 'torgrim', errand: 'scavenge' }, { memberId: 'skalle', errand: 'pray' }]);
+  const written = reconcile(s, warband, 12, []);
+  assert.deepEqual(restingMembers(s, 11).sort(), ['agnar', 'torgrim']);
+  assert.deepEqual(written[1].results.map((r) => r.memberId), ['skalle'], 'Torgrim went out on night 10, so night 11 sends only Skalle');
+  assert.deepEqual(restingMembers(s, 12), ['skalle']);
+  assert.deepEqual(standingOrders(s, warband, [], 12).map((o) => o.memberId), ['torgrim'], 'standing orders skip whoever rests');
+  assert.deepEqual(restingMembers(s, 10), [], 'nothing before the first dawn');
 });
 
 test('orders given at dusk are resolved once the date turns, and only then', () => {
@@ -61,6 +73,7 @@ test('missed nights within the threshold run on standing orders at half yield', 
   const written = reconcile(s, warband, 14, []);
   assert.equal(written.length, 4);
   for (const n of written) for (const r of n.results) { assert.ok(r.standing); assert.ok(r.favour <= 4); assert.equal(r.token, undefined); }
+  assert.deepEqual(written.map((n) => n.results.map((r) => r.memberId).sort()), [['agnar', 'skalle'], ['torgrim'], ['agnar', 'skalle'], ['torgrim']], 'the roster defaults take turns: whoever went out rests');
 });
 
 test('a long absence collapses into a single Return with favour primed to 20', () => {
@@ -97,8 +110,10 @@ test('surplus tokens wait as offers and settle either way', () => {
 
 test('epithets arrive after enough entries and become headlines the Town Cryer can read', () => {
   const s = freshState(warband, 10);
-  for (let n = 10; n < 10 + CAMPAIGN.epithetAfterEntries; n++) giveOrders(s, n, [{ memberId: 'torgrim', errand: 'scavenge' }]);
-  reconcile(s, warband, 10 + CAMPAIGN.epithetAfterEntries, []);
+  // Torgrim rests every other night, so five entries take ten nights
+  for (let n = 10; n < 10 + 2 * CAMPAIGN.epithetAfterEntries; n++) giveOrders(s, n, [{ memberId: 'torgrim', errand: 'scavenge' }]);
+  reconcile(s, warband, 10 + 2 * CAMPAIGN.epithetAfterEntries, []);
+  assert.equal(s.nights.filter((n) => n.results.length).length, CAMPAIGN.epithetAfterEntries, 'the nights he rested wrote no entry for him');
   assert.ok(s.epithets.torgrim, 'Torgrim has a name now');
   saveState(s);
   const headlines = allHeadlines(['nordost', 'nobody']);

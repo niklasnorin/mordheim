@@ -171,8 +171,19 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-member select:disabled { opacity: 0.45; cursor: not-allowed; }
 .cf-member .cf-epithet { color: var(--candle); font-style: italic; }
 .cf-member select { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.8rem; background: var(--ash-deep); color: var(--candle); border: 1px solid var(--rule); padding: 0.35rem 0.5rem; min-height: 2.5rem; min-width: 8.5rem; }
+.cf-member .cf-pick { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem; }
+.cf-edge { display: inline-flex; align-items: baseline; gap: 0.3rem; font-family: var(--label); font-size: 0.72rem; letter-spacing: 0.08em; color: var(--bone-dim); opacity: 0.7; white-space: nowrap; cursor: help; }
+.cf-edge:empty { display: none; }
+.cf-edge.is-on { color: var(--candle); opacity: 1; }
+.cf-edge .cf-edge-mark { font-size: 0.6rem; letter-spacing: 0.05em; }
+.cf-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.cf-leans { display: block; font-size: 0.8rem; color: var(--bone-dim); opacity: 0.8; }
+.cf-edge-note { grid-column: 1 / -1; margin: 0.4rem 0 0; padding-top: 0.5rem; border-top: 1px dashed var(--rule); font-size: 0.85rem; font-style: italic; color: var(--bone-dim); }
+.cf-edge-note .cf-edge { font-style: normal; cursor: default; }
 .cf-member .cf-status { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.75rem; color: var(--bone-dim); }
 .cf-member .cf-status.dead { color: var(--blood-bright); }
+.cf-member .cf-status.resting { color: var(--bone-dim); cursor: help; }
+.cf-member .cf-status.resting::before { content: ''; display: inline-block; width: 0.55em; height: 0.55em; margin-right: 0.45em; border-radius: 50%; border: 1px solid currentColor; box-shadow: inset 0.22em 0 0 0 currentColor; vertical-align: 0.05em; opacity: 0.8; }
 .cf-member .cf-heal { font-size: 0.75rem; padding: 0.3rem 0.7rem; min-height: 2rem; }
 .cf-watch-foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
 .cf-errand-help { display: grid; gap: 0.3rem 1.2rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 1rem; font-size: 0.9rem; color: var(--bone-dim); }
