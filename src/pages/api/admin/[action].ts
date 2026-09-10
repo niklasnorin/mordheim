@@ -9,7 +9,7 @@ import { admission } from '../../../server/admin/guard';
 import { json, sameOrigin } from '../../../server/http';
 import { todayFor } from '../../../server/curfew/service';
 import { LedgerError, burnLedger, deleteDispatch, postNotice, releaseLedger, revokeSessions, runMidnight } from '../../../server/admin/service';
-import { issueRecovery } from '../../../server/account/service';
+import { issueResetWord } from '../../../server/account/service';
 
 export const prerender = false;
 
@@ -17,7 +17,7 @@ const schemas = {
   burn: z.object({ warbandId: z.string().min(1).max(64) }),
   release: z.object({ warbandId: z.string().min(1).max(64) }),
   'revoke-sessions': z.object({ userId: z.string().min(1).max(128) }),
-  'issue-recovery': z.object({ userId: z.string().min(1).max(128) }),
+  'issue-reset': z.object({ userId: z.string().min(1).max(128) }),
   'delete-dispatch': z.object({ id: z.number().int().positive() }),
   'post-notice': z.object({ text: z.string().min(1).max(200) }),
   'run-midnight': z.object({}),
@@ -45,7 +45,7 @@ export const POST: APIRoute = async ({ request, params }) => {
       case 'burn': await burnLedger((parsed.data as z.infer<typeof schemas.burn>).warbandId, today); return json({ ok: true, message: 'The ledger is ash. The keeper keeps the warband.' });
       case 'release': await releaseLedger((parsed.data as z.infer<typeof schemas.release>).warbandId); return json({ ok: true, message: 'The warband is nobody’s now.' });
       case 'revoke-sessions': { const n = await revokeSessions((parsed.data as z.infer<typeof schemas['revoke-sessions']>).userId); return json({ ok: true, message: n ? `Signed out of ${n} ${n === 1 ? 'device' : 'devices'}.` : 'They were not signed in anywhere.' }); }
-      case 'issue-recovery': { const phrase = await issueRecovery((parsed.data as z.infer<typeof schemas['issue-recovery']>).userId, 'watch'); return json({ ok: true, message: 'A new recovery phrase. Pass it on; it is not shown again.', phrase }); }
+      case 'issue-reset': { const r = await issueResetWord((parsed.data as z.infer<typeof schemas['issue-reset']>).userId); return json({ ok: true, message: 'A reset word, good for two days. Pass it on; it is not shown again.', word: r.word, expiresAt: r.expiresAt }); }
       case 'delete-dispatch': await deleteDispatch((parsed.data as z.infer<typeof schemas['delete-dispatch']>).id); return json({ ok: true, message: 'Pulled from the broadsheet.' });
       case 'post-notice': { const d = await postNotice((parsed.data as z.infer<typeof schemas['post-notice']>).text, today); return json({ ok: true, message: 'The Cryer will print it.', dispatch: d }); }
       case 'run-midnight': { const r = await runMidnight(today); return json({ ok: true, message: r.nights ? `Midnight ran: ${r.nights} ${r.nights === 1 ? 'night' : 'nights'} written across ${r.ledgers} ${r.ledgers === 1 ? 'ledger' : 'ledgers'}, ${r.dispatches} for the Cryer.` : `Midnight ran: every ledger was already current.`, run: r }); }

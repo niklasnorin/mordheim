@@ -2,7 +2,7 @@
 import { warbands } from '../data/warbands';
 import { history } from '../data/history';
 import Icon from './Icon.astro';
-import { asset } from '../lib/site';
+import { asset, base } from '../lib/site';
 
 const fallen = warbands.reduce((total, warband) => total + warband.members.filter((member) => member.dead).length, 0);
 ---
@@ -15,6 +15,8 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
       <a href="#standings">Standings</a>
       <a class="secondary-section" href="#chronicle">Chronicle</a>
       <a class="secondary-section" href="#graveyard">Graveyard</a>
+      <a class="nav-account" href={`${base}/curfew/`} hidden data-when="signed-in">Curfew</a>
+      <a class="nav-account" href={`${base}/admin/`} hidden data-when="admin">Watch House</a>
       <details class="section-menu">
         <summary>Sections <Icon name="arrow-down" size={14} /></summary>
         <div class="section-menu-links">
@@ -75,6 +77,9 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
   .site-nav a::after { content: ''; position: absolute; height: 1px; bottom: 0; left: 0; right: 100%; background: var(--gold); transition: right .2s; }
   .site-nav a:hover, .site-nav a[aria-current], .section-menu summary:hover { color: var(--parchment); }
   .site-nav a:hover::after, .site-nav a[aria-current]::after { right: 0; }
+  .site-nav .nav-account { color: var(--gold); }
+  .site-nav .nav-account::before { content: ''; width: 5px; height: 5px; background: var(--gold-dim); transform: rotate(45deg); flex-shrink: 0; }
+  .site-nav .nav-account:hover { color: var(--parchment); }
   .section-menu { display: none; position: relative; }
   .section-menu summary { cursor: pointer; list-style: none; }
   .section-menu summary::-webkit-details-marker { display: none; }
@@ -165,6 +170,18 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
   window.addEventListener('scroll', queueUpdate, { passive: true });
   new ResizeObserver(queueUpdate).observe(navigation);
   updateNavigation();
+
+  // The page is cached for everyone; the links for signed-in players and the game master appear once the browser has asked who is looking.
+  const accountLinks = [...navigation.querySelectorAll<HTMLAnchorElement>('.nav-account')];
+  if (accountLinks.length) {
+    fetch(new URL(accountLinks[0].pathname.replace(/\/(curfew|admin)\/$/, '/api/account/me'), location.href), { credentials: 'same-origin', cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((me: { signedIn?: boolean; admin?: boolean } | null) => {
+        if (!me) return;
+        for (const a of accountLinks) a.hidden = !(a.dataset.when === 'admin' ? me.admin : me.signedIn);
+      })
+      .catch(() => {});
+  }
 
   menu.addEventListener('click', (event) => {
     if (event.target instanceof Element && event.target.closest('a')) {

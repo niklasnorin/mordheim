@@ -380,12 +380,6 @@ body.curfew-body #theme-toggle { display: none; }
 
 .cf-auth-link { margin: 0; justify-self: start; min-height: 2rem; font-family: var(--body); text-transform: none; letter-spacing: 0; font-size: 0.95rem; color: var(--bone-dim); }
 .cf-auth-link:hover { color: var(--candle); }
-.cf-nudge { margin: 0.6rem 0 0; padding: 0.7rem 0.9rem; border: 1px solid var(--candle-dim); background: #14120f; color: var(--bone); font-size: 0.95rem; max-width: 40rem; }
-.cf-phrase { margin-top: 2rem; padding: 1.4rem 1.5rem 1.5rem; border: 1px solid var(--candle); background: linear-gradient(180deg, var(--ash), var(--ash-deep)); max-width: 34rem; display: grid; gap: 0.9rem; }
-.cf-phrase[hidden] { display: none; }
-.cf-phrase p { color: var(--bone-dim); }
-.cf-phrase-text { display: block; padding: 0.9rem 1rem; background: #0a0908; border: 1px solid var(--rule); color: var(--candle); font: 1.15rem/1.5 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; letter-spacing: 0.04em; overflow-wrap: anywhere; user-select: all; }
-.cf-phrase-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 
 /* ── dev sign-in (local development only) ── */
 .cf-devlogin { margin-top: 1.25rem; padding: 1rem 1.2rem; border: 1px dashed #4a4238; display: grid; gap: 0.7rem; max-width: 30rem; }
