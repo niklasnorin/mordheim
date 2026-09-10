@@ -289,7 +289,12 @@ body.curfew-body #theme-toggle { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .cf-card.is-revealing .cf-card-inner, .cf-card.is-revealing::after { animation: none; }
   .cf-card::after { animation: none; }
-  .cf-tilt { transition: none; opacity: 1; transform: none; }
+  /* reduced motion: no turn, no lift; the face simply fades in over the back when the card is reached */
+  .cf-card-inner, .cf-card.is-flipped .cf-card-inner { transform: none; }
+  .cf-card img { backface-visibility: visible; transition: opacity 0.7s ease; }
+  .cf-card img.cf-face { transform: none; opacity: 0; }
+  .cf-card.is-flipped img.cf-face { opacity: 1; }
+  .cf-tilt { transition: opacity 0.7s ease; transform: none; }
   .cf-ink { animation: none; opacity: 1; }
   .cf-bar span { transition: none; }
   .cf-member { transition: none; }
