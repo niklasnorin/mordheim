@@ -242,6 +242,18 @@ body.curfew-body #theme-toggle { display: none; }
 /* ── footer ── */
 .cf-foot { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--bone-dim); }
 .cf-foot .cf-linkbtn { margin-left: 0; }
+.cf-foot-actions { display: flex; align-items: center; gap: 1.2rem; }
+.cf-debug-toggle { background: none; border: 0; padding: 0.6rem 0; min-height: 2.75rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.7rem; color: #5a5249; cursor: pointer; }
+.cf-debug-toggle:hover, .cf-debug-toggle[aria-pressed='true'] { color: var(--bone-dim); }
+.cf-debug-toggle[aria-pressed='true']::before { content: '● '; color: var(--candle); }
+
+/* ── debug strip ── */
+.cf-debug { margin-top: 1.5rem; padding: 0.9rem 1rem; border: 1px dashed #4a4238; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem 1.5rem; flex-wrap: wrap; }
+.cf-debug-label { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.75rem; color: var(--bone-dim); }
+.cf-debug-controls { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.cf-debug-controls .cf-btn { min-height: 2.5rem; padding: 0.4rem 0.9rem; font-size: 0.75rem; }
+.cf-debug-date { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem; color: var(--bone-dim); }
+.cf-debug-date input { font-family: var(--body); font-size: 0.95rem; background: var(--ash-deep); color: var(--bone); border: 1px solid var(--rule); padding: 0.35rem 0.5rem; min-height: 2.5rem; color-scheme: dark; }
 
 /* ── toast ── */
 .cf-toast { position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%); z-index: 100; padding: 0.8rem 1.2rem; background: #14120f; border: 1px solid var(--candle-dim); color: var(--bone); font-style: italic; box-shadow: 0 10px 30px -8px #000c; max-width: min(90vw, 480px); text-align: center; }

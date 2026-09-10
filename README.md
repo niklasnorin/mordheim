@@ -34,7 +34,7 @@ There is no server. The site is static, so the Night runs in the browser: the Om
 node --test src/curfew/*.test.ts    # engine and state tests
 ```
 
-Append `?date=YYYY-MM-DD` to a Curfew URL to view the Ledger as of another night.
+Append `?date=YYYY-MM-DD` to a Curfew URL to view the Ledger as of another night, or switch on the dim **Debug** toggle in the Ledger's footer for previous/next-night buttons and a date picker.
 
 ## Development
 

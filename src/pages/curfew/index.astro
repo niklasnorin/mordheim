@@ -114,9 +114,13 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
       <footer class="cf-foot">
         <span>Nights turn at local midnight. This ledger lives on this device.</span>
-        <button type="button" class="cf-linkbtn" id="reset">Burn this ledger</button>
+        <span class="cf-foot-actions">
+          <button type="button" class="cf-linkbtn" id="reset">Burn this ledger</button>
+          <button type="button" class="cf-debug-toggle" id="debug-toggle" aria-pressed="false" title="Step through nights without waiting for midnight">Debug</button>
+        </span>
       </footer>
     </div>
+    <div class="cf-debug" id="debug-bar" hidden></div>
   </main>
   <div class="cf-toast" id="toast" hidden role="status"></div>
 </Base>
@@ -130,6 +134,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   } from '../../curfew/engine';
   import { chooseWarband, chosenWarband, giveOrders, loadState, reconcile, recoveringMembers, resetState, saveState, settleOffer, todayNight, type WarbandState } from '../../curfew/state';
   import { sealSvg } from '../../curfew/glyphs';
+  import { carryDate, debugEnabled, renderDebugBar, setDebug } from '../../curfew/debug';
 
   document.body.classList.add('curfew-body');
   const root = document.getElementById('main-content')!;
@@ -417,6 +422,17 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     if (!warband) return;
     if (confirm(`Burn ${warband.name}'s ledger on this device? Every night, charm and rumour goes with it.`)) { resetState(warband.id); select(warband.id); toast('The ledger is ash.'); }
   });
+
+  // ── debug: step through nights ──
+  function renderDebug() {
+    const on = debugEnabled();
+    $('debug-toggle').setAttribute('aria-pressed', String(on));
+    $('debug-toggle').textContent = on ? 'Debug on' : 'Debug';
+    renderDebugBar($('debug-bar'), today);
+    if (on) carryDate($<HTMLAnchorElement>('eve-link'));
+  }
+  $('debug-toggle').addEventListener('click', () => { setDebug(!debugEnabled()); renderDebug(); if (!debugEnabled() && new URLSearchParams(location.search).has('date')) location.href = location.pathname; });
+  renderDebug();
 
   if (warband) select(warband.id); else showPicker(true);
 </script>

@@ -25,6 +25,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <p class="cf-muted">Lay your Hand on the table. Choose what to bring. Spend the city's regard on one flourish. Then show the rival your ticket: how many charms, not which.</p>
       <div class="cf-table" id="table"></div>
     </section>
+    <div class="cf-debug" id="debug-bar" hidden></div>
   </main>
   <div class="cf-toast" id="toast" hidden role="status"></div>
 </Base>
@@ -34,6 +35,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   import { CAMPAIGN, HAND_SIZE, TOKEN_TYPES, cityProvides, cityProvidesLine, eveTicket, readTicket, tokenById, omenForNight } from '../../curfew/engine';
   import { chosenWarband, loadState, saveState, todayNight, type Flourish, type WarbandState } from '../../curfew/state';
   import { sealSvg } from '../../curfew/glyphs';
+  import { carryDate, debugEnabled, renderDebugBar } from '../../curfew/debug';
 
   document.body.classList.add('curfew-body');
   const root = document.getElementById('main-content')!;
@@ -46,6 +48,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   const today = todayNight();
   const warband = warbands.find((w) => w.id === chosenWarband());
   const table = $('table');
+  renderDebugBar($('debug-bar'), today);
+  if (debugEnabled()) { carryDate(document.querySelector<HTMLAnchorElement>('.cf-back')); carryDate(document.querySelector<HTMLAnchorElement>('.cf-wordmark')); }
   if (!warband) {
     table.innerHTML = `<p class="cf-empty">No ledger chosen on this device. <a href="${base}/curfew/">Open the Ledger</a> and pick your warband first.</p>`;
   } else {
