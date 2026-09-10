@@ -121,15 +121,16 @@ export const curfewRuns = pgTable('curfew_runs', {
 });
 
 /**
- * One recovery phrase per player, hashed like a password. No emails are sent, so this is how a forgotten
- * password is reset: the phrase is shown once when issued and exchanged for a new password, which
- * consumes it. The Watch can issue one for a player who lost theirs.
+ * One reset word per player, issued by the Watch and hashed like a password. No emails are sent, so this
+ * is how a forgotten password is reset: the game master reads the word to the player, who trades it for a
+ * new password at the Ledger. Spent on use; stale after two days.
  */
 export const curfewRecovery = pgTable('curfew_recovery', {
   userId: text('user_id').primaryKey().references(() => user.id, { onDelete: 'cascade' }),
   phraseHash: text('phrase_hash').notNull(),
   issuedBy: text('issued_by', { enum: ['self', 'watch'] }).notNull(),
   issuedAt: timestamp('issued_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
 });
 
 export const authSchema = { user, session, account, verification };

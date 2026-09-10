@@ -23,7 +23,7 @@ This is a hybrid. The campaign's record is source code, edited by people and by 
 - `src/curfew/engine.ts` pure Night engine (seeded, deterministic). `ledger.ts` pure ledger ops on `WarbandState`. `cryer.ts` turns a night into Town Cryer dispatches. All three have tests beside them.
 - `src/server/` is server-only: `env.ts` config, `db/` schema and client, `auth.ts` Better Auth, `curfew/service.ts` load-reconcile-change-save with optimistic locking and the nightly `reconcileAll`.
 - `src/pages/api/curfew/[action].ts` JSON API (same-origin, zod-validated, always answers with the whole ledger view). `src/pages/api/cron/midnight.ts` nightly cron.
-- `src/server/account/service.ts` recovery phrases: issued at sign-up (hashed with Better Auth's scrypt), traded for a new password at `POST /api/account/reset`, consumed on use; the Watch House can issue one. There is no email anywhere in the system.
+- `src/server/account/service.ts` reset words: issued only by the game master in the Watch House (hashed with Better Auth's scrypt, two-day expiry), traded for a new password at `POST /api/account/reset`, spent on use. Not self-service by design. There is no email anywhere in the system.
 - `/admin/` is the Watch House, the game master's console: `src/pages/admin/index.astro`, `src/server/admin/service.ts` (overview, players, burn/release, notices, midnight by hand), `src/pages/api/admin/[action].ts`. Admission by `ADMIN_EMAILS` (`isAdminEmail` in `env.ts`); under the dev sign-in everyone is admitted. Styles in `src/styles/admin.css` on top of Curfew's tokens.
 - Content is data: `src/data/warbands.ts`, `news.ts`, `history/*.json`, `curfew/*.json`. Prose follows `src/data/curfew/STYLE.md`; the plan and status live in `src/data/curfew/PLAN.md`.
 

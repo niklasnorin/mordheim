@@ -1,0 +1,1 @@
+ALTER TABLE "curfew_recovery" ADD COLUMN "expires_at" timestamp with time zone;

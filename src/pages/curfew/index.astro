@@ -8,7 +8,6 @@ import { hasDatabase } from '../../server/db/client';
 import { DEV_LOGIN_PASSWORD, env, isAdminEmail } from '../../server/env';
 import { getViewer } from '../../server/session';
 import { listClaims, loadOwnLedger, todayFor, type Claim, type LedgerView } from '../../server/curfew/service';
-import { hasRecovery } from '../../server/account/service';
 
 // The Ledger is personal: rendered on request, never cached.
 export const prerender = false;
@@ -19,10 +18,9 @@ const today = todayFor(Astro.url);
 const viewer = ready ? await getViewer(Astro.request) : null;
 let view: LedgerView | null = null;
 let claims: Claim[] = [];
-let recovery = true;
 let trouble = false;
 if (viewer) {
-  try { [view, claims, recovery] = await Promise.all([loadOwnLedger(viewer.id, today), listClaims(), hasRecovery(viewer.id)]); } catch (e) { console.error('[curfew] ledger unavailable', e); trouble = true; }
+  try { [view, claims] = await Promise.all([loadOwnLedger(viewer.id, today), listClaims()]); } catch (e) { console.error('[curfew] ledger unavailable', e); trouble = true; }
 }
 const boot = {
   today, debug: env.CURFEW_DEBUG, viewer: viewer ? { name: viewer.name } : null, view,
@@ -62,7 +60,7 @@ const boot = {
           </div>
           <label class="cf-field cf-field-up" hidden>Your name<input name="name" type="text" autocomplete="name" maxlength="40" placeholder="As the others know you" /></label>
           <label class="cf-field">Email<input name="email" type="email" autocomplete="username" required placeholder="you@example.com" /></label>
-          <label class="cf-field cf-field-reset" hidden>Recovery phrase<input name="phrase" type="text" autocomplete="off" spellcheck="false" placeholder="ash-bell-crow-lantern-rat-candle-7f3" /></label>
+          <label class="cf-field cf-field-reset" hidden>Reset word from the game master<input name="word" type="text" autocomplete="off" spellcheck="false" placeholder="ash-bell-crow-7f3" /></label>
           <label class="cf-field cf-field-pw">Password<input name="password" type="password" autocomplete="current-password" required minlength="8" placeholder="At least eight characters" /></label>
           {env.INVITE_CODE && <label class="cf-field cf-field-up" hidden>The word at the gate<input name="inviteCode" type="text" autocomplete="off" placeholder="Ask the game master" /></label>}
           <div class="cf-auth-foot">
@@ -85,25 +83,9 @@ const boot = {
       <div class="cf-account" id="account">
         <span class="cf-account-name">Signed in as {viewer.name}</span>
         {isAdminEmail(viewer.email) && <a class="cf-account-link" href={`${base}/admin/`}>The Watch House</a>}
-        <button type="button" class="cf-linkbtn" id="recovery" data-has={recovery ? 'yes' : 'no'}>{recovery ? 'New recovery phrase' : 'Make a recovery phrase'}</button>
         <button type="button" class="cf-linkbtn" id="signout">Sign out</button>
       </div>
     )}
-    {viewer && !recovery && !trouble && (
-      <p class="cf-nudge">You have no recovery phrase. Without one, a forgotten password means a new account. <button type="button" class="cf-linkbtn cf-inline" data-recovery>Make one now</button>.</p>
-    )}
-    {ready && (
-      <div class="cf-phrase" id="phrase-panel" hidden role="region" aria-labelledby="phrase-title">
-        <h2 class="cf-h3" id="phrase-title">Your recovery phrase</h2>
-        <p>No emails are sent, so this is the only way back in if you forget your password. It is shown once and replaces any earlier phrase. Write it down, or keep it where you keep such things.</p>
-        <code class="cf-phrase-text" id="phrase-text"></code>
-        <div class="cf-phrase-actions">
-          <button type="button" class="cf-btn cf-btn-ghost" id="phrase-copy">Copy</button>
-          <button type="button" class="cf-btn" id="phrase-done">I have kept it</button>
-        </div>
-      </div>
-    )}
-
     {trouble && <p class="cf-empty" style="margin-top:2rem">The ledger could not be read just now. Try again in a moment.</p>}
 
     <!-- Once a ledger is claimed the picker folds into this one line, so the daily scroll starts at last night. -->
@@ -276,43 +258,14 @@ const boot = {
     return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
   }
 
-  // ── the recovery phrase panel ──
-  const phrasePanel = document.getElementById('phrase-panel');
-  function showPhrase(phrase: string) {
-    if (!phrasePanel) return;
-    $('phrase-text').textContent = phrase;
-    for (const el of ['signin', 'auth-form', 'identity', 'warband-section', 'ledger', 'account']) document.getElementById(el)?.toggleAttribute('hidden', true);
-    document.querySelector<HTMLElement>('.cf-nudge')?.toggleAttribute('hidden', true);
-    phrasePanel.hidden = false;
-    phrasePanel.scrollIntoView({ block: 'start' });
-    $('phrase-done').focus();
-  }
-  document.getElementById('phrase-copy')?.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText($('phrase-text').textContent ?? ''); toast('Copied.'); } catch { toast('Select it and copy by hand.'); }
-  });
-  document.getElementById('phrase-done')?.addEventListener('click', () => { location.href = location.pathname + location.search; });
-  async function fetchPhrase(): Promise<string> {
-    const res = await fetch(new URL(`${base}/api/account/recovery`, location.href), { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}', credentials: 'same-origin' });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error ?? 'The city did not answer. Try again.');
-    return data.phrase as string;
-  }
-  async function issuePhrase(button: HTMLButtonElement) {
-    if (button.dataset.has === 'yes' && !confirm('Make a new recovery phrase? The old one stops working.')) return;
-    button.disabled = true;
-    try { showPhrase(await fetchPhrase()); } catch (e) { button.disabled = false; toast((e as Error).message); }
-  }
-  document.getElementById('recovery')?.addEventListener('click', (e) => issuePhrase(e.currentTarget as HTMLButtonElement));
-  document.querySelector<HTMLButtonElement>('[data-recovery]')?.addEventListener('click', (e) => issuePhrase(e.currentTarget as HTMLButtonElement));
-
   // ── sign in / out ──
   const authForm = document.getElementById('auth-form') as HTMLFormElement | null;
   if (authForm) {
     type Mode = 'in' | 'up' | 'reset';
     const NOTE: Record<Mode, string> = {
       in: 'Signed in once, you stay signed in on this device for a Moon or so.',
-      up: 'No emails are sent; the address is only your name at the gate. You will be given a recovery phrase for a forgotten password.',
-      reset: 'Your recovery phrase, as it was shown to you, and a new password. Every device is signed out and a new phrase is issued.',
+      up: 'No emails are sent; the address is only your name at the gate. Keep the password somewhere; the game master can issue a reset word if it is lost.',
+      reset: 'Ask the game master for a reset word, then give it here with a new password. Every device is signed out.',
     };
     const LABEL: Record<Mode, string> = { in: 'Sign in', up: 'Take the oath', reset: 'Set the new password' };
     const setMode = (mode: Mode) => {
@@ -340,27 +293,23 @@ const boot = {
       button.disabled = true;
       try {
         if (mode === 'reset') {
-          const phrase = String(data.get('phrase') ?? '').trim();
-          if (!phrase) throw new Error('The recovery phrase, as it was shown to you.');
-          const res = await fetch(new URL(`${base}/api/account/reset`, location.href), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, phrase, newPassword: password }), credentials: 'same-origin' });
+          const word = String(data.get('word') ?? '').trim();
+          if (!word) throw new Error('The reset word, as the game master gave it to you.');
+          const res = await fetch(new URL(`${base}/api/account/reset`, location.href), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, word, newPassword: password }), credentials: 'same-origin' });
           const out = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(out.error ?? 'The city did not answer. Try again.');
           const { error } = await authClient.signIn.email({ email, password });
           if (error) throw new Error(error.message ?? 'The password is set, but the gate did not open. Sign in again.');
-          showPhrase(out.phrase);
-          return;
-        }
-        if (mode === 'up') {
+        } else if (mode === 'up') {
           const name = String(data.get('name') ?? '').trim();
           if (!name) throw new Error('Tell us your name.');
           const inviteCode = String(data.get('inviteCode') ?? '').trim();
           const { error } = await authClient.signUp.email({ email, password, name, ...(inviteCode ? { inviteCode } : {}) } as never);
           if (error) throw new Error(error.message ?? 'The gate did not open.');
-          showPhrase(await fetchPhrase());
-          return;
+        } else {
+          const { error } = await authClient.signIn.email({ email, password });
+          if (error) throw new Error(error.message ?? 'The gate did not open.');
         }
-        const { error } = await authClient.signIn.email({ email, password });
-        if (error) throw new Error(error.message ?? 'The gate did not open.');
         location.href = location.pathname + location.search;
       } catch (err) {
         button.disabled = false;
