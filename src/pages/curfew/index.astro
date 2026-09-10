@@ -3,8 +3,30 @@ import Base from '../../layouts/Base.astro';
 import '../../styles/curfew.css';
 import { warbands } from '../../data/warbands';
 import campaign from '../../data/curfew/campaign.json';
+import { base } from '../../lib/site';
+import { hasDatabase } from '../../server/db/client';
+import { PROVIDER_LABEL, enabledProviders, env } from '../../server/env';
+import { getViewer } from '../../server/session';
+import { listClaims, loadOwnLedger, todayFor, type Claim, type LedgerView } from '../../server/curfew/service';
 
-const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+// The Ledger is personal: rendered on request, never cached.
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const today = todayFor(Astro.url);
+const viewer = ready ? await getViewer(Astro.request) : null;
+let view: LedgerView | null = null;
+let claims: Claim[] = [];
+let trouble = false;
+if (viewer) {
+  try { [view, claims] = await Promise.all([loadOwnLedger(viewer.id, today), listClaims()]); } catch (e) { console.error('[curfew] ledger unavailable', e); trouble = true; }
+}
+const providers = enabledProviders();
+const boot = {
+  today, debug: env.CURFEW_DEBUG, viewer: viewer ? { name: viewer.name } : null, view,
+  claims: claims.map((c) => ({ warbandId: c.warbandId, ownerName: c.ownerName })),
+};
 ---
 
 <Base title="Curfew — Nights in the City of the Damned" description="Every real day is one night in Mordheim. Give your warband its orders at dusk; read what it cost them at dawn.">
@@ -20,21 +42,53 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <div class="cf-nightline" id="nightline">Night <strong>—</strong></div>
     </header>
 
-    <!-- Once a ledger is chosen the picker folds into this one line, so the daily scroll starts at last night. -->
+    {!ready && (
+      <section class="cf-section cf-section-first">
+        <h1 class="cf-h2">The ledgers are not open</h1>
+        <p class="cf-muted">This deployment has no database yet. See the README for the Vercel setup.</p>
+      </section>
+    )}
+
+    {ready && !viewer && (
+      <section class="cf-section cf-section-first" id="signin">
+        <h1 class="cf-h2">Whose ledger is this?</h1>
+        <p class="cf-muted">Every real day is one night in Mordheim. At dusk you give your warband its orders. At midnight the city answers. At dawn you read what it cost them. Two minutes a day. The city takes nothing from those who stay away.</p>
+        <p>Sign in, so the ledger is yours from any device and the Town Cryer knows whose night it prints.</p>
+        {providers.length ? (
+          <div class="cf-pick cf-signin">
+            {providers.map((p) => (
+              <button type="button" data-provider={p}><span class="cf-sigil" aria-hidden="true">{PROVIDER_LABEL[p][0]}</span><span>Continue with {PROVIDER_LABEL[p]}</span></button>
+            ))}
+          </div>
+        ) : (
+          <p class="cf-empty">No way to sign in has been configured yet. Set a provider's client id and secret; see .env.example.</p>
+        )}
+      </section>
+    )}
+
+    {viewer && (
+      <div class="cf-account" id="account">
+        <span class="cf-account-name">Signed in as {viewer.name}</span>
+        <button type="button" class="cf-linkbtn" id="signout">Sign out</button>
+      </div>
+    )}
+
+    {trouble && <p class="cf-empty" style="margin-top:2rem">The ledger could not be read just now. Try again in a moment.</p>}
+
+    <!-- Once a ledger is claimed the picker folds into this one line, so the daily scroll starts at last night. -->
     <div class="cf-identity" id="identity" hidden>
       <h1 class="cf-identity-name" id="identity-name"></h1>
       <span class="cf-identity-meta" id="identity-meta"></span>
-      <button type="button" class="cf-linkbtn" id="change-warband">Change</button>
     </div>
 
-    <section class="cf-section cf-section-first" id="warband-section">
+    <section class="cf-section cf-section-first" id="warband-section" hidden>
       <h1 class="cf-h2">Whose ledger is this?</h1>
-      <p class="cf-muted">Every real day is one night in Mordheim. At dusk you give your warband its orders. At midnight the city answers. At dawn you read what it cost them. Two minutes a day. The city takes nothing from those who stay away.</p>
+      <p class="cf-muted">Take up your warband. One player keeps each ledger; a warband already kept is greyed out.</p>
       <div class="cf-pick" id="warband-pick">
         {warbands.map((wb) => (
           <button type="button" data-warband={wb.id} aria-pressed="false">
             <span class="cf-sigil" aria-hidden="true">{wb.sigil}</span>
-            <span>{wb.name}<small>{wb.type}{wb.player ? ` · ${wb.player}` : ''}</small></span>
+            <span>{wb.name}<small>{wb.type}{wb.player ? ` · ${wb.player}` : ''}</small><small class="cf-kept" data-kept></small></span>
           </button>
         ))}
       </div>
@@ -102,52 +156,88 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       </section>
 
       <footer class="cf-foot">
-        <span>Nights turn at local midnight. Stay away longer than {campaign.returnAfterNights} nights and the city simply waits. This ledger lives on this device.</span>
+        <span>Nights turn at midnight in the city ({campaign.timezone.replace('_', ' ')}). Stay away longer than {campaign.returnAfterNights} nights and the city simply waits. The ledger is kept for you; open it from any device.</span>
         <span class="cf-foot-actions">
           <button type="button" class="cf-linkbtn" id="reset">Burn this ledger</button>
-          <button type="button" class="cf-debug-toggle" id="debug-toggle" aria-pressed="false" title="Step through nights without waiting for midnight">Debug</button>
+          <button type="button" class="cf-linkbtn" id="release">Give up the warband</button>
+          <button type="button" class="cf-debug-toggle" id="debug-toggle" aria-pressed="false" title="Step through nights without waiting for midnight" hidden>Debug</button>
         </span>
       </footer>
     </div>
     <div class="cf-debug" id="debug-bar" hidden></div>
   </main>
   <div class="cf-toast" id="toast" hidden role="status"></div>
+  <script is:inline type="application/json" id="boot" set:html={JSON.stringify(boot).replace(/</g, '\\u003c')} />
 </Base>
 
 <script>
+  import { createAuthClient } from 'better-auth/client';
   import { warbands } from '../../data/warbands';
-  import { history } from '../../data/history';
   import {
     CAMPAIGN, ERRANDS, ERRAND_LABEL, ERRAND_BLURB, TOKEN_TYPES, HAND_SIZE, availability, moonForNight, omenForNight, tiltFor, titleFor, nextTitle, tokenById, dateForNight, statEdge, ERRAND_STATS, STAT_LABEL,
-    type Errand, type MemberLike, type NightResult, type Order,
+    type Errand, type MemberLike, type NightResult, type Order, type TokenOffer,
   } from '../../curfew/engine';
-  import { chooseWarband, chosenWarband, giveOrders, lastGivenOrders, loadState, reconcile, recoveringMembers, resetState, restingMembers, saveState, settleOffer, standingOrders, todayNight, type WarbandState } from '../../curfew/state';
+  import { lastGivenOrders, restingMembers, standingOrders, type WarbandState } from '../../curfew/ledger';
   import { sealSvg } from '../../curfew/glyphs';
   import { carryDate, debugEnabled, renderDebugBar, setDebug } from '../../curfew/debug';
+
+  interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean }
+  interface Boot { today: number; debug: boolean; viewer: { name: string } | null; view: View | null; claims: { warbandId: string; ownerName: string }[] }
 
   document.body.classList.add('curfew-body');
   const root = document.getElementById('main-content')!;
   const base = root.dataset.base ?? '';
+  const boot: Boot = JSON.parse(document.getElementById('boot')!.textContent || '{}');
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
   const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const authClient = createAuthClient({ baseURL: location.origin, basePath: `${base}/api/auth` });
 
-  const today = todayNight();
-  let warband = warbands.find((w) => w.id === chosenWarband()) ?? null;
-  let state: WarbandState | null = null;
+  const today = boot.today;
+  let view: View | null = boot.view;
+  let warband = view ? warbands.find((w) => w.id === view!.warbandId) ?? null : null;
+  let state: WarbandState | null = view?.state ?? null;
   let chronShown = 6;
 
   function toast(text: string) {
     const el = $('toast'); el.textContent = text; el.hidden = false;
     clearTimeout((el as any)._t); (el as any)._t = setTimeout(() => (el.hidden = true), 3600);
   }
-  function injuredLastBattle(id: string): string[] {
-    const record = history.slice().sort((a, b) => a.sequence - b.sequence).at(-1);
-    return record?.warbands.find((w) => w.warbandId === id)?.members.filter((m) => m.status === 'injured').map((m) => m.memberId) ?? [];
+
+  // ── the server ──
+  /** One errand to the API. Every answer is the whole ledger again, so the page re-renders from it. */
+  async function api(action: string, body: Record<string, unknown> = {}): Promise<View | null> {
+    const url = new URL(`${base}/api/curfew/${action}`, location.href);
+    const date = new URLSearchParams(location.search).get('date');
+    if (date) url.searchParams.set('date', date);
+    const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), credentials: 'same-origin' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error ?? 'The city did not answer. Try again.');
+    return data.view ?? null;
   }
-  function recovering(): string[] { return state && warband ? recoveringMembers(state, injuredLastBattle(warband.id)) : []; }
+  function applyView(next: View | null) {
+    view = next;
+    state = next?.state ?? null;
+    warband = next ? warbands.find((w) => w.id === next.warbandId) ?? null : null;
+    if (view && warband) { showPicker(false); $('ledger').hidden = false; renderAll(view.fresh); }
+    else { $('ledger').hidden = true; showPicker(true); }
+  }
+  /** Run an errand and re-render; a refusal becomes a toast and the page stays as the server has it. */
+  async function act(action: string, body: Record<string, unknown>, done?: (v: View) => void): Promise<boolean> {
+    try {
+      const next = await api(action, body);
+      applyView(next);
+      if (next && done) done(next);
+      return true;
+    } catch (e) {
+      toast((e as Error).message);
+      if (view) renderAll(false);
+      return false;
+    }
+  }
+
+  function recovering(): string[] { return view?.recovering ?? []; }
   function resting(): string[] { return state ? restingMembers(state, today) : []; }
-  function rivalOf(id: string) { return warbands.find((w) => w.id !== id); }
   function memberName(id: string) { return warband?.members.find((m) => m.id === id)?.name ?? id; }
   function firstName(id: string) { return memberName(id).split(' ')[0]; }
   function prettyDate(night: number) {
@@ -155,31 +245,38 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
   }
 
+  // ── sign in / out ──
+  document.querySelectorAll<HTMLButtonElement>('#signin [data-provider]').forEach((b) => b.addEventListener('click', async () => {
+    b.disabled = true;
+    const callbackURL = location.pathname + location.search;
+    const { error } = await authClient.signIn.social({ provider: b.dataset.provider as 'google' | 'discord' | 'github', callbackURL, errorCallbackURL: callbackURL });
+    if (error) { b.disabled = false; toast(error.message ?? 'The gate did not open.'); }
+  }));
+  document.getElementById('signout')?.addEventListener('click', async () => { await authClient.signOut(); location.href = location.pathname; });
+
   // ── warband ──
-  function select(id: string) {
-    warband = warbands.find((w) => w.id === id) ?? null;
-    if (!warband) return;
-    chooseWarband(id);
-    state = loadState(warband, today);
-    const written = reconcile(state, warband, today, recovering(), rivalOf(warband.id));
-    for (const b of root.querySelectorAll<HTMLButtonElement>('#warband-pick button')) b.setAttribute('aria-pressed', String(b.dataset.warband === id));
-    showPicker(false);
-    $('ledger').hidden = false;
-    renderAll(written.length > 0);
-  }
   function showPicker(show: boolean) {
-    $('warband-section').hidden = !show;
+    $('warband-section').hidden = !show || !boot.viewer;
     $('identity').hidden = show || !warband;
     if (warband) {
       $('identity-name').textContent = warband.name;
       $('identity-meta').textContent = warband.type + (warband.player ? ` · ${warband.player}` : '');
     }
+    if (show) {
+      for (const b of root.querySelectorAll<HTMLButtonElement>('#warband-pick button')) {
+        const claim = boot.claims.find((c) => c.warbandId === b.dataset.warband);
+        b.disabled = !!claim;
+        b.querySelector<HTMLElement>('[data-kept]')!.textContent = claim ? `Kept by ${claim.ownerName}` : '';
+      }
+    }
   }
-  root.querySelector('#warband-pick')!.addEventListener('click', (e) => {
+  root.querySelector('#warband-pick')!.addEventListener('click', async (e) => {
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-warband]');
-    if (b) select(b.dataset.warband!);
+    if (!b || b.disabled) return;
+    b.setAttribute('aria-pressed', 'true');
+    const ok = await act('claim', { warbandId: b.dataset.warband }, (v) => { boot.claims.push({ warbandId: v.warbandId, ownerName: boot.viewer?.name ?? 'you' }); });
+    if (!ok) b.setAttribute('aria-pressed', 'false');
   });
-  $('change-warband').addEventListener('click', () => { showPicker(true); $('warband-section').scrollIntoView({ block: 'start' }); });
 
   // ── render ──
   function renderAll(fresh = false) {
@@ -236,8 +333,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   }
   // Which charm the player has marked to keep, per offer, before confirming. Never saved: a reload clears it.
   const offerPicks = new Map<string, 'incoming' | 'held'>();
-  const offerKey = (o: { night: number; incoming: string; held: string }) => `${o.night}:${o.incoming}:${o.held}`;
-  function offerHtml(offer: { night: number; incoming: string; held: string }, last: NightResult) {
+  const offerKey = (o: TokenOffer) => `${o.night}:${o.incoming}:${o.held}`;
+  function offerHtml(offer: TokenOffer, last: NightResult) {
     const inc = tokenById(offer.incoming), held = tokenById(offer.held);
     const who = last.results.find((r) => r.token?.id === offer.incoming)?.memberId;
     const pick = offerPicks.get(offerKey(offer));
@@ -264,7 +361,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     const typeAttr = tag === 'button' ? ' type="button"' : '';
     return `<${tag}${typeAttr} class="cf-token" ${attrs}><span class="cf-cord" aria-hidden="true"></span><span class="cf-seal" style="--seal:${type.seal}">${sealSvg(t.type)}</span><span class="cf-type">${esc(type.name)}</span><span class="cf-token-name">${esc(t.name)}</span><span class="cf-effect">${esc(t.effect)}</span></${tag}>`;
   }
-  $('dawn-report').addEventListener('click', (e) => {
+  $('dawn-report').addEventListener('click', async (e) => {
     const target = e.target as HTMLElement;
     const box = target.closest<HTMLElement>('.cf-offer'); if (!box || !state) return;
     const offer = state.offers.find((o) => String(o.night) === box.dataset.night && o.incoming === box.dataset.incoming && o.held === box.dataset.held);
@@ -287,9 +384,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       // Step two: the decision.
       const choice = confirmBtn.dataset.confirm as 'incoming' | 'held';
       offerPicks.delete(offerKey(offer));
-      settleOffer(state, offer, choice);
-      toast(choice === 'incoming' ? `${tokenById(offer.held).name} goes in the river.` : `${tokenById(offer.incoming).name} goes in the river.`);
-      renderDawn(false); renderHand();
+      const gone = choice === 'incoming' ? tokenById(offer.held).name : tokenById(offer.incoming).name;
+      await act('offer', { offer, keep: choice }, () => toast(`${gone} goes in the river.`));
     }
   });
 
@@ -408,7 +504,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       if (m && chip) chip.outerHTML = edgeChip(m, (sel.value || undefined) as Errand | undefined);
     }
   }
-  $('watch-list').addEventListener('change', (e) => {
+  $('watch-list').addEventListener('change', async (e) => {
     if (!state || today < 1) return;
     const sel = e.target as HTMLSelectElement;
     const orders = chosenOrders();
@@ -417,19 +513,18 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       toast(`Only ${CAMPAIGN.membersPerNight} go out a night. Send someone home first.`);
       return;
     }
-    giveOrders(state, today, orders); saveState(state);
-    limitSelects(); renderOrdersLine();
-    toast(orders.length ? `${describe(orders).replace(/&#39;/g, "'")}. The city answers at midnight.` : 'Nobody goes out. The door stays barred tonight.');
+    limitSelects();
+    await act('orders', { orders }, () => toast(orders.length ? `${describe(orders).replace(/&#39;/g, "'")}. The city answers at midnight.` : 'Nobody goes out. The door stays barred tonight.'));
   });
-  $('orders-given').addEventListener('click', (e) => {
+  $('orders-given').addEventListener('click', async (e) => {
     if (!(e.target as HTMLElement).closest('#keep-standing') || !state) return;
-    giveOrders(state, today, standingOrders(state, warband!, recovering(), today).map((o) => ({ memberId: o.memberId, errand: o.errand })));
-    saveState(state); renderWatch(); toast('Orders given in full. The city answers at midnight.');
+    const orders = standingOrders(state, warband!, recovering(), today).map((o) => ({ memberId: o.memberId, errand: o.errand }));
+    await act('orders', { orders }, () => toast('Orders given in full. The city answers at midnight.'));
   });
-  $('watch-list').addEventListener('click', (e) => {
+  $('watch-list').addEventListener('click', async (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-heal]'); if (!b || !state) return;
-    state.healed.push(b.dataset.heal!); saveState(state);
-    toast(`${memberName(b.dataset.heal!)} is back on their feet.`); renderWatch();
+    const id = b.dataset.heal!;
+    await act('heal', { memberId: id }, () => toast(`${memberName(id)} is back on their feet.`));
   });
 
   // 3. The Hand
@@ -461,13 +556,25 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   }
   $('chron-more').addEventListener('click', () => { chronShown += 10; renderChronicle(); });
 
-  $('reset').addEventListener('click', () => {
+  $('reset').addEventListener('click', async () => {
     if (!warband) return;
-    if (confirm(`Burn ${warband.name}'s ledger on this device? Every night, charm and rumour goes with it.`)) { resetState(warband.id); select(warband.id); toast('The ledger is ash.'); }
+    if (confirm(`Burn ${warband.name}'s ledger? Every night, charm and rumour goes with it. You keep the warband.`)) await act('reset', {}, () => toast('The ledger is ash.'));
+  });
+  $('release').addEventListener('click', async () => {
+    if (!warband) return;
+    if (confirm(`Give up ${warband.name}? The ledger is destroyed and anyone may take the warband up.`)) {
+      const id = warband.id;
+      await act('release', {}, undefined);
+      boot.claims = boot.claims.filter((c) => c.warbandId !== id);
+      showPicker(true);
+      toast('The warband is nobody’s now.');
+    }
   });
 
-  // ── debug: step through nights ──
+  // ── debug: step through nights (only where the server allows a date override) ──
   function renderDebug() {
+    if (!boot.debug) { setDebug(false); return; }
+    $('debug-toggle').hidden = false;
     const on = debugEnabled();
     $('debug-toggle').setAttribute('aria-pressed', String(on));
     $('debug-toggle').textContent = on ? 'Debug on' : 'Debug';
@@ -477,5 +584,5 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   $('debug-toggle').addEventListener('click', () => { setDebug(!debugEnabled()); renderDebug(); if (!debugEnabled() && new URLSearchParams(location.search).has('date')) location.href = location.pathname; });
   renderDebug();
 
-  if (warband) select(warband.id); else showPicker(true);
+  applyView(view);
 </script>

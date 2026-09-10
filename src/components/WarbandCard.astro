@@ -1,6 +1,7 @@
 ---
 import type { Warband } from '../data/warbands';
 import Icon from './Icon.astro';
+import { asset } from '../lib/site';
 
 interface Props {
   warband: Warband;
@@ -12,7 +13,7 @@ const { warband } = Astro.props;
 <article class="warband-card reveal" class:list={{ 'warband-ostland': warband.type === 'Ostlanders' }}>
   <div class="warband-header">
     <span class="warband-sigil" aria-hidden="true">
-      {warband.crest ? <img src={`${import.meta.env.BASE_URL}/${warband.crest}`} width="120" height="140" alt="" loading="lazy" /> : warband.sigil}
+      {warband.crest ? <img src={asset(warband.crest)} width="120" height="140" alt="" loading="lazy" /> : warband.sigil}
     </span>
     <div class="warband-title">
       <span class="warband-register">Registered company · {warband.members.length} souls</span>

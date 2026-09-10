@@ -4,7 +4,7 @@
 
 ### Implementation plan, revised after Phase 1
 
-Revision 2, 10 September 2026. Phases 0 and 1 are built and live on `main`. Sections below keep the original plan's shape and mark what shipped, what changed, and what is still to come. Status markers: **Shipped**, **Changed**, **Open**.
+Revision 3, 10 September 2026. Phases 0 and 1 are built; the server arrived (see §9) and the ledgers moved from the browser to Postgres on Vercel. Sections below keep the original plan's shape and mark what shipped, what changed, and what is still to come. Status markers: **Shipped**, **Changed**, **Open**.
 
 ---
 
@@ -29,7 +29,7 @@ Two minutes a day. A month of nights between games becomes a story instead of a 
 
 ## 2. The Night — core loop
 
-**Shipped.** Runs in the browser; see §9 for why.
+**Shipped.** Resolved on the server; see §9.
 
 ### Dusk (whenever the player logs in)
 - **The Omen.** One card is drawn from the Tarot of the Damned. The draw is a seeded function of the campaign id and the date, so every warband sees the same omen. Each run of thirty nights is a fresh shuffle, so no card repeats within a cycle.
@@ -37,7 +37,7 @@ Two minutes a day. A month of nights between games becomes a story instead of a 
 - Mini-games are Phase 2. Tonight the dice decide.
 
 ### Midnight
-- There is no server clock. When the date turns, the next visit resolves every night that has passed, in order, from the orders that were given. The same orders always produce the same dawn.
+- **Changed.** A cron runs just after midnight in the campaign's time zone and writes every ledger's dawn. A visit that finds a dawn still due writes it too, so a late or missed cron costs nothing. The same orders always produce the same dawn either way.
 
 ### Dawn (next login)
 - **The Dawn Report.** One or two sentences per member sent, one physical detail, sometimes a closing line, then the ledger line. It inks in line by line unless the reader prefers reduced motion.
@@ -80,7 +80,7 @@ Outcome odds: a base of roughly a quarter boon, a third poor, the rest fair, shi
 - **Standing orders.** **Changed.** There is no separate setting. The last selection the player made stands: on a night without a change the same members go out on the same errands at half yield, no tokens, no risk, and the Ledger says so with a one-tap way to send them in full. Whoever went out the night before rests, so a standing selection runs every other night; the rest are quiet nights. Before any selection, the first two available members go out on the errand their role suggests. The Chronicle still writes.
 - **The City Provides.** An empty Hand at the Eve is dealt one random token.
 - **The Return.** A gap longer than seven nights collapses into one vignette and Favour primed to 20. No summary of what was missed.
-- **Sigmar's Mercy.** **Open.** Needs a shared campaign rating, which needs a server or a shared file.
+- **Sigmar's Mercy.** **Open.** Needs a shared campaign rating; the server now exists, the rating does not.
 
 ---
 
@@ -89,7 +89,7 @@ Outcome odds: a base of roughly a quarter boon, a third poor, the rest fair, shi
 - **The Chronicle.** **Shipped** as the ledger's scroll of nights, newest first, with the current report shown separately above it. Shareable and printable versions are Phase 6.
 - **Epithets.** **Shipped.** A member who features in five entries earns one, flavoured by the errand they did most, and the Town Cryer prints it.
 - **Renown titles.** **Shipped** as text. Banner marks are Phase 3.
-- **Town Cryer plants.** **Shipped** as "From the Night Watch": epithets, title changes, and headline flourishes from ledgers on the reading device. Cross-device plants need a server.
+- **Town Cryer plants.** **Shipped** as "From the Night Watch", now for every warband: epithets, title changes and headline flourishes are always printed, and the broadsheet occasionally picks up one member's night as a happening (a boon or a poor night more often than a fair one, never a night on standing orders), under a headline from `cryer.json`. Dispatches are written when a night resolves and are keyed so nothing prints twice.
 - **Epitaphs, the Ashen Quarter, Patrons, the Comet's Wane.** **Open.** Patrons and Jobs exist as content (`patrons.json`, `jobs.json`).
 
 ---
@@ -138,29 +138,32 @@ On a phone this is one column. From 1100px the night is laid out side by side: i
 
 ## 9. Architecture and integration
 
-**Changed.** The site is static on GitHub Pages, so there is no nightly resolver. Instead:
+**Changed.** The site runs on Vercel with a Postgres database (Neon) and social login (Better Auth: Google, Discord, GitHub). The engine did not change; the ledger moved.
 
-- `src/curfew/engine.ts` is pure: calendar, seeded draws (FNV-1a hash, mulberry32), errand resolution, the Hand. Every result is a deterministic function of (campaign, night, warband, orders).
-- `src/curfew/state.ts` keeps one ledger per warband in `localStorage`: orders by night, resolved nights, standing orders, healed members, rumours, epithets, headlines, pending offers, the Eve session. On each visit it writes every dawn that is due and applies the absence rules.
-- Content is data in `src/data/curfew/*.json`; adding a card or a Moon is a text edit.
-- Tests: `node --test src/curfew/*.test.ts` (29 cases). Append `?date=YYYY-MM-DD` to a Curfew URL to view another night.
+- `src/curfew/engine.ts` is pure: calendar (in the campaign's time zone), seeded draws (FNV-1a hash, mulberry32), errand resolution, the Hand. Every result is a deterministic function of (campaign, night, warband, orders).
+- `src/curfew/ledger.ts` is the ledger as pure functions on a serialisable `WarbandState`: orders by night, resolved nights, standing orders, healed members, rumours, epithets, headlines, pending offers, the Eve. It refuses bad orders with a `LedgerError` the page can show as written.
+- `src/curfew/cryer.ts` turns a resolved night into Town Cryer dispatches; headline templates live in `cryer.json`.
+- `src/server/curfew/service.ts` keeps one ledger per warband in Postgres as JSON, owned by the player who claimed it. Every read reconciles first; every write is load, reconcile, change, save under a version check, then publish dispatches. `reconcileAll` is what the cron calls.
+- `src/pages/api/curfew/[action].ts` is the JSON API the pages call (claim, release, reset, orders, heal, offer, the Eve). Same-origin, signed-in, validated with zod; the answer is always the whole ledger view. `src/pages/api/cron/midnight.ts` is the cron, guarded by `CRON_SECRET`.
+- The pages render on the server from the session and the ledger; the browser keeps only the rendering and calls the API for every change. `?date=` overrides are honoured only where `CURFEW_DEBUG` is set.
+- Content is data in `src/data/curfew/*.json`; adding a card, a Moon or a headline is a text edit.
+- Tests: `npm test` (engine, ledger, Cryer, and the service on an in-memory Postgres).
 
 ### Integration points today
 - **Members:** `dead` and `stats` from the roster; `injured` from the latest battle report until healed by the player.
-- **Town Cryer:** reads ledgers on the same device for its dispatches.
+- **Town Cryer:** reads the dispatch table on every request (cached at the edge for a few minutes).
 - **Navigation:** none. Curfew is reached by direct URL for now.
 
-### When a server arrives
-The user has said a server is acceptable later. Nothing in the engine needs to change: keep resolution a pure function and the ledger serialisable, and a server can hold the ledgers, run the same resolver once at midnight, serve the rival's Hand count for the Eve, post Town Cryer entries for every device, and host the async PvP of Phase 3. Until then, the ticket exchange stands in for the glimpse.
-
----
+### What the server does not do yet
+Warband rosters, standings and battle reports are still content in the repository. Rival glimpses at the Eve still go by ticket, though the server could now answer with the count. PvP and the mini-games are unchanged in scope.
 
 ## 10. Build phases
 
 | Phase | Scope | Status |
 |---|---|---|
 | **0 — Content bible** | 30 Omens, 12 tokens, 8 Moons, 3 Jobs, 3 Patrons, vignette templates, style guide | **Shipped** |
-| **1 — The Night** | Engine, ledger, Omen, Watch, Dawn Report, Chronicle, the Hand, Eve of Battle, Town Cryer hook, standing orders, The City Provides, The Return | **Shipped** (client-side) |
+| **1 — The Night** | Engine, ledger, Omen, Watch, Dawn Report, Chronicle, the Hand, Eve of Battle, Town Cryer hook, standing orders, The City Provides, The Return | **Shipped** |
+| **1a — The server** | Vercel, Postgres, social login, ledgers per player, nightly cron, Town Cryer dispatches for every warband | **Shipped** |
 | **1b — First Moon of play** | Let a real week of nights shape the odds, the copy, and the offer rule | **Next** |
 | **2 — Hands-on** | Sifting, The Shrine, The Bazaar as optional mini-games with opt-in risk and curses; the Market Moon multiplier | Open |
 | **3 — Rivalry** | Crooked Bones and The Pit as async PvP, wagers, weekly ladders, banner marks; needs a server | Open |
@@ -174,7 +177,8 @@ The user has said a server is acceptable later. Nothing in the engine needs to c
 ## 11. Decisions
 
 Taken:
-- Nightly reset at the device's local midnight.
+- Nightly reset at midnight in the campaign's time zone (`campaign.json`), on the server.
+- One player keeps one warband's ledger; a warband has one keeper. Sign-in is social only.
 - Two members per night, regardless of warband size. Revisit for larger warbands.
 - Rival's Hand at the Eve: count only, via ticket.
 - No token gifting between warbands in season one.
@@ -186,7 +190,8 @@ Taken:
 Still open:
 - Whether the Eve should be opened automatically when a scenario is recorded.
 - How many members per night when more warbands and larger rosters join.
-- Whether and when to add a server, and which of ledgers, glimpses, dispatches, and PvP it takes on first.
+- Whether the Eve's glimpse should ask the server for the rival's count instead of a ticket.
+- When warband rosters and battle reports move to the server.
 
 ---
 

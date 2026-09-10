@@ -352,3 +352,12 @@ body.curfew-body #theme-toggle { display: none; }
 }
 /* a tall enough screen keeps the card in view while the orders are given below it */
 @media (min-width: 1100px) and (min-height: 960px) { .cf-omen-card-col { position: sticky; top: 1.5rem; } }
+
+/* ── the account line & sign-in ── */
+.cf-account { display: flex; align-items: center; gap: 1rem; padding: 0.6rem 0 0; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem; color: #6f665b; }
+.cf-account .cf-linkbtn { margin-left: 0; min-height: 2rem; font-size: 0.72rem; color: #6f665b; }
+.cf-account .cf-linkbtn:hover { color: var(--bone); }
+.cf-signin button .cf-sigil { border-color: var(--rule); color: var(--bone-dim); }
+.cf-pick button[disabled] { opacity: 0.5; cursor: not-allowed; }
+.cf-pick .cf-kept:empty { display: none; }
+.cf-pick .cf-kept { color: var(--candle-dim); font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.7rem; margin-top: 0.15rem; }

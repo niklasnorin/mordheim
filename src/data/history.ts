@@ -1,5 +1,5 @@
 import type { Statline } from './warbands';
-import merchantsDebt from './history/scenario-01-the-merchants-debt.json';
+import merchantsDebt from './history/scenario-01-the-merchants-debt.json' with { type: 'json' };
 
 /** A member's condition at the end of a scenario. */
 export type MemberStatus = 'active' | 'injured' | 'dead';

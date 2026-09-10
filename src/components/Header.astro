@@ -2,6 +2,7 @@
 import { warbands } from '../data/warbands';
 import { history } from '../data/history';
 import Icon from './Icon.astro';
+import { asset } from '../lib/site';
 
 const fallen = warbands.reduce((total, warband) => total + warband.members.filter((member) => member.dead).length, 0);
 ---
@@ -26,7 +27,7 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
   </div>
 <header class="site-header">
   <div class="hero">
-    <img class="hero-city" src={`${import.meta.env.BASE_URL}/ruined-city.jpg`} alt="" width="1536" height="1024" fetchpriority="high" />
+    <img class="hero-city" src={asset('ruined-city.jpg')} alt="" width="1536" height="1024" fetchpriority="high" />
     <div class="hero-shade" aria-hidden="true"></div>
     <div class="hero-content">
       <p class="eyebrow"><span></span> The year of Sigmar 2000 <span></span></p>

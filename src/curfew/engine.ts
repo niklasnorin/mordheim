@@ -86,11 +86,22 @@ export function shuffle<T>(r: () => number, list: readonly T[]): T[] {
 
 // ───────────────────────── calendar ─────────────────────────
 
-/** Local calendar date as YYYY-MM-DD. A night is one real day; it turns over at local midnight. */
-export function localDate(now: Date = new Date()): string {
-  const y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0'), d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+/**
+ * Calendar date as YYYY-MM-DD in the campaign's time zone. A night is one real day; it turns over at
+ * midnight where the campaign is played, so every player and the server agree on which night it is.
+ */
+export function localDate(now: Date = new Date(), timeZone: string = campaign.timezone): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+    const get = (t: string) => parts.find((p) => p.type === t)!.value;
+    return `${get('year')}-${get('month')}-${get('day')}`;
+  } catch {
+    const y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0'), d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
 }
+/** The night it is now, by the campaign's clock. */
+export function currentNight(now: Date = new Date()): number { return nightForDate(localDate(now)); }
 function utcDay(date: string): number {
   const [y, m, d] = date.split('-').map(Number);
   return Math.floor(Date.UTC(y, m - 1, d) / 86400000);

@@ -1,23 +1,25 @@
 /**
- * CURFEW — per-warband state on this device.
+ * CURFEW — the ledger, as pure functions.
  *
- * There is no server. Each player's device keeps their own warband's ledger in localStorage and
- * resolves nights with the deterministic engine when the date turns. The same orders would produce
- * the same dawn on any device, which is what makes the shared Omen and the Eve ticket honest.
+ * A WarbandState is one warband's whole ledger: orders by night, resolved nights, the Hand, rumours,
+ * epithets, headlines, pending offers and the Eve. Nothing here touches storage or the clock. The server
+ * loads a ledger, calls these, and saves what comes back; the same functions would give the same dawn
+ * on any machine, which is what makes the shared Omen and the Eve ticket honest.
  */
 import {
-  CAMPAIGN, HAND_SIZE, applyNight, availability, defaultErrand, epithetFor, handHas, localDate, nightForDate, quietNight, resolveNight, returnNight, titleFor, tokenById,
+  CAMPAIGN, HAND_SIZE, applyNight, availability, cityProvides, defaultErrand, epithetFor, eveTicket, handHas, nightForDate, omenForNight, quietNight, resolveNight, returnNight, titleFor, tokenById,
   type Errand, type HandState, type HeldToken, type NightResult, type Order, type TokenOffer, type WarbandLike,
 } from './engine.ts';
 
 export interface Flourish { kind: 'field' | 'headline' | 'weather' | 'dedication'; text: string }
 export interface EveSession { night: number; tokens: string[]; flourish?: Flourish; ticket: string; provided?: string }
 export interface EveRecord { night: number; tokens: string[]; flourish?: Flourish }
+export interface Headline { night: number; text: string }
 
 export interface WarbandState extends HandState {
   version: 1;
   warbandId: string;
-  /** The night the player first opened the Ledger. Nothing before it is resolved. */
+  /** The night the ledger was opened. Nothing before it is resolved. */
   firstSeen: number;
   /** Highest night whose dawn has been written. */
   lastResolved: number;
@@ -29,37 +31,24 @@ export interface WarbandState extends HandState {
   healed: string[];
   rumours: { night: number; text: string }[];
   epithets: Record<string, string>;
-  headlines: { night: number; text: string }[];
+  headlines: Headline[];
   /** Token offers waiting on a keep-or-discard choice. */
   offers: TokenOffer[];
   eve?: EveSession;
+  /** The charm the City Provided for an Eve not yet laid, so the table can say so. */
+  provided?: { night: number; tokenId: string };
   fights: EveRecord[];
 }
 
-const KEY = (id: string) => `curfew:state:${id}`;
-const CHOSEN = 'curfew:warband';
-
-export function todayNight(now = new Date()): number {
-  const override = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('date') : null;
-  return nightForDate(override && /^\d{4}-\d{2}-\d{2}$/.test(override) ? override : localDate(now));
+/** A player-facing refusal. The message is safe to show as written. */
+export class LedgerError extends Error {
+  status: number;
+  constructor(message: string, status = 400) { super(message); this.status = status; }
 }
 
-export function chosenWarband(): string | null { try { return localStorage.getItem(CHOSEN); } catch { return null; } }
-export function chooseWarband(id: string): void { try { localStorage.setItem(CHOSEN, id); } catch {} }
-
-/**
- * Load this device's ledger for a warband, creating and persisting a fresh one on the first visit.
- * Persisting at once matters: the first night's standing orders only run if the next visit can see
- * that the ledger was opened before.
- */
-export function loadState(warband: WarbandLike, today: number): WarbandState {
-  let state: WarbandState | null = null;
-  try { const raw = localStorage.getItem(KEY(warband.id)); if (raw) state = JSON.parse(raw); } catch {}
-  if (!state || state.version !== 1) { state = freshState(warband, today); saveState(state); }
-  return state;
-}
-export function saveState(state: WarbandState): void { try { localStorage.setItem(KEY(state.warbandId), JSON.stringify(state)); } catch {} }
-export function resetState(warbandId: string): void { try { localStorage.removeItem(KEY(warbandId)); } catch {} }
+export function isDate(s: unknown): s is string { return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s); }
+/** The night for a `?date=` override, or null when there is none. */
+export function nightForOverride(date: string | null | undefined): number | null { return isDate(date) ? nightForDate(date) : null; }
 
 export function freshState(warband: WarbandLike, today: number): WarbandState {
   return {
@@ -67,6 +56,13 @@ export function freshState(warband: WarbandLike, today: number): WarbandState {
     firstSeen: today, lastResolved: Math.max(0, today - 1), orders: {}, nights: [],
     healed: [], rumours: [], epithets: {}, headlines: [], offers: [], fights: [],
   };
+}
+
+/** Accept a stored ledger if it is one; otherwise start afresh. */
+export function coerceState(raw: unknown, warband: WarbandLike, today: number): WarbandState {
+  const s = raw as Partial<WarbandState> | null;
+  if (!s || s.version !== 1 || s.warbandId !== warband.id || !Array.isArray(s.nights)) return freshState(warband, today);
+  return { ...freshState(warband, today), ...s } as WarbandState;
 }
 
 /** Members who came out of the last recorded battle injured stay home until the player says otherwise. */
@@ -79,8 +75,25 @@ export function restingMembers(state: WarbandState, night: number): string[] {
   return state.nights.find((n) => n.night === night - 1)?.results.map((r) => r.memberId) ?? [];
 }
 
-export function giveOrders(state: WarbandState, night: number, orders: Order[]): void {
-  state.orders[night] = orders.slice(0, CAMPAIGN.membersPerNight).map((o) => ({ memberId: o.memberId, errand: o.errand }));
+/** Record tonight's orders. Refuses members who cannot go out, and more than the night allows. */
+export function giveOrders(state: WarbandState, warband: WarbandLike, night: number, orders: Order[], recovering: string[] = []): void {
+  if (night < 1) throw new LedgerError('The city sleeps until the first night.');
+  const clean: Order[] = [];
+  const avail = availability(warband, recovering, restingMembers(state, night));
+  for (const o of orders) {
+    if (clean.some((c) => c.memberId === o.memberId)) continue;
+    const a = avail.find((x) => x.memberId === o.memberId);
+    if (!a) throw new LedgerError('That is not one of yours.');
+    if (!a.available) throw new LedgerError(`${warband.members.find((m) => m.id === o.memberId)?.name ?? 'They'} cannot go out tonight.`);
+    clean.push({ memberId: o.memberId, errand: o.errand });
+  }
+  if (clean.length > CAMPAIGN.membersPerNight) throw new LedgerError(`Only ${CAMPAIGN.membersPerNight} go out a night.`);
+  state.orders[night] = clean;
+}
+
+export function heal(state: WarbandState, warband: WarbandLike, memberId: string): void {
+  if (!warband.members.some((m) => m.id === memberId)) throw new LedgerError('That is not one of yours.');
+  if (!state.healed.includes(memberId)) state.healed.push(memberId);
 }
 
 /** The most recent orders the player actually gave, before the given night. Null if none yet. */
@@ -104,7 +117,7 @@ export function standingOrders(state: WarbandState, warband: WarbandLike, recove
 }
 
 /**
- * Write every dawn that is due. Returns the nights written this call.
+ * Write every dawn that is due, up to and including the night before `today`. Returns the nights written.
  * A gap longer than the campaign's return threshold collapses into a single Return vignette.
  */
 export function reconcile(state: WarbandState, warband: WarbandLike, today: number, recovering: string[], rival?: WarbandLike): NightResult[] {
@@ -119,7 +132,6 @@ export function reconcile(state: WarbandState, warband: WarbandLike, today: numb
     state.nights.push(result); written.push(result);
     state.favour = Math.max(state.favour, 20);
     state.lastResolved = last;
-    saveState(state);
     return written;
   }
 
@@ -142,7 +154,6 @@ export function reconcile(state: WarbandState, warband: WarbandLike, today: numb
   }
   // rumours go cold
   state.rumours = state.rumours.filter((r) => today - r.night <= CAMPAIGN.rumourWarmNights);
-  saveState(state);
   return written;
 }
 
@@ -190,27 +201,68 @@ export function normalizeOffers(state: WarbandState): void {
 
 /** Settle a keep-or-discard offer. */
 export function settleOffer(state: WarbandState, offer: TokenOffer, keep: 'incoming' | 'held'): void {
-  state.offers = state.offers.filter((o) => !(o.night === offer.night && o.incoming === offer.incoming && o.held === offer.held));
+  const found = state.offers.find((o) => o.night === offer.night && o.incoming === offer.incoming && o.held === offer.held);
+  if (!found) throw new LedgerError('That decision has already been made.');
+  state.offers = state.offers.filter((o) => o !== found);
   if (keep === 'incoming') {
     state.hand = state.hand.filter((h) => h.id !== offer.held);
     state.hand.push({ id: offer.incoming, earnedNight: offer.night });
   }
   normalizeOffers(state);
-  saveState(state);
 }
 
 export function removeTokens(hand: HeldToken[], ids: string[]): HeldToken[] { return hand.filter((h) => !ids.includes(h.id)); }
 
-/** Everything this device knows, for the Town Cryer's dispatches. */
-export function allHeadlines(warbandIds: string[]): { warbandId: string; night: number; text: string }[] {
-  const out: { warbandId: string; night: number; text: string }[] = [];
-  for (const id of warbandIds) {
-    try {
-      const raw = localStorage.getItem(KEY(id));
-      if (!raw) continue;
-      const s = JSON.parse(raw) as WarbandState;
-      for (const h of s.headlines ?? []) out.push({ warbandId: id, ...h });
-    } catch {}
+// ───────────────────────── the Eve of Battle ─────────────────────────
+
+/** The City Provides: an empty Hand at the Eve is dealt one charm. Returns its id, or null if the Hand was not empty. */
+export function provideIfEmpty(state: WarbandState, night: number): string | null {
+  if (state.hand.length) return null;
+  const token = cityProvides(state.warbandId, night);
+  state.hand.push({ id: token.id, earnedNight: night });
+  state.provided = { night, tokenId: token.id };
+  return token.id;
+}
+
+/** Lay the table: choose which charms to bring and, optionally, spend Favour on one flourish. */
+export function layTable(state: WarbandState, warband: WarbandLike, night: number, bring: string[], flourish?: Flourish): void {
+  if (state.eve) throw new LedgerError('The table is already laid.');
+  if (night < 1) throw new LedgerError('The city sleeps until the first night.');
+  const held = new Set(state.hand.map((h) => h.id));
+  const tokens = [...new Set(bring)].filter((id) => held.has(id));
+  if (flourish) {
+    const text = flourish.text.trim();
+    if (!text) throw new LedgerError('The flourish needs words.');
+    if (text.length > 120) throw new LedgerError('The flourish is too long for the broadsheet.');
+    if (flourish.kind === 'dedication' && !warband.members.some((m) => m.dead && m.name === text)) throw new LedgerError('A dedication is for one of the dead.');
+    if (state.favour < CAMPAIGN.flourishCost) throw new LedgerError(`A flourish costs ${CAMPAIGN.flourishCost} Favour.`);
+    state.favour -= CAMPAIGN.flourishCost;
+    flourish = { kind: flourish.kind, text };
+    if (flourish.kind === 'headline') state.headlines.push({ night, text });
   }
-  return out.sort((a, b) => b.night - a.night);
+  state.hand = state.hand.filter((h) => tokens.includes(h.id));
+  state.eve = { night, tokens, flourish, ticket: eveTicket(state.warbandId, night, tokens.length), provided: state.provided?.tokenId };
+  delete state.provided;
+}
+
+/** The fight is done: the charms are spent and the Chronicle gets a line. */
+export function fightDone(state: WarbandState, night: number): void {
+  const eve = state.eve;
+  if (!eve) throw new LedgerError('No table is laid.');
+  state.fights.push({ night: eve.night, tokens: eve.tokens, flourish: eve.flourish });
+  state.nights.push({
+    night, omenId: omenForNight(night).id, moonId: '', header: `Night ${night} — the fight.`, results: [],
+    detail: eve.tokens.length ? `They went out carrying ${eve.tokens.map((id) => tokenById(id).name).join(', ')}. None of it came back.` : 'They went out with empty hands. That is also a way to go.',
+    ledger: eve.flourish ? [`Flourish: ${eve.flourish.text}`] : [],
+  });
+  state.hand = removeTokens(state.hand, eve.tokens);
+  state.eve = undefined;
+}
+
+/** Put the charms back in the Hand and reopen the table. Spent Favour does not return. */
+export function putBack(state: WarbandState): void {
+  const eve = state.eve;
+  if (!eve) throw new LedgerError('No table is laid.');
+  for (const id of eve.tokens) if (!state.hand.some((h) => h.id === id)) state.hand.push({ id, earnedNight: eve.night });
+  state.eve = undefined;
 }

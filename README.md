@@ -1,13 +1,11 @@
 # Mordheim — City of the Damned
 
-A grimdark, interactive campaign chronicle for our Mordheim game group, built with [Astro](https://astro.build) and hosted on GitHub Pages.
-
-**Live site:** https://niklasnorin.github.io/mordheim/
+A grimdark, interactive campaign chronicle for our Mordheim game group, built with [Astro](https://astro.build) and hosted on [Vercel](https://vercel.com).
 
 ## Features
 
 - 🌧 Rainy, moody atmosphere — canvas rain, flying crows, drifting fog, and distant lightning
-- 📰 **Town Cryer** — a parchment broadsheet with news from the City of the Damned
+- 📰 **Town Cryer** — a parchment broadsheet with news from the City of the Damned, and dispatches from the Night Watch: what the Curfew ledgers saw last night
 - ⚔ **Warbands** — rosters with clickable warrior profiles (statlines, equipment, skills, and lore)
 - **Quick reference** — persistent section navigation, compact mobile rosters, scrollable standings with pinned warband names, and accessible warrior dialogs with stat definitions
 - 🏆 **Campaign Standings** — ratings, battles, wyrdstone, and gold
@@ -16,33 +14,48 @@ A grimdark, interactive campaign chronicle for our Mordheim game group, built wi
 
 ## CURFEW — nights between games
 
-[`/curfew/`](https://niklasnorin.github.io/mordheim/curfew/) is a between-games companion. Every real day is one night in Mordheim: at dusk a player gives up to two warband members an errand, at midnight the dice decide, at dawn a short vignette and a ledger line say what it cost. Favour, shards and Renown accrue; the Hand holds up to three charms (one per type) that are laid on the table at [`/curfew/eve/`](https://niklasnorin.github.io/mordheim/curfew/eve/) the night before a real game and spent whether used or not.
+`/curfew/` is a between-games companion. Every real day is one night in Mordheim: at dusk a player gives up to two warband members an errand, at midnight the dice decide, at dawn a short vignette and a ledger line say what it cost. Favour, shards and Renown accrue; the Hand holds up to three charms (one per type) that are laid on the table at `/curfew/eve/` the night before a real game and spent whether used or not.
 
-There is no server. The site is static, so the Night runs in the browser: the Omen and Moon for a date are a seeded function of the campaign id, and a night's result is a deterministic function of the orders given, so two devices agree on the same dawn. Each player's ledger is kept in their own browser's `localStorage`. Missed nights run on standing orders at half yield; a gap longer than a week collapses into a single Return vignette and nothing is lost but opportunity.
+Players sign in with Google, Discord or GitHub and take up one warband each. The ledger is kept on the server, so it follows the player from phone to laptop, and the Town Cryer can print what happened to every warband. Nights turn at midnight in the campaign's time zone (`timezone` in `campaign.json`). A night's result is still a deterministic function of the orders given: the server runs the same pure engine the browser used to.
+
+Resolution happens twice over, and both ways agree: a nightly cron writes every ledger's dawn just after midnight (so the Town Cryer has last night before anyone looks in), and any visit to a ledger first writes whatever dawns are still due. Missed nights run on standing orders at half yield; a gap longer than a week collapses into a single Return vignette and nothing is lost but opportunity.
 
 | File | Contents |
 | --- | --- |
-| `src/data/curfew/campaign.json` | Start date (night 1), members per night, soft caps, thresholds |
+| `src/data/curfew/campaign.json` | Start date (night 1), time zone, members per night, soft caps, thresholds |
 | `src/data/curfew/omens.json` | The 30 Omens of the Tarot of the Damned, with readings and errand tilts |
 | `src/data/curfew/moons.json`, `tokens.json`, `patrons.json`, `jobs.json` | The weekly Moons, the 12 tokens and 4 curses, and Phase 4 content |
-| `src/data/curfew/vignettes.json`, `STYLE.md`, `PLAN.md` | Dawn Report templates, rumours, epithets, Renown titles, the writing style guide, and the implementation plan with phase status |
+| `src/data/curfew/vignettes.json`, `cryer.json`, `STYLE.md`, `PLAN.md` | Dawn Report templates, rumours, epithets, Renown titles; Town Cryer headline templates; the writing style guide; the implementation plan with phase status |
 | `src/curfew/engine.ts` | The pure Night engine: calendar, seeded draws, errand resolution, the Hand |
-| `src/curfew/state.ts` | Per-device ledger: orders, reconciliation of passed nights, absence rules, headlines |
+| `src/curfew/ledger.ts` | The ledger as pure functions: orders, reconciliation of passed nights, absence rules, offers, the Eve |
+| `src/curfew/cryer.ts` | What a resolved night gives the Town Cryer: every headline, and occasionally one member's night |
+| `src/server/curfew/service.ts` | Ledgers in Postgres: claims, load-reconcile-save with optimistic locking, the nightly run, dispatches |
+| `src/pages/api/curfew/[action].ts`, `src/pages/api/cron/midnight.ts` | The JSON API the Ledger and Eve pages call, and the cron endpoint |
 | `public/curfew/omens/` | Card images, regenerated with `scripts/curfew/` |
 
-```sh
-node --test src/curfew/*.test.ts    # engine and state tests
-```
-
-Append `?date=YYYY-MM-DD` to a Curfew URL to view the Ledger as of another night, or switch on the dim **Debug** toggle in the Ledger's footer for previous/next-night buttons and a date picker.
+Set `CURFEW_DEBUG=true` (never in production) to allow `?date=YYYY-MM-DD` on Curfew URLs and the dim **Debug** toggle in the Ledger's footer, which adds previous/next-night buttons and a date picker.
 
 ## Development
 
 ```sh
 npm install
-npm run dev       # start local dev server
-npm run build     # build static site to ./dist
-npm run preview   # preview the production build
+cp .env.example .env   # fill in DATABASE_URL and at least one social provider
+npm run dev            # start local dev server
+npm test               # engine, ledger, Town Cryer and service tests (the service tests run on an in-memory Postgres)
+npm run check          # type-check pages and scripts
+npm run build          # build for Vercel into ./dist and ./.vercel/output
+```
+
+Without `DATABASE_URL` the site still runs: the main page prints the news without dispatches and the Curfew pages say the ledgers are not open.
+
+### Database
+
+Postgres, managed with [Drizzle](https://orm.drizzle.team). The schema is `src/server/db/schema.ts`; migrations are checked in under `drizzle/`.
+
+```sh
+npm run db:generate    # write a new migration after changing the schema
+npm run db:migrate     # apply migrations to DATABASE_URL
+npm run db:studio      # browse the database
 ```
 
 ### Design skill
@@ -73,11 +86,19 @@ Each record also includes a `report`:
 - `loot` records noteworthy rewards and costs; `campaignNotes` preserves deaths, recurring items, lasting consequences, and unresolved or conflicting accounts. Treasury snapshots are totals, not battle rewards.
 - `outOfAction` records confirmed takedowns with `attackerId` (a participating member ID), `target` (the opponent's name or a description if unnamed), `detail`, and optionally `targetId` (another participating member ID, for a link). An empty list means no confirmed results were recorded, not necessarily that nobody was taken out. Do not infer a takedown from a hit, a bow notch, or an environmental casualty.
 
-Detail pages are generated automatically at `/mordheim/scenarios/<id>/`. Set the matching `scenarioId` in `src/data/chronicle.ts` to link a listing to its report. Warrior story entries link to the same pages. Existing reports retell the recorded history; unrecorded rulebook details remain explicitly marked as missing.
+Detail pages are generated automatically at `/scenarios/<id>/`. Set the matching `scenarioId` in `src/data/chronicle.ts` to link a listing to its report. Warrior story entries link to the same pages. Existing reports retell the recorded history; unrecorded rulebook details remain explicitly marked as missing.
 
 ## Deployment
 
-Pushes to `main` are automatically built and deployed to GitHub Pages via `.github/workflows/deploy.yml` (official Astro action). In the repository settings, set **Pages → Source** to **GitHub Actions**.
+The site runs on Vercel's Hobby plan: the campaign pages are prerendered, and the Town Cryer, the Curfew pages, the API and the cron run as serverless functions.
+
+1. **Import the repository** at vercel.com. Astro is detected; no build settings need changing. Pushes to `main` deploy to production and every pull request gets a preview URL.
+2. **Add a database.** In the project's *Storage* tab, add **Neon** from the Marketplace (free plan). It sets `DATABASE_URL` on the project. Pull it locally with `vercel env pull` and run `npm run db:migrate` once to create the tables; repeat after any new migration.
+3. **Set the secrets** under *Settings → Environment Variables*: `BETTER_AUTH_SECRET` (`openssl rand -base64 32`) and `CRON_SECRET` (another random string). `BETTER_AUTH_URL` can be left unset; the production domain is used.
+4. **Register OAuth apps** with whichever providers the group uses and set their `*_CLIENT_ID` and `*_CLIENT_SECRET`. Only providers with both values set get a button. The redirect URI to register is `https://<your-domain>/api/auth/callback/<provider>`, for example `.../api/auth/callback/google`. Preview deployments have their own hostnames; to sign in on one, register its callback too, or test sign-in on production only.
+5. **The nightly cron** is declared in `vercel.json` and needs no further setup. Hobby plans run crons once a day within the hour of the schedule; it is set for 23:15 UTC so that it lands after midnight in Stockholm summer or winter. A visit to a ledger writes any dawn that is still due, so a late cron costs nothing but the Town Cryer's punctuality.
+
+The GitHub Actions workflow in `.github/workflows/ci.yml` runs the tests, the type check and a build on every push and pull request.
 
 ---
 
