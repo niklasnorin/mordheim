@@ -5,7 +5,7 @@ import { warbands } from '../../data/warbands';
 import campaign from '../../data/curfew/campaign.json';
 import { base } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
-import { DEV_LOGIN_PASSWORD, PROVIDER_LABEL, enabledProviders, env, isAdminEmail } from '../../server/env';
+import { DEV_LOGIN_PASSWORD, env, isAdminEmail } from '../../server/env';
 import { getViewer } from '../../server/session';
 import { listClaims, loadOwnLedger, todayFor, type Claim, type LedgerView } from '../../server/curfew/service';
 
@@ -22,7 +22,6 @@ let trouble = false;
 if (viewer) {
   try { [view, claims] = await Promise.all([loadOwnLedger(viewer.id, today), listClaims()]); } catch (e) { console.error('[curfew] ledger unavailable', e); trouble = true; }
 }
-const providers = enabledProviders();
 const boot = {
   today, debug: env.CURFEW_DEBUG, viewer: viewer ? { name: viewer.name } : null, view,
   claims: claims.map((c) => ({ warbandId: c.warbandId, ownerName: c.ownerName })),
@@ -54,22 +53,26 @@ const boot = {
         <h1 class="cf-h2">Whose ledger is this?</h1>
         <p class="cf-muted">Every real day is one night in Mordheim. At dusk you give your warband its orders. At midnight the city answers. At dawn you read what it cost them. Two minutes a day. The city takes nothing from those who stay away.</p>
         <p>Sign in, so the ledger is yours from any device and the Town Cryer knows whose night it prints.</p>
-        {providers.length > 0 && (
-          <div class="cf-pick cf-signin">
-            {providers.map((p) => (
-              <button type="button" data-provider={p}><span class="cf-sigil" aria-hidden="true">{PROVIDER_LABEL[p][0]}</span><span>Continue with {PROVIDER_LABEL[p]}</span></button>
-            ))}
+        <form class="cf-auth" id="auth-form" data-mode="in" data-invite={env.INVITE_CODE ? 'required' : 'open'} novalidate>
+          <div class="cf-auth-tabs" role="tablist" aria-label="Sign in or sign up">
+            <button type="button" role="tab" id="tab-in" aria-selected="true" aria-controls="auth-form" data-mode="in">Sign in</button>
+            <button type="button" role="tab" id="tab-up" aria-selected="false" aria-controls="auth-form" data-mode="up">First time here</button>
           </div>
-        )}
+          <label class="cf-field cf-field-up" hidden>Your name<input name="name" type="text" autocomplete="name" maxlength="40" placeholder="As the others know you" /></label>
+          <label class="cf-field">Email<input name="email" type="email" autocomplete="username" required placeholder="you@example.com" /></label>
+          <label class="cf-field">Password<input name="password" type="password" autocomplete="current-password" required minlength="8" placeholder="At least eight characters" /></label>
+          {env.INVITE_CODE && <label class="cf-field cf-field-up" hidden>The word at the gate<input name="inviteCode" type="text" autocomplete="off" placeholder="Ask the game master" /></label>}
+          <div class="cf-auth-foot">
+            <button type="submit" class="cf-btn" id="auth-submit">Sign in</button>
+            <span class="cf-note cf-auth-note" id="auth-note">No emails are sent; the address is only your name at the gate. There is no way back in if you forget the password, so keep it somewhere.</span>
+          </div>
+        </form>
         {env.DEV_LOGIN && (
           <form class="cf-devlogin" id="devlogin" data-password={DEV_LOGIN_PASSWORD}>
             <label>Local player <input name="name" type="text" placeholder="Niklas" required maxlength="40" autocomplete="off" /></label>
-            <button type="submit" class="cf-btn">Sign in as this player</button>
+            <button type="submit" class="cf-btn cf-btn-ghost">Sign in as this player</button>
             <p class="cf-note">Development only: no password, any name, and the same name is the same player. Two names make two players, so both warbands can be tried.</p>
           </form>
-        )}
-        {!providers.length && !env.DEV_LOGIN && (
-          <p class="cf-empty">No way to sign in has been configured yet. Set a provider's client id and secret; see .env.example.</p>
         )}
       </section>
     )}
@@ -255,12 +258,43 @@ const boot = {
   }
 
   // ── sign in / out ──
-  document.querySelectorAll<HTMLButtonElement>('#signin [data-provider]').forEach((b) => b.addEventListener('click', async () => {
-    b.disabled = true;
-    const callbackURL = location.pathname + location.search;
-    const { error } = await authClient.signIn.social({ provider: b.dataset.provider as 'google' | 'discord' | 'github', callbackURL, errorCallbackURL: callbackURL });
-    if (error) { b.disabled = false; toast(error.message ?? 'The gate did not open.'); }
-  }));
+  const authForm = document.getElementById('auth-form') as HTMLFormElement | null;
+  if (authForm) {
+    const setMode = (mode: 'in' | 'up') => {
+      authForm.dataset.mode = mode;
+      authForm.querySelectorAll<HTMLElement>('.cf-field-up').forEach((f) => { f.hidden = mode === 'in'; });
+      authForm.querySelectorAll<HTMLButtonElement>('[role=tab]').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.mode === mode)));
+      const pw = authForm.querySelector<HTMLInputElement>('input[name=password]')!;
+      pw.autocomplete = mode === 'up' ? 'new-password' : 'current-password';
+      $('auth-submit').textContent = mode === 'up' ? 'Take the oath' : 'Sign in';
+      $('auth-note').textContent = mode === 'up'
+        ? 'No emails are sent; the address is only your name at the gate. There is no way back in if you forget the password, so keep it somewhere.'
+        : 'Signed in once, you stay signed in on this device for a Moon or so.';
+    };
+    authForm.querySelectorAll<HTMLButtonElement>('[role=tab]').forEach((t) => t.addEventListener('click', () => setMode(t.dataset.mode as 'in' | 'up')));
+    setMode('in');
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = new FormData(authForm);
+      const email = String(data.get('email') ?? '').trim(), password = String(data.get('password') ?? '');
+      const mode = authForm.dataset.mode as 'in' | 'up';
+      if (!email || !password) { toast('Email and password, both.'); return; }
+      if (password.length < 8) { toast('The password needs at least eight characters.'); return; }
+      const button = $<HTMLButtonElement>('auth-submit');
+      button.disabled = true;
+      let error: { message?: string } | null = null;
+      if (mode === 'up') {
+        const name = String(data.get('name') ?? '').trim();
+        if (!name) { toast('Tell us your name.'); button.disabled = false; return; }
+        const inviteCode = String(data.get('inviteCode') ?? '').trim();
+        ({ error } = await authClient.signUp.email({ email, password, name, ...(inviteCode ? { inviteCode } : {}) } as never));
+      } else {
+        ({ error } = await authClient.signIn.email({ email, password }));
+      }
+      if (error) { button.disabled = false; toast(error.message ?? 'The gate did not open.'); return; }
+      location.href = location.pathname + location.search;
+    });
+  }
   document.getElementById('signout')?.addEventListener('click', async () => { await authClient.signOut(); location.href = location.pathname; });
   // local development: a name becomes a player, created on first use
   document.getElementById('devlogin')?.addEventListener('submit', async (e) => {

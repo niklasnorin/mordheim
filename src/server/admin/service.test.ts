@@ -23,7 +23,7 @@ before(async () => {
     { id: GM, name: 'Game Master', email: 'gm@example.com', emailVerified: true },
     { id: PLAYER, name: 'Player', email: 'player@example.com', emailVerified: true },
   ]);
-  await db.insert(schema.account).values({ id: 'acc-1', accountId: 'x', providerId: 'google', userId: PLAYER });
+  await db.insert(schema.account).values({ id: 'acc-1', accountId: PLAYER, providerId: 'credential', userId: PLAYER, password: 'hashed' });
   const soon = new Date(Date.now() + 3600_000);
   await db.insert(schema.session).values([
     { id: 's1', token: 't1', userId: PLAYER, expiresAt: soon },
@@ -50,10 +50,9 @@ test('the overview knows the night, who keeps what, and who is behind', async ()
   assert.ok(o.health.some((h) => h.label === 'Last midnight' && h.detail === 'never run'));
 });
 
-test('players list their providers, sessions, warband and last visit', async () => {
+test('players list their sessions, warband and last visit', async () => {
   const players = await listPlayers();
   const p = players.find((x) => x.id === PLAYER)!;
-  assert.deepEqual(p.providers, ['google']);
   assert.equal(p.sessions, 1);
   assert.ok(p.lastSeen instanceof Date);
   assert.equal(p.warband?.id, 'nordost');

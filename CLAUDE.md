@@ -1,6 +1,6 @@
 # Mordheim campaign site
 
-Astro 7 on Vercel. Campaign pages are prerendered; the Town Cryer, the Curfew pages, `/api/*` and the cron are serverless functions. Postgres (Neon) via Drizzle; social login via Better Auth.
+Astro 7 on Vercel. Campaign pages are prerendered; the Town Cryer, the Curfew pages, `/api/*` and the cron are serverless functions. Postgres (Neon) via Drizzle; email-and-password sign-in via Better Auth (no emails are sent; an optional `CURFEW_INVITE_CODE` gates sign-up).
 
 ## Commands
 

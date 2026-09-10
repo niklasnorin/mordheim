@@ -16,7 +16,7 @@ A grimdark, interactive campaign chronicle for our Mordheim game group, built wi
 
 `/curfew/` is a between-games companion. Every real day is one night in Mordheim: at dusk a player gives up to two warband members an errand, at midnight the dice decide, at dawn a short vignette and a ledger line say what it cost. Favour, shards and Renown accrue; the Hand holds up to three charms (one per type) that are laid on the table at `/curfew/eve/` the night before a real game and spent whether used or not.
 
-Players sign in with Google, Discord or GitHub and take up one warband each. The ledger is kept on the server, so it follows the player from phone to laptop, and the Town Cryer can print what happened to every warband. Nights turn at midnight in the campaign's time zone (`timezone` in `campaign.json`). A night's result is still a deterministic function of the orders given: the server runs the same pure engine the browser used to.
+Players sign in with an email and a password and take up one warband each. The ledger is kept on the server, so it follows the player from phone to laptop, and the Town Cryer can print what happened to every warband. Nights turn at midnight in the campaign's time zone (`timezone` in `campaign.json`). A night's result is still a deterministic function of the orders given: the server runs the same pure engine the browser used to.
 
 Resolution happens twice over, and both ways agree: a nightly cron writes every ledger's dawn just after midnight (so the Town Cryer has last night before anyone looks in), and any visit to a ledger first writes whatever dawns are still due. Missed nights run on standing orders at half yield; a gap longer than a week collapses into a single Return vignette and nothing is lost but opportunity.
 
@@ -58,7 +58,7 @@ npm run dev            # http://localhost:4321 — no .env needed
 `astro dev` is a complete local setup on its own:
 
 - **A local database.** With no `DATABASE_URL`, a real Postgres runs in-process ([PGlite](https://pglite.dev)) and keeps its files under `.pglite/`, with the checked-in migrations applied on start. `npm run db:reset` wipes it. Paste the Neon connection string into `.env` to work against the real database instead (`npx vercel env pull .env` fetches it).
-- **A dev sign-in.** The Ledger offers "Local player": type a name and you are signed in, no OAuth app needed. Two names make two players, so both warbands can be tried side by side in two browsers or a private window.
+- **A dev sign-in.** The Ledger offers "Local player": type a name and you are signed in, no password needed. Two names make two players, so both warbands can be tried side by side in two browsers or a private window. The real email-and-password form is there too.
 - **Stepping through nights.** The Debug strip in the Ledger's footer and `?date=YYYY-MM-DD` are on, so a whole Moon of nights can be played through in a minute.
 
 None of the three can switch on where Vercel runs the site; `.env.example` lists the switches that turn them off locally.
@@ -119,9 +119,9 @@ Detail pages are generated automatically at `/scenarios/<id>/`. Set the matching
 The site runs on Vercel's Hobby plan: the campaign pages are prerendered, and the Town Cryer, the Curfew pages, the API and the cron run as serverless functions.
 
 1. **Import the repository** at vercel.com. Astro is detected; no build settings need changing. Pushes to `main` deploy to production and every pull request gets a preview URL.
-2. **Add a database.** In the project's *Storage* tab, add **Neon** from the Marketplace (free plan). It sets `DATABASE_URL` on the project. Pull it locally with `vercel env pull` and run `npm run db:migrate` once to create the tables; repeat after any new migration.
-3. **Set the secrets** under *Settings → Environment Variables*: `BETTER_AUTH_SECRET` (`openssl rand -base64 32`), `CRON_SECRET` (another random string) and `ADMIN_EMAILS` (the game masters' sign-in emails). `BETTER_AUTH_URL` can be left unset; the production domain is used.
-4. **Register OAuth apps** with whichever providers the group uses and set their `*_CLIENT_ID` and `*_CLIENT_SECRET`. Only providers with both values set get a button. The redirect URI to register is `https://<your-domain>/api/auth/callback/<provider>`, for example `.../api/auth/callback/google`. Preview deployments have their own hostnames; to sign in on one, register its callback too, or test sign-in on production only.
+2. **Add a database.** In the project's *Storage* tab, add **Neon** from the Marketplace (free plan). It sets `DATABASE_URL` on the project. To create the tables, copy the pooled connection string from the Neon console (`vercel env pull` cannot read it; the integration marks it sensitive and pulls a `[SENSITIVE]` placeholder) and run `DATABASE_URL='postgresql://…' npm run db:migrate` once; repeat after any new migration.
+3. **Set the secrets** under *Settings → Environment Variables*: `BETTER_AUTH_SECRET` (`openssl rand -base64 32`), `CRON_SECRET` (another random string), `ADMIN_EMAILS` (the game masters' sign-in emails) and `CURFEW_INVITE_CODE` (the word new players must give to sign up). `BETTER_AUTH_URL` can be left unset; the production domain is used.
+4. **Sign-in is email and password**, handled by Better Auth. No emails are sent: the address is only the name a player signs in with, so there is no verification and no reset link. A player who forgets their password asks the game master, who signs them out everywhere in the Watch House while a new account is made; the old account can then release its warband. Redeploy after setting the variables so the functions start with them.
 5. **The nightly cron** is declared in `vercel.json` and needs no further setup. Hobby plans run crons once a day within the hour of the schedule; it is set for 23:15 UTC so that it lands after midnight in Stockholm summer or winter. A visit to a ledger writes any dawn that is still due, so a late cron costs nothing but the Town Cryer's punctuality.
 
 The GitHub Actions workflow in `.github/workflows/ci.yml` runs the tests, the type check and a build on every push and pull request.

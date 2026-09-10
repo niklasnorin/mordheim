@@ -203,12 +203,11 @@ const lastRun = data?.runs[0];
           <p class="wh-table-hint" aria-hidden="true">Scroll sideways for the rest of the table</p>
           <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Players">
             <table class="wh-table">
-              <thead><tr><th scope="col">Player</th><th scope="col">Signed in with</th><th scope="col">Warband</th><th scope="col" class="num">Sessions</th><th scope="col">Last seen</th><th scope="col">Joined</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+              <thead><tr><th scope="col">Player</th><th scope="col">Warband</th><th scope="col" class="num">Sessions</th><th scope="col">Last seen</th><th scope="col">Joined</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
               <tbody>
                 {data.players.map((p) => (
                   <tr class="wh-row">
                     <th scope="row" class="wh-keeper">{p.name}{p.admin && <> <span class="wh-chip on">Watch</span></>}<small>{p.email}</small></th>
-                    <td class:list={{ dim: !p.providers.length }}>{p.providers.length ? p.providers.map((x) => x === 'credential' ? 'dev sign-in' : x).join(', ') : '—'}</td>
                     <td class:list={{ dim: !p.warband }}>{p.warband?.name ?? 'none'}</td>
                     <td class="num">{p.sessions}</td>
                     <td class:list={{ dim: !p.lastSeen }}>{p.lastSeen ? when(p.lastSeen) : 'never'}</td>

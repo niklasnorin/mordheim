@@ -138,7 +138,7 @@ On a phone this is one column. From 1100px the night is laid out side by side: i
 
 ## 9. Architecture and integration
 
-**Changed.** The site runs on Vercel with a Postgres database (Neon) and social login (Better Auth: Google, Discord, GitHub). The engine did not change; the ledger moved.
+**Changed.** The site runs on Vercel with a Postgres database (Neon) and email-and-password sign-in (Better Auth; no emails are sent, an invite word gates sign-up). The engine did not change; the ledger moved.
 
 - `src/curfew/engine.ts` is pure: calendar (in the campaign's time zone), seeded draws (FNV-1a hash, mulberry32), errand resolution, the Hand. Every result is a deterministic function of (campaign, night, warband, orders).
 - `src/curfew/ledger.ts` is the ledger as pure functions on a serialisable `WarbandState`: orders by night, resolved nights, standing orders, healed members, rumours, epithets, headlines, pending offers, the Eve. It refuses bad orders with a `LedgerError` the page can show as written.
@@ -166,7 +166,7 @@ Warband rosters, standings and battle reports are still content in the repositor
 |---|---|---|
 | **0 — Content bible** | 30 Omens, 12 tokens, 8 Moons, 3 Jobs, 3 Patrons, vignette templates, style guide | **Shipped** |
 | **1 — The Night** | Engine, ledger, Omen, Watch, Dawn Report, Chronicle, the Hand, Eve of Battle, Town Cryer hook, standing orders, The City Provides, The Return | **Shipped** |
-| **1a — The server** | Vercel, Postgres, social login, ledgers per player, nightly cron, Town Cryer dispatches for every warband | **Shipped** |
+| **1a — The server** | Vercel, Postgres, email-and-password sign-in, ledgers per player, nightly cron, Town Cryer dispatches for every warband | **Shipped** |
 | **1b — First Moon of play** | Let a real week of nights shape the odds, the copy, and the offer rule | **Next** |
 | **2 — Hands-on** | Sifting, The Shrine, The Bazaar as optional mini-games with opt-in risk and curses; the Market Moon multiplier | Open |
 | **3 — Rivalry** | Crooked Bones and The Pit as async PvP, wagers, weekly ladders, banner marks; needs a server | Open |
@@ -181,7 +181,7 @@ Warband rosters, standings and battle reports are still content in the repositor
 
 Taken:
 - Nightly reset at midnight in the campaign's time zone (`campaign.json`), on the server.
-- One player keeps one warband's ledger; a warband has one keeper. Sign-in is social only.
+- One player keeps one warband's ledger; a warband has one keeper. Sign-in is email and password; no emails are sent.
 - Two members per night, regardless of warband size. Revisit for larger warbands.
 - Rival's Hand at the Eve: count only, via ticket.
 - No token gifting between warbands in season one.
