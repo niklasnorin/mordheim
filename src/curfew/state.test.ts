@@ -121,3 +121,14 @@ test('offers collapse to one decision per type, newest first, and never offer a 
   assert.deepEqual(s.hand.map((h) => h.id).sort(), ['steady-hand', 'whisper']);
   assert.equal(s.offers.length, 0);
 });
+
+test('an untouched first visit still counts: the next night writes a dawn on standing orders', () => {
+  const first = loadState(warband, 10);
+  assert.equal(reconcile(first, warband, 10, []).length, 0, 'nothing to write on the first night itself');
+  const next = loadState(warband, 11);
+  assert.equal(next.firstSeen, 10, 'the ledger opened on night 10 was persisted');
+  const written = reconcile(next, warband, 11, []);
+  assert.equal(written.length, 1);
+  assert.equal(written[0].night, 10);
+  assert.ok(written[0].results.length > 0 && written[0].results.every((r) => r.standing));
+});

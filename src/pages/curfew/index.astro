@@ -65,7 +65,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
         <div class="cf-watch" id="watch">
           <h3 class="cf-h3">Who goes out?</h3>
-          <p class="cf-muted">Up to <span id="per-night">{campaign.membersPerNight}</span> a night. The dead and the wounded stay home. Orders stand until you change them; on nights you do not look in, the same members go out at half yield.</p>
+          <p class="cf-muted">Up to <span id="per-night">{campaign.membersPerNight}</span> a night. The dead and the wounded stay home.</p>
           <div class="cf-watch-list" id="watch-list"></div>
           <div class="cf-orders-given" id="orders-given"></div>
           <details class="cf-details cf-details-quiet">
@@ -282,7 +282,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       ? tilts.map(({ e, t }) => `<li class="cf-tilt ${t > 0 ? 'up' : 'down'}"><span>${esc(ERRAND_LABEL[e])}</span><span aria-label="${t > 0 ? 'favoured' : 'perilous'} ${Math.abs(t)}">${t > 0 ? '▲'.repeat(t) : '▼'.repeat(-t)}</span></li>`).join('')
       : '<li class="cf-tilt flat">A flat night</li>';
     $('omen-text').innerHTML = `
-      <div class="cf-moon"><h3 class="cf-h3">${esc(moon.name)}</h3><p class="cf-reading">${esc(moon.reading)}</p><p class="cf-note">This Moon favours <b>${esc(ERRAND_LABEL[moon.boost])}</b> and colours everything else. The card above says the rest.</p></div>`;
+      <div class="cf-moon"><h3 class="cf-h3">${esc(moon.name)}</h3><p class="cf-reading">${esc(moon.reading)}</p><p class="cf-note">This Moon favours <b>${esc(ERRAND_LABEL[moon.boost])}</b> and colours everything else.</p></div>`;
     const card = $('omen-card');
     const key = `curfew:flipped:${warband!.id}:${today}`;
     let seen = false; try { seen = sessionStorage.getItem(key) === '1'; } catch {}
@@ -320,16 +320,17 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       .filter((o): o is Order => o.errand !== '');
   }
   function describe(orders: Order[]) { return orders.map((o) => `${esc(firstName(o.memberId))} will ${ERRAND_LABEL[o.errand].toLowerCase()}`).join('; '); }
+  const STANDING_NOTE = '<p class="cf-orders-note">Orders stand until you change them. On nights you do not look in, the same members go out at half yield.</p>';
   function renderOrdersLine() {
     const s = state!, el = $('orders-given');
     if (today < 1) { el.innerHTML = `<p>The first night is ${esc(prettyDate(1))}.</p>`; return; }
     const given = s.orders[today];
-    if (given?.length) { el.innerHTML = `<p><b>Orders given.</b> ${describe(given)}. The city answers at midnight.</p>`; return; }
-    if (given && !given.length) { el.innerHTML = `<p><b>Nobody goes out.</b> The door stays barred tonight.</p>`; return; }
+    if (given?.length) { el.innerHTML = `<p><b>Orders given.</b> ${describe(given)}. The city answers at midnight.</p>${STANDING_NOTE}`; return; }
+    if (given && !given.length) { el.innerHTML = `<p><b>Nobody goes out.</b> The door stays barred tonight.</p>${STANDING_NOTE}`; return; }
     const standing = standingOrders(s, warband!, recovering(), today);
     const last = lastGivenOrders(s, today);
     if (!standing.length) { el.innerHTML = `<p>Nobody is fit to go out. Mark someone back on their feet.</p>`; return; }
-    el.innerHTML = `<p><b>Standing orders${last ? ` from night ${last.night}` : ''}.</b> ${describe(standing)}, at half yield, unless you change them. <button type="button" class="cf-linkbtn cf-inline" id="keep-standing">Send them in full tonight</button></p>`;
+    el.innerHTML = `<p><b>Standing orders${last ? ` from night ${last.night}` : ''}.</b> ${describe(standing)}, at half yield, unless you change them. <button type="button" class="cf-linkbtn cf-inline" id="keep-standing">Send them in full tonight</button></p>${STANDING_NOTE}`;
   }
   function limitSelects() {
     const n = chosenOrders().length, max = CAMPAIGN.membersPerNight;
