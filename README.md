@@ -45,6 +45,10 @@ npm run build     # build static site to ./dist
 npm run preview   # preview the production build
 ```
 
+### Design skill
+
+The [Impeccable](https://impeccable.style) design skill is checked in under `.claude/skills/impeccable/` for Claude Code. Start a design task with `/impeccable init` once, then `/impeccable <command> <target>` (for example `/impeccable audit src/pages/curfew/index.astro`). Its launcher downloads a small engine binary on first run. Update it with `npx impeccable update`.
+
 ## Updating campaign content
 
 All content lives in plain TypeScript data files — no HTML editing required:
