@@ -9,6 +9,11 @@ import Chronicle from '../components/Chronicle.astro';
 import Graveyard from '../components/Graveyard.astro';
 import { warbands } from '../data/warbands';
 import Icon from '../components/Icon.astro';
+
+// Rendered on request so the Town Cryer can carry the Night Watch's dispatches, and cached at the edge for a
+// few minutes: nothing on this page is personal.
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
 ---
 
 <Base title="Mordheim — City of the Damned | Campaign Chronicle">

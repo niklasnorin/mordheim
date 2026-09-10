@@ -2,6 +2,7 @@
   "id": "mordheim-2000",
   "name": "CURFEW — Nights in the City of the Damned",
   "start": "2026-09-10",
+  "timezone": "Europe/Stockholm",
   "membersPerNight": 2,
   "nightsPerMoon": 7,
   "seasonMoons": 12,

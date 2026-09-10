@@ -1,5 +1,6 @@
 ---
 import Icon from './Icon.astro';
+import { asset } from '../lib/site';
 // Atmospheric layers: rain, crows, fog, lightning, vignette (night)
 // and autumn leaves, foggy city skyline (day) — with a day/night switch
 ---
@@ -12,11 +13,11 @@ import Icon from './Icon.astro';
      the graveyard at the bottom. The viewport pans down through it as the page scrolls. -->
 <div class="backdrop" aria-hidden="true">
   <div class="backdrop-stack">
-    <div class="stack-sky" style={`--sky-img: url(${import.meta.env.BASE_URL}/day-skyline.jpg)`}>
+    <div class="stack-sky" style={`--sky-img: url(${asset('day-skyline.jpg')})`}>
       <div class="day-fog"></div>
     </div>
     <div class="stack-gap"></div>
-    <div class="stack-grave" style={`--grave-img: url(${import.meta.env.BASE_URL}/graveyard.jpg)`}></div>
+    <div class="stack-grave" style={`--grave-img: url(${asset('graveyard.jpg')})`}></div>
   </div>
 </div>
 <div class="fog" aria-hidden="true"></div>
@@ -1090,7 +1091,7 @@ import Icon from './Icon.astro';
     } else {
       for (let i = 0; i < steps; i++) drawRain();
     }
-    drawCrows(steps);
+    drawCrows(steps > 0);
     requestAnimationFrame(loop);
   }
 

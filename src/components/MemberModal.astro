@@ -2,6 +2,7 @@
 import { warbands } from '../data/warbands';
 import { getMemberStory, getScenarioUrl } from '../data/history';
 import Icon from './Icon.astro';
+import { asset } from '../lib/site';
 
 const statKeys = ['M', 'WS', 'BS', 'S', 'T', 'W', 'I', 'A', 'Ld'] as const;
 const statNames = {
@@ -27,7 +28,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
           <div class="profile-header">
             <span class="profile-portrait" aria-hidden="true">
               {wb.crest ? (
-                <img src={`${import.meta.env.BASE_URL}/${wb.crest}`} alt="" width="120" height="140" loading="lazy" />
+                <img src={asset(wb.crest)} alt="" width="120" height="140" loading="lazy" />
               ) : wb.sigil}
             </span>
             <div>

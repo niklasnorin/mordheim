@@ -22,11 +22,13 @@ The city takes nothing from the absent. Missing a night, a week or a month costs
 
 ## Operating Context
 
-- Static Astro site on GitHub Pages under the `/mordheim` base path. Deploys on push to `main`.
-- CURFEW currently runs entirely in the browser: the Omen and Moon for a date are a seeded function of the campaign id, a night's result is a deterministic function of the orders given, and each player's ledger lives in that browser's `localStorage`. A server is acceptable later (for synced ledgers, rival glimpses and PvP mini-games), so state shapes should stay serialisable and resolution should stay a pure function of (campaign, date, orders).
+- Astro site on Vercel (Hobby plan), served from the root of its domain. Campaign pages are prerendered; the Town Cryer, the Curfew pages, the API and a nightly cron run as serverless functions. Deploys on push to `main`; pull requests get previews.
+- CURFEW has a server: players sign in with Google, Discord or GitHub and each keeps one warband's ledger in Postgres (Neon, via Drizzle). The Omen and Moon for a date are still a seeded function of the campaign id and a night's result is still a deterministic function of the orders given; the same pure engine now runs on the server, once a night by cron and again on any visit that finds a dawn due. Nights turn at midnight in the campaign's time zone. Rival glimpses and PvP mini-games remain future work; the Eve still exchanges tickets.
+- The Town Cryer prints what the ledgers saw: every title change, epithet and planted headline, and occasionally one member's night, chosen by the same seeded dice when the night resolves.
 - Real games are recorded afterwards as JSON battle reports in `src/data/history/`; member status there (`active`, `injured`, `dead`) is what CURFEW reads for who stays home.
 - Nights turn at local midnight. Night 1 is 2026-09-10. A Moon is seven nights; a season is about twelve Moons.
 - The Ledger is reached by direct URL only for now (`/curfew/`, `/curfew/eve/`); no navigation link from the main site.
+- Warband rosters, standings and battle reports are still content in the repository; there is no backend for editing them yet.
 
 ## Capabilities and Constraints
 

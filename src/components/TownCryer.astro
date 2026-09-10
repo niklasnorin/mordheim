@@ -1,6 +1,19 @@
 ---
 import { news, issue } from '../data/news';
 import Icon from './Icon.astro';
+import { hasDatabase } from '../server/db/client';
+import { recentDispatches, todayFor, type PrintedDispatch } from '../server/curfew/service';
+import { bylineFor } from '../curfew/cryer';
+
+// What the Night Watch brought in. Without a database (a local build, say) the broadsheet simply prints the news.
+const today = todayFor(null);
+let dispatches: PrintedDispatch[] = [];
+if (hasDatabase()) {
+  try { dispatches = await recentDispatches(today, 8); } catch (e) { console.error('[cryer] dispatches unavailable', e); }
+}
+const lastNight = dispatches.filter((d) => d.night === today - 1);
+const earlier = dispatches.filter((d) => d.night !== today - 1);
+const nightLabel = (n: number) => (n === today - 1 ? 'last night' : `night ${n}`);
 ---
 
 <section id="town-cryer" class="town-cryer reveal">
@@ -38,11 +51,32 @@ import Icon from './Icon.astro';
       )
     }
   </div>
-  <div class="cryer-curfew" id="cryer-curfew" hidden>
-    <h3>From the Night Watch</h3>
-    <p class="cryer-curfew-note">Dispatches from the Curfew ledgers kept on this device.</p>
-    <ul id="cryer-curfew-list"></ul>
-  </div>
+  {dispatches.length > 0 && (
+    <div class="cryer-curfew">
+      <h3>From the Night Watch</h3>
+      <p class="cryer-curfew-note">
+        {lastNight.length ? `What the city saw last night, night ${today - 1}.` : 'What the city has seen after curfew.'}
+      </p>
+      <div class="cryer-watch">
+        {[...lastNight, ...earlier].map((d) =>
+          d.kind === 'happening' ? (
+            <article class="cryer-article cryer-happening">
+              <h3>{d.headline}</h3>
+              <div class="byline">{bylineFor(d.warbandId, d.night)}</div>
+              <p>{d.body}</p>
+              <small class="cryer-stamp">{d.warbandName} · {nightLabel(d.night)}</small>
+            </article>
+          ) : (
+            <div class="cryer-notice cryer-plant">
+              <strong>Heard in the taverns</strong>
+              {d.headline}
+              <small class="cryer-stamp">{d.warbandName} · {nightLabel(d.night)}</small>
+            </div>
+          )
+        )}
+      </div>
+    </div>
+  )}
   <div class="cryer-footer">
     <em>
       Printed under license of the Grand Theogonist — All heresies reported herein are for the
@@ -182,10 +216,14 @@ import Icon from './Icon.astro';
   }
   .cryer-curfew h3 { font-variant: small-caps; letter-spacing: 0.15em; font-size: 1rem; margin-bottom: 0.3rem; }
   .cryer-curfew-note { font-size: var(--text-meta); font-style: italic; color: #4a3a22; margin-bottom: 0.6rem; }
-  .cryer-curfew ul { list-style: none; columns: 2; column-gap: 2.8rem; }
-  .cryer-curfew li { break-inside: avoid; padding: 0.4rem 0; border-bottom: 1px dotted rgba(36, 27, 16, 0.3); font-size: var(--text-body); line-height: 1.5; }
-  .cryer-curfew li small { display: block; font-size: var(--text-meta); font-style: italic; color: #4a3a22; }
-  @media (max-width: 700px) { .cryer-curfew ul { columns: 1; } }
+  .cryer-watch { columns: 2; column-gap: 2.8rem; column-rule: 1px solid rgba(36, 27, 16, 0.25); padding-top: 0.4rem; }
+  .cryer-happening h3 { font-size: 1.2rem; }
+  .cryer-happening p { font-size: var(--text-ui); line-height: 1.7; }
+  .cryer-happening p::first-letter { font-size: 1.9em; }
+  .cryer-plant { text-align: left; font-style: italic; }
+  .cryer-plant strong { text-align: center; font-style: normal; }
+  .cryer-stamp { display: block; margin-top: 0.35rem; font-size: var(--text-meta); font-style: italic; color: #4a3a22; text-align: right; }
+  @media (max-width: 700px) { .cryer-watch { columns: 1; } }
 
   .cryer-footer {
     border-top: 4px double #241b10;
@@ -208,22 +246,3 @@ import Icon from './Icon.astro';
     .cryer-article p { text-align: left; }
   }
 </style>
-
-<script>
-  import { warbands } from '../data/warbands';
-  import { allHeadlines } from '../curfew/state';
-  const box = document.getElementById('cryer-curfew')!;
-  const list = document.getElementById('cryer-curfew-list')!;
-  const headlines = allHeadlines(warbands.map((w) => w.id)).slice(0, 4);
-  if (headlines.length) {
-    for (const h of headlines) {
-      const li = document.createElement('li');
-      li.textContent = h.text;
-      const small = document.createElement('small');
-      small.textContent = `${warbands.find((w) => w.id === h.warbandId)?.name ?? h.warbandId} · night ${h.night}`;
-      li.append(small);
-      list.append(li);
-    }
-    box.hidden = false;
-  }
-</script>

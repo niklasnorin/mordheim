@@ -1,0 +1,113 @@
+{
+  "bylines": [
+    "From our correspondent on the night watch, who was not asleep",
+    "By our tavern correspondent, from a stool near the door",
+    "Overheard after curfew by a reader who wishes to remain nameless",
+    "From the Night Watch, who deny all knowledge of it",
+    "By a lamplighter who saw more than he was paid to"
+  ],
+  "headlines": {
+    "scavenge": {
+      "boon": [
+        "{warband} Warrior Returns From the Rubble With Full Pockets; Declines to Say Which Rubble",
+        "Green Glow Reported From {first}'s Lodgings; Neighbours Advised to Look Elsewhere",
+        "Warm Ash Found in the Ruins, Then Dug Until Cold; {warband} Call It Nothing"
+      ],
+      "fair": [
+        "{first} Seen Sifting After Curfew; Yield Described as 'Enough'",
+        "Digging Continues in the Ruins; {warband} Insist It Is Not Digging",
+        "A Street Not on the Map Reported by {first}; Map-Makers Unmoved"
+      ],
+      "poor": [
+        "{first} Returns Empty-Handed; Blames the Stones",
+        "Ruins Yield Dust and a Cough; {warband} Call It Reconnaissance",
+        "Somebody Got There First, Says {first}; Somebody Usually Does"
+      ]
+    },
+    "carouse": {
+      "boon": [
+        "{first} Holds the Table Until the Candles Go; Bill Unresolved",
+        "Whole Tavern Now Knows {first}'s Name; Several Regret It",
+        "{first} Sings; It Should Not Have Worked; It Worked"
+      ],
+      "fair": [
+        "{first} Buys a Round, Is Bought Two; Arithmetic Disputed",
+        "Boatmen Report a New Face at Their Table; Face Belongs to {first}",
+        "Back Room Found by {first}; Nothing Decided, Nothing Lost"
+      ],
+      "poor": [
+        "{first} Asked to Leave Tavern, Politely, the First Time",
+        "{warband} Warrior Loses Purse and Finds Song; Neighbours Prefer the Purse",
+        "{first} Says Too Much to the Wrong Table; the Table Is Keeping It"
+      ]
+    },
+    "train": {
+      "boon": [
+        "{first} Wins at the Pit Without Drawing Steel; Bookmakers in Mourning",
+        "Crowd at the Pit Wanted Blood; {first} Gave Them a Name Instead",
+        "Man Twice {first}'s Weight Still Explaining Three Rounds"
+      ],
+      "fair": [
+        "{first} Takes a Bout and a Bruise; Crowd Judged 'Fair', Which Is to Say Not",
+        "Two Hundred Cuts Practised in the Yard; Twenty Reported Correct",
+        "{first} Watches the Pit More Than Fights It; Pit Unbothered"
+      ],
+      "poor": [
+        "{first} Loses at the Pit Before the Crowd Sits Down; No Refunds",
+        "Pit Closed; {warband} Warrior Stands in Rain on Principle",
+        "{first} Pulls Something in Training; the Something Has Opinions"
+      ]
+    },
+    "spy": {
+      "boon": [
+        "Someone Lay in a Gutter for Four Hours Last Night; the Watch Is Taking It Personally",
+        "Child Sells Three Rumours for a Penny, Two of Them True; Buyer Believed to Be {warband}",
+        "A Door Was Followed Until It Said Something; {first} Not Available for Comment"
+      ],
+      "fair": [
+        "Someone Was Listening at the Well Last Night; the Well Declines to Comment",
+        "Figure Seen on a Roof Above a Rival Camp; Rival Also Awake",
+        "{first} Learns Which Alley the Watch Does Not Walk; the Watch Would Like to Know Too"
+      ],
+      "poor": [
+        "{first} Seen in the Wrong Part of Town; Not Caught, Merely Seen",
+        "Man Followed Through the Streets Turns Out to Be Following Back; Both Embarrassed",
+        "Two Hours at a Door That Was the Wrong Door; {warband} Deny Everything"
+      ]
+    },
+    "pray": {
+      "boon": [
+        "Every Candle at the Shrine Held Until Dawn; Sisters Investigating",
+        "{first} Kneels Until the Stone Hurts; Something Answers; Details Withheld",
+        "Candle Lit for Each of the Dead, With Wax to Spare; Chandlers Baffled"
+      ],
+      "fair": [
+        "Candles at the Shrine Held Until the Third Hour; Considered a Good Night",
+        "{first} Sits With the Sisters and Says Little; Sisters Approve",
+        "One Candle Lit by {first} Did Not Go Out; Take That as Given"
+      ],
+      "poor": [
+        "Draught Takes the Shrine's Candles One by One; Sigmar Not Reached for Comment",
+        "Shrine Found Full; {first} Stands at the Back and Leaves Early",
+        "{first} Prays and Hears Only Rain; Rain Declines to Elaborate"
+      ]
+    },
+    "trade": {
+      "boon": [
+        "Henrik Breaks First in Silent Haggle; Onlookers Stunned",
+        "Green Changes Hands in the Dark; Buyer Pays as if He Knew Where It Came From",
+        "{first} Sells a Story Along With the Goods; the Story Fetches More"
+      ],
+      "fair": [
+        "Fair Weight, Fair Price, a Chit for Later; Henrik Weighs It Twice Anyway",
+        "{first} Argues Over a Sliver Until Dawn; Argument Judged Better Than the Sliver",
+        "{warband} Return With Less Green and More Coin, About the Same Weight"
+      ],
+      "poor": [
+        "Fence Vanishes, Shutters Open; {warband} Report Nothing Taken but the Night",
+        "Buyer Sends Word at Midnight That He Is Dead; Deal Postponed",
+        "{first} Offered an Insulting Price; Takes the Long Way Home to Think About It"
+      ]
+    }
+  }
+}
