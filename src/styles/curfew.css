@@ -119,11 +119,11 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-ledger strong { color: var(--candle); font-weight: 600; }
 .cf-offer { margin-top: 1.2rem; padding: 1rem; border: 1px solid var(--candle-dim); background: #14120f; }
 .cf-offer-title { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.8rem; font-weight: 600; color: var(--candle); margin-bottom: 0.4rem; }
-.cf-offer .cf-hand { margin-top: 0.8rem; }
+.cf-offer .cf-hand { margin-top: 0.8rem; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 30rem; }
 .cf-offer button.cf-token { cursor: pointer; text-align: left; font: inherit; color: inherit; transition: border-color 0.2s, background 0.2s; }
 .cf-offer button.cf-token:hover { border-color: var(--candle-dim); background: #1b1813; }
 .cf-offer button.cf-token[aria-pressed='true'] { border-color: var(--candle); background: #1f1a12; box-shadow: 0 0 0 1px var(--candle) inset; }
-.cf-offer button.cf-token[aria-pressed='true']::after { content: 'Keep'; position: absolute; right: 0.8rem; top: 0.8rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.65rem; color: var(--candle); }
+.cf-offer button.cf-token[aria-pressed='true']::after { content: 'Keep'; position: absolute; right: 0.6rem; top: 0.5rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.65rem; color: var(--candle); }
 .cf-offer .cf-hand:has([aria-pressed='true']) button.cf-token[aria-pressed='false'] { opacity: 0.55; }
 .cf-offer-hint { margin-top: 0.8rem; }
 .cf-offer-confirm { margin-top: 1rem; padding-top: 0.9rem; border-top: 1px dashed var(--rule); }
@@ -152,26 +152,51 @@ body.curfew-body #theme-toggle { display: none; }
 @media (max-width: 560px) { .cf-member { grid-template-columns: 1fr; } .cf-member select { justify-self: start; margin-left: 2.6rem; } .cf-member.is-out { grid-template-columns: auto 1fr; } .cf-member.is-out .cf-status, .cf-member.is-out .cf-status-wrap { grid-column: 2; justify-content: flex-start; } }
 
 /* ── the Hand & meters ── */
-.cf-hand-grid { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
-@media (min-width: 720px) { .cf-hand-grid { grid-template-columns: 1.3fr 1fr; } }
-.cf-hand { display: flex; gap: 0.9rem; flex-wrap: wrap; }
-.cf-token { flex: 1 1 150px; max-width: 220px; padding: 0.9rem 0.9rem 0.9rem 3.4rem; border: 1px solid var(--rule); background: #14120f; position: relative; min-height: 5.4rem; }
-.cf-token.is-empty { border-style: dashed; color: var(--bone-dim); font-style: italic; padding-left: 0.9rem; display: grid; place-items: center; text-align: center; }
-.cf-seal { position: absolute; left: 0.8rem; top: 0.9rem; width: 2rem; height: 2rem; border-radius: 50%; background: var(--seal, var(--blood)); box-shadow: inset 0 0 0 3px #0006, inset 0 2px 6px #fff2, 0 3px 8px #0008; }
-.cf-seal::after { content: ''; position: absolute; inset: 0.5rem; border-radius: 50%; border: 1px solid #0006; }
-.cf-token .cf-type { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.7rem; color: var(--bone-dim); }
-.cf-token .cf-token-name { font-weight: 600; display: block; }
-.cf-token .cf-effect { font-size: 0.9rem; color: var(--bone-dim); }
-.cf-meters { display: grid; gap: 1rem; }
-.cf-bar { height: 8px; background: #0a0908; border: 1px solid var(--rule); position: relative; overflow: hidden; }
+.cf-hand-grid { display: grid; gap: 1.5rem; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 720px) { .cf-hand-grid { grid-template-columns: 1.35fr 1fr; gap: 2rem; } }
+
+/* the cloth the charms lie on */
+.cf-hand { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; padding: 0.75rem; background: #12100d; border: 1px solid var(--rule); background-image: repeating-linear-gradient(135deg, transparent 0 6px, #ffffff05 6px 7px); }
+.cf-token { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 1.4rem 0.7rem 0.9rem; border: 1px solid #4a4238; background: linear-gradient(180deg, #1c1813, #15120e); min-height: 12.5rem; color: var(--bone); }
+.cf-token > * { position: relative; }
+.cf-cord { position: absolute; top: 0; left: 50%; width: 1px; height: 1.4rem; background: var(--candle-dim); transform: translateX(-0.5px); }
+.cf-seal { width: 3.4rem; height: 3.4rem; flex: none; display: grid; place-items: center; color: #e9dcc4; background: var(--seal, var(--blood)); border-radius: 47% 53% 50% 50% / 52% 48% 52% 48%; box-shadow: inset 0 0 0 2px #0005, inset 0 3px 3px #ffffff22, inset 0 -3px 4px #0007, 0 3px 6px -1px #000a; margin-bottom: 0.8rem; }
+.cf-seal::before { content: ''; position: absolute; inset: 0.45rem; border-radius: inherit; border: 1px solid #0006; box-shadow: inset 0 1px 0 #ffffff14; }
+.cf-seal svg { width: 1.6rem; height: 1.6rem; opacity: 0.9; filter: drop-shadow(0 1px 0 #0008); }
+.cf-seal-empty { background: transparent; border: 1px dashed #4a4238; box-shadow: none; }
+.cf-seal-empty::before { display: none; }
+.cf-token .cf-type { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.66rem; color: var(--bone-dim); }
+.cf-token .cf-token-name { font-family: var(--title); font-weight: 700; font-size: 1.3rem; line-height: 1.1; margin: 0.15rem 0 0.4rem; text-wrap: balance; }
+.cf-token .cf-effect { font-size: 0.86rem; line-height: 1.45; color: var(--bone-dim); }
+.cf-token .cf-token-since { margin-top: auto; padding-top: 0.7rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.62rem; color: #6f665b; }
+.cf-token.is-empty { border-style: dashed; border-color: #3a3530; background: transparent; justify-content: center; padding-top: 1.4rem; }
+.cf-token.is-empty .cf-cord { background: #3a3530; }
+.cf-token.is-empty .cf-effect { font-style: italic; color: #6f665b; }
+@media (max-width: 480px) {
+  .cf-hand { gap: 0.5rem; padding: 0.5rem; }
+  .cf-token { padding: 1.2rem 0.45rem 0.7rem; min-height: 11rem; }
+  .cf-seal { width: 2.8rem; height: 2.8rem; }
+  .cf-token .cf-token-name { font-size: 1.1rem; }
+  .cf-token .cf-effect { font-size: 0.78rem; }
+}
+
+/* the ledger card beside it */
+.cf-meters { display: grid; gap: 1.25rem; align-content: start; padding: 1.2rem 1.3rem 1.3rem; border: 1px solid var(--rule); background: #14120f; }
+.cf-meter-label { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.78rem; color: var(--bone-dim); margin-bottom: 0.5rem; }
+.cf-meter-label strong { color: var(--candle); font-weight: 600; font-size: 1.5rem; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.cf-meter-label strong small { font-size: 0.78rem; color: var(--bone-dim); letter-spacing: 0.1em; }
+.cf-bar { height: 10px; background: #0a0908; border: 1px solid var(--rule); position: relative; overflow: hidden; }
 .cf-bar span { position: absolute; inset: 0; transform-origin: left center; background: linear-gradient(90deg, var(--candle-dim), var(--candle)); transition: transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1); }
-.cf-meter-label { display: flex; justify-content: space-between; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.78rem; color: var(--bone-dim); margin-bottom: 0.35rem; }
-.cf-meter-label strong { color: var(--candle); font-weight: 600; }
-.cf-bar .cf-cap { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--bone-dim); }
-.cf-stat { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--rule); padding: 0.4rem 0; }
-.cf-stat b { font-family: var(--label); font-size: 1.4rem; font-weight: 600; color: var(--bone); }
+.cf-bar .cf-cap { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--bone); opacity: 0.7; }
+.cf-meter .cf-note { margin-top: 0.5rem; font-size: 0.88rem; }
+.cf-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding-top: 1.1rem; border-top: 1px solid var(--rule); }
+.cf-stat { display: grid; gap: 0.1rem; }
+.cf-stat span { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.78rem; color: var(--bone-dim); }
+.cf-stat b { font-family: var(--label); font-size: 2rem; line-height: 1; font-weight: 600; color: var(--bone); font-variant-numeric: tabular-nums; }
 .cf-stat .wyrd { color: var(--wyrd); }
-.cf-title-line { font-style: italic; color: var(--bone-dim); }
+.cf-stat small { font-size: 0.85rem; font-style: italic; color: var(--bone-dim); }
+.cf-title-line { padding-top: 1rem; border-top: 1px solid var(--rule); font-style: italic; color: var(--bone-dim); }
+.cf-title-line b { color: var(--bone); }
 
 /* ── rumours & chronicle ── */
 .cf-rumours li { padding: 0.5rem 0; border-bottom: 1px dashed var(--rule); font-style: italic; }
@@ -204,10 +229,12 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-charm { width: 1.1rem; height: 1.1rem; border-radius: 50%; background: var(--bone); }
 .cf-charm.dim { background: #2a2724; box-shadow: none; border: 1px dashed var(--rule); }
 .cf-token-pick { cursor: pointer; transition: opacity 0.2s, border-color 0.2s; }
+.cf-token-pick .cf-token-state { position: static; }
+.cf-table .cf-hand { max-width: 44rem; }
 .cf-token-pick:has(input:checked) { border-color: var(--candle-dim); }
 .cf-token-pick:has(input:focus-visible) { outline: 2px solid var(--candle); outline-offset: 3px; }
 .cf-token-pick:not(:has(input:checked)) { opacity: 0.45; }
-.cf-token-pick .cf-token-state::after { content: 'Bringing'; position: absolute; right: 0.8rem; top: 0.8rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.65rem; color: var(--candle); }
+.cf-token-pick .cf-token-state::after { content: 'Bringing'; position: absolute; right: 0.6rem; top: 0.5rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.65rem; color: var(--candle); }
 .cf-token-pick:not(:has(input:checked)) .cf-token-state::after { content: 'Left behind'; color: var(--bone-dim); }
 .cf-check { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.4rem; }
 .cf-check input { width: 1.2rem; height: 1.2rem; accent-color: var(--candle); }

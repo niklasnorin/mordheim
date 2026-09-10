@@ -31,8 +31,9 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 <script>
   import { warbands } from '../../data/warbands';
-  import { CAMPAIGN, TOKEN_TYPES, cityProvides, cityProvidesLine, eveTicket, readTicket, tokenById, omenForNight } from '../../curfew/engine';
+  import { CAMPAIGN, HAND_SIZE, TOKEN_TYPES, cityProvides, cityProvidesLine, eveTicket, readTicket, tokenById, omenForNight } from '../../curfew/engine';
   import { chosenWarband, loadState, saveState, todayNight, type Flourish, type WarbandState } from '../../curfew/state';
+  import { sealSvg } from '../../curfew/glyphs';
 
   document.body.classList.add('curfew-body');
   const root = document.getElementById('main-content')!;
@@ -54,11 +55,13 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
     function tokenHtml(id: string, pick = false) {
       const t = tokenById(id); const type = TOKEN_TYPES[t.type];
-      const inner = `<span class="cf-seal" style="--seal:${type.seal}"></span><span class="cf-type">${esc(type.name)}</span><span class="cf-token-name">${esc(t.name)}</span><span class="cf-effect">${esc(t.effect)}</span>`;
+      const inner = `<span class="cf-cord" aria-hidden="true"></span><span class="cf-seal" style="--seal:${type.seal}">${sealSvg(t.type)}</span><span class="cf-type">${esc(type.name)}</span><span class="cf-token-name">${esc(t.name)}</span><span class="cf-effect">${esc(t.effect)}</span>`;
       return pick
         ? `<label class="cf-token cf-token-pick"><input type="checkbox" class="visually-hidden" checked data-bring="${esc(id)}" />${inner}<span class="cf-token-state" aria-hidden="true"></span></label>`
         : `<div class="cf-token">${inner}</div>`;
     }
+    const emptySlot = (text: string) => `<div class="cf-token is-empty"><span class="cf-cord" aria-hidden="true"></span><span class="cf-seal cf-seal-empty" aria-hidden="true"></span><span class="cf-effect">${text}</span></div>`;
+    function padSlots(tiles: string[], text: string) { const out = tiles.slice(); while (out.length < HAND_SIZE) out.push(emptySlot(text)); return out.join(''); }
     function charms(n: number) { return `<div class="cf-charms" aria-label="${n} charms">${[0, 1, 2].map((i) => `<span class="cf-charm ${i < n ? '' : 'dim'}"></span>`).join('')}</div>`; }
 
     function renderLaying() {
@@ -75,7 +78,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         ${provided}
         <h3 class="cf-h3">Bring to the fight</h3>
         <p class="cf-note">One per type, three at most. Tap a charm to leave it behind. Whatever is not brought is lost; the night before a fight, nothing keeps.</p>
-        <div class="cf-hand" id="bring">${state.hand.map((h) => tokenHtml(h.id, true)).join('')}</div>
+        <div class="cf-hand" id="bring">${padSlots(state.hand.map((h) => tokenHtml(h.id, true)), 'an empty palm')}</div>
         <div class="cf-rule"></div>
         <h3 class="cf-h3">One flourish</h3>
         <p class="cf-note">Costs ${cost} Favour. You hold ${state.favour}.</p>
@@ -122,7 +125,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         <p class="cf-muted">${esc(warband!.name)}, night ${eve.night}.</p>
         <div class="cf-ticket" id="ticket">${esc(eve.ticket)}</div>
         <p class="cf-note">Show this to the rival. It says how many charms you carry, not which.</p>
-        <div class="cf-hand" style="margin-top:1rem">${eve.tokens.length ? eve.tokens.map((id) => tokenHtml(id)).join('') : '<div class="cf-token is-empty">nothing brought</div>'}</div>
+        <div class="cf-hand" style="margin-top:1rem">${padSlots(eve.tokens.map((id) => tokenHtml(id)), eve.tokens.length ? 'left behind' : 'nothing brought')}</div>
         ${eve.flourish ? `<p style="margin-top:1rem">${flourishLine(eve.flourish)}</p>` : '<p class="cf-note" style="margin-top:1rem">No flourish.</p>'}
         <div class="cf-rule"></div>
         <h3 class="cf-h3">A dim glimpse of the rival's table</h3>

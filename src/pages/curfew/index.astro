@@ -129,6 +129,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     type Errand, type NightResult, type Order,
   } from '../../curfew/engine';
   import { chooseWarband, chosenWarband, giveOrders, loadState, reconcile, recoveringMembers, resetState, saveState, settleOffer, todayNight, type WarbandState } from '../../curfew/state';
+  import { sealSvg } from '../../curfew/glyphs';
 
   document.body.classList.add('curfew-body');
   const root = document.getElementById('main-content')!;
@@ -243,10 +244,11 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       ${footer}
     </div>`;
   }
-  function tokenHtml(id: string, tag: 'div' | 'button' = 'div', attrs = '') {
+  function tokenHtml(id: string, tag: 'div' | 'button' = 'div', attrs = '', earnedNight?: number) {
     const t = tokenById(id); const type = TOKEN_TYPES[t.type];
     const typeAttr = tag === 'button' ? ' type="button"' : '';
-    return `<${tag}${typeAttr} class="cf-token" ${attrs}><span class="cf-seal" style="--seal:${type.seal}"></span><span class="cf-type">${esc(type.name)}</span><span class="cf-token-name">${esc(t.name)}</span><span class="cf-effect">${esc(t.effect)}</span></${tag}>`;
+    const since = earnedNight ? `<span class="cf-token-since">Found night ${earnedNight}</span>` : '';
+    return `<${tag}${typeAttr} class="cf-token" ${attrs}><span class="cf-cord" aria-hidden="true"></span><span class="cf-seal" style="--seal:${type.seal}">${sealSvg(t.type)}</span><span class="cf-type">${esc(type.name)}</span><span class="cf-token-name">${esc(t.name)}</span><span class="cf-effect">${esc(t.effect)}</span>${since}</${tag}>`;
   }
   $('dawn-report').addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
@@ -361,15 +363,17 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   // 3. The Hand
   function renderHand() {
     const s = state!;
-    const slots = s.hand.map((h) => tokenHtml(h.id));
-    while (slots.length < HAND_SIZE) slots.push('<div class="cf-token is-empty">an empty palm</div>');
+    const slots = s.hand.slice().sort((a, b) => a.earnedNight - b.earnedNight).map((h) => tokenHtml(h.id, 'div', '', h.earnedNight));
+    while (slots.length < HAND_SIZE) slots.push('<div class="cf-token is-empty"><span class="cf-cord" aria-hidden="true"></span><span class="cf-seal cf-seal-empty" aria-hidden="true"></span><span class="cf-effect">an empty palm</span></div>');
     $('hand-list').innerHTML = slots.join('');
     const title = titleFor(s.renown), next = nextTitle(s.renown);
     $('meters').innerHTML = `
-      <div class="cf-meter"><div class="cf-meter-label"><span>Favour</span><strong>${s.favour} / 100</strong></div><div class="cf-bar" role="img" aria-label="Favour ${s.favour} of 100"><span style="transform:scaleX(${s.favour / 100})"></span><i class="cf-cap" style="left:${CAMPAIGN.favourSoftCap}%"></i></div><div class="cf-note">The city forgets quickly. Past ${CAMPAIGN.favourSoftCap} the surplus becomes a name. Spend it at the Eve.</div></div>
-      <div class="cf-stat"><span>Shards</span><b class="wyrd">${s.shards}</b></div>
-      <div class="cf-stat"><span>Renown</span><b>${s.renown}</b></div>
-      <div class="cf-title-line">${esc(warband!.name)} are called <b>${esc(title)}</b>.${next ? ` ${esc(next.title)} at ${next.renown}.` : ''}</div>`;
+      <div class="cf-meter"><div class="cf-meter-label"><span>Favour</span><strong>${s.favour}<small> / 100</small></strong></div><div class="cf-bar" role="img" aria-label="Favour ${s.favour} of 100, soft cap ${CAMPAIGN.favourSoftCap}"><span style="transform:scaleX(${s.favour / 100})"></span><i class="cf-cap" style="left:${CAMPAIGN.favourSoftCap}%"></i></div><div class="cf-note">The city forgets quickly. Past ${CAMPAIGN.favourSoftCap} the surplus becomes a name. Spend it at the Eve.</div></div>
+      <div class="cf-stats">
+        <div class="cf-stat"><span>Shards</span><b class="wyrd">${s.shards}</b><small>${s.shards >= 5 ? 'Five make a Market chit at Trade' : 'Never rot'}</small></div>
+        <div class="cf-stat"><span>Renown</span><b>${s.renown}</b><small>${next ? `${esc(next.title)} at ${next.renown}` : 'A name that will keep'}</small></div>
+      </div>
+      <div class="cf-title-line">${esc(warband!.name)} are called <b>${esc(title)}</b>.</div>`;
   }
 
   // 4. Memory
