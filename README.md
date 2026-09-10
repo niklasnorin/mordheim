@@ -25,7 +25,7 @@ There is no server. The site is static, so the Night runs in the browser: the Om
 | `src/data/curfew/campaign.json` | Start date (night 1), members per night, soft caps, thresholds |
 | `src/data/curfew/omens.json` | The 30 Omens of the Tarot of the Damned, with readings and errand tilts |
 | `src/data/curfew/moons.json`, `tokens.json`, `patrons.json`, `jobs.json` | The weekly Moons, the 12 tokens and 4 curses, and Phase 4 content |
-| `src/data/curfew/vignettes.json`, `STYLE.md` | Dawn Report templates, rumours, epithets, Renown titles, and the writing style guide |
+| `src/data/curfew/vignettes.json`, `STYLE.md`, `PLAN.md` | Dawn Report templates, rumours, epithets, Renown titles, the writing style guide, and the implementation plan with phase status |
 | `src/curfew/engine.ts` | The pure Night engine: calendar, seeded draws, errand resolution, the Hand |
 | `src/curfew/state.ts` | Per-device ledger: orders, reconciliation of passed nights, absence rules, headlines |
 | `public/curfew/omens/` | Card images, regenerated with `scripts/curfew/` |
