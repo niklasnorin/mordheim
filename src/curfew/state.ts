@@ -6,7 +6,7 @@
  * the same dawn on any device, which is what makes the shared Omen and the Eve ticket honest.
  */
 import {
-  CAMPAIGN, applyNight, availability, defaultErrand, epithetFor, localDate, nightForDate, quietNight, resolveNight, returnNight, titleFor,
+  CAMPAIGN, HAND_SIZE, applyNight, availability, defaultErrand, epithetFor, handHas, localDate, nightForDate, quietNight, resolveNight, returnNight, titleFor, tokenById,
   type Errand, type HandState, type HeldToken, type NightResult, type Order, type TokenOffer, type WarbandLike,
 } from './engine.ts';
 
@@ -115,6 +115,7 @@ export function reconcile(state: WarbandState, warband: WarbandLike, today: numb
     const applied = applyNight(state, result);
     Object.assign(state, applied.state);
     state.offers.push(...applied.offers);
+    normalizeOffers(state);
     for (const res of result.results) if (res.rumour) state.rumours.push({ night, text: res.rumour });
     state.nights.push(result); written.push(result);
     awardEpithets(state, warband, night);
@@ -146,13 +147,38 @@ function awardEpithets(state: WarbandState, warband: WarbandLike, night: number)
   }
 }
 
+/**
+ * Keep the pending offers to one decision per token type. A charm already held is no offer at all;
+ * a newer find of the same type replaces an older unsettled one (the older went in the river unremarked);
+ * an offer whose rival charm has since left the Hand is re-aimed at whatever now fills that slot,
+ * or simply taken into the Hand if there is room.
+ */
+export function normalizeOffers(state: WarbandState): void {
+  const byType = new Map<string, TokenOffer>();
+  for (const o of state.offers) {
+    if (state.hand.some((h) => h.id === o.incoming)) continue;
+    const type = tokenById(o.incoming).type;
+    const prev = byType.get(type);
+    if (!prev || o.night >= prev.night) byType.set(type, o);
+  }
+  const out: TokenOffer[] = [];
+  for (const o of byType.values()) {
+    const sameType = handHas(state.hand, tokenById(o.incoming).type);
+    const held = sameType ?? (state.hand.length >= HAND_SIZE ? state.hand.slice().sort((a, b) => a.earnedNight - b.earnedNight)[0] : undefined);
+    if (!held) { state.hand.push({ id: o.incoming, earnedNight: o.night }); continue; }
+    out.push({ night: o.night, incoming: o.incoming, held: held.id });
+  }
+  state.offers = out;
+}
+
 /** Settle a keep-or-discard offer. */
 export function settleOffer(state: WarbandState, offer: TokenOffer, keep: 'incoming' | 'held'): void {
-  state.offers = state.offers.filter((o) => o !== offer && !(o.night === offer.night && o.incoming === offer.incoming && o.held === offer.held));
+  state.offers = state.offers.filter((o) => !(o.night === offer.night && o.incoming === offer.incoming && o.held === offer.held));
   if (keep === 'incoming') {
     state.hand = state.hand.filter((h) => h.id !== offer.held);
     state.hand.push({ id: offer.incoming, earnedNight: offer.night });
   }
+  normalizeOffers(state);
   saveState(state);
 }
 

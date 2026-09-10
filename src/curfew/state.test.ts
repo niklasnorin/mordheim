@@ -1,7 +1,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { CAMPAIGN } from './engine.ts';
-import { freshState, giveOrders, loadState, reconcile, saveState, settleOffer, standingOrders, recoveringMembers, allHeadlines } from './state.ts';
+import { freshState, giveOrders, loadState, reconcile, saveState, settleOffer, standingOrders, recoveringMembers, allHeadlines, normalizeOffers } from './state.ts';
 
 const store = new Map<string, string>();
 (globalThis as any).localStorage = {
@@ -88,4 +88,21 @@ test('epithets arrive after enough entries and become headlines the Town Cryer c
   saveState(s);
   const headlines = allHeadlines(['nordost', 'nobody']);
   assert.ok(headlines.some((h) => h.text.includes('Torgrim')));
+});
+
+test('offers collapse to one decision per type, newest first, and never offer a charm against itself', () => {
+  const s = freshState(warband, 10);
+  s.hand = [{ id: 'lucky-bone', earnedNight: 1 }];
+  s.offers = [
+    { night: 11, incoming: 'sigmars-nod', held: 'lucky-bone' },
+    { night: 12, incoming: 'lucky-bone', held: 'lucky-bone' },
+    { night: 13, incoming: 'steady-hand', held: 'lucky-bone' },
+    { night: 13, incoming: 'whisper', held: 'lucky-bone' },
+  ];
+  normalizeOffers(s);
+  assert.deepEqual(s.offers, [{ night: 13, incoming: 'steady-hand', held: 'lucky-bone' }], 'one Fortune decision, the newest');
+  assert.deepEqual(s.hand.map((h) => h.id).sort(), ['lucky-bone', 'whisper'], 'a Sight charm had room and simply joined the Hand');
+  settleOffer(s, s.offers[0], 'incoming');
+  assert.deepEqual(s.hand.map((h) => h.id).sort(), ['steady-hand', 'whisper']);
+  assert.equal(s.offers.length, 0);
 });

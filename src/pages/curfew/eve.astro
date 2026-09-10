@@ -12,20 +12,20 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <meta name="theme-color" content="#0e0d0c" />
   </Fragment>
 
-  <div class="curfew cf-wrap" id="curfew" data-base={base} data-cost={campaign.flourishCost}>
+  <main class="curfew cf-wrap" id="main-content" data-base={base} data-cost={campaign.flourishCost}>
     <header class="cf-top">
       <a class="cf-back" href={`${base}/curfew/`}>← The Ledger</a>
       <a class="cf-wordmark" href={`${base}/curfew/`}>Curfew</a>
       <div class="cf-nightline" id="nightline">The Eve</div>
     </header>
 
-    <section class="cf-section">
-      <p class="cf-kicker">The Eve of Battle</p>
-      <h1 class="cf-h2">The night before a fight, nothing keeps.</h1>
+    <section class="cf-section cf-section-first">
+      <h1 class="cf-h2">The Eve of Battle</h1>
+      <p class="cf-lede">The night before a fight, nothing keeps.</p>
       <p class="cf-muted">Lay your Hand on the table. Choose what to bring. Spend the city's regard on one flourish. Then show the rival your ticket: how many charms, not which.</p>
       <div class="cf-table" id="table"></div>
     </section>
-  </div>
+  </main>
   <div class="cf-toast" id="toast" hidden role="status"></div>
 </Base>
 
@@ -35,7 +35,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   import { chosenWarband, loadState, saveState, todayNight, type Flourish, type WarbandState } from '../../curfew/state';
 
   document.body.classList.add('curfew-body');
-  const root = document.getElementById('curfew')!;
+  const root = document.getElementById('main-content')!;
   const base = root.dataset.base ?? '';
   const cost = CAMPAIGN.flourishCost;
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -52,9 +52,12 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     $('nightline').innerHTML = `Night <strong>${today}</strong> · ${esc(warband.name)}`;
     const dead = warband.members.filter((m) => m.dead);
 
-    function tokenHtml(id: string, attrs = '') {
+    function tokenHtml(id: string, pick = false) {
       const t = tokenById(id); const type = TOKEN_TYPES[t.type];
-      return `<label class="cf-token" ${attrs}><span class="cf-seal" style="--seal:${type.seal}"></span><span class="cf-type">${esc(type.name)}</span><span class="cf-token-name">${esc(t.name)}</span><span class="cf-effect">${esc(t.effect)}</span></label>`;
+      const inner = `<span class="cf-seal" style="--seal:${type.seal}"></span><span class="cf-type">${esc(type.name)}</span><span class="cf-token-name">${esc(t.name)}</span><span class="cf-effect">${esc(t.effect)}</span>`;
+      return pick
+        ? `<label class="cf-token cf-token-pick"><input type="checkbox" class="visually-hidden" checked data-bring="${esc(id)}" />${inner}<span class="cf-token-state" aria-hidden="true"></span></label>`
+        : `<div class="cf-token">${inner}</div>`;
     }
     function charms(n: number) { return `<div class="cf-charms" aria-label="${n} charms">${[0, 1, 2].map((i) => `<span class="cf-charm ${i < n ? '' : 'dim'}"></span>`).join('')}</div>`; }
 
@@ -63,18 +66,19 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       if (!state.hand.length) {
         const token = cityProvides(warband!.id, today);
         state.hand.push({ id: token.id, earnedNight: today }); saveState(state);
-        provided = `<div class="cf-offer"><div class="cf-small">The City Provides</div><p class="cf-italic">${esc(cityProvidesLine(warband!.id, today))}</p><p>An empty Hand at the Eve is dealt one charm: <b>${esc(token.name)}</b>.</p></div>`;
+        provided = `<div class="cf-offer"><h3 class="cf-offer-title">The City Provides</h3><p class="cf-italic">${esc(cityProvidesLine(warband!.id, today))}</p><p>An empty Hand at the Eve is dealt one charm: <b>${esc(token.name)}</b>.</p></div>`;
       }
       const canFlourish = state.favour >= cost;
       table.innerHTML = `
-        <p class="cf-kicker">Under ${esc(omenForNight(today).title)}</p>
         <h2 class="cf-h2">${esc(warband!.name)}</h2>
+        <p class="cf-muted">Under ${esc(omenForNight(today).title)}, night ${today}.</p>
         ${provided}
-        <p class="cf-small" style="margin-top:1rem">Bring to the fight · one per type, three at most</p>
-        <div class="cf-hand" id="bring">${state.hand.map((h) => tokenHtml(h.id, `data-id="${esc(h.id)}"`) + `<input type="checkbox" class="visually-hidden" checked data-bring="${esc(h.id)}" aria-label="Bring ${esc(tokenById(h.id).name)}" />`).join('')}</div>
-        <p class="cf-note">Untick a charm to leave it behind. Whatever is not brought is lost; the night before a fight, nothing keeps.</p>
+        <h3 class="cf-h3">Bring to the fight</h3>
+        <p class="cf-note">One per type, three at most. Tap a charm to leave it behind. Whatever is not brought is lost; the night before a fight, nothing keeps.</p>
+        <div class="cf-hand" id="bring">${state.hand.map((h) => tokenHtml(h.id, true)).join('')}</div>
         <div class="cf-rule"></div>
-        <p class="cf-small">One flourish · costs ${cost} Favour · you hold ${state.favour}</p>
+        <h3 class="cf-h3">One flourish</h3>
+        <p class="cf-note">Costs ${cost} Favour. You hold ${state.favour}.</p>
         <div class="cf-flourish">
           <select id="fl-kind" ${canFlourish ? '' : 'disabled'}>
             <option value="">No flourish${canFlourish ? '' : ` (needs ${cost} Favour)`}</option>
@@ -91,11 +95,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       const kind = $<HTMLSelectElement>('fl-kind'), text = $<HTMLInputElement>('fl-text'), deadSel = $<HTMLSelectElement>('fl-dead');
       const placeholders: Record<string, string> = { field: 'e.g. Hanna’s Corner', headline: 'e.g. Nordost Kin Seen Buying Candles by the Crate', weather: 'e.g. Sleet from the east; visibility 12"' };
       kind.addEventListener('change', () => { text.hidden = !placeholders[kind.value]; text.placeholder = placeholders[kind.value] ?? ''; deadSel.hidden = kind.value !== 'dedication'; });
-      table.querySelector('#bring')!.addEventListener('click', (e) => {
-        const label = (e.target as HTMLElement).closest<HTMLElement>('[data-id]'); if (!label) return;
-        const cb = table.querySelector<HTMLInputElement>(`[data-bring="${label.dataset.id}"]`)!;
-        cb.checked = !cb.checked; label.style.opacity = cb.checked ? '1' : '0.4';
-      });
       $('lay').addEventListener('click', () => {
         const bring = [...table.querySelectorAll<HTMLInputElement>('[data-bring]')].filter((c) => c.checked).map((c) => c.dataset.bring!);
         let flourish: Flourish | undefined;
@@ -119,14 +118,14 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     function renderLaid() {
       const eve = state.eve!;
       table.innerHTML = `
-        <p class="cf-kicker">Brought to the fight · night ${eve.night}</p>
-        <h2 class="cf-h2">${esc(warband!.name)}</h2>
+        <h2 class="cf-h2">Brought to the fight</h2>
+        <p class="cf-muted">${esc(warband!.name)}, night ${eve.night}.</p>
         <div class="cf-ticket" id="ticket">${esc(eve.ticket)}</div>
         <p class="cf-note">Show this to the rival. It says how many charms you carry, not which.</p>
         <div class="cf-hand" style="margin-top:1rem">${eve.tokens.length ? eve.tokens.map((id) => tokenHtml(id)).join('') : '<div class="cf-token is-empty">nothing brought</div>'}</div>
         ${eve.flourish ? `<p style="margin-top:1rem">${flourishLine(eve.flourish)}</p>` : '<p class="cf-note" style="margin-top:1rem">No flourish.</p>'}
         <div class="cf-rule"></div>
-        <p class="cf-small">A dim glimpse of the rival's table</p>
+        <h3 class="cf-h3">A dim glimpse of the rival's table</h3>
         <div class="cf-glimpse"><input id="rival-ticket" type="text" placeholder="Their ticket, e.g. EVE-2-K7Q1P" aria-label="Rival ticket" /><button type="button" class="cf-btn cf-btn-ghost" id="glimpse">Look</button></div>
         <div class="cf-glimpse-out" id="glimpse-out"></div>
         <div class="cf-rule"></div>

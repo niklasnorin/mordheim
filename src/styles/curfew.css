@@ -23,10 +23,11 @@
   font-size: 1.05rem;
   line-height: 1.6;
 }
-body.curfew-body {
-  background: var(--soot, #0e0d0c);
-  background-image: radial-gradient(ellipse at 50% 0%, #2a272488, transparent 60%);
-}
+body.curfew-body { background: #0e0d0c; }
+body.curfew-body #theme-toggle { display: none; }
+.curfew ::selection { background: #e0a34a55; color: #fff4da; }
+.curfew :focus-visible { outline: 2px solid #e0a34a; outline-offset: 3px; }
+.curfew input, .curfew select { caret-color: #e0a34a; accent-color: #e0a34a; }
 
 .curfew a { color: var(--candle); text-underline-offset: 0.2em; }
 .curfew a:hover { color: #f0c37a; }
@@ -37,7 +38,7 @@ body.curfew-body {
 .cf-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--rule); }
 .cf-top .cf-back { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.8rem; text-decoration: none; color: var(--bone-dim); }
 .cf-top .cf-back:hover { color: var(--bone); }
-.cf-wordmark { font-family: var(--title); font-weight: 700; font-size: 2rem; letter-spacing: 0.02em; color: var(--bone); text-shadow: 0 0 24px #e0a34a55; text-decoration: none; }
+.cf-wordmark { font-family: var(--title); font-weight: 700; font-size: 2rem; letter-spacing: 0.02em; color: var(--candle); text-decoration: none; }
 .cf-nightline { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.78rem; color: var(--bone-dim); text-align: right; }
 .cf-nightline strong { color: var(--candle); font-weight: 600; }
 
@@ -45,12 +46,23 @@ body.curfew-body {
 @media (max-width: 640px) { .cf-top { flex-wrap: wrap; row-gap: 0.25rem; } .cf-top .cf-back { order: 1; } .cf-wordmark { order: 2; margin-left: auto; } .cf-nightline { order: 3; flex-basis: 100%; text-align: left; } }
 .cf-status-wrap { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; }
 
+/* ── identity line (replaces the picker once a ledger is chosen) ── */
+.cf-identity { display: flex; align-items: baseline; gap: 0.6rem 1rem; flex-wrap: wrap; padding: 1rem 0 0; }
+.cf-identity-name { font-family: var(--title); font-weight: 700; font-size: 1.5rem; line-height: 1.2; color: var(--bone); }
+.cf-identity-meta { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.78rem; color: var(--bone-dim); }
+.cf-linkbtn { margin-left: auto; background: none; border: 0; padding: 0.6rem 0; min-height: 2.75rem; color: var(--bone-dim); font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.78rem; text-decoration: underline; text-underline-offset: 0.25em; cursor: pointer; }
+.cf-linkbtn:hover { color: var(--bone); }
+
 /* ── generic blocks ── */
-.cf-section { margin: 3rem 0; }
+.cf-section { margin: 3.5rem 0; }
+.cf-section-first { margin-top: 2rem; }
+.cf-h3 { font-family: var(--title); font-weight: 700; font-size: 1.5rem; line-height: 1.2; color: var(--bone); margin: 0 0 0.5rem; }
+.cf-lede { font-style: italic; font-size: 1.3rem; color: var(--bone); margin-top: -0.5rem; }
 .cf-kicker { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.22em; font-size: 0.75rem; color: var(--candle); margin-bottom: 0.4rem; }
-.cf-h2 { font-family: var(--title); font-weight: 700; font-size: clamp(1.9rem, 4vw, 2.6rem); line-height: 1.1; color: var(--bone); margin-bottom: 1rem; }
-.cf-panel { background: linear-gradient(180deg, var(--ash), var(--ash-deep)); border: 1px solid var(--rule); box-shadow: inset 0 0 60px #00000055, 0 12px 40px #00000066; padding: 1.4rem; position: relative; }
-.cf-panel::before { content: ''; position: absolute; inset: 6px; border: 1px solid #b8862e33; pointer-events: none; }
+.cf-h2 { font-family: var(--title); font-weight: 700; font-size: clamp(2rem, 4vw, 2.6rem); line-height: 1.1; color: var(--bone); margin-bottom: 0.9rem; text-wrap: balance; }
+.cf-panel { background: linear-gradient(180deg, var(--ash), var(--ash-deep)); border: 1px solid var(--candle-dim); padding: 1.6rem 1.6rem 1.4rem; position: relative; }
+.cf-panel::before { content: ''; position: absolute; inset: 6px; border: 1px solid #b8862e44; pointer-events: none; }
+.cf-section > p, .cf-watch > p, .cf-hand-grid .cf-note, .cf-lede { max-width: 68ch; }
 .cf-muted { color: var(--bone-dim); }
 .cf-small { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.75rem; color: var(--bone-dim); }
 .cf-italic { font-style: italic; }
@@ -67,7 +79,7 @@ body.curfew-body {
 /* ── warband picker ── */
 .cf-pick { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.25rem; }
 .cf-pick button { flex: 1 1 200px; display: flex; align-items: center; gap: 0.9rem; padding: 0.9rem 1rem; background: var(--ash-deep); border: 1px solid var(--rule); color: var(--bone); cursor: pointer; text-align: left; font-family: var(--body); font-size: 1.05rem; }
-.cf-pick button[aria-pressed='true'] { border-color: var(--candle); box-shadow: 0 0 0 1px var(--candle) inset, 0 0 30px #e0a34a22; }
+.cf-pick button[aria-pressed='true'] { border-color: var(--candle); box-shadow: 0 0 0 1px var(--candle) inset; }
 .cf-pick .cf-sigil { width: 2.4rem; height: 2.4rem; display: grid; place-items: center; border: 1px solid var(--candle-dim); font-family: var(--label); font-weight: 600; letter-spacing: 0.05em; color: var(--candle); }
 .cf-pick small { display: block; color: var(--bone-dim); font-size: 0.85rem; }
 
@@ -77,12 +89,17 @@ body.curfew-body {
 .cf-card { position: relative; perspective: 1400px; width: 100%; max-width: 300px; margin: 0 auto; }
 .cf-card-inner { position: relative; width: 100%; aspect-ratio: 7 / 12; transform-style: preserve-3d; transition: transform 1.1s cubic-bezier(0.2, 0.7, 0.2, 1); }
 .cf-card.is-flipped .cf-card-inner { transform: rotateY(180deg); }
-.cf-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; backface-visibility: hidden; border-radius: 10px; box-shadow: 0 18px 50px #000a, 0 0 0 1px #b8862e55; }
+.cf-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; backface-visibility: hidden; border-radius: 10px; box-shadow: 0 18px 40px -10px #000c; }
 .cf-card img.cf-face { transform: rotateY(180deg); }
 .cf-card::after { content: ''; position: absolute; inset: -8%; background: radial-gradient(ellipse, #e0a34a22, transparent 60%); pointer-events: none; animation: cf-flicker 4s ease-in-out infinite; z-index: -1; }
 @keyframes cf-flicker { 0%, 100% { opacity: 0.7; } 40% { opacity: 1; } 60% { opacity: 0.6; } }
-.cf-omen-text .cf-numeral { font-family: 'Cinzel', var(--label); letter-spacing: 0.2em; color: var(--candle); font-size: 0.9rem; }
-.cf-omen-text h3 { font-family: var(--title); font-weight: 700; font-size: clamp(1.8rem, 4vw, 2.4rem); line-height: 1.1; margin: 0.2rem 0 0.6rem; }
+.cf-omen-title { font-family: var(--title); font-weight: 700; font-size: clamp(1.8rem, 4vw, 2.4rem); line-height: 1.1; margin: 0 0 0.6rem; }
+.cf-omen-title .cf-numeral { display: block; font-family: 'Cinzel', var(--label); letter-spacing: 0.2em; color: var(--candle); font-size: 0.9rem; margin-bottom: 0.3rem; }
+.cf-tilts { list-style: none; padding: 0; }
+.cf-watch { margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--rule); }
+.cf-orders-given { margin: 0 0 1rem; padding: 0.9rem 1.1rem; border: 1px solid var(--candle-dim); background: #14120f; color: var(--bone); }
+.cf-orders-given b { color: var(--candle); font-weight: 600; }
+.cf-details-quiet { margin-top: 1.2rem; }
 .cf-reading { font-style: italic; font-size: 1.25rem; color: var(--bone); }
 .cf-moon { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
 .cf-moon strong { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-weight: 600; color: var(--bone-dim); font-size: 0.8rem; display: block; }
@@ -98,18 +115,23 @@ body.curfew-body {
 .cf-dawn p { font-size: 1.15rem; line-height: 1.7; margin-bottom: 0.7rem; }
 .cf-ink { opacity: 0; animation: cf-ink 0.9s ease forwards; }
 @keyframes cf-ink { from { opacity: 0; filter: blur(2px); } to { opacity: 1; filter: blur(0); } }
-.cf-ledger { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px dashed var(--rule); font-family: var(--label); letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.8rem; color: var(--bone-dim); }
+.cf-ledger { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px dashed var(--rule); font-family: var(--label); letter-spacing: 0.04em; font-size: 0.95rem; color: var(--bone-dim); font-variant-numeric: tabular-nums; }
 .cf-ledger strong { color: var(--candle); font-weight: 600; }
 .cf-offer { margin-top: 1.2rem; padding: 1rem; border: 1px solid var(--candle-dim); background: #14120f; }
+.cf-offer-title { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.8rem; font-weight: 600; color: var(--candle); margin-bottom: 0.4rem; }
 .cf-offer .cf-hand { margin-top: 0.8rem; }
-.cf-offer .cf-token { cursor: pointer; }
-.cf-offer .cf-token:hover { outline: 1px solid var(--candle); }
+.cf-offer button.cf-token { cursor: pointer; text-align: left; font: inherit; color: inherit; }
+.cf-offer button.cf-token:hover { border-color: var(--candle); background: #1b1813; }
 
 /* ── the Watch ── */
 .cf-watch-list { display: grid; gap: 0.6rem; }
-.cf-member { display: grid; grid-template-columns: auto 1fr auto; gap: 0.8rem 1rem; align-items: center; padding: 0.8rem 1rem; border: 1px solid var(--rule); background: #14120f; }
-.cf-member.is-out { opacity: 0.5; }
-.cf-member input[type='checkbox'] { width: 1.3rem; height: 1.3rem; accent-color: var(--candle); }
+.cf-member { display: grid; grid-template-columns: 1fr auto; gap: 0.6rem 1rem; align-items: center; padding: 0.5rem 1rem 0.5rem 0.6rem; border: 1px solid var(--rule); background: #14120f; transition: border-color 0.2s; }
+.cf-member.is-out { opacity: 0.5; grid-template-columns: auto 1fr auto; padding-left: 1rem; }
+.cf-member.is-chosen { border-color: var(--candle-dim); }
+.cf-member-pick { display: grid; grid-template-columns: auto 1fr; gap: 0.9rem; align-items: center; min-height: 2.75rem; padding: 0.3rem 0.4rem; cursor: pointer; }
+.cf-member-pick:has(input:disabled) { cursor: not-allowed; opacity: 0.6; }
+.cf-member input[type='checkbox'] { width: 1.3rem; height: 1.3rem; accent-color: var(--candle); margin: 0; }
+.cf-check-space { width: 1.3rem; }
 .cf-member .cf-name { font-size: 1.1rem; }
 .cf-member .cf-role { display: block; font-size: 0.85rem; color: var(--bone-dim); }
 .cf-member .cf-epithet { color: var(--candle); font-style: italic; }
@@ -120,7 +142,7 @@ body.curfew-body {
 .cf-watch-foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
 .cf-errand-help { display: grid; gap: 0.3rem 1.2rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 1rem; font-size: 0.9rem; color: var(--bone-dim); }
 .cf-errand-help b { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; color: var(--bone); font-weight: 600; margin-right: 0.3rem; }
-@media (max-width: 560px) { .cf-member { grid-template-columns: auto 1fr; } .cf-member select, .cf-member .cf-status { grid-column: 2; } }
+@media (max-width: 560px) { .cf-member { grid-template-columns: 1fr; } .cf-member select { justify-self: start; margin-left: 2.6rem; } .cf-member.is-out { grid-template-columns: auto 1fr; } .cf-member.is-out .cf-status, .cf-member.is-out .cf-status-wrap { grid-column: 2; justify-content: flex-start; } }
 
 /* ── the Hand & meters ── */
 .cf-hand-grid { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
@@ -134,14 +156,14 @@ body.curfew-body {
 .cf-token .cf-token-name { font-weight: 600; display: block; }
 .cf-token .cf-effect { font-size: 0.9rem; color: var(--bone-dim); }
 .cf-meters { display: grid; gap: 1rem; }
-.cf-meter label { display: flex; justify-content: space-between; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.78rem; color: var(--bone-dim); margin-bottom: 0.35rem; }
-.cf-meter label strong { color: var(--candle); font-weight: 600; }
 .cf-bar { height: 8px; background: #0a0908; border: 1px solid var(--rule); position: relative; overflow: hidden; }
-.cf-bar span { position: absolute; inset: 0; right: auto; background: linear-gradient(90deg, var(--candle-dim), var(--candle)); box-shadow: 0 0 12px #e0a34a88; transition: width 0.8s ease; }
+.cf-bar span { position: absolute; inset: 0; transform-origin: left center; background: linear-gradient(90deg, var(--candle-dim), var(--candle)); transition: transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.cf-meter-label { display: flex; justify-content: space-between; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.78rem; color: var(--bone-dim); margin-bottom: 0.35rem; }
+.cf-meter-label strong { color: var(--candle); font-weight: 600; }
 .cf-bar .cf-cap { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--bone-dim); }
 .cf-stat { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--rule); padding: 0.4rem 0; }
 .cf-stat b { font-family: var(--label); font-size: 1.4rem; font-weight: 600; color: var(--bone); }
-.cf-stat .wyrd { color: var(--wyrd); text-shadow: 0 0 10px #6fcf7a66; }
+.cf-stat .wyrd { color: var(--wyrd); }
 .cf-title-line { font-style: italic; color: var(--bone-dim); }
 
 /* ── rumours & chronicle ── */
@@ -156,32 +178,39 @@ body.curfew-body {
 
 /* ── standing orders ── */
 .cf-details { border: 1px solid var(--rule); background: #14120f; }
-.cf-details summary { cursor: pointer; padding: 0.9rem 1.2rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.85rem; color: var(--bone-dim); list-style: none; }
+.cf-details summary { cursor: pointer; padding: 0.9rem 1.2rem; font-family: var(--body); font-size: 1.05rem; color: var(--bone-dim); list-style: none; }
+.cf-details summary:hover { color: var(--bone); }
 .cf-details summary::-webkit-details-marker { display: none; }
 .cf-details summary::before { content: '+'; color: var(--candle); margin-right: 0.7rem; }
 .cf-details[open] summary::before { content: '−'; }
 .cf-details .cf-inner { padding: 0 1.2rem 1.2rem; }
 
 /* ── the Eve ── */
-.cf-table { background: radial-gradient(ellipse at 50% 30%, #3a2f22, var(--ash-deep) 70%); border: 1px solid var(--candle-dim); padding: 1.6rem; box-shadow: inset 0 0 120px #000a, 0 0 60px #e0a34a14; }
-.cf-ticket { font-family: 'Cinzel', var(--label); letter-spacing: 0.24em; font-size: clamp(1.4rem, 5vw, 2.2rem); color: var(--candle); text-shadow: 0 0 20px #e0a34a66; margin: 0.4rem 0 1rem; }
+.cf-table { background: linear-gradient(180deg, #33291f, var(--ash-deep)); border: 1px solid var(--candle-dim); padding: 1.6rem; }
+.cf-ticket { font-family: 'Cinzel', var(--label); letter-spacing: 0.24em; font-size: clamp(1.4rem, 5vw, 2.2rem); color: var(--candle); margin: 0.4rem 0 1rem; }
 .cf-flourish { display: grid; gap: 0.6rem; margin-top: 1rem; }
 .cf-flourish select, .cf-flourish input, .cf-glimpse input { font-family: var(--body); font-size: 1rem; background: var(--ash-deep); color: var(--bone); border: 1px solid var(--rule); padding: 0.6rem 0.7rem; min-height: 2.75rem; width: 100%; }
 .cf-glimpse { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; margin-top: 0.6rem; }
 .cf-glimpse input { flex: 1 1 200px; width: auto; }
 .cf-glimpse-out { margin-top: 0.6rem; font-style: italic; }
 .cf-charms { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
-.cf-charm { width: 1.1rem; height: 1.1rem; border-radius: 50%; background: var(--bone-dim); box-shadow: 0 0 10px #d9cdb844; }
+.cf-charm { width: 1.1rem; height: 1.1rem; border-radius: 50%; background: var(--bone); }
 .cf-charm.dim { background: #2a2724; box-shadow: none; border: 1px dashed var(--rule); }
+.cf-token-pick { cursor: pointer; transition: opacity 0.2s, border-color 0.2s; }
+.cf-token-pick:has(input:checked) { border-color: var(--candle-dim); }
+.cf-token-pick:has(input:focus-visible) { outline: 2px solid var(--candle); outline-offset: 3px; }
+.cf-token-pick:not(:has(input:checked)) { opacity: 0.45; }
+.cf-token-pick .cf-token-state::after { content: 'Bringing'; position: absolute; right: 0.8rem; top: 0.8rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.65rem; color: var(--candle); }
+.cf-token-pick:not(:has(input:checked)) .cf-token-state::after { content: 'Left behind'; color: var(--bone-dim); }
 .cf-check { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.4rem; }
 .cf-check input { width: 1.2rem; height: 1.2rem; accent-color: var(--candle); }
 
 /* ── footer ── */
 .cf-foot { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--bone-dim); }
-.cf-foot .cf-reset { background: none; border: none; color: var(--bone-dim); font: inherit; text-decoration: underline; cursor: pointer; }
+.cf-foot .cf-linkbtn { margin-left: 0; }
 
 /* ── toast ── */
-.cf-toast { position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%); z-index: 100; padding: 0.8rem 1.2rem; background: #14120f; border: 1px solid var(--candle-dim); color: var(--bone); font-style: italic; box-shadow: 0 10px 30px #000a; max-width: min(90vw, 480px); text-align: center; }
+.cf-toast { position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%); z-index: 100; padding: 0.8rem 1.2rem; background: #14120f; border: 1px solid var(--candle-dim); color: var(--bone); font-style: italic; box-shadow: 0 10px 30px -8px #000c; max-width: min(90vw, 480px); text-align: center; }
 .cf-toast[hidden] { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -189,4 +218,5 @@ body.curfew-body {
   .cf-card::after { animation: none; }
   .cf-ink { animation: none; opacity: 1; }
   .cf-bar span { transition: none; }
+  .cf-member { transition: none; }
 }
