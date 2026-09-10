@@ -101,6 +101,7 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-watch { margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--rule); }
 .cf-orders-given { margin: 0.8rem 0 0; padding: 0.8rem 1rem; border: 1px solid var(--candle-dim); background: #14120f; color: var(--bone); }
 .cf-orders-given p { margin: 0; }
+.cf-orders-given .cf-orders-note { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px dashed var(--rule); font-size: 0.85rem; font-style: italic; color: var(--bone-dim); }
 .cf-orders-given b { color: var(--candle); font-weight: 600; }
 .cf-details-quiet { margin-top: 1.2rem; }
 .cf-reading { font-style: italic; font-size: 1.25rem; color: var(--bone); }
