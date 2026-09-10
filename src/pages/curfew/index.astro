@@ -210,8 +210,23 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       return;
     }
     let html = nightHtml(last, fresh && !reduced);
+    html += gainsHtml(last);
     for (const offer of state!.offers) html += offerHtml(offer, last);
     el.innerHTML = html;
+  }
+  /** What the night brought home, beyond the ledger line: charms, rumours, and names earned. */
+  function gainsHtml(last: NightResult) {
+    const s = state!;
+    const pending = new Set(s.offers.map((o) => o.incoming));
+    const charms = last.results.filter((r) => r.token && !pending.has(r.token.id));
+    const rumours = last.results.filter((r) => r.rumour);
+    const names = s.headlines.filter((h) => h.night === last.night);
+    if (!charms.length && !rumours.length && !names.length) return '';
+    let html = '<div class="cf-gains"><h4 class="cf-gains-title">Brought home</h4>';
+    if (charms.length) html += `<div class="cf-hand cf-hand-mini">${charms.map((r) => tokenHtml(r.token!.id, 'div', `title="Found by ${esc(memberName(r.memberId))}"`)).join('')}</div>`;
+    for (const r of rumours) html += `<p class="cf-gain-rumour">“${esc(r.rumour!)}”<small>${esc(firstName(r.memberId))} heard it. Warm for ${CAMPAIGN.rumourWarmNights} nights.</small></p>`;
+    for (const h of names) html += `<p class="cf-gain-name">${esc(h.text)}</p>`;
+    return html + '</div>';
   }
   // Which charm the player has marked to keep, per offer, before confirming. Never saved: a reload clears it.
   const offerPicks = new Map<string, 'incoming' | 'held'>();
@@ -282,13 +297,31 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       ? tilts.map(({ e, t }) => `<li class="cf-tilt ${t > 0 ? 'up' : 'down'}"><span>${esc(ERRAND_LABEL[e])}</span><span aria-label="${t > 0 ? 'favoured' : 'perilous'} ${Math.abs(t)}">${t > 0 ? '▲'.repeat(t) : '▼'.repeat(-t)}</span></li>`).join('')
       : '<li class="cf-tilt flat">A flat night</li>';
     $('omen-text').innerHTML = `
-      <div class="cf-moon"><h3 class="cf-h3">${esc(moon.name)}</h3><p class="cf-reading">${esc(moon.reading)}</p><p class="cf-note">This Moon favours <b>${esc(ERRAND_LABEL[moon.boost])}</b> and colours everything else.</p></div>`;
-    const card = $('omen-card');
+      <div class="cf-moon"><h3 class="cf-h3"><span class="cf-week">This week</span>${esc(moon.name)}</h3><p class="cf-reading">${esc(moon.reading)}</p><p class="cf-note">This Moon favours <b>${esc(ERRAND_LABEL[moon.boost])}</b> and colours everything else.</p></div>`;
+    const card = $('omen-card'), tiltList = $('omen-tilts');
+    [...tiltList.children].forEach((li, i) => (li as HTMLElement).style.setProperty('--d', `${0.12 * i}s`));
     const key = `curfew:flipped:${warband!.id}:${today}`;
     let seen = false; try { seen = sessionStorage.getItem(key) === '1'; } catch {}
-    card.classList.toggle('is-flipped', seen || reduced);
-    if (!seen && !reduced) setTimeout(() => { card.classList.add('is-flipped'); try { sessionStorage.setItem(key, '1'); } catch {} }, 500);
+    revealObserver?.disconnect();
+    card.classList.remove('is-revealing');
+    if (seen || reduced) { card.classList.add('is-flipped'); tiltList.classList.add('is-shown'); return; }
+    // Face down until the card scrolls fully into view; then it turns, and the odds fade in after it.
+    card.classList.remove('is-flipped'); tiltList.classList.remove('is-shown');
+    revealObserver = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      revealObserver?.disconnect();
+      setTimeout(() => {
+        card.classList.add('is-revealing');
+        card.querySelector('.cf-card-inner')!.addEventListener('animationend', () => {
+          card.classList.add('is-flipped'); card.classList.remove('is-revealing');
+          setTimeout(() => tiltList.classList.add('is-shown'), 150);
+          try { sessionStorage.setItem(key, '1'); } catch {}
+        }, { once: true });
+      }, 250);
+    }, { threshold: 0.9 });
+    revealObserver.observe(card);
   }
+  let revealObserver: IntersectionObserver | null = null;
 
   function renderWatch() {
     const w = warband!, s = state!;
@@ -312,7 +345,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       return `<div class="cf-member ${order ? 'is-chosen' : ''}" data-member="${esc(m.id)}">${who}<select aria-label="Tonight, ${esc(m.name)}">${options(order?.errand)}</select></div>`;
     }).join('');
     $('errand-help').innerHTML = ERRANDS.map((e) => `<div><b>${ERRAND_LABEL[e]}</b>${esc(ERRAND_BLURB[e])}</div>`).join('');
-    renderOrdersLine();
+    limitSelects(); renderOrdersLine();
   }
   function chosenOrders(): Order[] {
     return [...root.querySelectorAll<HTMLElement>('#watch-list .cf-member[data-member]')]
@@ -338,7 +371,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       const sel = row.querySelector<HTMLSelectElement>('select')!;
       const out = sel.value !== '';
       row.classList.toggle('is-chosen', out);
-      for (const opt of sel.options) if (opt.value) opt.disabled = !out && n >= max;
+      sel.disabled = !out && n >= max;
+      sel.title = sel.disabled ? `Only ${max} go out a night. Send someone home first.` : '';
     }
   }
   $('watch-list').addEventListener('change', (e) => {
