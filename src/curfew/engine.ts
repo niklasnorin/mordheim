@@ -29,7 +29,9 @@ export interface Omen { id: string; numeral: string; title: string; reading: str
 /** A Moon favours one errand by a single point. Everything else about it is narrative, woven into the Dawn Report. */
 export interface Moon { id: string; name: string; reading: string; boost: Errand; ties: Partial<Record<Errand, string>> }
 
-export interface MemberLike { id: string; name: string; role: string; dead?: boolean }
+export type StatKey = 'M' | 'WS' | 'BS' | 'S' | 'T' | 'W' | 'I' | 'A' | 'Ld';
+export type StatlineLike = Record<StatKey, number>;
+export interface MemberLike { id: string; name: string; role: string; dead?: boolean; stats?: StatlineLike }
 export interface WarbandLike { id: string; name: string; members: MemberLike[] }
 
 export interface Order { memberId: string; errand: Errand; standing?: boolean }
@@ -121,6 +123,53 @@ export function tiltFor(errand: Errand, omen: Omen, moon: Moon): number {
   return Math.max(-3, Math.min(3, o + (moon.boost === errand ? 1 : 0)));
 }
 
+// ───────────────────────── the edge ─────────────────────────
+
+/**
+ * Each errand leans on one or two characteristics. A warrior who stands above their own warband's usual in
+ * those gets a small edge on that errand. The baseline is per warband, so a band of Dwarfs and a band of
+ * Sisters each have their strong and weak hands, and neither is favoured over the other.
+ */
+export const ERRAND_STATS: Record<Errand, StatKey[]> = {
+  scavenge: ['M', 'I'], carouse: ['T', 'Ld'], train: ['WS', 'T'], spy: ['I', 'BS'], pray: ['Ld', 'W'], trade: ['Ld', 'I'],
+};
+export const STAT_LABEL: Record<StatKey, string> = { M: 'Movement', WS: 'Weapon Skill', BS: 'Ballistic Skill', S: 'Strength', T: 'Toughness', W: 'Wounds', I: 'Initiative', A: 'Attacks', Ld: 'Leadership' };
+export const EDGE_MAX = 2;
+
+/** Living members with a statline: the warband the edge is measured against. */
+function measured(warband: WarbandLike): MemberLike[] { return warband.members.filter((m) => !m.dead && m.stats); }
+function errandScore(member: MemberLike, errand: Errand): number { return ERRAND_STATS[errand].reduce((sum, k) => sum + member.stats![k], 0); }
+
+/** Mean of each characteristic across the living members with a statline. */
+export function statBaseline(warband: WarbandLike): Partial<StatlineLike> {
+  const living = measured(warband);
+  const out: Partial<StatlineLike> = {};
+  if (!living.length) return out;
+  for (const key of Object.keys(STAT_LABEL) as StatKey[]) out[key] = living.reduce((sum, m) => sum + m.stats![key], 0) / living.length;
+  return out;
+}
+/** How far above the warband's usual this member stands in an errand's characteristics, averaged. Negative below it. */
+export function statMargin(warband: WarbandLike, member: MemberLike, errand: Errand): number {
+  if (!member.stats) return 0;
+  const base = statBaseline(warband);
+  const keys = ERRAND_STATS[errand];
+  return keys.reduce((sum, k) => sum + (member.stats![k] - (base[k] ?? member.stats![k])), 0) / keys.length;
+}
+/**
+ * The edge a member brings to an errand, in points of tilt. Never a penalty.
+ * 1: the warband's best hand for it, by the errand's characteristics, ahead of at least one other living member. Ties share it.
+ * 2: a best hand that also stands a full point or more above the warband's usual in those characteristics.
+ * Measured within the warband, so every band has its best hands and no band is favoured over another.
+ */
+export function statEdge(warband: WarbandLike, member: MemberLike, errand: Errand): number {
+  const living = measured(warband);
+  if (!member.stats || member.dead || living.length < 2) return 0;
+  const scores = living.map((m) => errandScore(m, errand));
+  const best = Math.max(...scores), worst = Math.min(...scores);
+  if (errandScore(member, errand) < best || best === worst) return 0;
+  return statMargin(warband, member, errand) >= 1 ? 2 : 1;
+}
+
 // ───────────────────────── availability ─────────────────────────
 
 export interface Availability { memberId: string; available: boolean; reason?: 'dead' | 'recovering' }
@@ -183,8 +232,9 @@ export function resolveNight(input: ResolveInput): NightResult {
   orders.forEach((order, i) => {
     const member = warband.members.find((m) => m.id === order.memberId);
     if (!member) return;
-    const tilt = tiltFor(order.errand, omen, moon);
     const standing = !!order.standing;
+    // the Omen and the Moon set the night's odds; who you send moves them a little further
+    const tilt = Math.max(-3, Math.min(3, tiltFor(order.errand, omen, moon) + (standing ? 0 : statEdge(warband, member, order.errand))));
     const outcome: Outcome = standing ? (r() < 0.2 ? 'poor' : 'fair') : rollOutcome(r, tilt);
     let f = FAVOUR[outcome];
     if (standing) f = Math.ceil(f / 2);

@@ -60,7 +60,10 @@ Two minutes a day. A month of nights between games becomes a story instead of a 
 
 **Changed.** Curses are content only (`tokens.json`) and never drop from dice nights. They arrive with opt-in risk in the mini-games. A boon always brings a token, a fair night sometimes, a poor night never. Standing orders never bring tokens.
 
-Outcome odds: a base of roughly a quarter boon, a third poor, the rest fair, shifted eight points per point of tilt. Tilt is the Omen's tilt plus one point for the Moon's favoured errand, clamped to ±3. The tilts are listed under the card in the app, not printed on it.
+Outcome odds: a base of roughly a quarter boon, a third poor, the rest fair, shifted eight points per point of tilt. Tilt is the Omen's tilt plus one point for the Moon's favoured errand plus the warrior's edge, clamped to ±3. The tilts are listed under the card in the app, not printed on it.
+
+### The edge
+**Shipped.** Each errand leans on one or two characteristics: Scavenge on M and I, Carouse on T and Ld, Train on WS and T, Spy on I and BS, Pray on Ld and W, Trade on Ld and I. A warrior who is their own warband's best hand for an errand, by the sum of those characteristics and ahead of at least one other living member, adds one point of tilt (▲); two (▲▲) when they also stand a full point or more above the warband's mean in them. Ties share the edge. Never a penalty. The measure is within the warband, so a band of Dwarfs and a band of Sisters each have their strong and weak hands and neither is favoured over the other; a uniformly stronger roster gets exactly the same edges. Standing orders ignore it. The Watch shows a discreet chip beside each control with the characteristics tonight's errand leans on and the arrows, and the errand names in the control carry the arrows too.
 
 ---
 
@@ -138,10 +141,10 @@ Palette, type, and motion are as first planned and now binding (recorded in `PRO
 - `src/curfew/engine.ts` is pure: calendar, seeded draws (FNV-1a hash, mulberry32), errand resolution, the Hand. Every result is a deterministic function of (campaign, night, warband, orders).
 - `src/curfew/state.ts` keeps one ledger per warband in `localStorage`: orders by night, resolved nights, standing orders, healed members, rumours, epithets, headlines, pending offers, the Eve session. On each visit it writes every dawn that is due and applies the absence rules.
 - Content is data in `src/data/curfew/*.json`; adding a card or a Moon is a text edit.
-- Tests: `node --test src/curfew/*.test.ts` (21 cases). Append `?date=YYYY-MM-DD` to a Curfew URL to view another night.
+- Tests: `node --test src/curfew/*.test.ts` (28 cases). Append `?date=YYYY-MM-DD` to a Curfew URL to view another night.
 
 ### Integration points today
-- **Members:** `dead` from the roster; `injured` from the latest battle report until healed by the player.
+- **Members:** `dead` and `stats` from the roster; `injured` from the latest battle report until healed by the player.
 - **Town Cryer:** reads ledgers on the same device for its dispatches.
 - **Navigation:** none. Curfew is reached by direct URL for now.
 

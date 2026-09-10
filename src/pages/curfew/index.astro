@@ -118,8 +118,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   import { warbands } from '../../data/warbands';
   import { history } from '../../data/history';
   import {
-    CAMPAIGN, ERRANDS, ERRAND_LABEL, ERRAND_BLURB, TOKEN_TYPES, HAND_SIZE, availability, moonForNight, omenForNight, tiltFor, titleFor, nextTitle, tokenById, dateForNight,
-    type Errand, type NightResult, type Order,
+    CAMPAIGN, ERRANDS, ERRAND_LABEL, ERRAND_BLURB, TOKEN_TYPES, HAND_SIZE, availability, moonForNight, omenForNight, tiltFor, titleFor, nextTitle, tokenById, dateForNight, statEdge, ERRAND_STATS, STAT_LABEL,
+    type Errand, type MemberLike, type NightResult, type Order,
   } from '../../curfew/engine';
   import { chooseWarband, chosenWarband, giveOrders, lastGivenOrders, loadState, reconcile, recoveringMembers, resetState, saveState, settleOffer, standingOrders, todayNight, type WarbandState } from '../../curfew/state';
   import { sealSvg } from '../../curfew/glyphs';
@@ -334,7 +334,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     const given = s.orders[today] ?? [];
     const standing = given.length ? [] : standingOrders(s, w, rec, today);
     const shown = given.length ? given : standing;
-    const options = (sel?: Errand) => `<option value="" ${sel ? '' : 'selected'}>Stays home</option>` + ERRANDS.map((e) => `<option value="${e}" ${e === sel ? 'selected' : ''}>${ERRAND_LABEL[e]}</option>`).join('');
+    const options = (m: MemberLike, sel?: Errand) => `<option value="" ${sel ? '' : 'selected'}>Stays home</option>` + ERRANDS.map((e) => `<option value="${e}" ${e === sel ? 'selected' : ''}>${ERRAND_LABEL[e]}${arrows(statEdge(w, m, e))}</option>`).join('');
     $('watch-list').innerHTML = w.members.map((m) => {
       const a = av.find((x) => x.memberId === m.id)!;
       const order = shown.find((o) => o.memberId === m.id);
@@ -346,10 +346,22 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           : `<span class="cf-status-wrap"><span class="cf-status">Recovering</span><button type="button" class="cf-btn cf-btn-ghost cf-heal" data-heal="${esc(m.id)}">Back on their feet</button></span>`;
         return `<div class="cf-member is-out">${who}${status}</div>`;
       }
-      return `<div class="cf-member ${order ? 'is-chosen' : ''}" data-member="${esc(m.id)}">${who}<select aria-label="Tonight, ${esc(m.name)}">${options(order?.errand)}</select></div>`;
+      return `<div class="cf-member ${order ? 'is-chosen' : ''}" data-member="${esc(m.id)}">${who}<span class="cf-pick">${edgeChip(m, order?.errand)}<select aria-label="Tonight, ${esc(m.name)}">${options(m, order?.errand)}</select></span></div>`;
     }).join('');
-    $('errand-help').innerHTML = ERRANDS.map((e) => `<div><b>${ERRAND_LABEL[e]}</b>${esc(ERRAND_BLURB[e])}</div>`).join('');
+    $('errand-help').innerHTML = ERRANDS.map((e) => `<div><b>${ERRAND_LABEL[e]}</b>${esc(ERRAND_BLURB[e])} <span class="cf-leans">Leans on ${ERRAND_STATS[e].join(' and ')}.</span></div>`).join('')
+      + `<p class="cf-edge-note">A warrior who is the warband's best hand for an errand, by those characteristics, gets an edge: <span class="cf-edge is-on">▲</span> a point on the odds, <span class="cf-edge is-on">▲▲</span> two when they also stand well above the band's usual. It is measured within your own warband, so no band is favoured over another.</p>`;
     limitSelects(); renderOrdersLine();
+  }
+  const arrows = (edge: number) => edge > 0 ? ` ${'▲'.repeat(edge)}` : '';
+  /** A discreet chip beside the control: the characteristics tonight's errand leans on, and whether this warrior brings an edge to it. */
+  function edgeChip(m: MemberLike, errand?: Errand): string {
+    if (!errand || !m.stats) return '<span class="cf-edge" aria-hidden="true"></span>';
+    const w = warband!, edge = statEdge(w, m, errand), stats = ERRAND_STATS[errand];
+    const names = stats.map((k) => STAT_LABEL[k]).join(' and ');
+    const title = edge
+      ? `${ERRAND_LABEL[errand]} leans on ${names}. ${m.name.split(' ')[0]} is the warband's best hand for it: ${edge === 2 ? 'two points' : 'a point'} on the odds.`
+      : `${ERRAND_LABEL[errand]} leans on ${names}. ${m.name.split(' ')[0]} is not the warband's best hand for it.`;
+    return `<span class="cf-edge ${edge ? 'is-on' : ''}" title="${esc(title)}"><span class="cf-edge-stats">${stats.join('·')}</span>${edge ? `<span class="cf-edge-mark">${'▲'.repeat(edge)}</span>` : ''}<span class="cf-sr">${esc(title)}</span></span>`;
   }
   function chosenOrders(): Order[] {
     return [...root.querySelectorAll<HTMLElement>('#watch-list .cf-member[data-member]')]
@@ -377,6 +389,9 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       row.classList.toggle('is-chosen', out);
       sel.disabled = !out && n >= max;
       sel.title = sel.disabled ? `Only ${max} go out a night. Send someone home first.` : '';
+      const m = warband?.members.find((x) => x.id === row.dataset.member);
+      const chip = row.querySelector('.cf-edge');
+      if (m && chip) chip.outerHTML = edgeChip(m, (sel.value || undefined) as Errand | undefined);
     }
   }
   $('watch-list').addEventListener('change', (e) => {

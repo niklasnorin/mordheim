@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   hashSeed, rng, nightForDate, dateForNight, omenForNight, moonForNight, OMENS, MOONS, resolveNight, applyNight,
   quietNight, returnNight, tiltFor, availability, defaultErrand, titleFor, eveTicket, readTicket, cityProvides, epithetFor, CAMPAIGN,
+  ERRAND_STATS, statEdge, statMargin, statBaseline,
 } from './engine.ts';
 
 const warband = {
@@ -163,4 +164,61 @@ test('availability, defaults, titles, tickets, city provides, epithets', () => {
   assert.equal(readTicket('nonsense'), null);
   assert.equal(cityProvides('nordost', 12).id, cityProvides('nordost', 12).id);
   assert.ok(epithetFor('agnar', { pray: 3, trade: 1 }).length > 3);
+});
+
+const line = (over: Partial<Record<string, number>> = {}) => ({ M: 4, WS: 3, BS: 3, S: 3, T: 3, W: 1, I: 3, A: 1, Ld: 7, ...over });
+const kin = {
+  id: 'kin', name: 'The Kin',
+  members: [
+    { id: 'elder', name: 'Elder', role: 'Elder', stats: line({ WS: 4, BS: 4, T: 4, Ld: 8 }) },
+    { id: 'ogre', name: 'Ogre', role: 'Ogre', stats: line({ M: 6, S: 4, T: 4, W: 3, Ld: 8, BS: 2 }) },
+    { id: 'brother', name: 'Brother', role: 'Blood Brother', stats: line({ WS: 4 }) },
+    { id: 'priest', name: 'Priest', role: 'Priest', stats: line() },
+    { id: 'ghost', name: 'Ghost', role: 'Youngblood', dead: true, stats: line({ M: 9, WS: 9, BS: 9, I: 9, Ld: 10 }) },
+  ],
+};
+
+test('every errand leans on one or two characteristics', () => {
+  for (const e of ALL) { assert.ok(ERRAND_STATS[e].length >= 1 && ERRAND_STATS[e].length <= 2, e); }
+});
+
+test('the edge goes to the warband\'s best hand for an errand, measured against the living', () => {
+  const [elder, ogre, brother, priest, ghost] = kin.members;
+  assert.equal(statEdge(kin, ogre, 'scavenge'), 1, 'the ogre covers ground');
+  assert.equal(statEdge(kin, elder, 'scavenge'), 0);
+  assert.equal(statEdge(kin, elder, 'carouse'), 1, 'elder and ogre share the best hand for carousing');
+  assert.equal(statEdge(kin, ogre, 'carouse'), 1);
+  assert.equal(statEdge(kin, elder, 'train'), 1);
+  assert.equal(statEdge(kin, brother, 'train'), 0, 'a good WS is not the best hand while the elder stands');
+  assert.equal(statEdge(kin, ogre, 'pray'), 2, 'the ogre stands a full point above the usual in Ld and W');
+  assert.equal(statEdge(kin, priest, 'pray'), 0);
+  assert.equal(statEdge(kin, ghost, 'spy'), 0, 'the dead have no edge');
+  assert.ok(statBaseline(kin).M! < 5, 'and do not raise the baseline');
+  assert.ok(statMargin(kin, ogre, 'scavenge') > 0);
+  const noStats = { id: 'x', name: 'X', members: [{ id: 'a', name: 'A', role: 'Elder' }, { id: 'b', name: 'B', role: 'Elder' }] };
+  assert.equal(statEdge(noStats, noStats.members[0], 'train'), 0, 'no statline, no edge');
+});
+
+test('a warband that is uniformly stronger gets the same edges: the measure is within the band', () => {
+  const shifted = { ...kin, members: kin.members.map((m) => ({ ...m, stats: Object.fromEntries(Object.entries(m.stats).map(([k, v]) => [k, v + 2])) as typeof m.stats })) };
+  for (const e of ALL) for (let i = 0; i < kin.members.length; i++) {
+    assert.equal(statEdge(shifted, shifted.members[i], e), statEdge(kin, kin.members[i], e), `${kin.members[i].id} ${e}`);
+  }
+  const uniform = { ...kin, members: kin.members.map((m) => ({ ...m, stats: line() })) };
+  for (const e of ALL) for (const m of uniform.members) assert.equal(statEdge(uniform, m, e), 0, 'nobody stands out in a uniform band');
+});
+
+test('the edge tilts the dice for orders given, not for standing orders', () => {
+  const orders = [{ memberId: 'ogre', errand: 'pray' as const }];
+  const plain = { ...kin, members: kin.members.map((m) => ({ ...m, stats: undefined })) };
+  let withEdge = 0, without = 0, standing = 0, standingPlain = 0;
+  for (let night = 1; night <= 400; night++) {
+    withEdge += resolveNight({ warband: kin, night, orders, state: fresh }).results[0].outcome === 'boon' ? 1 : 0;
+    without += resolveNight({ warband: plain, night, orders, state: fresh }).results[0].outcome === 'boon' ? 1 : 0;
+    const so = [{ ...orders[0], standing: true }];
+    standing += resolveNight({ warband: kin, night, orders: so, state: fresh }).results[0].favour;
+    standingPlain += resolveNight({ warband: plain, night, orders: so, state: fresh }).results[0].favour;
+  }
+  assert.ok(withEdge > without + 20, `edge ${withEdge} vs plain ${without}`);
+  assert.equal(standing, standingPlain, 'standing orders run at half yield whoever goes');
 });
