@@ -47,10 +47,15 @@ export function todayNight(now = new Date()): number {
 export function chosenWarband(): string | null { try { return localStorage.getItem(CHOSEN); } catch { return null; } }
 export function chooseWarband(id: string): void { try { localStorage.setItem(CHOSEN, id); } catch {} }
 
+/**
+ * Load this device's ledger for a warband, creating and persisting a fresh one on the first visit.
+ * Persisting at once matters: the first night's standing orders only run if the next visit can see
+ * that the ledger was opened before.
+ */
 export function loadState(warband: WarbandLike, today: number): WarbandState {
   let state: WarbandState | null = null;
   try { const raw = localStorage.getItem(KEY(warband.id)); if (raw) state = JSON.parse(raw); } catch {}
-  if (!state || state.version !== 1) state = freshState(warband, today);
+  if (!state || state.version !== 1) { state = freshState(warband, today); saveState(state); }
   return state;
 }
 export function saveState(state: WarbandState): void { try { localStorage.setItem(KEY(state.warbandId), JSON.stringify(state)); } catch {} }
