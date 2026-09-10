@@ -2,6 +2,9 @@
 dist/
 .vercel/
 
+# local database (PGlite), created by `npm run dev` without DATABASE_URL
+.pglite/
+
 # generated types
 .astro/
 

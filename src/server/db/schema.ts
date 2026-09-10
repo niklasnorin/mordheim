@@ -89,8 +89,9 @@ export const curfewLedgers = pgTable(
 
 /**
  * What the Town Cryer may print. A `headline` is a title change, an epithet or a planted flourish;
- * a `happening` is one member's night, chosen occasionally by the seeded dice when the night resolves.
- * `key` makes writing them idempotent: reconciling twice never prints twice.
+ * a `happening` is one member's night, chosen occasionally by the seeded dice when the night resolves;
+ * a `notice` is posted by the Watch from the admin console. `key` makes writing them idempotent:
+ * reconciling twice never prints twice.
  */
 export const cryerDispatches = pgTable(
   'cryer_dispatches',
@@ -99,12 +100,24 @@ export const cryerDispatches = pgTable(
     key: text('key').notNull().unique(),
     warbandId: text('warband_id').notNull(),
     night: integer('night').notNull(),
-    kind: text('kind', { enum: ['headline', 'happening'] }).notNull(),
+    kind: text('kind', { enum: ['headline', 'happening', 'notice'] }).notNull(),
     headline: text('headline').notNull(),
     body: text('body'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('cryer_dispatches_night_idx').on(t.night)],
 );
+
+/** Every run of the nightly resolve, by the cron or by hand from the console. */
+export const curfewRuns = pgTable('curfew_runs', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  ranAt: timestamp('ran_at', { withTimezone: true }).notNull().defaultNow(),
+  source: text('source', { enum: ['cron', 'admin'] }).notNull(),
+  night: integer('night').notNull(),
+  ledgers: integer('ledgers').notNull(),
+  nights: integer('nights').notNull(),
+  dispatches: integer('dispatches').notNull(),
+  durationMs: integer('duration_ms').notNull(),
+});
 
 export const authSchema = { user, session, account, verification };

@@ -1,0 +1,5 @@
+{
+  "files.associations": { "*.astro": "astro" },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "search.exclude": { "**/node_modules": true, "**/dist": true, "**/.vercel": true, "**/.pglite": true, "**/.astro": true }
+}

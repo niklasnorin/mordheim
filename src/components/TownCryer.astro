@@ -68,7 +68,7 @@ const nightLabel = (n: number) => (n === today - 1 ? 'last night' : `night ${n}`
             </article>
           ) : (
             <div class="cryer-notice cryer-plant">
-              <strong>Heard in the taverns</strong>
+              <strong>{d.kind === 'notice' ? 'By order of the Watch' : 'Heard in the taverns'}</strong>
               {d.headline}
               <small class="cryer-stamp">{d.warbandName} · {nightLabel(d.night)}</small>
             </div>

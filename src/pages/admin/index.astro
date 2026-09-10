@@ -1,0 +1,346 @@
+---
+import Base from '../../layouts/Base.astro';
+import '../../styles/curfew.css';
+import '../../styles/admin.css';
+import { base } from '../../lib/site';
+import { hasDatabase } from '../../server/db/client';
+import { admission } from '../../server/admin/guard';
+import { overview, type Overview } from '../../server/admin/service';
+import { todayFor } from '../../server/curfew/service';
+import { CAMPAIGN, ERRAND_LABEL, HAND_SIZE, TOKEN_TYPES, dateForNight, moonForNight, tokenById } from '../../curfew/engine';
+import { sealSvg } from '../../curfew/glyphs';
+
+// The game master's console. Personal, current, never cached.
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const today = todayFor(Astro.url);
+const { viewer, admin } = ready ? await admission(Astro.request) : { viewer: null, admin: false };
+let data: Overview | null = null;
+let trouble = false;
+if (admin) {
+  try { data = await overview(today); } catch (e) { console.error('[watch-house] overview unavailable', e); trouble = true; }
+}
+if (ready && !admin) Astro.response.status = viewer ? 403 : 401;
+
+const ledgerHref = `${base}/curfew/`;
+const tz = CAMPAIGN.timezone;
+const when = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
+const day = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+const nightDate = (n: number) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(dateForNight(n) + 'T12:00:00Z'));
+const plural = (n: number, one: string, many = one + 's') => `${n} ${n === 1 ? one : many}`;
+const TONIGHT: Record<string, string> = { given: 'Orders given', barred: 'Door barred', standing: 'Standing orders', nothing: '—' };
+const KIND: Record<string, string> = { headline: 'Heard', happening: 'Happening', notice: 'Notice' };
+const lastRun = data?.runs[0];
+---
+
+<Base title="The Watch House — Mordheim" description="The game master's console for the Mordheim campaign: ledgers, players, the Town Cryer and midnight.">
+  <Fragment slot="head">
+    <link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Barlow+Condensed:wght@600&display=swap" rel="stylesheet" />
+    <meta name="theme-color" content="#0e0d0c" />
+    <meta name="robots" content="noindex" />
+  </Fragment>
+
+  <main class="curfew wh" id="main-content" data-base={base}>
+    <header class="wh-top">
+      <a class="cf-back" href={`${base}/`}>← Mordheim</a>
+      <a class="wh-wordmark" href={`${base}/admin/`}>The Watch House</a>
+      <div class="wh-top-right">
+        <span class="cf-nightline">{today < 1 ? <>The city sleeps until <strong>{nightDate(1)}</strong></> : <>Night <strong>{today}</strong> · {moonForNight(today).name}</>}</span>
+        {viewer && <span class="wh-who">{viewer.name}<button type="button" class="cf-linkbtn" id="signout">Sign out</button></span>}
+      </div>
+    </header>
+
+    {!ready && <div class="wh-gate"><h1>The ledgers are not open</h1><p>This deployment has no database yet. See the README for the Vercel setup.</p></div>}
+    {ready && !viewer && <div class="wh-gate"><h1>Who goes there?</h1><p>The Watch House is for the game master. <a href={ledgerHref}>Sign in at the Ledger</a>, then come back.</p></div>}
+    {ready && viewer && !admin && <div class="wh-gate"><h1>No admittance</h1><p>You are signed in as {viewer.name}, and that name is not on the Watch's list.</p><p>A game master adds it to <code>ADMIN_EMAILS</code>. <a href={ledgerHref}>Back to the Ledger</a>.</p></div>}
+    {trouble && <div class="wh-gate"><h1>The city did not answer</h1><p>The overview could not be read just now. Try again in a moment.</p></div>}
+
+    {data && (
+      <>
+        <nav class="wh-nav" aria-label="Console sections">
+          <a href="#night">Tonight</a>
+          <a href="#ledgers">Ledgers</a>
+          <a href="#cryer">Town Cryer</a>
+          <a href="#players">Players</a>
+          <a href="#midnight">Midnight</a>
+        </nav>
+
+        <section class="wh-section" id="night" aria-labelledby="tonight-title">
+          <h1 class="wh-h1" id="tonight-title">{today < 1 ? 'Before the first night' : `Night ${today}`}</h1>
+          <div class="wh-tonight">
+            <figure class="wh-omen">
+              <img src={`${base}${data.omen.image}`} alt="" width="1050" height="1800" />
+              <figcaption>
+                <b>{data.omen.title}</b>
+                {data.omen.reading}
+                <small>{data.moon.name} favours {ERRAND_LABEL[data.moon.boost]}</small>
+              </figcaption>
+            </figure>
+            <div class="wh-city">
+              <p class="wh-lede">{today < 1 ? `The first night is ${nightDate(1)}.` : `${nightDate(today)}. Dawn is written at midnight, ${tz.replace('_', ' ')}.`}</p>
+              <ul class="wh-facts">
+                <li><b>{data.counts.ledgers}</b> of <b>{data.counts.warbands}</b> warbands have a keeper{data.ledgers.some((l) => l.behind > 0) ? <>; <b>{data.ledgers.filter((l) => l.behind > 0).length}</b> {data.ledgers.filter((l) => l.behind > 0).length === 1 ? 'is' : 'are'} behind on their dawns.</> : '.'}</li>
+                <li><b>{data.counts.players}</b> {data.counts.players === 1 ? 'player has' : 'players have'} signed in; <b>{data.counts.sessions}</b> {data.counts.sessions === 1 ? 'session is' : 'sessions are'} open now.</li>
+                <li><b>{data.counts.dispatches}</b> {data.counts.dispatches === 1 ? 'dispatch has' : 'dispatches have'} gone to the Town Cryer.</li>
+                <li class:list={{ bad: !lastRun }}>{lastRun ? <>Midnight last ran <b>{when(lastRun.ranAt)}</b> by {lastRun.source === 'cron' ? 'the cron' : 'hand'}, writing <b>{lastRun.nights}</b> {lastRun.nights === 1 ? 'night' : 'nights'}.</> : <>Midnight has <b>never</b> run.</>}</li>
+              </ul>
+            </div>
+            <ul class="wh-health" aria-label="Health">
+              {data.health.map((h) => <li class:list={[h.ok === true ? 'ok' : h.ok === false ? 'bad' : 'note']}><span class="wh-dot" aria-hidden="true"></span><b>{h.label}</b><span>{h.detail}</span></li>)}
+            </ul>
+          </div>
+        </section>
+
+        <section class="wh-section" id="ledgers" aria-labelledby="ledgers-title">
+          <h2 class="wh-h2" id="ledgers-title">Ledgers</h2>
+          <p class="wh-muted">One keeper per warband. <b>Burn</b> starts a ledger afresh tonight and the keeper keeps the warband. <b>Release</b> takes the warband from its keeper, ledger and all, so anyone may take it up.</p>
+          <p class="wh-table-hint" aria-hidden="true">Scroll sideways for the rest of the table</p>
+          <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Ledgers">
+            <table class="wh-table">
+              <thead><tr><th scope="col">Warband</th><th scope="col">Keeper</th><th scope="col">Favour</th><th scope="col" class="num">Shards</th><th scope="col" class="num">Renown</th><th scope="col">Hand</th><th scope="col">Last dawn</th><th scope="col">Tonight</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+              <tbody>
+                {data.ledgers.map((l) => {
+                  const s = l.state;
+                  const last = s?.nights.at(-1);
+                  return (
+                    <>
+                      <tr class="wh-row">
+                        <th scope="row"><span class="wh-cell-name"><span class:list={['wh-sigil', { 'is-empty': !s }]} aria-hidden="true">{l.sigil}</span><span>{l.name}<small>{l.type} · {l.title}</small></span></span></th>
+                        {s && l.keeper ? (
+                          <>
+                            <td class="wh-keeper">{l.keeper.name}<small>{l.keeper.email}</small></td>
+                            <td><span class="wh-favour"><span class="wh-num">{s.favour}</span><span class="wh-bar" role="img" aria-label={`Favour ${s.favour} of 100`}><i style={`width:${s.favour}%`}></i><b style={`left:${CAMPAIGN.favourSoftCap}%`}></b></span></span></td>
+                            <td class="num">{s.shards}</td>
+                            <td class="num">{s.renown}</td>
+                            <td><span class="wh-hand" aria-label={s.hand.length ? s.hand.map((h) => tokenById(h.id).name).join(', ') : 'an empty Hand'}>{s.hand.map((h) => { const t = tokenById(h.id); return <span class="wh-seal" style={`--seal:${TOKEN_TYPES[t.type].seal}`} title={t.name} set:html={sealSvg(t.type)} />; })}{Array.from({ length: HAND_SIZE - s.hand.length }).map(() => <span class="wh-seal is-empty" aria-hidden="true"></span>)}</span></td>
+                            <td class:list={{ bad: l.behind > 0, dim: !last }}>{l.behind > 0 ? `${plural(l.behind, 'night')} behind` : last ? `Night ${last.night}` : 'None yet'}</td>
+                            <td class:list={{ dim: l.tonight === 'standing' || l.tonight === 'nothing' }}>{TONIGHT[l.tonight]}{s.eve ? <> <span class="wh-chip on">Eve laid</span></> : null}{s.offers.length ? <> <span class="wh-chip">{plural(s.offers.length, 'offer')} pending</span></> : null}</td>
+                            <td><div class="wh-actions">
+                              <button type="button" class="cf-btn cf-btn-ghost sm" data-inspect={l.warbandId} aria-expanded="false" aria-controls={`detail-${l.warbandId}`}>Inspect</button>
+                              <button type="button" class="cf-btn cf-btn-ghost sm" data-act="burn" data-body={JSON.stringify({ warbandId: l.warbandId })} data-confirm={`Burn ${l.name}'s ledger? Every night, charm and rumour goes with it. ${l.keeper.name} keeps the warband.`}>Burn</button>
+                              <button type="button" class="cf-btn cf-btn-blood sm" data-act="release" data-body={JSON.stringify({ warbandId: l.warbandId })} data-confirm={`Take ${l.name} from ${l.keeper.name}? The ledger is destroyed and anyone may take the warband up.`}>Release</button>
+                            </div></td>
+                          </>
+                        ) : (
+                          <td class="dim" colspan="8">No keeper yet. The warband is waiting at the Ledger for a player to take it up.</td>
+                        )}
+                      </tr>
+                      {s && (
+                        <tr class="wh-detail" id={`detail-${l.warbandId}`} hidden>
+                          <td colspan="9">
+                            <div class="wh-detail-grid">
+                              <div class="wh-night">
+                                <h4>Last night</h4>
+                                {last ? (
+                                  <>
+                                    <p><b>{last.header}</b></p>
+                                    {last.results.map((r) => <p>{r.prose}</p>)}
+                                    <p>{last.detail}</p>
+                                    {last.closer && <p>{last.closer}</p>}
+                                    {last.ledger.length > 0 && <div class="cf-ledger">Ledger: {last.ledger.map((x, i) => <><strong>{x}</strong>{i < last.ledger.length - 1 ? <span class="cf-sep"> · </span> : null}</>)}</div>}
+                                  </>
+                                ) : <p class="dim">No dawn has been written for this ledger yet.</p>}
+                              </div>
+                              <div>
+                                <h4>The ledger</h4>
+                                <dl>
+                                  <dt>Opened</dt><dd>Night {s.firstSeen}</dd>
+                                  <dt>Nights</dt><dd>{s.nights.length} written, {Object.keys(s.orders).length} with orders given</dd>
+                                  <dt>Tonight</dt><dd>{s.orders[today]?.length ? s.orders[today].map((o) => `${o.memberId} · ${ERRAND_LABEL[o.errand]}`).join(', ') : TONIGHT[l.tonight]}</dd>
+                                  <dt>Hand</dt><dd>{s.hand.length ? s.hand.map((h) => tokenById(h.id).name).join(', ') : 'empty'}</dd>
+                                  <dt>Offers</dt><dd>{s.offers.length ? s.offers.map((o) => `${tokenById(o.incoming).name} against ${tokenById(o.held).name}`).join('; ') : 'none pending'}</dd>
+                                  <dt>Rumours</dt><dd>{plural(s.rumours.length, 'rumour')} warm</dd>
+                                  <dt>Epithets</dt><dd>{Object.keys(s.epithets).length ? Object.entries(s.epithets).map(([m, e]) => `${m} ${e}`).join(', ') : 'none yet'}</dd>
+                                  <dt>Healed</dt><dd>{s.healed.length ? s.healed.join(', ') : 'nobody marked'}</dd>
+                                  <dt>The Eve</dt><dd>{s.eve ? `laid on night ${s.eve.night}, ${plural(s.eve.tokens.length, 'charm')}, ticket ${s.eve.ticket}` : `not laid; ${plural(s.fights.length, 'fight')} recorded`}</dd>
+                                  <dt>Saved</dt><dd>{l.updatedAt ? when(l.updatedAt) : '—'}</dd>
+                                </dl>
+                              </div>
+                              <details><summary>Raw ledger</summary><pre>{JSON.stringify(s, null, 2)}</pre></details>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="wh-section" id="cryer" aria-labelledby="cryer-title">
+          <h2 class="wh-h2" id="cryer-title">Town Cryer</h2>
+          <p class="wh-muted">What the broadsheet will print. A pulled dispatch is gone for good; a notice from the Watch prints tonight under its own heading.</p>
+          <div class="wh-cryer">
+            <form class="wh-notice" id="notice-form">
+              <label class="wh-h3" for="notice-text">Post a notice</label>
+              <textarea id="notice-text" name="text" maxlength="200" required placeholder="Curfew falls an hour earlier tonight. The Watch will not say why."></textarea>
+              <div class="wh-notice-foot"><span class="wh-count" id="notice-count">0 / 200</span><button type="submit" class="cf-btn">Print in the Cryer</button></div>
+            </form>
+            <div>
+              <h3 class="wh-h3">Recent dispatches</h3>
+              {data.dispatches.length ? (
+                <ul class="wh-dispatches">
+                  {data.dispatches.map((d) => (
+                    <li class="wh-dispatch">
+                      <span class="wh-meta"><span>Night <b>{d.night}</b></span><span>{d.warbandName}</span></span>
+                      <span class="wh-text"><p>{d.headline}<span class:list={['wh-chip', { on: d.kind === 'notice' }]}>{KIND[d.kind]}</span></p>{d.body && <small>{d.body}</small>}</span>
+                      <button type="button" class="cf-btn cf-btn-ghost sm" data-act="delete-dispatch" data-body={JSON.stringify({ id: d.id })} data-confirm="Pull this dispatch from the broadsheet? It does not come back.">Pull</button>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p class="wh-empty">Nothing has reached the Cryer yet. The first dawn will change that.</p>}
+            </div>
+          </div>
+        </section>
+
+        <section class="wh-section" id="players" aria-labelledby="players-title">
+          <h2 class="wh-h2" id="players-title">Players</h2>
+          <p class="wh-muted">Everyone who has signed in. Signing a player out everywhere ends their sessions; they sign in again as before.</p>
+          <p class="wh-table-hint" aria-hidden="true">Scroll sideways for the rest of the table</p>
+          <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Players">
+            <table class="wh-table">
+              <thead><tr><th scope="col">Player</th><th scope="col">Signed in with</th><th scope="col">Warband</th><th scope="col" class="num">Sessions</th><th scope="col">Last seen</th><th scope="col">Joined</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+              <tbody>
+                {data.players.map((p) => (
+                  <tr class="wh-row">
+                    <th scope="row" class="wh-keeper">{p.name}{p.admin && <> <span class="wh-chip on">Watch</span></>}<small>{p.email}</small></th>
+                    <td class:list={{ dim: !p.providers.length }}>{p.providers.length ? p.providers.map((x) => x === 'credential' ? 'dev sign-in' : x).join(', ') : '—'}</td>
+                    <td class:list={{ dim: !p.warband }}>{p.warband?.name ?? 'none'}</td>
+                    <td class="num">{p.sessions}</td>
+                    <td class:list={{ dim: !p.lastSeen }}>{p.lastSeen ? when(p.lastSeen) : 'never'}</td>
+                    <td class="dim">{day(p.createdAt)}</td>
+                    <td><div class="wh-actions"><button type="button" class="cf-btn cf-btn-ghost sm" data-act="revoke-sessions" data-body={JSON.stringify({ userId: p.id })} data-confirm={`Sign ${p.name} out everywhere?`} disabled={p.sessions === 0}>Sign out everywhere</button></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="wh-section" id="midnight" aria-labelledby="midnight-title">
+          <h2 class="wh-h2" id="midnight-title">Midnight</h2>
+          <p class="wh-muted">The cron writes every ledger's dawn once a night; a visit to a ledger writes what is still due. Running it by hand is harmless: a current ledger has nothing to write.</p>
+          <div class="wh-midnight">
+            <div class="wh-run">
+              <h3 class="wh-h3">By hand</h3>
+              <p>Writes every dawn due before night {today} and sends the Town Cryer its dispatches. The same dawns the cron would write.</p>
+              <button type="button" class="cf-btn" data-act="run-midnight" data-body="{}">Run midnight now</button>
+            </div>
+            <div>
+              <h3 class="wh-h3">Runs</h3>
+              {data.runs.length ? (
+                <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Midnight runs">
+                  <table class="wh-table">
+                    <thead><tr><th scope="col">When</th><th scope="col">By</th><th scope="col" class="num">Night</th><th scope="col" class="num">Ledgers</th><th scope="col" class="num">Nights written</th><th scope="col" class="num">Dispatches</th><th scope="col" class="num">Took</th></tr></thead>
+                    <tbody>{data.runs.map((r) => <tr class="wh-row"><td>{when(r.ranAt)}</td><td class="dim">{r.source === 'cron' ? 'cron' : 'hand'}</td><td class="num">{r.night}</td><td class="num">{r.ledgers}</td><td class="num">{r.nights}</td><td class="num">{r.dispatches}</td><td class="num dim">{r.durationMs < 1000 ? `${r.durationMs} ms` : `${(r.durationMs / 1000).toFixed(1)} s`}</td></tr>)}</tbody>
+                  </table>
+                </div>
+              ) : <p class="wh-empty">Midnight has not run yet. The cron runs at 23:15 UTC; a ledger visit writes its own dawns meanwhile.</p>}
+            </div>
+          </div>
+        </section>
+      </>
+    )}
+  </main>
+  <div class="cf-toast" id="toast" hidden role="status"></div>
+</Base>
+
+<script>
+  import { createAuthClient } from 'better-auth/client';
+
+  document.body.classList.add('curfew-body');
+  const root = document.getElementById('main-content')!;
+  const base = root.dataset.base ?? '';
+  const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+  const FLASH = 'watch-house:flash';
+
+  function toast(text: string) {
+    const el = $('toast'); el.textContent = text; el.hidden = false;
+    clearTimeout((el as any)._t); (el as any)._t = setTimeout(() => (el.hidden = true), 4200);
+  }
+  // a message left for the page we reload into
+  try { const f = sessionStorage.getItem(FLASH); if (f) { sessionStorage.removeItem(FLASH); toast(f); } } catch {}
+
+  async function order(action: string, body: unknown): Promise<{ message?: string }> {
+    const url = new URL(`${base}/api/admin/${action}`, location.href);
+    const date = new URLSearchParams(location.search).get('date');
+    if (date) url.searchParams.set('date', date);
+    const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), credentials: 'same-origin' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error ?? 'The city did not answer. Try again.');
+    return data;
+  }
+  async function act(button: HTMLButtonElement) {
+    const { act, body, confirm: ask } = button.dataset;
+    if (!act) return;
+    if (ask && !confirm(ask)) return;
+    button.setAttribute('aria-busy', 'true'); button.disabled = true;
+    try {
+      const data = await order(act, JSON.parse(body ?? '{}'));
+      try { sessionStorage.setItem(FLASH, data.message ?? 'Done.'); } catch {}
+      location.reload();
+    } catch (e) {
+      button.removeAttribute('aria-busy'); button.disabled = false;
+      toast((e as Error).message);
+    }
+  }
+  root.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const actBtn = target.closest<HTMLButtonElement>('button[data-act]');
+    if (actBtn) { void act(actBtn); return; }
+    const inspect = target.closest<HTMLButtonElement>('button[data-inspect]');
+    if (inspect) {
+      const row = document.getElementById(`detail-${inspect.dataset.inspect}`);
+      if (!row) return;
+      const open = row.hidden;
+      row.hidden = !open;
+      inspect.setAttribute('aria-expanded', String(open));
+      inspect.textContent = open ? 'Close' : 'Inspect';
+    }
+  });
+
+  // the notice
+  const form = document.getElementById('notice-form') as HTMLFormElement | null;
+  if (form) {
+    const text = form.querySelector('textarea')!, count = $('notice-count');
+    const update = () => { count.textContent = `${text.value.trim().length} / 200`; count.classList.toggle('over', text.value.trim().length > 200); };
+    text.addEventListener('input', update); update();
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const value = text.value.trim();
+      if (!value) { toast('The notice needs words.'); text.focus(); return; }
+      const button = form.querySelector('button')!;
+      button.disabled = true; button.setAttribute('aria-busy', 'true');
+      try {
+        const data = await order('post-notice', { text: value });
+        try { sessionStorage.setItem(FLASH, data.message ?? 'Posted.'); } catch {}
+        location.reload();
+      } catch (err) { button.disabled = false; button.removeAttribute('aria-busy'); toast((err as Error).message); }
+    });
+  }
+
+  // which section is in view
+  const links = [...document.querySelectorAll<HTMLAnchorElement>('.wh-nav a')];
+  const sections = links.map((a) => document.querySelector<HTMLElement>(a.hash)).filter((s): s is HTMLElement => !!s);
+  if (sections.length && 'IntersectionObserver' in window) {
+    let current: string | null = null;
+    const mark = () => {
+      const offset = 120;
+      const active = sections.filter((s) => s.getBoundingClientRect().top <= offset).at(-1) ?? sections[0];
+      if (active.id === current) return;
+      current = active.id;
+      for (const a of links) { if (a.hash === `#${current}`) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); }
+    };
+    addEventListener('scroll', mark, { passive: true }); mark();
+  }
+
+  document.getElementById('signout')?.addEventListener('click', async () => {
+    const authClient = createAuthClient({ baseURL: location.origin, basePath: `${base}/api/auth` });
+    await authClient.signOut();
+    location.href = `${base}/curfew/`;
+  });
+</script>

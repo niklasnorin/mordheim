@@ -154,6 +154,9 @@ On a phone this is one column. From 1100px the night is laid out side by side: i
 - **Town Cryer:** reads the dispatch table on every request (cached at the edge for a few minutes).
 - **Navigation:** none. Curfew is reached by direct URL for now.
 
+### The Watch House
+`/admin/` is the game master's console: tonight at a glance, every ledger with its keeper and backlog, the players and their sessions, the Town Cryer's dispatches (pull one, or post a notice from the Watch), and midnight by hand with the history of runs. Admission by `ADMIN_EMAILS`.
+
 ### What the server does not do yet
 Warband rosters, standings and battle reports are still content in the repository. Rival glimpses at the Eve still go by ticket, though the server could now answer with the count. PvP and the mini-games are unchanged in scope.
 
