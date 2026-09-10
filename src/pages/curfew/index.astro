@@ -300,25 +300,29 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <div class="cf-moon"><h3 class="cf-h3"><span class="cf-week">This week</span>${esc(moon.name)}</h3><p class="cf-reading">${esc(moon.reading)}</p><p class="cf-note">This Moon favours <b>${esc(ERRAND_LABEL[moon.boost])}</b> and colours everything else.</p></div>`;
     const card = $('omen-card'), tiltList = $('omen-tilts');
     [...tiltList.children].forEach((li, i) => (li as HTMLElement).style.setProperty('--d', `${0.12 * i}s`));
-    const key = `curfew:flipped:${warband!.id}:${today}`;
+    const key = `curfew:revealed:${warband!.id}:${today}`;
     let seen = false; try { seen = sessionStorage.getItem(key) === '1'; } catch {}
     revealObserver?.disconnect();
     card.classList.remove('is-revealing');
-    if (seen || reduced) { card.classList.add('is-flipped'); tiltList.classList.add('is-shown'); return; }
-    // Face down until the card scrolls fully into view; then it turns, and the odds fade in after it.
+    const done = () => { card.classList.add('is-flipped'); card.classList.remove('is-revealing'); setTimeout(() => tiltList.classList.add('is-shown'), 150); try { sessionStorage.setItem(key, '1'); } catch {} };
+    if (seen || !('IntersectionObserver' in window)) { card.classList.add('is-flipped'); tiltList.classList.add('is-shown'); return; }
+    // Face down until the card scrolls into view; then it turns, and the odds fade in after it.
     card.classList.remove('is-flipped'); tiltList.classList.remove('is-shown');
+    // "In view" means as much of the card as this screen can show: a short phone screen never shows 90% of it.
+    const cardHeight = card.getBoundingClientRect().height || 500;
+    const threshold = Math.min(0.9, Math.max(0.35, (window.innerHeight - 96) / cardHeight));
     revealObserver = new IntersectionObserver((entries) => {
       if (!entries.some((e) => e.isIntersecting)) return;
       revealObserver?.disconnect();
+      if (reduced) { done(); return; } // a plain crossfade, from the stylesheet
       setTimeout(() => {
         card.classList.add('is-revealing');
-        card.querySelector('.cf-card-inner')!.addEventListener('animationend', () => {
-          card.classList.add('is-flipped'); card.classList.remove('is-revealing');
-          setTimeout(() => tiltList.classList.add('is-shown'), 150);
-          try { sessionStorage.setItem(key, '1'); } catch {}
-        }, { once: true });
+        const inner = card.querySelector('.cf-card-inner')!;
+        const finish = () => { clearTimeout(guard); done(); };
+        inner.addEventListener('animationend', finish, { once: true });
+        const guard = setTimeout(finish, 1900); // if the animation never reports back, still land face up
       }, 250);
-    }, { threshold: 0.9 });
+    }, { threshold });
     revealObserver.observe(card);
   }
   let revealObserver: IntersectionObserver | null = null;
