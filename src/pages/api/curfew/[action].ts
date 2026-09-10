@@ -9,6 +9,7 @@ import { ERRANDS } from '../../../curfew/engine';
 import { hasDatabase } from '../../../server/db/client';
 import { getViewer } from '../../../server/session';
 import { LedgerError, actions, claimWarband, releaseWarband, todayFor } from '../../../server/curfew/service';
+import { json, sameOrigin } from '../../../server/http';
 
 export const prerender = false;
 
@@ -27,19 +28,10 @@ const schemas = {
 } as const;
 type Action = keyof typeof schemas;
 
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
-
 export const POST: APIRoute = async ({ request, params }) => {
   if (!hasDatabase()) return json({ error: 'The ledgers are not open on this deployment.' }, 503);
   const url = new URL(request.url);
-  // same-origin only: the session cookie is SameSite, and this closes the door on the rest
-  const origin = request.headers.get('origin');
-  if (origin) {
-    const hosts = [url.host, request.headers.get('x-forwarded-host'), request.headers.get('host')].filter(Boolean);
-    let from = '';
-    try { from = new URL(origin).host; } catch {}
-    if (!from || !hosts.includes(from)) return json({ error: 'Not from here.' }, 403);
-  }
+  if (!sameOrigin(request)) return json({ error: 'Not from here.' }, 403);
 
   const action = params.action as Action;
   const schema = schemas[action];

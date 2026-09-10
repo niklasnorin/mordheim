@@ -14,7 +14,7 @@ export interface Dispatch {
   key: string;
   warbandId: string;
   night: number;
-  kind: 'headline' | 'happening';
+  kind: 'headline' | 'happening' | 'notice';
   headline: string;
   body?: string;
 }

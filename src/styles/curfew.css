@@ -357,6 +357,8 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-account { display: flex; align-items: center; gap: 1rem; padding: 0.6rem 0 0; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem; color: #6f665b; }
 .cf-account .cf-linkbtn { margin-left: 0; min-height: 2rem; font-size: 0.72rem; color: #6f665b; }
 .cf-account .cf-linkbtn:hover { color: var(--bone); }
+.cf-account-link { color: var(--candle-dim); text-decoration: none; }
+.cf-account-link:hover { color: var(--candle); }
 .cf-signin button .cf-sigil { border-color: var(--rule); color: var(--bone-dim); }
 .cf-pick button[disabled] { opacity: 0.5; cursor: not-allowed; }
 .cf-pick .cf-kept:empty { display: none; }

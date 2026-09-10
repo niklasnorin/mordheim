@@ -5,7 +5,7 @@ import { warbands } from '../../data/warbands';
 import campaign from '../../data/curfew/campaign.json';
 import { base } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
-import { DEV_LOGIN_PASSWORD, PROVIDER_LABEL, enabledProviders, env } from '../../server/env';
+import { DEV_LOGIN_PASSWORD, PROVIDER_LABEL, enabledProviders, env, isAdminEmail } from '../../server/env';
 import { getViewer } from '../../server/session';
 import { listClaims, loadOwnLedger, todayFor, type Claim, type LedgerView } from '../../server/curfew/service';
 
@@ -77,6 +77,7 @@ const boot = {
     {viewer && (
       <div class="cf-account" id="account">
         <span class="cf-account-name">Signed in as {viewer.name}</span>
+        {isAdminEmail(viewer.email) && <a class="cf-account-link" href={`${base}/admin/`}>The Watch House</a>}
         <button type="button" class="cf-linkbtn" id="signout">Sign out</button>
       </div>
     )}

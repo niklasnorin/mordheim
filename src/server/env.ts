@@ -38,6 +38,8 @@ export const env = {
   CURFEW_DEBUG: flag('CURFEW_DEBUG', DEV && !ON_VERCEL),
   /** A name-only sign-in for local development. Cannot be enabled on Vercel. */
   DEV_LOGIN: !ON_VERCEL && flag('CURFEW_DEV_LOGIN', DEV),
+  /** Game masters, by sign-in email, lower-cased. Empty means nobody, except under the local dev sign-in. */
+  ADMIN_EMAILS: (read('ADMIN_EMAILS') ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
   providers: {
     google: pair('GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'),
     discord: pair('DISCORD_CLIENT_ID', 'DISCORD_CLIENT_SECRET'),
@@ -56,6 +58,13 @@ export const PROVIDER_LABEL: Record<ProviderId, string> = { google: 'Google', di
 /** The providers with credentials configured, in the order the sign-in buttons appear. */
 export function enabledProviders(): ProviderId[] {
   return (Object.keys(env.providers) as ProviderId[]).filter((p) => env.providers[p]);
+}
+
+/** Whether this sign-in email may open the admin console. With the dev sign-in and no allowlist, everyone may: it is a laptop. */
+export function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  if (env.ADMIN_EMAILS.length) return env.ADMIN_EMAILS.includes(email.toLowerCase());
+  return env.DEV_LOGIN;
 }
 
 /** The password behind the dev sign-in. Not a secret: the sign-in itself only exists off Vercel. */

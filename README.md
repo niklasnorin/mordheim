@@ -35,6 +35,17 @@ Resolution happens twice over, and both ways agree: a nightly cron writes every 
 
 In `astro dev` (or with `CURFEW_DEBUG=true`, never in production) `?date=YYYY-MM-DD` is allowed on Curfew URLs and the dim **Debug** toggle in the Ledger's footer adds previous/next-night buttons and a date picker.
 
+## The Watch House — admin console
+
+`/admin/` is the game master's console, in Curfew's dark dress. It shows tonight at a glance (the Omen and Moon, who keeps which warband, who is behind on their dawns, the last midnight run, and a health check of database, secrets and sign-in), and lets the game master:
+
+- inspect any ledger (last night, the Hand, pending offers, the Eve, the raw record), burn one to start it afresh, or release a warband from its keeper;
+- moderate the Town Cryer: pull a dispatch, or post a notice from the Watch that prints in the broadsheet;
+- see every player with their sign-in provider, sessions and last visit, and sign one out everywhere;
+- run midnight by hand and read the history of runs.
+
+Admission is by `ADMIN_EMAILS`, a comma-separated list of sign-in emails. Locally, with the dev sign-in and no list, every player is admitted.
+
 ## Development
 
 Node 22 or newer (`.nvmrc` says which; `nvm use` picks it up). Then:
@@ -107,7 +118,7 @@ The site runs on Vercel's Hobby plan: the campaign pages are prerendered, and th
 
 1. **Import the repository** at vercel.com. Astro is detected; no build settings need changing. Pushes to `main` deploy to production and every pull request gets a preview URL.
 2. **Add a database.** In the project's *Storage* tab, add **Neon** from the Marketplace (free plan). It sets `DATABASE_URL` on the project. Pull it locally with `vercel env pull` and run `npm run db:migrate` once to create the tables; repeat after any new migration.
-3. **Set the secrets** under *Settings → Environment Variables*: `BETTER_AUTH_SECRET` (`openssl rand -base64 32`) and `CRON_SECRET` (another random string). `BETTER_AUTH_URL` can be left unset; the production domain is used.
+3. **Set the secrets** under *Settings → Environment Variables*: `BETTER_AUTH_SECRET` (`openssl rand -base64 32`), `CRON_SECRET` (another random string) and `ADMIN_EMAILS` (the game masters' sign-in emails). `BETTER_AUTH_URL` can be left unset; the production domain is used.
 4. **Register OAuth apps** with whichever providers the group uses and set their `*_CLIENT_ID` and `*_CLIENT_SECRET`. Only providers with both values set get a button. The redirect URI to register is `https://<your-domain>/api/auth/callback/<provider>`, for example `.../api/auth/callback/google`. Preview deployments have their own hostnames; to sign in on one, register its callback too, or test sign-in on production only.
 5. **The nightly cron** is declared in `vercel.json` and needs no further setup. Hobby plans run crons once a day within the hour of the schedule; it is set for 23:15 UTC so that it lands after midnight in Stockholm summer or winter. A visit to a ledger writes any dawn that is still due, so a late cron costs nothing but the Town Cryer's punctuality.
 

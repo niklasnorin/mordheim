@@ -8,7 +8,7 @@
  */
 import { and, desc, eq, gte, lte } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { cryerDispatches, curfewLedgers, user } from '../db/schema.ts';
+import { cryerDispatches, curfewLedgers, curfewRuns, user } from '../db/schema.ts';
 import { env } from '../env.ts';
 import { currentNight, type NightResult, type Order, type TokenOffer } from '../../curfew/engine.ts';
 import {
@@ -144,8 +144,11 @@ export const actions = {
 
 // ───────────────────────── midnight ─────────────────────────
 
-/** Write every ledger's due dawns. Run by the cron once a night; harmless to run again. */
-export async function reconcileAll(today: number): Promise<{ ledgers: number; nights: number; dispatches: number }> {
+export interface RunResult { ledgers: number; nights: number; dispatches: number; durationMs: number }
+
+/** Write every ledger's due dawns and record the run. By the cron once a night, or by hand from the console; harmless to run again. */
+export async function reconcileAll(today: number, source: 'cron' | 'admin' = 'cron'): Promise<RunResult> {
+  const started = Date.now();
   const rows = await db().select().from(curfewLedgers);
   let nights = 0, dispatches = 0;
   for (const row of rows) {
@@ -159,17 +162,23 @@ export async function reconcileAll(today: number): Promise<{ ledgers: number; ni
     if (out.length) await db().insert(cryerDispatches).values(out.map((d) => ({ key: d.key, warbandId: d.warbandId, night: d.night, kind: d.kind, headline: d.headline, body: d.body ?? null }))).onConflictDoNothing();
     nights += written.length; dispatches += out.length;
   }
-  return { ledgers: rows.length, nights, dispatches };
+  const durationMs = Date.now() - started;
+  await db().insert(curfewRuns).values({ source, night: today, ledgers: rows.length, nights, dispatches, durationMs });
+  return { ledgers: rows.length, nights, dispatches, durationMs };
 }
 
 // ───────────────────────── the Town Cryer ─────────────────────────
 
-export interface PrintedDispatch extends Dispatch { warbandName: string }
+export interface PrintedDispatch extends Dispatch { id: number; warbandName: string }
+
+/** Notices from the console carry this in place of a warband. */
+export const THE_WATCH = 'the-watch';
+export function dispatchSource(warbandId: string): string { return warbandId === THE_WATCH ? 'The Watch' : warbandById(warbandId)?.name ?? warbandId; }
 
 /** The freshest dispatches, newest night first, at most `limit`. Nothing from nights that have not happened. */
 export async function recentDispatches(today: number, limit = 8): Promise<PrintedDispatch[]> {
   const rows = await db().select().from(cryerDispatches)
     .where(and(gte(cryerDispatches.night, Math.max(1, today - 30)), lte(cryerDispatches.night, today)))
     .orderBy(desc(cryerDispatches.night), desc(cryerDispatches.id)).limit(limit);
-  return rows.map((r) => ({ key: r.key, warbandId: r.warbandId, night: r.night, kind: r.kind, headline: r.headline, body: r.body ?? undefined, warbandName: warbandById(r.warbandId)?.name ?? r.warbandId }));
+  return rows.map((r) => ({ id: r.id, key: r.key, warbandId: r.warbandId, night: r.night, kind: r.kind, headline: r.headline, body: r.body ?? undefined, warbandName: dispatchSource(r.warbandId) }));
 }
