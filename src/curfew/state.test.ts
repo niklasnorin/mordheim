@@ -1,7 +1,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { CAMPAIGN } from './engine.ts';
-import { freshState, giveOrders, loadState, reconcile, saveState, settleOffer, standingOrders, recoveringMembers, allHeadlines, normalizeOffers } from './state.ts';
+import { freshState, giveOrders, loadState, reconcile, saveState, settleOffer, standingOrders, recoveringMembers, allHeadlines, normalizeOffers, lastGivenOrders } from './state.ts';
 
 const store = new Map<string, string>();
 (globalThis as any).localStorage = {
@@ -20,12 +20,25 @@ const warband = {
 
 beforeEach(() => store.clear());
 
-test('a fresh state has no backlog and sensible standing orders', () => {
+test('a fresh state has no backlog, and standing orders default from the roster until a selection is made', () => {
   const s = freshState(warband, 10);
   assert.equal(s.lastResolved, 9);
-  assert.deepEqual(s.standing.members, ['agnar', 'skalle']);
-  assert.equal(s.standing.errands.skalle, 'pray');
+  assert.deepEqual(standingOrders(s, warband, []).map((o) => [o.memberId, o.errand]), [['agnar', 'trade'], ['skalle', 'pray']]);
   assert.equal(reconcile(s, warband, 10, []).length, 0);
+});
+
+test('the last selection becomes the standing orders, run at half yield on nights without a change', () => {
+  const s = freshState(warband, 10);
+  giveOrders(s, 10, [{ memberId: 'torgrim', errand: 'scavenge' }, { memberId: 'agnar', errand: 'carouse' }]);
+  assert.deepEqual(lastGivenOrders(s, 11)?.night, 10);
+  assert.equal(lastGivenOrders(s, 10), null, 'only earlier nights count');
+  const written = reconcile(s, warband, 13, []);
+  assert.equal(written.length, 3);
+  assert.ok(written[0].results.every((r) => !r.standing), 'night 10 was given in full');
+  for (const n of written.slice(1)) {
+    assert.deepEqual(n.results.map((r) => r.memberId).sort(), ['agnar', 'torgrim']);
+    assert.ok(n.results.every((r) => r.standing && r.favour <= 4));
+  }
 });
 
 test('orders given at dusk are resolved once the date turns, and only then', () => {
@@ -62,10 +75,12 @@ test('a long absence collapses into a single Return with favour primed to 20', (
 test('recovering members are skipped by standing orders until healed', () => {
   const s = freshState(warband, 10);
   assert.deepEqual(recoveringMembers(s, ['skalle']), ['skalle']);
-  assert.deepEqual(standingOrders(s, warband, ['skalle']).map((o) => o.memberId), ['agnar']);
+  assert.deepEqual(standingOrders(s, warband, ['skalle']).map((o) => o.memberId), ['agnar', 'torgrim'], 'defaults skip the recovering');
+  giveOrders(s, 10, [{ memberId: 'skalle', errand: 'pray' }, { memberId: 'agnar', errand: 'trade' }]);
+  assert.deepEqual(standingOrders(s, warband, ['skalle'], 11).map((o) => o.memberId), ['agnar'], 'a recovering member drops out of the standing orders');
   s.healed.push('skalle');
   assert.deepEqual(recoveringMembers(s, ['skalle']), []);
-  assert.equal(standingOrders(s, warband, recoveringMembers(s, ['skalle'])).length, 2);
+  assert.equal(standingOrders(s, warband, recoveringMembers(s, ['skalle']), 11).length, 2);
 });
 
 test('surplus tokens wait as offers and settle either way', () => {

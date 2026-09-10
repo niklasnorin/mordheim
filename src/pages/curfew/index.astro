@@ -24,7 +24,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <div class="cf-identity" id="identity" hidden>
       <h1 class="cf-identity-name" id="identity-name"></h1>
       <span class="cf-identity-meta" id="identity-meta"></span>
-      <button type="button" class="cf-linkbtn" id="change-warband">Change ledger</button>
+      <button type="button" class="cf-linkbtn" id="change-warband">Change</button>
     </div>
 
     <section class="cf-section cf-section-first" id="warband-section">
@@ -51,24 +51,23 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <section class="cf-section" id="tonight" aria-labelledby="tonight-title">
         <h2 class="cf-h2" id="tonight-title">Tonight</h2>
         <div class="cf-omen">
-          <div class="cf-card" id="omen-card">
-            <div class="cf-card-inner">
-              <img class="cf-back-img" src={`${base}/curfew/omens/back.png`} alt="" width="1050" height="1800" />
-              <img class="cf-face" id="omen-img" src={`${base}/curfew/omens/back.png`} alt="" width="1050" height="1800" />
+          <div class="cf-omen-card-col">
+            <div class="cf-card" id="omen-card">
+              <div class="cf-card-inner">
+                <img class="cf-back-img" src={`${base}/curfew/omens/back.png`} alt="" width="1050" height="1800" />
+                <img class="cf-face" id="omen-img" src={`${base}/curfew/omens/back.png`} alt="" width="1050" height="1800" />
+              </div>
             </div>
+            <ul class="cf-tilts" id="omen-tilts" aria-label="Tonight's odds"></ul>
           </div>
           <div class="cf-omen-text" id="omen-text"></div>
         </div>
 
         <div class="cf-watch" id="watch">
           <h3 class="cf-h3">Who goes out?</h3>
-          <p class="cf-muted">Send up to <span id="per-night">{campaign.membersPerNight}</span>. The dead and the wounded stay home. The dice decide at midnight; nothing you choose here can curse anyone.</p>
-          <div class="cf-orders-given" id="orders-given" hidden></div>
+          <p class="cf-muted">Up to <span id="per-night">{campaign.membersPerNight}</span> a night. The dead and the wounded stay home. Orders stand until you change them; on nights you do not look in, the same members go out at half yield.</p>
           <div class="cf-watch-list" id="watch-list"></div>
-          <div class="cf-watch-foot">
-            <span class="cf-small" id="watch-count"></span>
-            <button type="button" class="cf-btn" id="give-orders">Give orders</button>
-          </div>
+          <div class="cf-orders-given" id="orders-given"></div>
           <details class="cf-details cf-details-quiet">
             <summary>What each errand brings</summary>
             <div class="cf-inner cf-errand-help" id="errand-help"></div>
@@ -102,18 +101,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         <button type="button" class="cf-btn cf-btn-ghost cf-more" id="chron-more" hidden>Older nights</button>
       </section>
 
-      <section class="cf-section">
-        <details class="cf-details" id="standing">
-          <summary>Standing orders · what runs when you do not log in</summary>
-          <div class="cf-inner">
-            <p class="cf-note">On a night without orders, these members go out on their usual errand at half yield. No charms, no risk. The Chronicle still writes. Stay away longer than {campaign.returnAfterNights} nights and the city simply waits: one vignette on your return, Favour primed to 20, nothing to catch up on.</p>
-            <div class="cf-watch-list" id="standing-list"></div>
-          </div>
-        </details>
-      </section>
-
       <footer class="cf-foot">
-        <span>Nights turn at local midnight. This ledger lives on this device.</span>
+        <span>Nights turn at local midnight. Stay away longer than {campaign.returnAfterNights} nights and the city simply waits. This ledger lives on this device.</span>
         <span class="cf-foot-actions">
           <button type="button" class="cf-linkbtn" id="reset">Burn this ledger</button>
           <button type="button" class="cf-debug-toggle" id="debug-toggle" aria-pressed="false" title="Step through nights without waiting for midnight">Debug</button>
@@ -132,7 +121,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     CAMPAIGN, ERRANDS, ERRAND_LABEL, ERRAND_BLURB, TOKEN_TYPES, HAND_SIZE, availability, moonForNight, omenForNight, tiltFor, titleFor, nextTitle, tokenById, dateForNight,
     type Errand, type NightResult, type Order,
   } from '../../curfew/engine';
-  import { chooseWarband, chosenWarband, giveOrders, loadState, reconcile, recoveringMembers, resetState, saveState, settleOffer, todayNight, type WarbandState } from '../../curfew/state';
+  import { chooseWarband, chosenWarband, giveOrders, lastGivenOrders, loadState, reconcile, recoveringMembers, resetState, saveState, settleOffer, standingOrders, todayNight, type WarbandState } from '../../curfew/state';
   import { sealSvg } from '../../curfew/glyphs';
   import { carryDate, debugEnabled, renderDebugBar, setDebug } from '../../curfew/debug';
 
@@ -194,7 +183,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   // ── render ──
   function renderAll(fresh = false) {
     if (!warband || !state) return;
-    renderNightline(); renderDawn(fresh); renderOmen(); renderWatch(); renderHand(); renderRumours(); renderChronicle(); renderStanding();
+    renderNightline(); renderDawn(fresh); renderOmen(); renderWatch(); renderHand(); renderRumours(); renderChronicle();
   }
   function renderNightline() {
     const moon = moonForNight(today);
@@ -249,11 +238,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       ${footer}
     </div>`;
   }
-  function tokenHtml(id: string, tag: 'div' | 'button' = 'div', attrs = '', earnedNight?: number) {
+  function tokenHtml(id: string, tag: 'div' | 'button' = 'div', attrs = '') {
     const t = tokenById(id); const type = TOKEN_TYPES[t.type];
     const typeAttr = tag === 'button' ? ' type="button"' : '';
-    const since = earnedNight ? `<span class="cf-token-since">Found night ${earnedNight}</span>` : '';
-    return `<${tag}${typeAttr} class="cf-token" ${attrs}><span class="cf-cord" aria-hidden="true"></span><span class="cf-seal" style="--seal:${type.seal}">${sealSvg(t.type)}</span><span class="cf-type">${esc(type.name)}</span><span class="cf-token-name">${esc(t.name)}</span><span class="cf-effect">${esc(t.effect)}</span>${since}</${tag}>`;
+    return `<${tag}${typeAttr} class="cf-token" ${attrs}><span class="cf-cord" aria-hidden="true"></span><span class="cf-seal" style="--seal:${type.seal}">${sealSvg(t.type)}</span><span class="cf-type">${esc(type.name)}</span><span class="cf-token-name">${esc(t.name)}</span><span class="cf-effect">${esc(t.effect)}</span></${tag}>`;
   }
   $('dawn-report').addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
@@ -290,12 +278,11 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     const img = $<HTMLImageElement>('omen-img');
     img.src = `${base}${omen.image}`; img.alt = `${omen.title}. ${omen.reading}`;
     const tilts = ERRANDS.map((e) => ({ e, t: tiltFor(e, omen, moon) })).filter((x) => x.t !== 0);
+    $('omen-tilts').innerHTML = tilts.length
+      ? tilts.map(({ e, t }) => `<li class="cf-tilt ${t > 0 ? 'up' : 'down'}"><span>${esc(ERRAND_LABEL[e])}</span><span aria-label="${t > 0 ? 'favoured' : 'perilous'} ${Math.abs(t)}">${t > 0 ? '▲'.repeat(t) : '▼'.repeat(-t)}</span></li>`).join('')
+      : '<li class="cf-tilt flat">A flat night</li>';
     $('omen-text').innerHTML = `
-      <h3 class="cf-omen-title"><span class="cf-numeral">${esc(omen.numeral)}</span> ${esc(omen.title)}</h3>
-      <p class="cf-reading">“${esc(omen.reading)}”</p>
-      <p class="cf-muted">${esc(omen.notes)}</p>
-      <div class="cf-moon"><strong>${esc(moon.name)}</strong><span class="cf-italic">${esc(moon.reading)}</span>${moon.flatOmen ? '<div class="cf-note">The Omen’s tilt does not apply this Moon.</div>' : ''}</div>
-      <ul class="cf-tilts" aria-label="Tonight's odds">${tilts.length ? tilts.map(({ e, t }) => `<li class="cf-tilt ${t > 0 ? 'up' : 'down'}"><span>${esc(ERRAND_LABEL[e])}</span><span aria-label="${t > 0 ? 'favoured' : 'perilous'} ${Math.abs(t)}">${t > 0 ? '▲'.repeat(t) : '▼'.repeat(-t)}</span></li>`).join('') : '<li class="cf-tilt flat">A flat night</li>'}</ul>`;
+      <div class="cf-moon"><h3 class="cf-h3">${esc(moon.name)}</h3><p class="cf-reading">${esc(moon.reading)}</p><p class="cf-note">This Moon favours <b>${esc(ERRAND_LABEL[moon.boost])}</b> and colours everything else. The card above says the rest.</p></div>`;
     const card = $('omen-card');
     const key = `curfew:flipped:${warband!.id}:${today}`;
     let seen = false; try { seen = sessionStorage.getItem(key) === '1'; } catch {}
@@ -308,67 +295,79 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     const rec = recovering();
     const av = availability(w, rec);
     const given = s.orders[today] ?? [];
-    const errandOptions = (sel: Errand) => ERRANDS.map((e) => `<option value="${e}" ${e === sel ? 'selected' : ''}>${ERRAND_LABEL[e]}</option>`).join('');
+    const standing = given.length ? [] : standingOrders(s, w, rec, today);
+    const shown = given.length ? given : standing;
+    const options = (sel?: Errand) => `<option value="" ${sel ? '' : 'selected'}>Stays home</option>` + ERRANDS.map((e) => `<option value="${e}" ${e === sel ? 'selected' : ''}>${ERRAND_LABEL[e]}</option>`).join('');
     $('watch-list').innerHTML = w.members.map((m) => {
       const a = av.find((x) => x.memberId === m.id)!;
-      const order = given.find((o) => o.memberId === m.id);
+      const order = shown.find((o) => o.memberId === m.id);
       const ep = s.epithets[m.id] ? ` <span class="cf-epithet">${esc(m.name.split(' ')[0])} ${esc(s.epithets[m.id])}</span>` : '';
+      const who = `<span class="cf-who"><span class="cf-name">${esc(m.name)}</span>${ep}<span class="cf-role">${esc(m.role)}</span></span>`;
       if (!a.available) {
         const status = a.reason === 'dead'
-          ? '<span class="cf-status dead">Dead · stays home</span>'
-          : `<span class="cf-status-wrap"><span class="cf-status">Recovering · stays home</span><button type="button" class="cf-btn cf-btn-ghost cf-heal" data-heal="${esc(m.id)}">Back on their feet</button></span>`;
-        return `<div class="cf-member is-out"><span class="cf-check-space" aria-hidden="true"></span><span><span class="cf-name">${esc(m.name)}</span>${ep}<span class="cf-role">${esc(m.role)}</span></span>${status}</div>`;
+          ? '<span class="cf-status dead">Dead</span>'
+          : `<span class="cf-status-wrap"><span class="cf-status">Recovering</span><button type="button" class="cf-btn cf-btn-ghost cf-heal" data-heal="${esc(m.id)}">Back on their feet</button></span>`;
+        return `<div class="cf-member is-out">${who}${status}</div>`;
       }
-      return `<div class="cf-member" data-member="${esc(m.id)}">
-        <label class="cf-member-pick"><input type="checkbox" ${order ? 'checked' : ''} /><span><span class="cf-name">${esc(m.name)}</span>${ep}<span class="cf-role">${esc(m.role)}</span></span></label>
-        <select aria-label="Errand for ${esc(m.name)}">${errandOptions(order?.errand ?? s.standing.errands[m.id] ?? 'carouse')}</select>
-      </div>`;
+      return `<div class="cf-member ${order ? 'is-chosen' : ''}" data-member="${esc(m.id)}">${who}<select aria-label="Tonight, ${esc(m.name)}">${options(order?.errand)}</select></div>`;
     }).join('');
     $('errand-help').innerHTML = ERRANDS.map((e) => `<div><b>${ERRAND_LABEL[e]}</b>${esc(ERRAND_BLURB[e])}</div>`).join('');
-    const summary = $('orders-given');
-    if (given.length) {
-      summary.hidden = false;
-      summary.innerHTML = `<b>Orders given.</b> ${given.map((o) => `${esc(firstName(o.memberId))} will ${ERRAND_LABEL[o.errand].toLowerCase()}`).join('; ')}. The city answers at midnight. You can change your mind until then.`;
-    } else summary.hidden = true;
-    updateWatchCount();
-    const btn = $<HTMLButtonElement>('give-orders');
-    btn.textContent = given.length ? 'Change orders' : 'Give orders';
-    btn.disabled = today < 1;
-    if (today < 1) $('watch-count').textContent = `The first night is ${prettyDate(1)}.`;
+    renderOrdersLine();
   }
-  function checkedOrders(): Order[] {
+  function chosenOrders(): Order[] {
     return [...root.querySelectorAll<HTMLElement>('#watch-list .cf-member[data-member]')]
-      .filter((row) => row.querySelector<HTMLInputElement>('input')!.checked)
-      .map((row) => ({ memberId: row.dataset.member!, errand: row.querySelector<HTMLSelectElement>('select')!.value as Errand }));
+      .map((row) => ({ memberId: row.dataset.member!, errand: row.querySelector<HTMLSelectElement>('select')!.value as Errand | '' }))
+      .filter((o): o is Order => o.errand !== '');
   }
-  function updateWatchCount() {
-    if (today < 1) return;
-    const n = checkedOrders().length, max = CAMPAIGN.membersPerNight;
-    $('watch-count').textContent = `${n} of ${max} chosen`;
+  function describe(orders: Order[]) { return orders.map((o) => `${esc(firstName(o.memberId))} will ${ERRAND_LABEL[o.errand].toLowerCase()}`).join('; '); }
+  function renderOrdersLine() {
+    const s = state!, el = $('orders-given');
+    if (today < 1) { el.innerHTML = `<p>The first night is ${esc(prettyDate(1))}.</p>`; return; }
+    const given = s.orders[today];
+    if (given?.length) { el.innerHTML = `<p><b>Orders given.</b> ${describe(given)}. The city answers at midnight.</p>`; return; }
+    if (given && !given.length) { el.innerHTML = `<p><b>Nobody goes out.</b> The door stays barred tonight.</p>`; return; }
+    const standing = standingOrders(s, warband!, recovering(), today);
+    const last = lastGivenOrders(s, today);
+    if (!standing.length) { el.innerHTML = `<p>Nobody is fit to go out. Mark someone back on their feet.</p>`; return; }
+    el.innerHTML = `<p><b>Standing orders${last ? ` from night ${last.night}` : ''}.</b> ${describe(standing)}, at half yield, unless you change them. <button type="button" class="cf-linkbtn cf-inline" id="keep-standing">Send them in full tonight</button></p>`;
+  }
+  function limitSelects() {
+    const n = chosenOrders().length, max = CAMPAIGN.membersPerNight;
     for (const row of root.querySelectorAll<HTMLElement>('#watch-list .cf-member[data-member]')) {
-      const cb = row.querySelector<HTMLInputElement>('input')!;
-      cb.disabled = !cb.checked && n >= max;
-      row.classList.toggle('is-chosen', cb.checked);
+      const sel = row.querySelector<HTMLSelectElement>('select')!;
+      const out = sel.value !== '';
+      row.classList.toggle('is-chosen', out);
+      for (const opt of sel.options) if (opt.value) opt.disabled = !out && n >= max;
     }
   }
-  $('watch-list').addEventListener('change', updateWatchCount);
+  $('watch-list').addEventListener('change', (e) => {
+    if (!state || today < 1) return;
+    const sel = e.target as HTMLSelectElement;
+    const orders = chosenOrders();
+    if (orders.length > CAMPAIGN.membersPerNight) {
+      sel.value = ''; limitSelects();
+      toast(`Only ${CAMPAIGN.membersPerNight} go out a night. Send someone home first.`);
+      return;
+    }
+    giveOrders(state, today, orders); saveState(state);
+    limitSelects(); renderOrdersLine();
+    toast(orders.length ? `${describe(orders).replace(/&#39;/g, "'")}. The city answers at midnight.` : 'Nobody goes out. The door stays barred tonight.');
+  });
+  $('orders-given').addEventListener('click', (e) => {
+    if (!(e.target as HTMLElement).closest('#keep-standing') || !state) return;
+    giveOrders(state, today, standingOrders(state, warband!, recovering(), today).map((o) => ({ memberId: o.memberId, errand: o.errand })));
+    saveState(state); renderWatch(); toast('Orders given in full. The city answers at midnight.');
+  });
   $('watch-list').addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-heal]'); if (!b || !state) return;
     state.healed.push(b.dataset.heal!); saveState(state);
-    toast(`${memberName(b.dataset.heal!)} is back on their feet.`); renderWatch(); renderStanding();
-  });
-  $('give-orders').addEventListener('click', () => {
-    if (!state) return;
-    const orders = checkedOrders();
-    giveOrders(state, today, orders); saveState(state);
-    renderWatch();
-    toast(orders.length ? 'Orders given. The city answers at midnight.' : 'Nobody chosen. The door stays barred tonight.');
+    toast(`${memberName(b.dataset.heal!)} is back on their feet.`); renderWatch();
   });
 
   // 3. The Hand
   function renderHand() {
     const s = state!;
-    const slots = s.hand.slice().sort((a, b) => a.earnedNight - b.earnedNight).map((h) => tokenHtml(h.id, 'div', '', h.earnedNight));
+    const slots = s.hand.slice().sort((a, b) => a.earnedNight - b.earnedNight).map((h) => tokenHtml(h.id));
     while (slots.length < HAND_SIZE) slots.push('<div class="cf-token is-empty"><span class="cf-cord" aria-hidden="true"></span><span class="cf-seal cf-seal-empty" aria-hidden="true"></span><span class="cf-effect">an empty palm</span></div>');
     $('hand-list').innerHTML = slots.join('');
     const title = titleFor(s.renown), next = nextTitle(s.renown);
@@ -393,30 +392,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     $('chron-more').hidden = nights.length <= chronShown;
   }
   $('chron-more').addEventListener('click', () => { chronShown += 10; renderChronicle(); });
-
-  function renderStanding() {
-    const w = warband!, s = state!;
-    const rec = recovering();
-    $('standing-list').innerHTML = w.members.filter((m) => !m.dead).map((m) => {
-      const on = s.standing.members.includes(m.id);
-      const options = ERRANDS.map((e) => `<option value="${e}" ${e === (s.standing.errands[m.id] ?? 'carouse') ? 'selected' : ''}>${ERRAND_LABEL[e]}</option>`).join('');
-      return `<div class="cf-member ${rec.includes(m.id) ? 'is-out' : ''}" data-standing="${esc(m.id)}">
-        <label class="cf-member-pick"><input type="checkbox" ${on ? 'checked' : ''} /><span><span class="cf-name">${esc(m.name)}</span><span class="cf-role">${esc(m.role)}${rec.includes(m.id) ? ' · recovering' : ''}</span></span></label>
-        <select aria-label="Usual errand for ${esc(m.name)}">${options}</select>
-      </div>`;
-    }).join('');
-  }
-  $('standing-list').addEventListener('change', () => {
-    if (!state) return;
-    const rows = [...root.querySelectorAll<HTMLElement>('#standing-list [data-standing]')];
-    const members = rows.filter((r) => r.querySelector<HTMLInputElement>('input')!.checked).map((r) => r.dataset.standing!).slice(0, CAMPAIGN.membersPerNight);
-    for (const r of rows) {
-      const cb = r.querySelector<HTMLInputElement>('input')!;
-      cb.disabled = !cb.checked && members.length >= CAMPAIGN.membersPerNight;
-      state.standing.errands[r.dataset.standing!] = r.querySelector<HTMLSelectElement>('select')!.value as Errand;
-    }
-    state.standing.members = members; saveState(state);
-  });
 
   $('reset').addEventListener('click', () => {
     if (!warband) return;
