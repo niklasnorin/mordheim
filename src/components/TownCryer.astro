@@ -38,6 +38,11 @@ import Icon from './Icon.astro';
       )
     }
   </div>
+  <div class="cryer-curfew" id="cryer-curfew" hidden>
+    <h3>From the Night Watch</h3>
+    <p class="cryer-curfew-note">Dispatches from the <a href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/curfew/`}>Curfew</a> ledgers kept on this device.</p>
+    <ul id="cryer-curfew-list"></ul>
+  </div>
   <div class="cryer-footer">
     <em>
       Printed under license of the Grand Theogonist — All heresies reported herein are for the
@@ -171,6 +176,18 @@ import Icon from './Icon.astro';
     margin-bottom: 0.3rem;
   }
 
+  .cryer-curfew {
+    border-top: 1px solid #241b10;
+    padding: 1rem 0 1.2rem;
+  }
+  .cryer-curfew h3 { font-variant: small-caps; letter-spacing: 0.15em; font-size: 1rem; margin-bottom: 0.3rem; }
+  .cryer-curfew-note { font-size: var(--text-meta); font-style: italic; color: #4a3a22; margin-bottom: 0.6rem; }
+  .cryer-curfew-note a { color: #762e2a; }
+  .cryer-curfew ul { list-style: none; columns: 2; column-gap: 2.8rem; }
+  .cryer-curfew li { break-inside: avoid; padding: 0.4rem 0; border-bottom: 1px dotted rgba(36, 27, 16, 0.3); font-size: var(--text-body); line-height: 1.5; }
+  .cryer-curfew li small { display: block; font-size: var(--text-meta); font-style: italic; color: #4a3a22; }
+  @media (max-width: 700px) { .cryer-curfew ul { columns: 1; } }
+
   .cryer-footer {
     border-top: 4px double #241b10;
     text-align: center;
@@ -192,3 +209,22 @@ import Icon from './Icon.astro';
     .cryer-article p { text-align: left; }
   }
 </style>
+
+<script>
+  import { warbands } from '../data/warbands';
+  import { allHeadlines } from '../curfew/state';
+  const box = document.getElementById('cryer-curfew')!;
+  const list = document.getElementById('cryer-curfew-list')!;
+  const headlines = allHeadlines(warbands.map((w) => w.id)).slice(0, 4);
+  if (headlines.length) {
+    for (const h of headlines) {
+      const li = document.createElement('li');
+      li.textContent = h.text;
+      const small = document.createElement('small');
+      small.textContent = `${warbands.find((w) => w.id === h.warbandId)?.name ?? h.warbandId} · night ${h.night}`;
+      li.append(small);
+      list.append(li);
+    }
+    box.hidden = false;
+  }
+</script>

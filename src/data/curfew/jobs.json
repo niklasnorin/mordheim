@@ -1,0 +1,8 @@
+{
+  "description": "Multi-step tasks over 3–5 nights. They pause on absence and never fail from it. Phase 4 content.",
+  "jobs": [
+    { "id": "the-bell-under-the-ash", "title": "The Bell Under the Ash", "patron": "sister-agathe", "steps": [{ "errand": "scavenge" }, { "errand": "scavenge" }, { "errand": "spy" }, { "errand": "pray" }], "reward": "A Sight token and a named landmark.", "opening": "Somebody has heard a bell where no belfry stands." },
+    { "id": "henriks-debt", "title": "Henrik's Debt", "patron": "old-henrik", "steps": [{ "errand": "trade" }, { "errand": "carouse" }, { "errand": "train" }], "reward": "A Market token and Henrik as patron.", "opening": "Henrik owes a man who does not forgive. He would rather owe you." },
+    { "id": "the-vanished-watch", "title": "The Vanished Watch", "patron": "man-in-grey", "collaborative": true, "steps": [{ "errand": "spy" }, { "errand": "spy" }, { "errand": "spy" }], "reward": "Reveals next Moon's scenario early.", "opening": "Six men of the Watch went into the Poor Quarter. Their lantern came back." }
+  ]
+}

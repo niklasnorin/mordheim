@@ -1,0 +1,13 @@
+{
+  "id": "mordheim-2000",
+  "name": "CURFEW — Nights in the City of the Damned",
+  "start": "2026-09-10",
+  "membersPerNight": 2,
+  "nightsPerMoon": 7,
+  "seasonMoons": 12,
+  "favourSoftCap": 60,
+  "flourishCost": 25,
+  "returnAfterNights": 7,
+  "rumourWarmNights": 7,
+  "epithetAfterEntries": 5
+}

@@ -1,0 +1,8 @@
+{
+  "description": "Named NPCs who post contracts each Moon. Phase 4 content; listed here so the names are stable from the first night.",
+  "patrons": [
+    { "id": "sister-agathe", "name": "Sister Agathe of the Broken Bell", "wants": "Candles kept.", "errands": ["pray"], "voice": "Short sentences. Never asks twice.", "reward": "Renown, and a line in the finale." },
+    { "id": "old-henrik", "name": "Old Henrik the Fence", "wants": "Shards moved quietly.", "errands": ["trade", "scavenge"], "voice": "Weighs everything twice. The second time is the price.", "reward": "A Market token, and Henrik as patron." },
+    { "id": "man-in-grey", "name": "The Man in Grey", "wants": "Things overheard.", "errands": ["spy"], "voice": "Does not give his name. Knows yours.", "reward": "A Sight token, and the next Moon's scenario early." }
+  ]
+}
