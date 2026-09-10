@@ -1,0 +1,202 @@
+{
+  "districts": [
+    "the Merchant's Quarter", "the Poor Quarter", "Cutthroat's Haven", "the Rock", "Executioner's Square", "the Drowned Quarter",
+    "the ruins by Sigmar's Bridge", "the tanneries", "the Broken Bell", "the old Guild Hall", "the cattle market", "the Steinhardt tenements",
+    "the ash flats", "the granary quarter", "the cellars under the Pit", "the Ostermark Gate"
+  ],
+  "details": [
+    "It rained until the third hour.", "The wind carried ash from the west.", "Somewhere a dog barked and was stopped.", "The river smelled of iron.",
+    "A bell rang once and was not answered.", "The fog came up to the knee.", "Frost on the cobbles by dawn.", "Smoke from the tanneries hung low.",
+    "A cart went by with no driver.", "The candles burned green for a moment.", "Somebody was singing in the Poor Quarter. Badly.", "The gutters ran black.",
+    "A crow followed for three streets.", "The stars were out. All of them.", "Wet plaster. Old blood. Bread, from somewhere.", "The Watch did not pass all night."
+  ],
+  "closers": [
+    "Nobody spoke of the road south.", "The door stayed barred until first light.", "The fire was let go out.", "Nobody slept before the bell.",
+    "The count was taken twice.", "Somebody had left bread on the step.", "The night was not mentioned again.", "The ledger was written by candle."
+  ],
+  "templates": {
+    "scavenge": {
+      "boon": [
+        "{name} went sifting in {district}. {they} came back with green in both pockets and no words about how.",
+        "{first} turned over half a cellar in {district}. Under the last stone, a glow.",
+        "{name} found where the ash was warm in {district} and dug until it was not. Two slivers, and a hand that shakes a little.",
+        "{first} came back from {district} before dawn, walking carefully. The pockets were the reason."
+      ],
+      "fair": [
+        "{name} sifted the rubble in {district} until the light went. One sliver, small, and a bad feeling about the far wall.",
+        "{first} worked {district} alone. A sliver of green, a broken buckle, and a street that is not on the map.",
+        "{name} spent the night in {district} moving stones. One of them was worth moving.",
+        "{first} came back from {district} with a sliver and a story about a door that was not there the night before."
+      ],
+      "poor": [
+        "{name} sifted {district} until the third hour and found only bones. Not fresh ones. Not old enough.",
+        "{first} went into {district} and came back with dust, a cough, and nothing green.",
+        "{name} turned {district} over stone by stone. Somebody had been there first, and recently.",
+        "{first} lost the night to a collapsed stair in {district}. Nothing was found. Nothing was lost but the night."
+      ],
+      "standing": [
+        "{name} kept to the usual rubble in {district}. The usual haul.",
+        "{first} sifted {district} out of habit and came back out of habit."
+      ]
+    },
+    "carouse": {
+      "boon": [
+        "{name} drank in {district} with men who talk. By midnight the whole tavern knew {their} name and half of them owed {them}.",
+        "{first} held the table at {district} until the candles went. Nobody remembers who paid. Everybody remembers {first}.",
+        "{name} sang in {district}. It should not have worked. It worked.",
+        "{first} lost the first three games in {district} and won the rest. The city likes a comeback."
+      ],
+      "fair": [
+        "{name} drank in {district} and listened more than {they} spoke. The right people noticed.",
+        "{first} bought a round in {district} and was bought two back. A fair night. A fair head, tomorrow.",
+        "{name} sat with the boatmen in {district}. They know {their} face now.",
+        "{first} found the back room at {district}. Nothing was decided. Nothing was lost."
+      ],
+      "poor": [
+        "{name} drank in {district} and said too much to the wrong table. It will keep.",
+        "{first} came back from {district} without {their} purse and with a song nobody asked for.",
+        "{name} was asked to leave {district}. Politely, the first time.",
+        "{first} drank alone in {district}. The tavern was quiet. So was the city's regard."
+      ],
+      "standing": [
+        "{name} kept the usual stool in {district}. The usual company.",
+        "{first} drank in {district} and was neither remembered nor forgotten."
+      ]
+    },
+    "train": {
+      "boon": [
+        "{name} took a bout at the Pit under {omen}. The crowd wanted blood. {first} gave them a name instead.",
+        "{first} fought three rounds in {district} against a man twice {their} weight. The man is still explaining it.",
+        "{name} drilled in {district} until the moves stopped being moves. Someone was watching. Someone always is.",
+        "{first} won at the Pit without drawing steel. The wagers paid out. The story paid better."
+      ],
+      "fair": [
+        "{name} sparred in {district} until {their} arms were lead. Nothing learned that will not hurt tomorrow.",
+        "{first} took a bout at the Pit and took a bruise for it. The crowd was fair. The crowd is never fair.",
+        "{name} practised the same cut two hundred times in {district}. The last twenty were right.",
+        "{first} watched the Pit more than {they} fought it. That is also training."
+      ],
+      "poor": [
+        "{name} fought at the Pit and lost in the first minute. The crowd had barely sat down.",
+        "{first} drilled in {district} and pulled something. The something has opinions.",
+        "{name} was paired against a Sister at the Pit. It did not last. {first} does not want to discuss it.",
+        "{first} went to the Pit, found it closed, and stood in the rain for a while out of principle."
+      ],
+      "standing": [
+        "{name} drilled in {district} as {they} always do. The blade is no duller.",
+        "{first} kept the forms in {district}. Nobody watched."
+      ]
+    },
+    "spy": {
+      "boon": [
+        "{name} lay in a gutter in {district} for four hours and heard everything that mattered and two things that did not.",
+        "{first} followed a lantern through {district} to a door, and stayed until the door said something.",
+        "{name} paid a child in {district} a penny for a rumour and got three. Two were true.",
+        "{first} sat under the window in {district} where the wrong people meet. They met."
+      ],
+      "fair": [
+        "{name} listened at the well in {district}. Half a name and a direction.",
+        "{first} watched the {rival} camp from a roof in {district}. Somebody there was awake too.",
+        "{name} traded a rumour for a rumour in {district}. Fair exchange. Cold by next Moon.",
+        "{first} learned which alley in {district} the Watch does not walk. It may be useful. It may be why."
+      ],
+      "poor": [
+        "{name} was seen in {district}. Not caught. Seen.",
+        "{first} listened at a door in {district} for two hours. It was the wrong door.",
+        "{name} followed a man through {district} who turned out to be following {them}.",
+        "{first} spent the night in {district} learning that nobody talks under {omen}."
+      ],
+      "standing": [
+        "{name} kept an ear open in {district}. Nothing worth the ink.",
+        "{first} watched the usual corner in {district}. The usual nothing."
+      ]
+    },
+    "pray": {
+      "boon": [
+        "{name} kept the candles at {district} until dawn. Every one of them held. The Sisters noticed, which is rarer than a blessing.",
+        "{first} knelt in {district} until the stone hurt. Something answered. {first} will not say what.",
+        "{name} lit a candle in {district} for each of the dead. There was wax to spare. There is never wax to spare.",
+        "{first} prayed in {district} with the door open. Nothing came in. That was the answer."
+      ],
+      "fair": [
+        "{name} kept the candles at {district}. They held until the third hour.",
+        "{first} sat with Sister Agathe in {district} and said little. The saying was not the point.",
+        "{name} prayed in {district} and felt, for a moment, watched over. Or watched.",
+        "{first} lit one candle in {district} and it did not go out. Take that as given."
+      ],
+      "poor": [
+        "{name} kept the candles at {district}. The draught got them one by one.",
+        "{first} prayed in {district} and heard only the rain. It is possible the rain was the answer.",
+        "{name} went to {district} and found the shrine already full. Stood at the back. Left early.",
+        "{first} knelt in {district} until the doubt was louder than the prayer."
+      ],
+      "standing": [
+        "{name} lit the usual candle in {district}. It burned as usual.",
+        "{first} said the words in {district}. They were the right words."
+      ]
+    },
+    "trade": {
+      "boon": [
+        "{name} met Henrik in {district} and let the silence do the haggling. Henrik broke first.",
+        "{first} moved the green in {district} to a man who did not ask where it came from and paid as if he knew.",
+        "{name} sold a story in {district} along with the goods. The story fetched more.",
+        "{first} found a fence in {district} who owed the {rival} money. Interesting rates."
+      ],
+      "fair": [
+        "{name} traded in {district}. Fair weight, fair price, a chit for later.",
+        "{first} spent the night in {district} arguing over a sliver. The argument was the entertainment.",
+        "{name} came back from {district} with less green and more coin. About the same weight.",
+        "{first} watched Henrik weigh everything twice in {district}. The second time was the price."
+      ],
+      "poor": [
+        "{name} went to {district} to trade and found the fence gone and his shutters open. Nothing was taken but the night.",
+        "{first} was offered a price in {district} that was an insult and took the long way home thinking about it.",
+        "{name} traded in {district} and got a chit that turned out to be a receipt for something else.",
+        "{first} waited in {district} for a buyer who sent word at midnight that he was dead. Possibly true."
+      ],
+      "standing": [
+        "{name} kept the usual arrangement in {district}. The usual coin.",
+        "{first} traded in {district} the way {they} always do. Henrik nodded."
+      ]
+    }
+  },
+  "pairs": [
+    "{other} waited at the corner with a lantern and did not need to use it.",
+    "{other} came back first and did not say why.",
+    "The two of them did not speak on the way home.",
+    "{other} kept watch on the door. Nobody tried it."
+  ],
+  "rumours": [
+    "The Sisters are buying candles by the crate.", "Somebody is paying for names of the dead.", "The fence on the Rock has a new scale and an old debt.",
+    "There is a bell under the ash in the Poor Quarter. It rings at the third hour.", "The Watch has stopped walking the tannery lane. Nobody asked them to.",
+    "A ship with no name is anchored below the bridge.", "The {rival} lost something in the cellars. They want it back.", "The Pit has a new champion. Nobody has seen his face.",
+    "Old Henrik weighs shards twice now. The first weight is for you.", "A child in the Merchant's Quarter sells true rumours for a penny. Only one per customer.",
+    "The Man in Grey was seen at the Ostermark Gate. He was not going in.", "Someone has been carving names on the Broken Bell. Not the dead ones."
+  ],
+  "return": [
+    "The door had swollen in the frame. Somebody had left bread.",
+    "The candles had burned to the sockets. Someone had replaced them.",
+    "The city had not noticed. The city never does. The rain had kept the step clean."
+  ],
+  "cityProvides": [
+    "A bone charm on the step, wrapped in a rag. No note.",
+    "A child at the corner hands over a folded paper and runs.",
+    "Under the door at dusk: a fence's chit, unsigned."
+  ],
+  "quiet": [
+    "The door stayed barred. Nobody went out. The city went on without them.",
+    "A night in. The fire held. The count was taken."
+  ],
+  "epithets": {
+    "scavenge": ["the Sifter", "Who Digs at Night", "Green-Handed", "the Twice-Buried"],
+    "carouse": ["Who Holds the Table", "the Well-Remembered", "of the Long Round", "Who Sings Anyway"],
+    "train": ["Pit-Dog", "Who Does Not Fall", "the Two-Hundredth Cut", "of the First Minute"],
+    "spy": ["Who Listens", "the Unseen", "of the Wrong Door", "Who Was Not Caught"],
+    "pray": ["Who Held the Candles", "Who Knelt", "the Answered", "of the Third Hour"],
+    "trade": ["Henrik's Friend", "Fair Weight", "Who Broke the Silence", "the Unpriced"]
+  },
+  "titles": [
+    { "renown": 0, "title": "Newcomers" }, { "renown": 10, "title": "Sifters" }, { "renown": 25, "title": "Ratcatchers" }, { "renown": 50, "title": "Confessors" },
+    { "renown": 80, "title": "Pit-Dogs" }, { "renown": 120, "title": "The Named" }, { "renown": 200, "title": "Those Who Stayed" }
+  ]
+}

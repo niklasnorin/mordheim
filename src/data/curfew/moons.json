@@ -1,0 +1,13 @@
+{
+  "description": "One Moon is one week. The Moon shifts the whole city's odds under every Omen. Tilt values run from -2 to +2 per errand.",
+  "moons": [
+    { "id": "plague-moon", "name": "Plague Moon", "reading": "Chalk on the doors. The Sisters do not sleep.", "tilt": { "pray": 2, "carouse": -2 }, "notes": "Pray lucrative, Carouse dangerous." },
+    { "id": "hunters-moon", "name": "Hunter's Moon", "reading": "Wide hats in every doorway. Nobody drinks. Nobody trades.", "tilt": { "spy": -2, "pray": -1, "trade": -1, "train": 1 }, "notes": "Witch Hunters patrol. Spy and Pray risky, Trade quiet." },
+    { "id": "green-moon", "name": "Green Moon", "reading": "The comet flares. The rubble hums.", "tilt": { "scavenge": 2, "pray": -1 }, "notes": "Sifting rich and deadly." },
+    { "id": "festival-of-hanging", "name": "Festival of Hanging", "reading": "The gibbets are full and so are the taverns.", "tilt": { "carouse": 2, "train": 2 }, "renown": 2, "notes": "Carouse and the Pit boosted. Renown doubled." },
+    { "id": "silent-moon", "name": "Silent Moon", "reading": "No Omens. No bells. Whoever is listening has stopped.", "tilt": { "spy": 1 }, "flatOmen": true, "notes": "The Omen's tilt does not apply. Whispers cheap. A rest week." },
+    { "id": "market-moon", "name": "Market Moon", "reading": "Barges on the Stir. Every fence has two prices and both are good.", "tilt": { "trade": 2 }, "bazaarMultiplier": 2, "notes": "The Bazaar buys double." },
+    { "id": "ash-moon", "name": "Ash Moon", "reading": "The wind is from the west. The streets rewrite themselves.", "tilt": { "scavenge": 1, "spy": 1, "train": -1 }, "notes": "Map ink flows. Sifting finds streets, not stones." },
+    { "id": "debtors-moon", "name": "Debtor's Moon", "reading": "Old Henrik is calling in what he is owed. So is everyone else.", "tilt": { "trade": 1, "carouse": 1, "pray": -1 }, "notes": "Market tokens likelier. Debts likelier." }
+  ]
+}

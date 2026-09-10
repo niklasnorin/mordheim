@@ -14,6 +14,28 @@ A grimdark, interactive campaign chronicle for our Mordheim game group, built wi
 - 📜 **The Chronicle** — a timeline of campaign events
 - ⚔ **Battle reports** — open any Chronicle chapter or warrior story entry for scenario outcomes, paired warband prologues and epilogues, the battle narrative, campaign consequences, and every participant's accomplishments
 
+## CURFEW — nights between games
+
+[`/curfew/`](https://niklasnorin.github.io/mordheim/curfew/) is a between-games companion. Every real day is one night in Mordheim: at dusk a player gives up to two warband members an errand, at midnight the dice decide, at dawn a short vignette and a ledger line say what it cost. Favour, shards and Renown accrue; the Hand holds up to three charms (one per type) that are laid on the table at [`/curfew/eve/`](https://niklasnorin.github.io/mordheim/curfew/eve/) the night before a real game and spent whether used or not.
+
+There is no server. The site is static, so the Night runs in the browser: the Omen and Moon for a date are a seeded function of the campaign id, and a night's result is a deterministic function of the orders given, so two devices agree on the same dawn. Each player's ledger is kept in their own browser's `localStorage`. Missed nights run on standing orders at half yield; a gap longer than a week collapses into a single Return vignette and nothing is lost but opportunity.
+
+| File | Contents |
+| --- | --- |
+| `src/data/curfew/campaign.json` | Start date (night 1), members per night, soft caps, thresholds |
+| `src/data/curfew/omens.json` | The 30 Omens of the Tarot of the Damned, with readings and errand tilts |
+| `src/data/curfew/moons.json`, `tokens.json`, `patrons.json`, `jobs.json` | The weekly Moons, the 12 tokens and 4 curses, and Phase 4 content |
+| `src/data/curfew/vignettes.json`, `STYLE.md` | Dawn Report templates, rumours, epithets, Renown titles, and the writing style guide |
+| `src/curfew/engine.ts` | The pure Night engine: calendar, seeded draws, errand resolution, the Hand |
+| `src/curfew/state.ts` | Per-device ledger: orders, reconciliation of passed nights, absence rules, headlines |
+| `public/curfew/omens/` | Card images, regenerated with `scripts/curfew/` |
+
+```sh
+node --test src/curfew/*.test.ts    # engine and state tests
+```
+
+Append `?date=YYYY-MM-DD` to a Curfew URL to view the Ledger as of another night.
+
 ## Development
 
 ```sh
@@ -34,6 +56,7 @@ All content lives in plain TypeScript data files — no HTML editing required:
 | `src/data/chronicle.ts` | Campaign timeline entries |
 | `src/data/history/*.json` | Per-scenario battle reports and snapshots: narratives, outcomes, loot, campaign consequences, and every participant's stats, highlights and lowlights |
 | `src/data/history.ts` | Types and helpers (`getMemberStory`, `getWarbandStory`) to follow any warrior or warband across the campaign |
+| `src/data/curfew/omens.json` | The CURFEW Omen deck: 30 Tarot of the Damned cards with readings and errand tilts; images in `public/curfew/omens/`, regenerated with `scripts/curfew/` |
 
 ### Campaign history database
 
