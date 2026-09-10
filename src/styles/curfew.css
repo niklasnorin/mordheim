@@ -86,7 +86,7 @@ body.curfew-body #theme-toggle { display: none; }
 
 /* ── the Omen ── */
 .cf-omen { display: grid; gap: 1.5rem; grid-template-columns: 1fr; align-items: start; }
-@media (min-width: 720px) { .cf-omen { grid-template-columns: minmax(220px, 300px) 1fr; } }
+@media (min-width: 720px) { .cf-omen { grid-template-columns: minmax(240px, 340px) 1fr; gap: 2.5rem; } .cf-card { max-width: 340px; } .cf-tilts { max-width: 340px; } }
 .cf-omen-card-col { display: grid; gap: 0.9rem; justify-items: center; }
 .cf-card { position: relative; perspective: 1400px; width: 100%; max-width: 300px; margin: 0 auto; }
 .cf-card-inner { position: relative; width: 100%; aspect-ratio: 7 / 12; transform-style: preserve-3d; }
@@ -130,6 +130,8 @@ body.curfew-body #theme-toggle { display: none; }
 
 /* ── dawn report ── */
 .cf-dawn { max-width: 720px; }
+.cf-dawn-side:empty { display: none; }
+.cf-dawn-nothing { font-style: italic; color: var(--bone-dim); margin: 1rem 0 0; padding-top: 0.8rem; border-top: 1px dashed var(--rule); }
 .cf-dawn-head { font-family: var(--title); font-weight: 700; font-size: 1.5rem; color: var(--bone); margin-bottom: 0.8rem; }
 .cf-dawn p { font-size: 1.15rem; line-height: 1.7; margin-bottom: 0.7rem; }
 .cf-ink { opacity: 0; animation: cf-ink 0.9s ease forwards; }
@@ -161,7 +163,7 @@ body.curfew-body #theme-toggle { display: none; }
 
 /* ── the Watch ── */
 .cf-watch-list { display: grid; gap: 0.35rem; }
-.cf-member { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem; align-items: center; min-height: 2.75rem; padding: 0.3rem 0.5rem 0.3rem 0.9rem; border: 1px solid var(--rule); background: #14120f; transition: border-color 0.2s; }
+.cf-member { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem; align-items: center; min-height: 3.75rem; padding: 0.4rem 0.5rem 0.4rem 0.9rem; border: 1px solid var(--rule); background: #14120f; transition: border-color 0.2s; }
 .cf-member.is-out { opacity: 0.55; }
 .cf-member.is-chosen { border-color: var(--candle-dim); background: #17140f; }
 .cf-member .cf-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.6rem; }
@@ -171,7 +173,7 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-member select:disabled { opacity: 0.45; cursor: not-allowed; }
 .cf-member .cf-epithet { color: var(--candle); font-style: italic; }
 .cf-member select { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.8rem; background: var(--ash-deep); color: var(--candle); border: 1px solid var(--rule); padding: 0.35rem 0.5rem; min-height: 2.5rem; min-width: 8.5rem; }
-.cf-member .cf-pick { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem; }
+.cf-member .cf-choice { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem; }
 .cf-edge { display: inline-flex; align-items: baseline; gap: 0.3rem; font-family: var(--label); font-size: 0.72rem; letter-spacing: 0.08em; color: var(--bone-dim); opacity: 0.7; white-space: nowrap; cursor: help; }
 .cf-edge:empty { display: none; }
 .cf-edge.is-on { color: var(--candle); opacity: 1; }
@@ -188,7 +190,7 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-watch-foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
 .cf-errand-help { display: grid; gap: 0.3rem 1.2rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 1rem; font-size: 0.9rem; color: var(--bone-dim); }
 .cf-errand-help b { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; color: var(--bone); font-weight: 600; margin-right: 0.3rem; }
-@media (max-width: 480px) { .cf-member .cf-who { flex-direction: column; gap: 0; } .cf-member select { min-width: 7.5rem; } .cf-member.is-out { grid-template-columns: 1fr; } .cf-member.is-out .cf-status-wrap { justify-content: flex-start; } }
+@media (max-width: 480px) { .cf-member .cf-who { flex-direction: column; gap: 0; } .cf-member select { min-width: 7.5rem; } .cf-member .cf-status-wrap { flex-direction: column; align-items: flex-end; gap: 0.3rem; } }
 
 /* ── the Hand & meters ── */
 .cf-hand-grid { display: grid; gap: 1.5rem; grid-template-columns: 1fr; align-items: start; }
@@ -310,3 +312,43 @@ body.curfew-body #theme-toggle { display: none; }
   .cf-bar span { transition: none; }
   .cf-member { transition: none; }
 }
+
+/* ── wide screens: the night laid out side by side ── */
+@media (min-width: 1100px) {
+  .cf-wrap { max-width: 1180px; }
+  /* Last night: the prose keeps its measure; the ledger, what came home and any decision stand beside it */
+  .cf-dawn { max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) 21rem; column-gap: 2.6rem; padding: 2rem 2.2rem 1.8rem; }
+  .cf-dawn-main { max-width: 68ch; }
+  .cf-dawn-side { border-left: 1px solid var(--rule); padding-left: 2.6rem; }
+  .cf-dawn-side .cf-ledger { margin-top: 0.35rem; padding-top: 0; border-top: 0; }
+  .cf-dawn-side .cf-ledger strong { display: block; margin-top: 0.3rem; font-size: 1.05rem; }
+  .cf-dawn-side .cf-sep { display: none; }
+  .cf-dawn-side .cf-dawn-nothing { margin-top: 0.5rem; padding-top: 0; border-top: 0; }
+  /* charms in the side column lie on their side: seal left, words right, one to a row */
+  .cf-dawn-side .cf-hand, .cf-dawn-side .cf-hand-mini { display: grid; grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); grid-auto-columns: auto; gap: 0.5rem; width: 100%; max-width: none; padding: 0.5rem; }
+  .cf-dawn-side .cf-token { display: grid; grid-template-columns: 2.8rem minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: 0.9rem; align-items: center; text-align: left; min-height: 0; padding: 0.75rem 0.9rem 0.75rem 0.75rem; }
+  .cf-dawn-side .cf-token .cf-cord { display: none; }
+  .cf-dawn-side .cf-token .cf-seal { grid-row: 1 / 4; width: 2.8rem; height: 2.8rem; margin: 0; }
+  .cf-dawn-side .cf-token .cf-type { margin: 0; }
+  .cf-dawn-side .cf-token .cf-token-name { font-size: 1.1rem; line-height: 1.2; margin: 0.1rem 0; }
+  .cf-dawn-side .cf-token .cf-effect { margin: 0; }
+  /* a keep-or-let-go decision takes the full width beneath, so both charms sit side by side */
+  .cf-dawn-foot { grid-column: 1 / -1; }
+  .cf-dawn-foot .cf-offer { margin-top: 1.6rem; padding: 1.2rem 1.4rem; }
+  .cf-dawn-foot .cf-offer > p { max-width: 68ch; }
+  /* Tonight: the card holds the left, large; the Moon and the Watch fill the right */
+  #tonight { display: grid; grid-template-columns: minmax(360px, 460px) minmax(0, 1fr); grid-template-areas: 'title title' 'card moon' 'card watch'; column-gap: 3.5rem; align-items: start; }
+  #tonight > .cf-h2 { grid-area: title; }
+  .cf-omen { display: contents; }
+  .cf-omen-card-col { grid-area: card; gap: 1.2rem; }
+  .cf-omen-text { grid-area: moon; }
+  .cf-moon { padding-top: 0.2rem; }
+  .cf-watch { grid-area: watch; margin-top: 2rem; }
+  .cf-card { max-width: 460px; }
+  .cf-card img { box-shadow: 0 36px 64px -18px #000e; border-radius: 12px; }
+  .cf-card::after { inset: -14%; background: radial-gradient(ellipse, #e0a34a2c, transparent 62%); }
+  .cf-tilts { max-width: 460px; gap: 0.5rem; }
+  .cf-tilt { font-size: 0.82rem; padding: 0.3rem 0.7rem; }
+}
+/* a tall enough screen keeps the card in view while the orders are given below it */
+@media (min-width: 1100px) and (min-height: 960px) { .cf-omen-card-col { position: sticky; top: 1.5rem; } }

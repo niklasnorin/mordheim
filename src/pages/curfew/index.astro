@@ -194,14 +194,18 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   }
 
   // 1. Last night
-  function nightHtml(n: NightResult, ink: boolean, headingTag: 'h3' | 'h4' = 'h3') {
+  function nightParts(n: NightResult, ink: boolean, headingTag: 'h3' | 'h4' = 'h3') {
     const lines: string[] = [];
     lines.push(...n.results.map((r) => r.prose));
     lines.push(n.detail);
     if (n.closer) lines.push(n.closer);
     const paras = lines.map((l, i) => `<p class="${ink ? 'cf-ink' : ''}" style="animation-delay:${0.15 + i * 0.45}s">${esc(l)}</p>`).join('');
-    const ledger = n.ledger.length ? `<div class="cf-ledger">Ledger: ${n.ledger.map((l) => `<strong>${esc(l)}</strong>`).join(' · ')}</div>` : '';
-    return `<${headingTag} class="cf-dawn-head">${esc(n.header)}</${headingTag}>${paras}${ledger}`;
+    const ledger = n.ledger.length ? `<div class="cf-ledger">Ledger: ${n.ledger.map((l) => `<strong>${esc(l)}</strong>`).join('<span class="cf-sep"> · </span>')}</div>` : '';
+    return { head: `<${headingTag} class="cf-dawn-head">${esc(n.header)}</${headingTag}>`, paras, ledger };
+  }
+  function nightHtml(n: NightResult, ink: boolean, headingTag: 'h3' | 'h4' = 'h3') {
+    const part = nightParts(n, ink, headingTag);
+    return part.head + part.paras + part.ledger;
   }
   function renderDawn(fresh: boolean) {
     const el = $('dawn-report');
@@ -210,10 +214,11 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       el.innerHTML = `<h3 class="cf-dawn-head">No dawn yet.</h3><p>Your first night is below. Give the orders; the city answers at midnight, and tomorrow the report is written here.</p>`;
       return;
     }
-    let html = nightHtml(last, fresh && !reduced);
-    html += gainsHtml(last);
-    for (const offer of state!.offers) html += offerHtml(offer, last);
-    el.innerHTML = html;
+    // The prose leads; the ledger line, what came home, and any decision follow. On a wide screen they sit beside it.
+    const part = nightParts(last, fresh && !reduced);
+    const side = part.ledger + gainsHtml(last) || '<p class="cf-dawn-nothing">Nothing to enter in the ledger.</p>';
+    const decisions = state!.offers.map((offer) => offerHtml(offer, last)).join('');
+    el.innerHTML = `<div class="cf-dawn-main">${part.head}${part.paras}</div><div class="cf-dawn-side">${side}</div>${decisions ? `<div class="cf-dawn-foot">${decisions}</div>` : ''}`;
   }
   /** What the night brought home, beyond the ledger line: charms, rumours, and names earned. */
   function gainsHtml(last: NightResult) {
@@ -349,7 +354,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           : `<span class="cf-status-wrap"><span class="cf-status">Recovering</span><button type="button" class="cf-btn cf-btn-ghost cf-heal" data-heal="${esc(m.id)}">Back on their feet</button></span>`;
         return `<div class="cf-member is-out">${who}${status}</div>`;
       }
-      return `<div class="cf-member ${order ? 'is-chosen' : ''}" data-member="${esc(m.id)}">${who}<span class="cf-pick">${edgeChip(m, order?.errand)}<select aria-label="Tonight, ${esc(m.name)}">${options(m, order?.errand)}</select></span></div>`;
+      return `<div class="cf-member ${order ? 'is-chosen' : ''}" data-member="${esc(m.id)}">${who}<span class="cf-choice">${edgeChip(m, order?.errand)}<select aria-label="Tonight, ${esc(m.name)}">${options(m, order?.errand)}</select></span></div>`;
     }).join('');
     $('errand-help').innerHTML = ERRANDS.map((e) => `<div><b>${ERRAND_LABEL[e]}</b>${esc(ERRAND_BLURB[e])} <span class="cf-leans">Leans on ${ERRAND_STATS[e].join(' and ')}.</span></div>`).join('')
       + `<p class="cf-edge-note">A warrior who is the warband's best hand for an errand, by those characteristics, gets an edge: <span class="cf-edge is-on">▲</span> a point on the odds, <span class="cf-edge is-on">▲▲</span> two when they also stand well above the band's usual. It is measured within your own warband, so no band is favoured over another.</p>`;

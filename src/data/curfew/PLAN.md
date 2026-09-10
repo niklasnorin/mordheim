@@ -128,6 +128,8 @@ Palette, type, and motion are as first planned and now binding (recorded in `PRO
 1. Identity line (the picker folds away once a warband is chosen).
 2. **Last night.** The report and any keep-or-let-go decision.
 3. **Tonight.** The Omen and Moon, then who goes out, with a summary once orders are given.
+
+On a phone this is one column. From 1100px the night is laid out side by side: in Last night the prose keeps its measure on the left while the ledger line and what came home stand in a rail on the right, with any keep-or-let-go decision across the full width beneath; in Tonight the Omen card holds the left at up to 460px, staying in view on tall screens, while the Moon and the Watch fill the right. The reading order is unchanged.
 4. **The Hand** and meters, with the link to the Eve.
 5. **Rumours**, then **the Chronicle** from the night before last.
 6. Standing orders, folded away. Footer with "Burn this ledger".
