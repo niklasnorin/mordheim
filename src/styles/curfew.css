@@ -24,6 +24,8 @@
   line-height: 1.6;
 }
 body.curfew-body { background: #0e0d0c; }
+/* `hidden` must win over every display rule below, or a hidden field, strip or line shows as an empty box */
+.curfew [hidden], .cf-toast[hidden] { display: none !important; }
 body.curfew-body #theme-toggle { display: none; }
 .curfew ::selection { background: #e0a34a55; color: #fff4da; }
 .curfew :focus-visible { outline: 2px solid #e0a34a; outline-offset: 3px; }

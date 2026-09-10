@@ -9,6 +9,7 @@
 .wh ::-webkit-scrollbar-thumb { background: #3a3530; border-radius: 4px; }
 .wh ::-webkit-scrollbar-track { background: #100e0c; }
 .wh { scrollbar-color: #3a3530 #100e0c; }
+.wh [hidden] { display: none !important; }
 
 /* ── top bar & nav ── */
 .wh-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; padding: 1rem 0; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
