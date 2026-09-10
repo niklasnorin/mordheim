@@ -210,8 +210,23 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       return;
     }
     let html = nightHtml(last, fresh && !reduced);
+    html += gainsHtml(last);
     for (const offer of state!.offers) html += offerHtml(offer, last);
     el.innerHTML = html;
+  }
+  /** What the night brought home, beyond the ledger line: charms, rumours, and names earned. */
+  function gainsHtml(last: NightResult) {
+    const s = state!;
+    const pending = new Set(s.offers.map((o) => o.incoming));
+    const charms = last.results.filter((r) => r.token && !pending.has(r.token.id));
+    const rumours = last.results.filter((r) => r.rumour);
+    const names = s.headlines.filter((h) => h.night === last.night);
+    if (!charms.length && !rumours.length && !names.length) return '';
+    let html = '<div class="cf-gains"><h4 class="cf-gains-title">Brought home</h4>';
+    if (charms.length) html += `<div class="cf-hand cf-hand-mini">${charms.map((r) => tokenHtml(r.token!.id, 'div', `title="Found by ${esc(memberName(r.memberId))}"`)).join('')}</div>`;
+    for (const r of rumours) html += `<p class="cf-gain-rumour">“${esc(r.rumour!)}”<small>${esc(firstName(r.memberId))} heard it. Warm for ${CAMPAIGN.rumourWarmNights} nights.</small></p>`;
+    for (const h of names) html += `<p class="cf-gain-name">${esc(h.text)}</p>`;
+    return html + '</div>';
   }
   // Which charm the player has marked to keep, per offer, before confirming. Never saved: a reload clears it.
   const offerPicks = new Map<string, 'incoming' | 'held'>();

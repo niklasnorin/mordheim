@@ -136,6 +136,16 @@ body.curfew-body #theme-toggle { display: none; }
 @keyframes cf-ink { from { opacity: 0; filter: blur(2px); } to { opacity: 1; filter: blur(0); } }
 .cf-ledger { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px dashed var(--rule); font-family: var(--label); letter-spacing: 0.04em; font-size: 0.95rem; color: var(--bone-dim); font-variant-numeric: tabular-nums; }
 .cf-ledger strong { color: var(--candle); font-weight: 600; }
+.cf-gains { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+.cf-gains-title { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.8rem; font-weight: 600; color: var(--candle); margin-bottom: 0.7rem; }
+.cf-hand.cf-hand-mini { grid-template-columns: repeat(auto-fill, minmax(9rem, 11rem)); max-width: 100%; padding: 0.5rem; }
+.cf-hand-mini .cf-token { min-height: 9rem; padding: 1.2rem 0.6rem 0.8rem; }
+.cf-hand-mini .cf-seal { width: 2.8rem; height: 2.8rem; margin-bottom: 0.6rem; }
+.cf-hand-mini .cf-token-name { font-size: 1.15rem; }
+.cf-gain-rumour { margin-top: 0.8rem; font-style: italic; font-size: 1.05rem; color: var(--bone); }
+.cf-gain-rumour small { display: block; margin-top: 0.15rem; font-style: normal; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.7rem; color: var(--bone-dim); }
+.cf-gain-name { margin-top: 0.8rem; color: var(--bone); }
+.cf-gain-name::before { content: '✦ '; color: var(--candle); }
 .cf-offer { margin-top: 1.2rem; padding: 1rem; border: 1px solid var(--candle-dim); background: #14120f; }
 .cf-offer-title { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.8rem; font-weight: 600; color: var(--candle); margin-bottom: 0.4rem; }
 .cf-offer .cf-hand { margin-top: 0.8rem; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 30rem; }
