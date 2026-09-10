@@ -1,15 +1,15 @@
 /**
  * Better Auth with email and password. No emails are ever sent: the address is only the name a player
- * signs in with, there is no verification and no reset link. Sessions live in Postgres with a short signed
- * cookie cache so an ordinary page view does not hit the database. When CURFEW_INVITE_CODE is set, signing
- * up needs the invite word; signing in never does.
+ * signs in with, there is no verification and no reset link; a recovery phrase stands in for one (see
+ * account/service.ts). Sessions live in Postgres. When CURFEW_INVITE_CODE is set, signing up needs the
+ * invite word; signing in never does.
  */
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
-import { db } from './db/client';
-import { authSchema } from './db/schema';
-import { env } from './env';
+import { db } from './db/client.ts';
+import { authSchema } from './db/schema.ts';
+import { env } from './env.ts';
 
 function createAuth() {
   return betterAuth({
@@ -26,11 +26,8 @@ function createAuth() {
         if (given.toLowerCase() !== env.INVITE_CODE.trim().toLowerCase()) throw new APIError('FORBIDDEN', { message: 'That is not the word at the gate.' });
       }),
     },
-    session: {
-      expiresIn: 60 * 60 * 24 * 30,
-      updateAge: 60 * 60 * 24,
-      cookieCache: { enabled: true, maxAge: 5 * 60 },
-    },
+    // No cookie cache: a reset or a "sign out everywhere" must hold at once, so every request asks the database.
+    session: { expiresIn: 60 * 60 * 24 * 30, updateAge: 60 * 60 * 24 },
     trustedOrigins: [env.BASE_URL, ...(env.VERCEL_URL ? [env.VERCEL_URL] : [])],
     advanced: { useSecureCookies: env.BASE_URL.startsWith('https://') },
   });

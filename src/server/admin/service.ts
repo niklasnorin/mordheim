@@ -4,7 +4,7 @@
  */
 import { desc, eq, gt, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { cryerDispatches, curfewLedgers, curfewRuns, session, user } from '../db/schema.ts';
+import { cryerDispatches, curfewLedgers, curfewRecovery, curfewRuns, session, user } from '../db/schema.ts';
 import { env } from '../env.ts';
 import { moonForNight, omenForNight, titleFor, dateForNight, type Omen, type Moon } from '../../curfew/engine.ts';
 import { coerceState, freshState, type WarbandState } from '../../curfew/ledger.ts';
@@ -28,6 +28,8 @@ export interface PlayerRow {
   id: string; name: string; email: string; image: string | null; createdAt: Date;
   sessions: number; lastSeen: Date | null; warband?: { id: string; name: string };
   admin: boolean;
+  /** Whether they hold a recovery phrase for a forgotten password. */
+  recovery: boolean;
 }
 
 export interface Overview {
@@ -91,10 +93,11 @@ function health(lastRun?: typeof curfewRuns.$inferSelect): HealthItem[] {
 
 export async function listPlayers(): Promise<PlayerRow[]> {
   const d = db();
-  const [users, sessions, claims] = await Promise.all([
+  const [users, sessions, claims, recoveries] = await Promise.all([
     d.select().from(user).orderBy(user.createdAt),
     d.select({ userId: session.userId, updatedAt: session.updatedAt, expiresAt: session.expiresAt }).from(session),
     d.select({ warbandId: curfewLedgers.warbandId, ownerId: curfewLedgers.ownerId }).from(curfewLedgers),
+    d.select({ userId: curfewRecovery.userId }).from(curfewRecovery),
   ]);
   const now = Date.now();
   return users.map((u) => {
@@ -107,6 +110,7 @@ export async function listPlayers(): Promise<PlayerRow[]> {
       lastSeen: mine.length ? new Date(Math.max(...mine.map((s) => s.updatedAt.getTime()))) : null,
       warband: warband ? { id: warband.id, name: warband.name } : undefined,
       admin: env.ADMIN_EMAILS.includes(u.email.toLowerCase()),
+      recovery: recoveries.some((r) => r.userId === u.id),
     };
   });
 }

@@ -1,6 +1,6 @@
 /** Who is asking. Null when nobody is signed in, or when there is no database to ask. */
-import { auth } from './auth';
-import { hasDatabase } from './db/client';
+import { auth } from './auth.ts';
+import { hasDatabase } from './db/client.ts';
 
 export interface Viewer { id: string; name: string; email: string; image?: string | null }
 

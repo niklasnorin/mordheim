@@ -110,6 +110,9 @@
 .wh-detail summary:hover { color: var(--bone); }
 .wh-detail pre { margin-top: 0.6rem; padding: 0.8rem 1rem; background: #080706; border: 1px solid var(--rule); font: 0.78rem/1.5 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; color: var(--bone-dim); overflow: auto; max-height: 24rem; }
 
+.wh-phrase { display: block; padding: 0.35rem 0.5rem; background: #0a0908; border: 1px solid var(--candle-dim); color: var(--candle); font: 0.85rem/1.4 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; letter-spacing: 0.03em; user-select: all; white-space: nowrap; }
+.wh-phrase-note { display: block; margin-top: 0.25rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.66rem; color: var(--bone-dim); }
+
 /* ── the Town Cryer ── */
 .wh-cryer { display: grid; gap: 1.5rem 2.5rem; grid-template-columns: 1fr; align-items: start; }
 @media (min-width: 900px) { .wh-cryer { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); } }

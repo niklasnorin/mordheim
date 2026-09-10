@@ -199,11 +199,11 @@ const lastRun = data?.runs[0];
 
         <section class="wh-section" id="players" aria-labelledby="players-title">
           <h2 class="wh-h2" id="players-title">Players</h2>
-          <p class="wh-muted">Everyone who has signed in. Signing a player out everywhere ends their sessions; they sign in again as before.</p>
+          <p class="wh-muted">Everyone who has signed in. A player who forgets their password trades their recovery phrase for a new one at the Ledger; a player who has lost the phrase too gets a new one from you here. Signing a player out everywhere ends their sessions; they sign in again as before.</p>
           <p class="wh-table-hint" aria-hidden="true">Scroll sideways for the rest of the table</p>
           <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Players">
             <table class="wh-table">
-              <thead><tr><th scope="col">Player</th><th scope="col">Warband</th><th scope="col" class="num">Sessions</th><th scope="col">Last seen</th><th scope="col">Joined</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+              <thead><tr><th scope="col">Player</th><th scope="col">Warband</th><th scope="col" class="num">Sessions</th><th scope="col">Last seen</th><th scope="col">Joined</th><th scope="col">Recovery</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
               <tbody>
                 {data.players.map((p) => (
                   <tr class="wh-row">
@@ -212,7 +212,11 @@ const lastRun = data?.runs[0];
                     <td class="num">{p.sessions}</td>
                     <td class:list={{ dim: !p.lastSeen }}>{p.lastSeen ? when(p.lastSeen) : 'never'}</td>
                     <td class="dim">{day(p.createdAt)}</td>
-                    <td><div class="wh-actions"><button type="button" class="cf-btn cf-btn-ghost sm" data-act="revoke-sessions" data-body={JSON.stringify({ userId: p.id })} data-confirm={`Sign ${p.name} out everywhere?`} disabled={p.sessions === 0}>Sign out everywhere</button></div></td>
+                    <td class:list={{ dim: !p.recovery }} data-recovery-cell={p.id}>{p.recovery ? 'Holds a phrase' : 'None'}</td>
+                    <td><div class="wh-actions">
+                      <button type="button" class="cf-btn cf-btn-ghost sm" data-issue={p.id} data-name={p.name} data-confirm={`Issue ${p.name} a new recovery phrase? Their old one stops working. You will see the phrase once, to pass on.`}>Issue phrase</button>
+                      <button type="button" class="cf-btn cf-btn-ghost sm" data-act="revoke-sessions" data-body={JSON.stringify({ userId: p.id })} data-confirm={`Sign ${p.name} out everywhere?`} disabled={p.sessions === 0}>Sign out everywhere</button>
+                    </div></td>
                   </tr>
                 ))}
               </tbody>
@@ -287,10 +291,27 @@ const lastRun = data?.runs[0];
       toast((e as Error).message);
     }
   }
+  // a recovery phrase for a player: shown once, in their row, to pass on
+  async function issueRecovery(button: HTMLButtonElement) {
+    if (button.dataset.confirm && !confirm(button.dataset.confirm)) return;
+    button.setAttribute('aria-busy', 'true'); button.disabled = true;
+    try {
+      const data = await order('issue-recovery', { userId: button.dataset.issue }) as { phrase?: string; message?: string };
+      const cell = document.querySelector<HTMLElement>(`[data-recovery-cell="${button.dataset.issue}"]`);
+      if (cell && data.phrase) { cell.classList.remove('dim'); cell.innerHTML = `<code class="wh-phrase">${data.phrase.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)}</code><small class="wh-phrase-note">Shown once. Pass it to ${button.dataset.name}.</small>`; }
+      toast(data.message ?? 'Issued.');
+      button.removeAttribute('aria-busy'); button.disabled = false;
+    } catch (e) {
+      button.removeAttribute('aria-busy'); button.disabled = false;
+      toast((e as Error).message);
+    }
+  }
   root.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
     const actBtn = target.closest<HTMLButtonElement>('button[data-act]');
     if (actBtn) { void act(actBtn); return; }
+    const issue = target.closest<HTMLButtonElement>('button[data-issue]');
+    if (issue) { void issueRecovery(issue); return; }
     const inspect = target.closest<HTMLButtonElement>('button[data-inspect]');
     if (inspect) {
       const row = document.getElementById(`detail-${inspect.dataset.inspect}`);
