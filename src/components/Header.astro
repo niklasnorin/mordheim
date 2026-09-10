@@ -14,14 +14,12 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
       <a href="#standings">Standings</a>
       <a class="secondary-section" href="#chronicle">Chronicle</a>
       <a class="secondary-section" href="#graveyard">Graveyard</a>
-      <a class="curfew-link" href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/curfew/`}>Curfew</a>
       <details class="section-menu">
         <summary>Sections <Icon name="arrow-down" size={14} /></summary>
         <div class="section-menu-links">
           <a href="#town-cryer">Town Cryer</a>
           <a href="#chronicle">Chronicle</a>
           <a href="#graveyard">Graveyard</a>
-          <a href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/curfew/`}>Curfew</a>
         </div>
       </details>
     </nav>
@@ -76,8 +74,6 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
   .site-nav a::after { content: ''; position: absolute; height: 1px; bottom: 0; left: 0; right: 100%; background: var(--gold); transition: right .2s; }
   .site-nav a:hover, .site-nav a[aria-current], .section-menu summary:hover { color: var(--parchment); }
   .site-nav a:hover::after, .site-nav a[aria-current]::after { right: 0; }
-  .site-nav .curfew-link { color: #e0a34a; }
-  .site-nav .curfew-link::after { background: #e0a34a; }
   .section-menu { display: none; position: relative; }
   .section-menu summary { cursor: pointer; list-style: none; }
   .section-menu summary::-webkit-details-marker { display: none; }
