@@ -89,8 +89,19 @@ body.curfew-body #theme-toggle { display: none; }
 @media (min-width: 720px) { .cf-omen { grid-template-columns: minmax(220px, 300px) 1fr; } }
 .cf-omen-card-col { display: grid; gap: 0.9rem; justify-items: center; }
 .cf-card { position: relative; perspective: 1400px; width: 100%; max-width: 300px; margin: 0 auto; }
-.cf-card-inner { position: relative; width: 100%; aspect-ratio: 7 / 12; transform-style: preserve-3d; transition: transform 1.1s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.cf-card-inner { position: relative; width: 100%; aspect-ratio: 7 / 12; transform-style: preserve-3d; }
 .cf-card.is-flipped .cf-card-inner { transform: rotateY(180deg); }
+/* the reveal: the card lifts off the table, turns over with a little overshoot, and settles */
+.cf-card.is-revealing .cf-card-inner { animation: cf-reveal 1.5s cubic-bezier(0.22, 0.8, 0.28, 1) forwards; }
+@keyframes cf-reveal {
+  0% { transform: translateY(0) rotateY(0) scale(1); }
+  30% { transform: translateY(-26px) rotateY(70deg) scale(1.04) rotateZ(-2deg); }
+  70% { transform: translateY(-14px) rotateY(196deg) scale(1.03) rotateZ(1.5deg); }
+  100% { transform: translateY(0) rotateY(180deg) scale(1) rotateZ(0); }
+}
+.cf-card.is-revealing::after { animation: cf-flare 1.5s ease-out forwards; }
+@keyframes cf-flare { 0% { opacity: 0.6; transform: scale(1); } 45% { opacity: 1; transform: scale(1.25); } 100% { opacity: 0.8; transform: scale(1); } }
+.cf-card.is-revealing img { box-shadow: 0 30px 50px -14px #000d; }
 .cf-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; backface-visibility: hidden; border-radius: 10px; box-shadow: 0 18px 40px -10px #000c; }
 .cf-card img.cf-face { transform: rotateY(180deg); }
 .cf-card::after { content: ''; position: absolute; inset: -8%; background: radial-gradient(ellipse, #e0a34a22, transparent 60%); pointer-events: none; animation: cf-flicker 4s ease-in-out infinite; z-index: -1; }
@@ -110,7 +121,9 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-moon b { color: var(--candle); font-weight: 600; }
 @media (min-width: 720px) { .cf-moon { padding-top: 0.5rem; } }
 .cf-tilts { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; margin: 0; max-width: 300px; }
-.cf-tilt { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.78rem; padding: 0.25rem 0.6rem; border: 1px solid var(--rule); color: var(--bone-dim); display: inline-flex; gap: 0.4rem; align-items: center; }
+.cf-tilt { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.78rem; padding: 0.25rem 0.6rem; border: 1px solid var(--rule); color: var(--bone-dim); display: inline-flex; gap: 0.4rem; align-items: center; opacity: 0; transform: translateY(6px); transition: opacity 0.6s ease var(--d, 0s), transform 0.6s cubic-bezier(0.22, 0.8, 0.28, 1) var(--d, 0s); }
+.cf-tilts.is-shown .cf-tilt { opacity: 1; transform: none; }
+.cf-week { display: block; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.72rem; color: var(--bone-dim); margin-bottom: 0.15rem; }
 .cf-tilt.up { border-color: var(--candle-dim); color: var(--candle); }
 .cf-tilt.down { border-color: var(--blood); color: #c97b7b; }
 .cf-tilt.flat { color: var(--bone-dim); }
@@ -145,6 +158,7 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-member .cf-name { font-size: 1.05rem; }
 .cf-member .cf-role { font-size: 0.8rem; color: var(--bone-dim); }
 .cf-member:not(.is-chosen) select { color: var(--bone-dim); }
+.cf-member select:disabled { opacity: 0.45; cursor: not-allowed; }
 .cf-member .cf-epithet { color: var(--candle); font-style: italic; }
 .cf-member select { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.8rem; background: var(--ash-deep); color: var(--candle); border: 1px solid var(--rule); padding: 0.35rem 0.5rem; min-height: 2.5rem; min-width: 8.5rem; }
 .cf-member .cf-status { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.75rem; color: var(--bone-dim); }
@@ -263,8 +277,9 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-toast[hidden] { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .cf-card-inner { transition: none; }
+  .cf-card.is-revealing .cf-card-inner, .cf-card.is-revealing::after { animation: none; }
   .cf-card::after { animation: none; }
+  .cf-tilt { transition: none; opacity: 1; transform: none; }
   .cf-ink { animation: none; opacity: 1; }
   .cf-bar span { transition: none; }
   .cf-member { transition: none; }
