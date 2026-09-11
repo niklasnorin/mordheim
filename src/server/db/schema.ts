@@ -108,6 +108,19 @@ export const cryerDispatches = pgTable(
   (t) => [index('cryer_dispatches_night_idx').on(t.night)],
 );
 
+/**
+ * Where the campaign is, as a log: each row says the campaign is at `locationId` from `fromNight` on. The
+ * current place is the latest row; the place of any past night is the latest row on or before it, so a move
+ * never rewrites a night already written. Written only by the game master from the Watch House; the
+ * locations themselves are content (`src/data/curfew/locations/`).
+ */
+export const curfewMoves = pgTable('curfew_moves', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  locationId: text('location_id').notNull(),
+  fromNight: integer('from_night').notNull(),
+  movedAt: timestamp('moved_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Every run of the nightly resolve, by the cron or by hand from the console. */
 export const curfewRuns = pgTable('curfew_runs', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),

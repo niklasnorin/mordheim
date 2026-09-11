@@ -29,6 +29,13 @@
       "when": 1789071532570,
       "tag": "0003_reset-expiry",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789155816193,
+      "tag": "0004_moves",
+      "breakpoints": true
     }
   ]
 }

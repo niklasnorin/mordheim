@@ -3,9 +3,16 @@ export interface NewsArticle {
   byline: string;
   body: string;
   notice?: boolean;
+  /** Where the broadsheet prints this: a location id from `src/data/curfew/locations/`. Mordheim when not said. */
+  location?: string;
 }
 
-export const issue = 'Issue I — Nachexen, 2000';
+/** The issue line of the masthead, where the campaign is. */
+const issues: Record<string, string> = {
+  mordheim: 'Issue I — Nachexen, 2000',
+  fussenbach: 'Fussenbach Edition — Nachexen, 2000',
+};
+export function issueFor(locationId: string): string { return issues[locationId] ?? issues.mordheim; }
 
 export const news: NewsArticle[] = [
   {
@@ -43,5 +50,38 @@ export const news: NewsArticle[] = [
     headline: 'NOTICE OF REWARD',
     byline: '',
     body: 'The Sisterhood of Sigmar offers 50 gold crowns for the safe return of any relics looted from the Convent of the Rock. No questions shall be asked. Sigmar, however, sees all, and He has questions.',
+  },
+
+  // ── Fussenbach ──
+  {
+    location: 'fussenbach',
+    headline: 'Grain Barge Brings Armed Strangers Up the Fussen; Village Counts Its Pumpkins',
+    byline: 'By our correspondent at the ferry stair, who was counting too',
+    body: 'A grain barge out of the south put in at the lower docks this week carrying rather less grain than advertised and rather more steel. The companies aboard, lately of Mordheim by their own account and by the smell of their coats, have taken the rooms above the Cracked Flagon and paid a month in advance, in coin the landlord tested with his teeth and found good. Asked what brings such people to a village of thirteen hundred souls and one pub, their spokesman said the river did; asked what they intend to do here, he said the same. The Village Watch has noted their arrival in the book at the Mud-Gate. Captain Hauer has noted it in a second book, which he keeps himself.',
+  },
+  {
+    location: 'fussenbach',
+    headline: 'Green Light Seen Again at Warehouse 4; Baron’s Men Say Lantern, Bargemen Say Nothing',
+    byline: 'By a bargeman who wishes it known he saw nothing',
+    body: 'Persons abroad after curfew, of whom this publication naturally knows none, report a faint green light beneath the floorboards of Warehouse 4 at low tide, together with a smell the more educated among them compare to sulphur and the rest to eggs. The Baron’s mercenaries, who now guard the wharf in numbers the wharf has never needed, describe it as a lantern. It is a lantern that burns underwater, then. This publication also notes that two bargemen who raised the matter at the Flagon last month have since taken work upriver, according to the Baron’s men, without collecting their pay, according to everyone else.',
+  },
+  {
+    location: 'fussenbach',
+    headline: 'Black-Grist Mill Wheel Jams Third Time This Month; Miller Blames Large Fish',
+    byline: 'From our correspondent on the mill bridge, who did not look down',
+    body: 'The great wheel of the Black-Grist Mill stood still for the best part of a night after fouling on what the miller describes as a very large fish and what his apprentice, before he was sent indoors, described as having too many arms for a fish and a face. The carcass was cleared with boat-hooks and returned to the river, where it sank more slowly than the apprentice liked. The miller reminds the village that flour will be late, that the river has always had big fish in it, and that anyone repeating the word the apprentice used will find their grain at the back of the queue.',
+  },
+  {
+    location: 'fussenbach',
+    headline: 'Gravediggers Order More Chain; Father Justinian Orders More Candles',
+    byline: 'By our correspondent at the Shrine of Sigmar’s Hammer, from the back pew',
+    body: 'The chandler reports his best month in years, the Shrine of Sigmar’s Hammer having taken every candle he can dip and Father Justinian having asked, in a voice the chandler describes as level, whether he also stocks spearheads. Meanwhile the gravediggers of Morr’s Garden have taken delivery of a second cartload of iron chain to hold down headstones that the damp, they say, keeps lifting. The damp is also blamed for a sound like teeth beneath the shrine floor during the late vigils, for the coffin found open on the silt last Marktag, and for the old Baron’s coat being seen abroad at low tide a year after it was buried with him. It has been a very damp year.',
+  },
+  {
+    location: 'fussenbach',
+    notice: true,
+    headline: 'BY ORDER OF THE BARON',
+    byline: '',
+    body: 'Warehouse 4 and the Wharf are closed to all but the Baron’s appointed men between dusk and dawn. Bargemen absent from their vessels are to be presumed gone upriver of their own accord. Any guardsman spreading rumour concerning the Baron’s business will answer to the Baron’s men and not to the Watch. This notice does not carry the signature of Captain Hauer, who was not asked.',
   },
 ];

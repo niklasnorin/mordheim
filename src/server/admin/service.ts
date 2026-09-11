@@ -7,10 +7,12 @@ import { db } from '../db/client.ts';
 import { cryerDispatches, curfewLedgers, curfewRuns, session, user } from '../db/schema.ts';
 import { pendingResets } from '../account/service.ts';
 import { env } from '../env.ts';
-import { moonForNight, omenForNight, titleFor, dateForNight, type Omen, type Moon } from '../../curfew/engine.ts';
+import { LOCATIONS, locationForNight, moonForNight, omenForNight, titleFor, dateForNight, type Location, type Omen, type Moon } from '../../curfew/engine.ts';
 import { coerceState, freshState, type WarbandState } from '../../curfew/ledger.ts';
 import { warbands } from '../../data/warbands.ts';
-import { LedgerError, THE_WATCH, dispatchSource, reconcileAll, recentDispatches, type PrintedDispatch, type RunResult } from '../curfew/service.ts';
+import { LedgerError, THE_WATCH, campaignMoves, dispatchSource, moveCampaign, reconcileAll, recentDispatches, type CampaignMove, type PrintedDispatch, type RunResult } from '../curfew/service.ts';
+
+export { moveCampaign };
 
 export { LedgerError };
 
@@ -37,6 +39,8 @@ export interface Overview {
   today: number;
   date: string;
   omen: Omen; moon: Moon;
+  /** Where the campaign is tonight, the places it could be, and every move so far, newest first. */
+  location: Location; locations: Location[]; moves: CampaignMove[];
   ledgers: LedgerRow[];
   players: PlayerRow[];
   dispatches: PrintedDispatch[];
@@ -49,13 +53,14 @@ export interface HealthItem { label: string; ok: boolean | null; detail: string 
 
 export async function overview(today: number): Promise<Overview> {
   const d = db();
-  const [ledgerRows, players, dispatches, runs, dispatchCount, sessionCount] = await Promise.all([
+  const [ledgerRows, players, dispatches, runs, dispatchCount, sessionCount, moves] = await Promise.all([
     d.select({ ledger: curfewLedgers, keeper: { id: user.id, name: user.name, email: user.email } }).from(curfewLedgers).innerJoin(user, eq(user.id, curfewLedgers.ownerId)),
     listPlayers(),
     recentDispatches(today, 12),
     d.select().from(curfewRuns).orderBy(desc(curfewRuns.ranAt)).limit(8),
     d.select({ n: sql<number>`count(*)::int` }).from(cryerDispatches),
     d.select({ n: sql<number>`count(*)::int` }).from(session).where(gt(session.expiresAt, new Date())),
+    campaignMoves(),
   ]);
 
   const ledgers: LedgerRow[] = warbands.map((w) => {
@@ -72,6 +77,7 @@ export async function overview(today: number): Promise<Overview> {
 
   return {
     today, date: dateForNight(today), omen: omenForNight(today), moon: moonForNight(today),
+    location: locationForNight(today, moves), locations: LOCATIONS, moves: moves.slice().reverse(),
     ledgers, players, dispatches, runs,
     counts: { players: players.length, ledgers: ledgerRows.length, warbands: warbands.length, dispatches: dispatchCount[0]?.n ?? 0, sessions: sessionCount[0]?.n ?? 0 },
     health: health(runs[0]),

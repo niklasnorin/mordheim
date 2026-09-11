@@ -1,0 +1,372 @@
+{
+  "id": "fussenbach",
+  "name": "Fussenbach",
+  "kind": "village",
+  "settlement": "the village",
+  "title": "Nights on the Fussen",
+  "tagline": "Every real day is one night in Fussenbach, where the river keeps its own hours.",
+  "errands": ["dredge", "carouse", "spy", "pray", "trade"],
+  "unavailable": {
+    "scavenge": "There is no rubble to sift in Fussenbach. The green is in the silt; take a rake to the basins instead.",
+    "train": "There is no Pit in Fussenbach, and the yard behind the Flagon is not the same."
+  },
+  "redirect": { "scavenge": "dredge", "train": "carouse" },
+  "inherits": { "dredge": "scavenge" },
+  "moonBoost": { "hunters-moon": "pray" },
+  "arrival": "{warband} came up the Fussen on a grain barge and took the rooms above the Cracked Flagon. The village noticed, and said nothing.",
+  "watchNote": "A village of thirteen hundred and one pub. There is no rubble to sift and no Pit to fight in; the basins, the Flagon, the shrine and the wharf will have to do.",
+  "blurbs": {
+    "dredge": "Work the algae basins for what glows in the silt. Shards, and the lie of the mudflats.",
+    "carouse": "Drink at the Cracked Flagon, where the village talks once it trusts you. Favour, rumours, a Fortune charm.",
+    "spy": "Listen under the wharf and at the Watch House wall. Rumours and Sight.",
+    "pray": "Keep the candles at Sigmar's Hammer. Blessings, Fortune.",
+    "trade": "Move the green to the bargemen quietly. Market chits; five shards make one."
+  },
+  "cryer": {
+    "edition": "Dispatches from the docks",
+    "banner": "HEAR YE! HEAR YE! ALL THE NEWS FROM THE VILLAGE OF FUSSENBACH, SUCH AS IT IS",
+    "price": "Price: 1 Shilling, or a pumpkin",
+    "watchHeading": "From the Village Watch",
+    "heard": "Heard at the Flagon",
+    "bylines": [
+      "From our correspondent at the Cracked Flagon, on the stool nearest the door",
+      "By a bargeman who wishes it known he saw nothing",
+      "Overheard after curfew by a reader who has since moved upriver",
+      "From the Village Watch, one half of it",
+      "By an algae harvester who will not work the lower basins"
+    ],
+    "headlines": {
+      "dredge": {
+        "boon": [
+          "{first} Returns From the Basins Glowing Faintly; Declines Examination",
+          "Two Slivers Pulled From the Silt Flats; Algae Men Say It Was Their Basin",
+          "{warband} Warrior Dredges by Lantern, Comes Back Without Lantern; Pockets Full"
+        ],
+        "fair": [
+          "{first} Seen on the Flats at Low Tide; Yield Described as 'a Sliver and a Smell'",
+          "Dredging Continues Below the Mill Race; {warband} Insist It Is Fishing",
+          "Something Long Swam Off From {first}'s Lantern; Something Long Declines Comment"
+        ],
+        "poor": [
+          "{first} Brings Up Bones From the Basins; Bones Have Been Chewed",
+          "Tide Comes Early on the Flats; {warband} Warrior Comes Home Bootless",
+          "Rat the Size of a Dog Pulled From the Mill Race; Miller Says a Small One"
+        ]
+      },
+      "carouse": {
+        "boon": [
+          "{first} Buys the Flagon a Round of Pumpkin Ale; Is Forgiven",
+          "Bargemen Tell {first} Which Crates Not to Look At; Then Remember They Did Not",
+          "{first} Sings the Boat Song Twice at the Flagon; Village Reluctantly Approves"
+        ],
+        "fair": [
+          "{first} Sits at the Flagon Until the Room Gets Used to It; Room Takes Its Time",
+          "Dice at the Flagon: {first} Loses Two Hands, Wins the Third; Honour Even",
+          "A Watchman in the Flagon's Back Room; {first} Also There; Nothing Said"
+        ],
+        "poor": [
+          "Flagon Falls Silent When {first} Asks About the Manor; Remains Silent",
+          "{warband} Warrior Leaves the Flagon Without Purse, With a Mercenary's Opinion",
+          "{first} Asks the Wrong Bargeman About the Wharf; Bargeman Leaves; Warmth Follows"
+        ]
+      },
+      "spy": {
+        "boon": [
+          "Somebody Lay Under the Wharf for Four Hours Last Night; the Count of Crates Did Not Match",
+          "Dredger's Child Sells Three Rumours for a Penny; Buyer Believed to Be {warband}",
+          "Lantern Followed From the Mud-Gate to the Manor's Kitchen Door; {first} Not Available for Comment"
+        ],
+        "fair": [
+          "Someone Was Listening at the Shrine Door; Father Justinian Was Counting, Not Praying",
+          "Figure Seen on the Mill Bridge Watching a Rival Lodging; Rival Also Awake",
+          "{first} Learns Which Watchmen Take the Wharf Road at Midnight; Captain Hauer Would Like to Know Too"
+        ],
+        "poor": [
+          "{first} Seen on the Manor Road From an Upper Window; Not Stopped, Merely Seen",
+          "Two Hours at Warehouse 3; It Was the Wrong Warehouse; {warband} Deny Everything",
+          "Man Followed Through the Fog Turns Out to Be Following Back; Both Go Home"
+        ]
+      },
+      "pray": {
+        "boon": [
+          "Every Candle at Sigmar's Hammer Held Until Dawn; Father Justinian Asks Nothing",
+          "{first} Kneels Until the Stone Hurts; Something Answers From Below the Floor; Called Sigmar",
+          "Candle Lit for Each of the Drowned, With Wax to Spare; Chandler Baffled"
+        ],
+        "fair": [
+          "Candles at the Shrine Held Until the Third Hour; the Chattering Stopped With Them",
+          "{first} Sits With Father Justinian and Says Little; Priest Watches the Door",
+          "One Candle Lit by {first} Did Not Go Out; Take That as Given"
+        ],
+        "poor": [
+          "Draught Off the River Takes the Shrine's Candles One by One; Sigmar Not Reached",
+          "Shrine Found Full of Villagers With New Spears; {first} Stands at the Back, Leaves Early",
+          "{first} Prays and Hears Only the Mill Wheel; Wheel Declines to Elaborate"
+        ]
+      },
+      "trade": {
+        "boon": [
+          "Bargeman Breaks First in Silent Haggle Below the Wharf; Throws In a Warning",
+          "Green Changes Hands on the Lower Docks; Buyer Asks After a Seal That Was Not There",
+          "{first} Sells a Story With the Goods at the Flagon; Story Fetches More"
+        ],
+        "fair": [
+          "Fair Weight, Fair Price on the Lower Docks; Both Parties Look Over Their Shoulders",
+          "{first} Argues Over a Sliver at the Ferry Stair Until Dawn; Chandler Enjoyed It",
+          "{warband} Return With Ostermark Coin, Recently Minted; Mint Not Reached for Comment"
+        ],
+        "poor": [
+          "Rudolf's Men on the Wharf Gate, No Bargemen Anywhere; {warband} Report Nothing Taken but the Night",
+          "Buyer's Barge at the Ferry Stair, Buyer Not; {first} Waits Until Dawn",
+          "{first} Offered a Price That Was Both Insult and Warning; Takes the Long Way Home"
+        ]
+      }
+    }
+  },
+  "moonTies": {
+    "plague-moon": {
+      "dredge": "The basins were half-worked. The other half of the harvesters are under chalk.",
+      "carouse": "Half the Flagon wore cloth over their faces. The landlord served through it.",
+      "spy": "Every second door {first} passed on the lane was chalked. Nobody spoke above a whisper.",
+      "pray": "Father Justinian had run out of candles by the third hour and kept the vigil in the dark.",
+      "trade": "The bargeman weighed the coin through a cloth and did not touch it."
+    },
+    "hunters-moon": {
+      "dredge": "A wide hat watched the flats from the mill bridge the whole time.",
+      "carouse": "The Flagon went quiet twice. Both times a hat had come in.",
+      "spy": "{first} was not the only one listening at the Watch House. The other one had a torch.",
+      "pray": "A witch hunter knelt in the front row of the shrine. Father Justinian stopped counting spears.",
+      "trade": "The wharf gate was shut. The deal was done through the bars."
+    },
+    "green-moon": {
+      "dredge": "The silt hummed under {first}'s rake. Nobody on the flats stopped to wonder why.",
+      "carouse": "The pumpkin ale had a green cast by candlelight. Nobody sent it back.",
+      "spy": "The whole wharf glowed faintly. It made the listening easier and the hiding worse.",
+      "pray": "The candle flames burned green for a moment. Father Justinian did not comment.",
+      "trade": "The bargeman's scale would not settle. He blamed the moon, and then the river."
+    },
+    "festival-of-hanging": {
+      "dredge": "The village was all at the Mud-Gate to see the gibbet. {first} had the flats alone.",
+      "carouse": "The whole Flagon was drinking to the hanged man. {first} drank to him twice.",
+      "spy": "Everyone was talking. It was hard to hear anything for the talk.",
+      "pray": "Father Justinian was saying the rites for the hanged. {first} waited a long time for a candle.",
+      "trade": "The chandler did brisk business in the effects of the dead."
+    },
+    "silent-moon": {
+      "dredge": "No mill wheel, no barges. {first} could hear each stone turn in the silt.",
+      "carouse": "The Flagon spoke in murmurs. Even the dice were quiet.",
+      "spy": "In the silence every word carried across the water.",
+      "pray": "Nobody sang. The candles did what candles do.",
+      "trade": "The bargeman wrote his price on a slate and turned it around."
+    },
+    "market-moon": {
+      "dredge": "Barge crews were already picking over the shoreline. {first} worked further out.",
+      "carouse": "The Flagon was full of bargemen with coin and no sense of how much.",
+      "spy": "The wharf was loud with strangers. Strangers talk.",
+      "pray": "Father Justinian took a collection at the door. It was a good night for it.",
+      "trade": "There were three buyers for every sliver and the bargeman hated all of them."
+    },
+    "ash-moon": {
+      "dredge": "The wind had moved the silt overnight. Basins were there that had not been.",
+      "carouse": "Ash from the west came in under the Flagon door and settled on the ale. Nobody minded.",
+      "spy": "Footprints in the ash on the wharf told {first} who had passed, and how many.",
+      "pray": "The candles guttered in the draught and had to be relit twice.",
+      "trade": "The bargeman wiped ash from the scale between every weighing."
+    },
+    "debtors-moon": {
+      "dredge": "Someone had been through the basins already, in a hurry, owing money.",
+      "carouse": "Every table in the Flagon was arguing about who owed whom.",
+      "spy": "Debt makes people talk. {first} let them.",
+      "pray": "The shrine's poor box had been forced. Father Justinian prayed for whoever did it.",
+      "trade": "The bargeman was calling in what he was owed and paid quickly to be rid of the coin."
+    }
+  },
+  "districts": [
+    "the Wharf", "Warehouse 4", "the Dredger's Basins", "Morr's Garden", "the Black-Grist Mill", "the Mud-Gate", "the manor road",
+    "the lower docks", "the silt flats", "the mill race", "the algae sheds", "the ferry stair", "the pumpkin fields", "the chandler's yard", "the reed beds"
+  ],
+  "details": [
+    "It rained on the river until the third hour.", "The fog came up off the silt and did not leave.", "The mill wheel stopped once in the night, and started again.",
+    "A green cast on the water by the wharf, gone when looked at.", "The frogs went quiet all at once.", "Sulphur on the wind at low tide.",
+    "A light in the manor's upper window, the wrong colour for a candle.", "Something big turned over in the river and was not a fish.", "The Watch passed twice. Different men each time.",
+    "Pumpkin ale on every breath in the lane.", "Chains clinked in Morr's Garden with no wind to move them.", "The barges were dark. All of them.",
+    "A dog would not cross the mill bridge.", "Frost on the reeds by dawn.", "Somebody was hammering in the shrine after midnight. Not on a nail.", "A bell buoy rang on the water, though the village keeps no buoy."
+  ],
+  "closers": [
+    "Nobody spoke of the manor.", "The shutters were checked twice.", "The river went on saying what it says.", "The count was taken at the Flagon's door.",
+    "Nobody slept on the side of the house facing the water.", "A candle was left burning in the window, for whoever.", "The night was not mentioned at breakfast.", "The ledger was written with the door barred and the tide going out."
+  ],
+  "templates": {
+    "dredge": {
+      "boon": [
+        "{name} worked the Dredger's Basins from dusk. The muck gave up two slivers that glowed through the rag they were wrapped in.",
+        "{first} waded the silt flats at low tide and came back with green in a jar and a story about a bone with teeth marks that nobody will hear twice.",
+        "{name} found where the basin water was warm and dug there. Two slivers, and a fungus that lit the path home.",
+        "{first} pulled a harvester's rake through {district} until the tines came up bright. Nobody else on the flats looked up."
+      ],
+      "fair": [
+        "{name} dredged {district} until the light went. One sliver, and a hand that will not get clean.",
+        "{first} worked the basins with the algae men. They talk about the tide the way other men talk about debt. One sliver.",
+        "{name} sifted the silt below the mill race. One sliver, and something long that swam off when the lantern turned.",
+        "{first} came back from the flats with a sliver and a bootful of river. The river was the heavier."
+      ],
+      "poor": [
+        "{name} dredged {district} until the third hour and brought up bones. Not old ones. Scratched.",
+        "{first} went out on the flats and the tide came early. Nothing found. Both boots lost.",
+        "{name} worked a basin a harvester had said was good. The harvester had lied, and was not at the sheds in the morning.",
+        "{first} dredged the mill race and pulled up a rat the size of a dog. It was not dead enough."
+      ],
+      "standing": [
+        "{name} worked the usual basin in {district}. The usual green, the usual smell.",
+        "{first} took the rake to {district} out of habit and came back out of habit."
+      ]
+    },
+    "carouse": {
+      "boon": [
+        "{name} drank at the Cracked Flagon until the bargemen forgot {they} were a stranger. By the last candle they were telling {them} which crates not to look at.",
+        "{first} bought the Flagon a round of pumpkin ale and was forgiven for it. The village knows the name now.",
+        "{name} held the corner table at the Flagon against three watchmen and a miller. The miller paid.",
+        "{first} sang the Ostermark boat song at the Flagon, badly, and was made to sing it twice. That is how the village says welcome."
+      ],
+      "fair": [
+        "{name} sat at the Flagon and let the room get used to {them}. The room took its time. A fair night.",
+        "{first} drank with the algae harvesters at the Flagon. They drink to forget the basins. {first} drank along.",
+        "{name} lost two hands of dice to a bargeman at the Flagon and won the third. Honour even, purse lighter.",
+        "{first} found the Flagon's back room. A watchman was in it who should not have been. Nothing was said."
+      ],
+      "poor": [
+        "{name} drank at the Flagon and the room went silent when {they} asked about the manor. It stayed silent.",
+        "{first} came back from the Flagon without {their} purse and with a mercenary's opinion of strangers.",
+        "{name} asked the wrong bargeman about the wharf. The bargeman left. So did the warmth in the room.",
+        "{first} drank alone at the Flagon. The landlord kept wiping the same glass."
+      ],
+      "standing": [
+        "{name} kept the usual stool at the Flagon. The usual pumpkin ale.",
+        "{first} drank at the Flagon and was neither welcomed nor asked to leave."
+      ]
+    },
+    "spy": {
+      "boon": [
+        "{name} lay under the wharf at low tide for four hours and heard the mercenaries count crates. The count did not match the manifest.",
+        "{first} followed a lantern from the Mud-Gate to the manor road. It went in by the kitchen door and did not come out.",
+        "{name} paid a dredger's child a penny in {district} and got three rumours. Two are true. The third is worse.",
+        "{first} sat below the Watch House window where Captain Hauer keeps his ledger. Somebody else's ledger was being argued about."
+      ],
+      "fair": [
+        "{name} listened at the shrine door. Father Justinian was not praying. He was counting spearheads.",
+        "{first} watched the {rival} from the mill bridge. Somebody there was watching back.",
+        "{name} traded a rumour for a rumour at the ferry stair. Fair exchange. Both about the river.",
+        "{first} learned which of the Watch take the wharf road at midnight and which take the long way. It may be useful. It may be why."
+      ],
+      "poor": [
+        "{name} was seen on the manor road. Not stopped. Seen, from an upper window.",
+        "{first} listened at a warehouse door in {district} for two hours. It was Warehouse 3.",
+        "{name} followed a mercenary through the fog and found the mercenary was following {them}. Both went home.",
+        "{first} spent the night in {district} learning that nobody in Fussenbach talks under {omen}."
+      ],
+      "standing": [
+        "{name} kept an ear open at the Flagon. Nothing worth the ink.",
+        "{first} watched the wharf from the usual stair. The usual lanterns."
+      ]
+    },
+    "pray": {
+      "boon": [
+        "{name} kept the candles at the Shrine of Sigmar's Hammer until dawn. Every one of them held. Father Justinian noticed, and asked nothing, which is rarer.",
+        "{first} knelt in the shrine until the stone hurt. Something answered from below the floor. {first} chose to call it Sigmar.",
+        "{name} lit a candle for each of the village's drowned. Father Justinian brought a second box. There were still enough.",
+        "{first} prayed at the shrine with the door open onto the fog. Nothing came in. That was the answer."
+      ],
+      "fair": [
+        "{name} kept the candles at the shrine. They held until the third hour, and the chattering under the floor stopped when they did.",
+        "{first} sat with Father Justinian and said little. The priest kept looking at the door.",
+        "{name} prayed at the shrine and felt watched over. Or watched. The village does not distinguish.",
+        "{first} lit one candle in the shrine and it did not go out. Take that as given."
+      ],
+      "poor": [
+        "{name} kept the candles at the shrine. The draught off the river took them one by one.",
+        "{first} prayed at the shrine and heard only the mill wheel. It is possible the wheel was the answer.",
+        "{name} went to the shrine and found it full of villagers holding new spears. Stood at the back. Left early.",
+        "{first} knelt in {district} until the doubt was louder than the prayer, and the frogs louder than both."
+      ],
+      "standing": [
+        "{name} lit the usual candle at the shrine. It burned as usual.",
+        "{first} said the words at the shrine. Father Justinian nodded without looking up."
+      ]
+    },
+    "trade": {
+      "boon": [
+        "{name} met a bargeman below the wharf and let the silence do the haggling. The bargeman broke first and threw in a warning.",
+        "{first} moved the green in {district} to a man who paid too well and asked where the Kummerspeck seal was. There was no seal. He paid anyway.",
+        "{name} sold a story at the Flagon's back table along with the goods. The story fetched more.",
+        "{first} found a buyer in {district} who owed the {rival} money. Interesting rates. Interesting silence."
+      ],
+      "fair": [
+        "{name} traded on the lower docks. Fair weight, fair price, and a look over the shoulder for both parties.",
+        "{first} spent the night at the ferry stair arguing over a sliver with the chandler. The chandler enjoyed it more.",
+        "{name} came back from {district} with less green and more coin. The coin was Ostermark-minted, and recent.",
+        "{first} watched a bargeman weigh everything twice by lantern. The second weighing was for the mercenary on the quay."
+      ],
+      "poor": [
+        "{name} went to the wharf to trade and found Rudolf's men on the gate and no bargemen anywhere. Nothing taken but the night.",
+        "{first} was offered a price in {district} that was an insult and a warning at once. Took the long way home thinking about which.",
+        "{name} traded in {district} and got a chit stamped with a seal nobody in the village will discuss.",
+        "{first} waited at the ferry stair for a buyer who never came. His barge was there. He was not."
+      ],
+      "standing": [
+        "{name} kept the usual arrangement on the lower docks. The usual coin.",
+        "{first} traded at the ferry stair the way {they} always do. The bargeman nodded."
+      ]
+    }
+  },
+  "pairs": [
+    "{other} waited at the ferry stair with a lantern and did not light it.",
+    "{other} came back first and checked the shutters twice.",
+    "The two of them did not speak on the manor road. Nobody does.",
+    "{other} kept watch on the lane. A Watch patrol passed and pretended not to see."
+  ],
+  "encounters": [
+    "{rivalMember} of the {rival} was on the wharf too. Nods were exchanged. Nothing else was.",
+    "On the way home {first} passed the {rival}'s lodgings. A light was on. Somebody there is also not sleeping.",
+    "{rivalMember} of the {rival} had been at the Flagon an hour earlier, asking the same questions. The landlord said so, and nothing else.",
+    "The {rival} had left a mark on the mill bridge. {first} added one beneath it.",
+    "{first} and {rivalMember} of the {rival} reached the ferry stair from opposite ends. Both waited for the other to leave first.",
+    "A boy ran a message between the two lodgings after midnight. Neither warband will say what it said."
+  ],
+  "rumours": [
+    "The crates that leave Warehouse 4 at midnight glow through the slats. The bargemen who mention it stop turning up.",
+    "Baron Rudolf has not opened his shutters since Nachexen began. The light in his study is the wrong green.",
+    "The gravediggers chain the headstones in Morr's Garden. Ask them what the chains are for and they say the damp.",
+    "Something chatters under the shrine floor during the vigil. Father Justinian says it is the cold. He has started buying spears.",
+    "Two vagrants who slept by the Mud-Gate are gone. The watchmen on that shift are the ones who take the Baron's silver.",
+    "The mill wheel jammed again. Whatever it jammed on had more legs than a fish and fewer than it started with.",
+    "The algae men will not work the lower basins after dark. The bones they pull up have teeth marks, and the teeth were not small.",
+    "The old Baron was hale on the Feast of Ulric and dead by the next moon. Nightshade, the cook says. Then the cook says nothing.",
+    "Somebody walks Morr's Garden at low tide in the old Baron's coat. The coat was buried with him.",
+    "Captain Hauer has a young guardsman locked in the Watch House for his own safety. Half the Watch wants the key.",
+    "Three men in grey oilskins asked at the Flagon for a guardsman by name. They were not from the village. They paid in Altdorf coin.",
+    "The {rival} were seen on the manor road after curfew. They came back faster than they went.",
+    "Under the docks at high tide something feeds on the fish-guts. The fishermen throw the guts further out now.",
+    "An alchemist's cart came down the north road, went to Warehouse 4, and left heavier than it came."
+  ],
+  "return": [
+    "The room above the Flagon smelled of pumpkin and river. Somebody had left a candle in the window.",
+    "The tide had been in and out a dozen times. The village had not counted.",
+    "The landlord nodded as if they had been gone an hour. In Fussenbach that is affection."
+  ],
+  "cityProvides": [
+    "A bone charm on the step, wrapped in dried algae. No note.",
+    "A dredger's child hands over a folded paper at the ferry stair and runs.",
+    "Under the door at dusk: a bargeman's chit, its seal scratched out."
+  ],
+  "quiet": [
+    "The door stayed barred. Nobody went out. The river went on without them.",
+    "A night in above the Flagon. The fire held. The count was taken."
+  ],
+  "epithets": {
+    "dredge": ["the Silt-Handed", "Who Works the Flats", "Green-Rake", "of the Low Tide"],
+    "carouse": ["of the Flagon", "Who Sang Twice", "the Pumpkin-Ale", "Who Was Welcomed"],
+    "spy": ["Who Heard the Count", "Under the Wharf", "of the Manor Road", "Who Was Seen"],
+    "pray": ["Who Held the Shrine", "Justinian's Friend", "Who Heard the Floor", "of the Third Hour"],
+    "trade": ["Bargeman's Friend", "Who Would Not Ask", "of the Ferry Stair", "the Unsealed"]
+  }
+}

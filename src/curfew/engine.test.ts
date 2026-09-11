@@ -222,3 +222,128 @@ test('the edge tilts the dice for orders given, not for standing orders', () => 
   assert.ok(withEdge > without + 20, `edge ${withEdge} vs plain ${without}`);
   assert.equal(standing, standingPlain, 'standing orders run at half yield whoever goes');
 });
+
+// ───────────────────────── where the campaign is ─────────────────────────
+
+import { LOCATIONS, DEFAULT_LOCATION, locationById, locationForNight, isErrandAt, errandAt, unavailableReason, moonBoostAt, moonTieAt, tokensFor, blurbFor, TOKENS, OMENS as DECK, cityProvides as provides } from './engine.ts';
+
+const fussenbach = locationById('fussenbach');
+const rival = { id: 'welling', name: 'the Welling Rune', members: [{ id: 'merovech', name: 'Merovech', role: 'Captain' }, { id: 'krylov', name: 'Krylov', role: 'Youngblood', dead: true }] };
+
+test('every location is a complete pack for its own errands', () => {
+  assert.ok(LOCATIONS.length >= 2);
+  assert.equal(DEFAULT_LOCATION.id, 'mordheim');
+  assert.equal(locationById('nowhere').id, 'mordheim', 'unknown places read as Mordheim');
+  for (const loc of LOCATIONS) {
+    assert.ok(loc.errands.length >= 4, loc.id);
+    for (const e of loc.errands) {
+      const bank = loc.templates[e]!;
+      assert.ok(bank, `${loc.id} has templates for ${e}`);
+      for (const k of ['boon', 'fair', 'poor', 'standing'] as const) assert.ok(bank[k].length >= 2, `${loc.id} ${e} ${k}`);
+      for (const k of ['boon', 'fair', 'poor'] as const) assert.ok(loc.cryer.headlines[e]![k].length >= 3, `${loc.id} cryer ${e} ${k}`);
+      assert.ok(loc.epithets[e]!.length >= 3, `${loc.id} epithets ${e}`);
+      assert.ok(blurbFor(e, loc).length > 10);
+    }
+    for (const e of ALL) if (!loc.errands.includes(e)) assert.ok(unavailableReason(e, loc).length > 10, `${loc.id} says why not ${e}`);
+    for (const list of [loc.districts, loc.details, loc.closers, loc.rumours, loc.return, loc.cityProvides, loc.quiet, loc.pairs, loc.cryer.bylines]) assert.ok(list.length >= 2);
+    assert.match(loc.arrival, /\{warband\}/);
+    if (loc.moonTies) for (const m of MOONS) for (const e of loc.errands) assert.ok(loc.moonTies[m.id]?.[e], `${loc.id} ties ${m.id} ${e}`);
+  }
+});
+
+test('Fussenbach has fewer errands, one of its own, and sends the missing ones somewhere sensible', () => {
+  assert.deepEqual(fussenbach.errands, ['dredge', 'carouse', 'spy', 'pray', 'trade']);
+  assert.ok(!isErrandAt('train', fussenbach) && !isErrandAt('scavenge', fussenbach));
+  assert.ok(!isErrandAt('dredge', DEFAULT_LOCATION), 'no basins in the city');
+  assert.equal(errandAt('scavenge', fussenbach), 'dredge');
+  assert.equal(errandAt('train', fussenbach), 'carouse');
+  assert.equal(errandAt('pray', fussenbach), 'pray');
+  assert.equal(errandAt('dredge', DEFAULT_LOCATION), 'scavenge');
+  assert.match(unavailableReason('train', fussenbach), /Pit/);
+  assert.equal(defaultErrand({ id: 'x', name: '', role: 'Ogre' }, fussenbach), 'carouse', 'no Pit, so the ogre drinks');
+  assert.equal(defaultErrand({ id: 'x', name: '', role: 'Jaeger' }, fussenbach), 'dredge');
+});
+
+test('the campaign is where the latest move on or before a night says, and Mordheim before any', () => {
+  assert.equal(locationForNight(5, []).id, 'mordheim');
+  const moves = [{ locationId: 'fussenbach', fromNight: 10 }, { locationId: 'mordheim', fromNight: 20 }];
+  assert.equal(locationForNight(9, moves).id, 'mordheim');
+  assert.equal(locationForNight(10, moves).id, 'fussenbach');
+  assert.equal(locationForNight(19, moves).id, 'fussenbach');
+  assert.equal(locationForNight(20, moves).id, 'mordheim');
+  assert.equal(locationForNight(10, [...moves, { locationId: 'mordheim', fromNight: 10 }]).id, 'mordheim', 'a later move on the same night wins');
+});
+
+test('in the village Dredge takes the Omen tilt and Moon favour that Scavenge would have had', () => {
+  const omen = { ...DECK[0], tilt: { scavenge: 2, train: 1 } };
+  const green = { id: 'green-moon', name: '', reading: '', boost: 'scavenge' as const, ties: {} };
+  const hunters = { id: 'hunters-moon', name: '', reading: '', boost: 'train' as const, ties: {} };
+  assert.equal(tiltFor('dredge', omen, green, fussenbach), 3);
+  assert.equal(tiltFor('dredge', omen, hunters, fussenbach), 2);
+  assert.equal(tiltFor('dredge', omen, green, DEFAULT_LOCATION), 0, 'dredge inherits nothing in the city');
+  assert.equal(moonBoostAt(green, fussenbach), 'dredge');
+  assert.equal(moonBoostAt(hunters, fussenbach), 'pray', 'the village says where the Hunter\'s Moon goes');
+  assert.equal(moonBoostAt(hunters, DEFAULT_LOCATION), 'train');
+  assert.equal(moonBoostAt({ ...hunters, id: 'made-up' }, fussenbach), undefined, 'a Moon for an errand nobody has is flat');
+  assert.ok(moonTieAt(MOONS[0], 'dredge', fussenbach));
+  assert.equal(moonTieAt(MOONS[0], 'dredge', DEFAULT_LOCATION), undefined);
+  assert.equal(moonTieAt(MOONS[0], 'pray', DEFAULT_LOCATION), MOONS[0].ties.pray);
+});
+
+test('the village has charms of its own, which never turn up in the city', () => {
+  const village = TOKENS.filter((t) => t.location === 'fussenbach');
+  assert.ok(village.length >= 4);
+  for (const type of ['fortune', 'ground', 'market', 'sight'] as const) {
+    const city = tokensFor(type, DEFAULT_LOCATION), there = tokensFor(type, fussenbach);
+    assert.ok(city.every((t) => !t.location));
+    assert.ok(there.length > city.length, `${type}: the village adds to the pool`);
+    assert.ok(city.every((t) => there.includes(t)), 'the common charms still turn up');
+  }
+  const seen = new Set<string>();
+  for (let n = 1; n <= 200; n++) seen.add(provides('nordost', n, fussenbach).id);
+  assert.ok(village.some((t) => seen.has(t.id)), 'the Village Provides its own charms too');
+  for (let n = 1; n <= 200; n++) assert.ok(!provides('nordost', n).location, 'the City Provides only common ones');
+});
+
+test('a Fussenbach night reads in the village\'s words, drops its charms, and now and then meets the rival', () => {
+  let dredgeShards = 0, ground = 0, villageTokens = 0, encounters = 0, tied = 0;
+  for (let n = 1; n <= 300; n++) {
+    const res = resolveNight({ warband, rival, night: n, orders: [{ memberId: 'torgrim', errand: 'dredge' }, { memberId: 'skalle', errand: 'pray' }], state: fresh, location: fussenbach });
+    assert.equal(res.locationId, 'fussenbach');
+    for (const r of res.results) {
+      assert.doesNotMatch(r.prose, /\{\w+\}/, 'every slot is filled');
+      assert.doesNotMatch(r.prose, /Henrik|the Pit|Sister Agathe/, 'nothing of the city leaks in');
+      if (r.token?.location) villageTokens++;
+    }
+    const d = res.results[0];
+    dredgeShards += d.shards;
+    if (d.token?.type === 'ground') ground++;
+    if (d.prose.includes('Welling Rune')) encounters++;
+    if (d.prose.includes('Merovech')) assert.ok(d.prose.includes('Welling Rune'));
+    if (moonForNight(n).id && fussenbach.moonTies![moonForNight(n).id].dredge && d.prose.includes(fussenbach.moonTies![moonForNight(n).id].dredge!.replace(/\{first\}/g, 'Torgrim').slice(0, 20))) tied++;
+    assert.ok(fussenbach.details.includes(res.detail));
+  }
+  assert.ok(dredgeShards > 100, `dredging brings the green home: ${dredgeShards}`);
+  assert.ok(ground > 20, `and the lie of the mudflats: ${ground} Ground charms`);
+  assert.ok(villageTokens > 10, `village charms drop: ${villageTokens}`);
+  assert.ok(encounters > 15 && encounters < 90, `the rival crosses their path now and then: ${encounters} of 300`);
+  assert.ok(tied > 60, `the Moon leaves its village mark: ${tied}`);
+  const quiet = quietNight(3, fussenbach), back = returnNight(30, 'nordost', fussenbach);
+  assert.equal(quiet.locationId, 'fussenbach'); assert.ok(fussenbach.quiet.includes(quiet.closer!));
+  assert.ok(fussenbach.return.includes(back.detail));
+  assert.ok(fussenbach.epithets.dredge!.includes(epithetFor('torgrim', { dredge: 4, pray: 1 }, fussenbach)));
+  assert.ok(DEFAULT_LOCATION.epithets.train!.includes(epithetFor('torgrim', { train: 4 }, fussenbach)), 'a name earned at the Pit keeps the city\'s words');
+});
+
+test('a Mordheim night is unchanged in kind: no village words, and the rival crosses paths there too', () => {
+  let encounters = 0;
+  for (let n = 1; n <= 200; n++) {
+    const res = resolveNight({ warband, rival, night: n, orders: [{ memberId: 'agnar', errand: 'carouse' }], state: fresh });
+    assert.equal(res.locationId, 'mordheim');
+    assert.doesNotMatch(res.results[0].prose, /Flagon|Fussen|Justinian/);
+    if (res.results[0].prose.includes('Welling Rune')) encounters++;
+  }
+  assert.ok(encounters > 8 && encounters < 70, `${encounters} of 200`);
+  const standing = resolveNight({ warband, rival, night: 7, orders: [{ memberId: 'agnar', errand: 'carouse', standing: true }], state: fresh });
+  assert.doesNotMatch(standing.results[0].prose, /Welling Rune/, 'nobody remarks on standing orders');
+});

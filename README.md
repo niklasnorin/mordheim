@@ -5,7 +5,7 @@ A grimdark, interactive campaign chronicle for our Mordheim game group, built wi
 ## Features
 
 - 🌧 Rainy, moody atmosphere — canvas rain, flying crows, drifting fog, and distant lightning
-- 📰 **Town Cryer** — a parchment broadsheet with news from the City of the Damned, and dispatches from the Night Watch: what the Curfew ledgers saw last night
+- 📰 **Town Cryer** — a parchment broadsheet with news from wherever the campaign is (the City of the Damned, or the village of Fussenbach), and dispatches from the Watch: what the Curfew ledgers saw last night
 - ⚔ **Warbands** — rosters with clickable warrior profiles (statlines, equipment, skills, and lore)
 - **Quick reference** — persistent section navigation, compact mobile rosters, scrollable standings with pinned warband names, and accessible warrior dialogs with stat definitions
 - 🏆 **Campaign Standings** — ratings, battles, wyrdstone, and gold
@@ -24,8 +24,9 @@ Resolution happens twice over, and both ways agree: a nightly cron writes every 
 | --- | --- |
 | `src/data/curfew/campaign.json` | Start date (night 1), time zone, members per night, soft caps, thresholds |
 | `src/data/curfew/omens.json` | The 30 Omens of the Tarot of the Damned, with readings and errand tilts |
-| `src/data/curfew/moons.json`, `tokens.json`, `patrons.json`, `jobs.json` | The weekly Moons, the 12 tokens and 4 curses, and Phase 4 content |
-| `src/data/curfew/vignettes.json`, `cryer.json`, `STYLE.md`, `PLAN.md` | Dawn Report templates, rumours, epithets, Renown titles; Town Cryer headline templates; the writing style guide; the implementation plan with phase status |
+| `src/data/curfew/moons.json`, `tokens.json`, `patrons.json`, `jobs.json` | The weekly Moons, the tokens (some belong to one place) and 4 curses, and Phase 4 content |
+| `src/data/curfew/locations/*.json` | One pack per place the campaign can be in: its errands and why the others are not to be had, points of interest, Dawn Report templates, rumours, epithets, Moon tie-ins, and the Town Cryer's masthead and headlines. `mordheim.json` and `fussenbach.json` today |
+| `src/data/curfew/STYLE.md`, `PLAN.md` | The writing style guide; the implementation plan with phase status |
 | `src/curfew/engine.ts` | The pure Night engine: calendar, seeded draws, errand resolution, the Hand |
 | `src/curfew/ledger.ts` | The ledger as pure functions: orders, reconciliation of passed nights, absence rules, offers, the Eve |
 | `src/curfew/cryer.ts` | What a resolved night gives the Town Cryer: every headline, and occasionally one member's night |
@@ -41,6 +42,7 @@ In `astro dev` (or with `CURFEW_DEBUG=true`, never in production) `?date=YYYY-MM
 
 - inspect any ledger (last night, the Hand, pending offers, the Eve, the raw record), burn one to start it afresh, or release a warband from its keeper;
 - moderate the Town Cryer: pull a dispatch, or post a notice from the Watch that prints in the broadsheet;
+- move the campaign between the places in `src/data/curfew/locations/` (Mordheim and Fussenbach). The move takes effect from tonight: earlier nights keep their place, the Curfew greys out the errands the new place has none of and offers its own, and the Town Cryer prints from there;
 - see every player with their sign-in provider, sessions and last visit, and sign one out everywhere;
 - run midnight by hand and read the history of runs.
 

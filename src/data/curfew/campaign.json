@@ -10,5 +10,14 @@
   "flourishCost": 25,
   "returnAfterNights": 7,
   "rumourWarmNights": 7,
-  "epithetAfterEntries": 5
+  "epithetAfterEntries": 5,
+  "titles": [
+    {"renown": 0, "title": "Newcomers"},
+    {"renown": 10, "title": "Sifters"},
+    {"renown": 25, "title": "Ratcatchers"},
+    {"renown": 50, "title": "Confessors"},
+    {"renown": 80, "title": "Pit-Dogs"},
+    {"renown": 120, "title": "The Named"},
+    {"renown": 200, "title": "Those Who Stayed"}
+  ]
 }

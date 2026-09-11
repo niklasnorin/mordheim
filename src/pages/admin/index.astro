@@ -47,7 +47,7 @@ const lastRun = data?.runs[0];
       <a class="cf-back" href={`${base}/`}>← Mordheim</a>
       <a class="wh-wordmark" href={`${base}/admin/`}>The Watch House</a>
       <div class="wh-top-right">
-        <span class="cf-nightline">{today < 1 ? <>The city sleeps until <strong>{nightDate(1)}</strong></> : <>Night <strong>{today}</strong> · {moonForNight(today).name}</>}</span>
+        <span class="cf-nightline">{today < 1 ? <>The city sleeps until <strong>{nightDate(1)}</strong></> : <>Night <strong>{today}</strong> · {moonForNight(today).name}{data ? <> · {data.location.name}</> : null}</>}</span>
         {viewer && <span class="wh-who">{viewer.name}<button type="button" class="cf-linkbtn" id="signout">Sign out</button></span>}
       </div>
     </header>
@@ -86,6 +86,16 @@ const lastRun = data?.runs[0];
                 <li><b>{data.counts.dispatches}</b> {data.counts.dispatches === 1 ? 'dispatch has' : 'dispatches have'} gone to the Town Cryer.</li>
                 <li class:list={{ bad: !lastRun }}>{lastRun ? <>Midnight last ran <b>{when(lastRun.ranAt)}</b> by {lastRun.source === 'cron' ? 'the cron' : 'hand'}, writing <b>{lastRun.nights}</b> {lastRun.nights === 1 ? 'night' : 'nights'}.</> : <>Midnight has <b>never</b> run.</>}</li>
               </ul>
+              <div class="wh-place" id="place">
+                <h3 class="wh-h3">Where the campaign is</h3>
+                <p>The warbands are in <b>{data.location.name}</b>{data.moves[0] ? <>, since night {data.moves[0].fromNight}</> : null}. {data.location.kind === 'village' ? `A ${data.location.kind}: the Curfew offers ${data.location.errands.map((e) => ERRAND_LABEL[e]).join(', ')}, and the Cryer prints from the docks.` : `The city: every errand is open, and the Cryer prints from the ruins.`}</p>
+                <div class="wh-actions">
+                  {data.locations.filter((l) => l.id !== data!.location.id).map((l) => (
+                    <button type="button" class="cf-btn cf-btn-ghost sm" data-act="move-campaign" data-body={JSON.stringify({ locationId: l.id })} data-confirm={`Move the campaign to ${l.name} from tonight, night ${Math.max(1, today)}? Nights already written stay where they were. From tonight the Curfew offers ${l.name}'s errands (${l.errands.map((e) => ERRAND_LABEL[e]).join(', ')}) and the Town Cryer prints from there.`}>Move to {l.name}</button>
+                  ))}
+                </div>
+                {data.moves.length > 0 && <p class="wh-moves">{data.moves.slice(0, 4).map((m, i) => <span>{i > 0 ? ' · ' : ''}{data!.locations.find((l) => l.id === m.locationId)?.name ?? m.locationId} from night {m.fromNight}</span>)}{data.moves.length > 4 ? ' · …' : ''}</p>}
+              </div>
             </div>
             <ul class="wh-health" aria-label="Health">
               {data.health.map((h) => <li class:list={[h.ok === true ? 'ok' : h.ok === false ? 'bad' : 'note']}><span class="wh-dot" aria-hidden="true"></span><b>{h.label}</b><span>{h.detail}</span></li>)}

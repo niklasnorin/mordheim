@@ -7,7 +7,7 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { useDb } from '../db/client.ts';
 import * as schema from '../db/schema.ts';
 import { actions, claimWarband, recentDispatches } from '../curfew/service.ts';
-import { burnLedger, deleteDispatch, ledgerDetail, listPlayers, overview, postNotice, releaseLedger, revokeSessions, runMidnight, LedgerError } from './service.ts';
+import { burnLedger, deleteDispatch, ledgerDetail, listPlayers, moveCampaign, overview, postNotice, releaseLedger, revokeSessions, runMidnight, LedgerError } from './service.ts';
 import { warbands } from '../../data/warbands.ts';
 
 const pg = new PGlite();
@@ -49,6 +49,22 @@ test('the overview knows the night, who keeps what, and who is behind', async ()
   const bitterbrow = o.ledgers.find((l) => l.warbandId === 'bitterbrow-expedition')!;
   assert.equal(bitterbrow.keeper, undefined);
   assert.ok(o.health.some((h) => h.label === 'Last midnight' && h.detail === 'never run'));
+  assert.equal(o.location.id, 'mordheim');
+  assert.ok(o.locations.some((l) => l.id === 'fussenbach'));
+  assert.deepEqual(o.moves, []);
+});
+
+test('the overview knows where the campaign is, and the moves newest first', async () => {
+  await moveCampaign('fussenbach', 6);
+  let o = await overview(6);
+  assert.equal(o.location.id, 'fussenbach');
+  assert.equal(o.moves.length, 1);
+  assert.equal(o.moves[0].fromNight, 6);
+  await moveCampaign('mordheim', 7);
+  o = await overview(7);
+  assert.equal(o.location.id, 'mordheim');
+  assert.deepEqual(o.moves.map((m) => m.locationId), ['mordheim', 'fussenbach']);
+  assert.equal((await overview(6)).location.id, 'fussenbach', 'night 6 was in the village');
 });
 
 test('players list their sessions, warband and last visit', async () => {

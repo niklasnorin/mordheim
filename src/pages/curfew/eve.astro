@@ -56,12 +56,12 @@ const ledgerHref = `${base}/curfew/`;
 
 <script>
   import { warbands } from '../../data/warbands';
-  import { CAMPAIGN, HAND_SIZE, TOKEN_TYPES, cityProvidesLine, readTicket, tokenById, omenForNight } from '../../curfew/engine';
+  import { CAMPAIGN, HAND_SIZE, TOKEN_TYPES, cityProvidesLine, locationById, readTicket, tokenById, omenForNight } from '../../curfew/engine';
   import type { Flourish, WarbandState } from '../../curfew/ledger';
   import { sealSvg } from '../../curfew/glyphs';
   import { carryDate, debugEnabled, renderDebugBar } from '../../curfew/debug';
 
-  interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean }
+  interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean; locationId: string }
   interface Boot { today: number; debug: boolean; view: View | null }
 
   document.body.classList.add('curfew-body');
@@ -93,7 +93,8 @@ const ledgerHref = `${base}/curfew/`;
   if (boot.view) {
     let state: WarbandState = boot.view.state;
     const warband = warbands.find((w) => w.id === boot.view!.warbandId)!;
-    $('nightline').innerHTML = `Night <strong>${today}</strong> · ${esc(warband.name)}`;
+    const place = locationById(boot.view.locationId);
+    $('nightline').innerHTML = `Night <strong>${today}</strong> · ${esc(place.name)} · ${esc(warband.name)}`;
     const dead = warband.members.filter((m) => m.dead);
 
     function tokenHtml(id: string, pick = false) {
@@ -111,7 +112,7 @@ const ledgerHref = `${base}/curfew/`;
       let provided = '';
       if (state.provided && state.provided.night === today) {
         const token = tokenById(state.provided.tokenId);
-        provided = `<div class="cf-offer"><h3 class="cf-offer-title">The City Provides</h3><p class="cf-italic">${esc(cityProvidesLine(warband.id, today))}</p><p>An empty Hand at the Eve is dealt one charm: <b>${esc(token.name)}</b>.</p></div>`;
+        provided = `<div class="cf-offer"><h3 class="cf-offer-title">${place.kind === 'village' ? 'The Village Provides' : 'The City Provides'}</h3><p class="cf-italic">${esc(cityProvidesLine(warband.id, today, place))}</p><p>An empty Hand at the Eve is dealt one charm: <b>${esc(token.name)}</b>.</p></div>`;
       }
       const canFlourish = state.favour >= cost;
       table.innerHTML = `
