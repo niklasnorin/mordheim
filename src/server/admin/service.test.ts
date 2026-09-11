@@ -8,6 +8,7 @@ import { useDb } from '../db/client.ts';
 import * as schema from '../db/schema.ts';
 import { actions, claimWarband, recentDispatches } from '../curfew/service.ts';
 import { burnLedger, deleteDispatch, ledgerDetail, listPlayers, overview, postNotice, releaseLedger, revokeSessions, runMidnight, LedgerError } from './service.ts';
+import { warbands } from '../../data/warbands.ts';
 
 const pg = new PGlite();
 const db = drizzle(pg, { schema });
@@ -37,7 +38,7 @@ test('the overview knows the night, who keeps what, and who is behind', async ()
   const o = await overview(6);
   assert.equal(o.today, 6);
   assert.ok(o.omen.title && o.moon.name);
-  assert.equal(o.counts.warbands, 2);
+  assert.equal(o.counts.warbands, warbands.length);
   assert.equal(o.counts.ledgers, 1);
   assert.equal(o.counts.players, 2);
   assert.equal(o.counts.sessions, 1, 'expired sessions do not count');
