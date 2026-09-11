@@ -192,6 +192,7 @@ test('the Eve: the City Provides, the table is laid with a flourish, the fight s
 // ───────────────────────── where the campaign is ─────────────────────────
 
 import { locationById } from './engine.ts';
+import { recentLines } from './ledger.ts';
 
 const village = locationById('fussenbach');
 
@@ -232,6 +233,18 @@ test('a move takes effect from its night: earlier nights stay in the city, the f
   assert.equal(s.nights.at(-1)!.locationId, 'mordheim');
   assert.ok(s.headlines.some((h) => h.night === 15 && /back inside the walls/.test(h.text)));
   assert.equal(s.headlines.filter((h) => /Cracked Flagon|back inside/.test(h.text)).length, 2, 'one headline per move, not per night');
+});
+
+test('the Dawn Report remembers its last ten nights and does not read the same line three times in a month', () => {
+  const s = freshState(warband, 1);
+  const E = village.errands;
+  for (let n = 1; n <= 30; n += 2) giveOrders(s, warband, n, [{ memberId: 'torgrim', errand: E[n % E.length] }, { memberId: 'agnar', errand: E[(n + 2) % E.length] }], [], village);
+  reconcile(s, warband, 31, [], undefined, [{ locationId: 'fussenbach', fromNight: 1 }]);
+  const counts = new Map<string, number>();
+  for (const n of s.nights) for (const r of n.results) { assert.ok(r.line, 'every result says which line it came from'); counts.set(r.line!, (counts.get(r.line!) ?? 0) + 1); }
+  assert.ok(Math.max(...counts.values()) <= 2, 'no line three times in a month');
+  assert.ok(recentLines(s, 31).length > 0 && recentLines(s, 31).every((l) => /^\w+:(boon|fair|poor|standing):\d+$/.test(l)));
+  assert.equal(recentLines(s, 100).length, 0, 'old nights are forgotten');
 });
 
 test('a ledger opened in the village announces no arrival, and old nights without a place read as Mordheim', () => {

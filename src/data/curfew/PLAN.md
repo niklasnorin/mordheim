@@ -56,7 +56,9 @@ Two minutes a day. A month of nights between games becomes a story instead of a 
 
 The game master moves the campaign from the Watch House. Moves are logged by night (`curfew_moves`), so a night resolves where the campaign *was*: earlier nights keep their place, orders already given for an errand the new place lacks go where the place sends them (`redirect`), standing orders translate the same way, and the first night in a new place plants an arrival headline in the Cryer. The Ledger names the place, lists its errands first and the missing ones greyed with the reason, and the Eve deals from its charms. The Town Cryer prints from wherever the campaign is: its own masthead, banner, price and watch heading, the `news.ts` articles tagged for that place, and the nights' dispatches headlined in the place's words.
 
-Rival warbands cross paths lightly: now and then (about one night in seven, never on standing orders) a member's vignette ends with a line about the rival, by warband and by a living member's name. Nothing is decided between them.
+Rival warbands cross paths lightly: now and then (about one night in seven, never on standing orders) a member's vignette ends with a line about the rival, by warband and by a living member's name; with several other warbands the night picks which one. Nothing is decided between them.
+
+The Fussenbach pack is sized for a month of nightly play by four warbands: a dozen or more templates per errand and outcome, six standing lines, forty-odd rumours and details, three Moon tie-in lines per Moon and errand, eighteen encounters, ten epithets per errand and eight Cryer headlines per errand and outcome. A first sentence repeating within one warband's month should be the exception: the ledger hands the engine the lines of the last ten nights and the draw is retaken, a few times, when it lands on one of them (`avoid` on `resolveNight`, `line` on each result).
 
 ---
 
@@ -130,7 +132,7 @@ Night 1 is 10 September 2026.
 3. A ticket such as `EVE-2-K7Q1P` is shown to the rival. Entering the rival's ticket reveals how many charms they carry, not which. **Changed:** this replaces the server-side glimpse for now.
 4. "The fight is done" consumes the charms and writes a line in the Chronicle. "Put the charms back" reopens the table; spent Favour does not return.
 
-The token table is the first plan's (`tokens.json`), plus six Fussenbach charms that only turn up there.
+The token table is the first plan's (`tokens.json`), plus fourteen Fussenbach charms that only turn up there.
 
 ---
 

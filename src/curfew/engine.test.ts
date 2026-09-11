@@ -225,7 +225,7 @@ test('the edge tilts the dice for orders given, not for standing orders', () => 
 
 // ───────────────────────── where the campaign is ─────────────────────────
 
-import { LOCATIONS, DEFAULT_LOCATION, locationById, locationForNight, isErrandAt, errandAt, unavailableReason, moonBoostAt, moonTieAt, tokensFor, blurbFor, TOKENS, OMENS as DECK, cityProvides as provides } from './engine.ts';
+import { LOCATIONS, DEFAULT_LOCATION, locationById, locationForNight, isErrandAt, errandAt, unavailableReason, moonBoostAt, moonTiesAt, tokensFor, blurbFor, TOKENS, OMENS as DECK, cityProvides as provides } from './engine.ts';
 
 const fussenbach = locationById('fussenbach');
 const rival = { id: 'welling', name: 'the Welling Rune', members: [{ id: 'merovech', name: 'Merovech', role: 'Captain' }, { id: 'krylov', name: 'Krylov', role: 'Youngblood', dead: true }] };
@@ -247,8 +247,49 @@ test('every location is a complete pack for its own errands', () => {
     for (const e of ALL) if (!loc.errands.includes(e)) assert.ok(unavailableReason(e, loc).length > 10, `${loc.id} says why not ${e}`);
     for (const list of [loc.districts, loc.details, loc.closers, loc.rumours, loc.return, loc.cityProvides, loc.quiet, loc.pairs, loc.cryer.bylines]) assert.ok(list.length >= 2);
     assert.match(loc.arrival, /\{warband\}/);
-    if (loc.moonTies) for (const m of MOONS) for (const e of loc.errands) assert.ok(loc.moonTies[m.id]?.[e], `${loc.id} ties ${m.id} ${e}`);
+    if (loc.moonTies) for (const m of MOONS) for (const e of loc.errands) assert.ok(moonTiesAt(m, e, loc).length, `${loc.id} ties ${m.id} ${e}`);
   }
+});
+
+test('a month of nights for four warbands rarely repeats a line', () => {
+  // four warbands, two members a night, thirty nights, errands spread as a player would spread them
+  const bands = ['a', 'b', 'c', 'd'].map((id) => ({ ...warband, id: `${warband.id}-${id}` }));
+  const E = fussenbach.errands;
+  for (const [b, band] of bands.entries()) {
+    const seen = new Map<string, number>();
+    const lines: { night: number; line: string }[] = [];
+    for (let n = 1; n <= 30; n++) {
+      const orders = [{ memberId: 'torgrim', errand: E[(n + b) % E.length] }, { memberId: 'skalle', errand: E[(n * 2 + b + 1) % E.length] }];
+      // the ledger hands the engine the last ten nights' lines; do the same here
+      const avoid = lines.filter((l) => l.night >= n - 10).map((l) => l.line);
+      const res = resolveNight({ warband: band, rival: bands.filter((x) => x !== band), night: n, orders, state: fresh, location: fussenbach, avoid });
+      for (const r of res.results) { const key = r.prose.split('. ')[0]; seen.set(key, (seen.get(key) ?? 0) + 1); lines.push({ night: n, line: r.line! }); }
+    }
+    const counts = [...seen.values()];
+    assert.ok(Math.max(...counts) <= 2, `${band.id}: a line opened three nights in one month`);
+    assert.ok(counts.filter((c) => c === 2).length <= 5, `${band.id}: ${counts.filter((c) => c === 2).length} of 60 openings repeated once`);
+  }
+  // without the ledger's memory the same month repeats itself more
+  const blind = new Map<string, number>();
+  for (let n = 1; n <= 30; n++) {
+    const res = resolveNight({ warband: bands[0], night: n, orders: [{ memberId: 'torgrim', errand: E[n % E.length] }, { memberId: 'skalle', errand: E[(n * 2 + 1) % E.length] }], state: fresh, location: fussenbach });
+    for (const r of res.results) blind.set(r.line!, (blind.get(r.line!) ?? 0) + 1);
+  }
+  assert.ok([...blind.values()].some((c) => c > 1), 'the redraw is what keeps the month fresh');
+  // and the rival is not always the same one
+  const named = new Set<string>();
+  for (let n = 1; n <= 120; n++) {
+    const res = resolveNight({ warband: bands[0], rival: bands.slice(1), night: n, orders: [{ memberId: 'agnar', errand: 'spy' }], state: fresh, location: fussenbach });
+    for (const b of bands.slice(1)) if (res.results[0].prose.includes(b.name) || res.results[0].rumour?.includes(b.name)) named.add(b.id);
+  }
+  assert.ok(named.size >= 1, 'the rival is named by warband name, which here is shared; the rotation is checked below');
+  const picked = new Set<string>();
+  const distinct = bands.slice(1).map((b, i) => ({ ...b, name: `Band ${i}` }));
+  for (let n = 1; n <= 120; n++) {
+    const res = resolveNight({ warband: bands[0], rival: distinct, night: n, orders: [{ memberId: 'agnar', errand: 'spy' }], state: fresh, location: fussenbach });
+    for (const b of distinct) if ((res.results[0].prose + (res.results[0].rumour ?? '')).includes(b.name)) picked.add(b.name);
+  }
+  assert.equal(picked.size, 3, 'over a season every other warband gets a turn as the rival');
 });
 
 test('Fussenbach has fewer errands, one of its own, and sends the missing ones somewhere sensible', () => {
@@ -285,9 +326,9 @@ test('in the village Dredge takes the Omen tilt and Moon favour that Scavenge wo
   assert.equal(moonBoostAt(hunters, fussenbach), 'pray', 'the village says where the Hunter\'s Moon goes');
   assert.equal(moonBoostAt(hunters, DEFAULT_LOCATION), 'train');
   assert.equal(moonBoostAt({ ...hunters, id: 'made-up' }, fussenbach), undefined, 'a Moon for an errand nobody has is flat');
-  assert.ok(moonTieAt(MOONS[0], 'dredge', fussenbach));
-  assert.equal(moonTieAt(MOONS[0], 'dredge', DEFAULT_LOCATION), undefined);
-  assert.equal(moonTieAt(MOONS[0], 'pray', DEFAULT_LOCATION), MOONS[0].ties.pray);
+  assert.ok(moonTiesAt(MOONS[0], 'dredge', fussenbach).length >= 2, 'the village has several lines per Moon');
+  assert.deepEqual(moonTiesAt(MOONS[0], 'dredge', DEFAULT_LOCATION), []);
+  assert.deepEqual(moonTiesAt(MOONS[0], 'pray', DEFAULT_LOCATION), [MOONS[0].ties.pray]);
 });
 
 test('the village has charms of its own, which never turn up in the city', () => {
@@ -320,7 +361,7 @@ test('a Fussenbach night reads in the village\'s words, drops its charms, and no
     if (d.token?.type === 'ground') ground++;
     if (d.prose.includes('Welling Rune')) encounters++;
     if (d.prose.includes('Merovech')) assert.ok(d.prose.includes('Welling Rune'));
-    if (moonForNight(n).id && fussenbach.moonTies![moonForNight(n).id].dredge && d.prose.includes(fussenbach.moonTies![moonForNight(n).id].dredge!.replace(/\{first\}/g, 'Torgrim').slice(0, 20))) tied++;
+    if (moonTiesAt(moonForNight(n), 'dredge', fussenbach).some((t) => d.prose.includes(t.replace(/\{first\}/g, 'Torgrim').slice(0, 20)))) tied++;
     assert.ok(fussenbach.details.includes(res.detail));
   }
   assert.ok(dredgeShards > 100, `dredging brings the green home: ${dredgeShards}`);

@@ -16,7 +16,7 @@ import {
   type Flourish, type WarbandState,
 } from '../../curfew/ledger.ts';
 import { dispatchesForNight, type Dispatch } from '../../curfew/cryer.ts';
-import { injuredInLastBattle, rivalOf, warbandById } from '../../curfew/roster.ts';
+import { injuredInLastBattle, rivalsOf, warbandById } from '../../curfew/roster.ts';
 import { memberNights, warbandStandings, type Ledger, type MemberNights, type WarbandStanding } from '../../curfew/story.ts';
 import type { Warband } from '../../data/warbands.ts';
 
@@ -121,7 +121,7 @@ export async function withLedger(userId: string, today: number, change: (state: 
     const location = locationForNight(today, moves);
     const state = coerceState(row.state, warband, today);
     const recovering = recoveringMembers(state, injuredInLastBattle(warband.id));
-    const written = reconcile(state, warband, today, recovering, rivalOf(warband.id), moves);
+    const written = reconcile(state, warband, today, recovering, rivalsOf(warband.id), moves);
     const before = JSON.stringify(row.state);
     change(state, warband, recoveringMembers(state, injuredInLastBattle(warband.id)), location);
     const after = JSON.stringify(state);
@@ -183,7 +183,7 @@ export async function reconcileAll(today: number, source: 'cron' | 'admin' = 'cr
     const warband = warbandById(row.warbandId);
     if (!warband) continue;
     const state = coerceState(row.state, warband, today);
-    const written = reconcile(state, warband, today, recoveringMembers(state, injuredInLastBattle(warband.id)), rivalOf(warband.id), moves);
+    const written = reconcile(state, warband, today, recoveringMembers(state, injuredInLastBattle(warband.id)), rivalsOf(warband.id), moves);
     if (!written.length) continue;
     if (!(await save(row.warbandId, row.version, state))) continue; // someone else wrote it first; their dawn is the same dawn
     const out = written.flatMap((n) => dispatchesForNight(warband, n, state.headlines));

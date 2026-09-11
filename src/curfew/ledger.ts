@@ -119,6 +119,15 @@ export function standingOrders(state: WarbandState, warband: WarbandLike, recove
   return source.filter((o) => avail.has(o.memberId)).slice(0, CAMPAIGN.membersPerNight).map((o) => ({ memberId: o.memberId, errand: errandAt(o.errand, location), standing: true }));
 }
 
+/** How many nights back the Dawn Report remembers its own lines, so as not to repeat them. */
+export const AVOID_LINES_NIGHTS = 10;
+/** The template lines written in the nights just before `night`; see ResolveInput.avoid. */
+export function recentLines(state: WarbandState, night: number): string[] {
+  const out: string[] = [];
+  for (const n of state.nights) if (n.night >= night - AVOID_LINES_NIGHTS && n.night < night) for (const r of n.results) if (r.line) out.push(r.line);
+  return out;
+}
+
 /** Where the ledger's last written night happened. Nights from before the campaign could move were in Mordheim. Undefined for a blank ledger. */
 export function lastLocationId(state: WarbandState): string | undefined {
   for (let i = state.nights.length - 1; i >= 0; i--) { const id = state.nights[i].locationId; if (id) return id; }
@@ -130,7 +139,7 @@ export function lastLocationId(state: WarbandState): string | undefined {
  * A gap longer than the campaign's return threshold collapses into a single Return vignette.
  * `moves` says where the campaign was on each night; a night written after a move keeps the place it was in.
  */
-export function reconcile(state: WarbandState, warband: WarbandLike, today: number, recovering: string[], rival?: WarbandLike, moves: readonly Move[] = []): NightResult[] {
+export function reconcile(state: WarbandState, warband: WarbandLike, today: number, recovering: string[], rival?: WarbandLike | WarbandLike[], moves: readonly Move[] = []): NightResult[] {
   const written: NightResult[] = [];
   const first = state.lastResolved + 1, last = today - 1;
   if (last < first) return written;
@@ -152,7 +161,7 @@ export function reconcile(state: WarbandState, warband: WarbandLike, today: numb
     const given = state.orders[night]?.filter((o) => !resting.includes(o.memberId)).map((o) => ({ ...o, errand: errandAt(o.errand, location) }));
     const orders = given && given.length ? given : standingOrders(state, warband, recovering, night, location);
     const arrived = lastLocationId(state);
-    const result = orders.length ? resolveNight({ warband, rival, night, orders, state, location }) : quietNight(night, location);
+    const result = orders.length ? resolveNight({ warband, rival, night, orders, state, location, avoid: recentLines(state, night) }) : quietNight(night, location);
     const before = titleFor(state.renown);
     const applied = applyNight(state, result);
     Object.assign(state, applied.state);

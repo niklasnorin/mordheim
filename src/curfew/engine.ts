@@ -59,8 +59,8 @@ export interface Location {
   inherits: Partial<Record<Errand, Errand>>;
   /** A Moon whose favoured errand is not to be had here favours this one instead. */
   moonBoost?: Record<string, Errand>;
-  /** The Moons' tie-in lines for this place; without them the Moon's own lines are used. */
-  moonTies?: Record<string, Partial<Record<Errand, string>>>;
+  /** The Moons' tie-in lines for this place, one or several per errand; without them the Moon's own lines are used. */
+  moonTies?: Record<string, Partial<Record<Errand, string | string[]>>>;
   /** Headline for the Cryer when the campaign arrives here. */
   arrival: string;
   /** A line under "Who goes out?" about what the place offers. */
@@ -91,6 +91,8 @@ export interface OrderResult {
   favour: number; renown: number; shards: number;
   /** Token earned this night, if any. Whether it fits the Hand is decided by applyNight. */
   token?: TokenDef; rumour?: string; convertedShards?: number; prose: string;
+  /** Which template the prose came from (`errand:outcome:index`), so the nights after can steer away from it. */
+  line?: string;
 }
 export interface NightResult {
   night: number; omenId: string; moonId: string; header: string; results: OrderResult[];
@@ -216,9 +218,10 @@ export function moonBoostAt(moon: Moon, location: Location = DEFAULT_LOCATION): 
   if (isErrandAt(moon.boost, location)) return moon.boost;
   return location.errands.find((e) => location.inherits[e] === moon.boost);
 }
-/** The Moon's tie-in line for an errand at a place, if the Moon leaves one there. */
-export function moonTieAt(moon: Moon, errand: Errand, location: Location = DEFAULT_LOCATION): string | undefined {
-  return location.moonTies ? location.moonTies[moon.id]?.[errand] : moon.ties[errand];
+/** The Moon's tie-in lines for an errand at a place; empty if the Moon leaves none there. */
+export function moonTiesAt(moon: Moon, errand: Errand, location: Location = DEFAULT_LOCATION): string[] {
+  const tie = location.moonTies ? location.moonTies[moon.id]?.[errand] : moon.ties[errand];
+  return tie === undefined ? [] : Array.isArray(tie) ? tie : [tie];
 }
 /** Combined tilt for an errand on a night: the Omen's tilt plus one point for the Moon's favoured errand, clamped to ±3. */
 export function tiltFor(errand: Errand, omen: Omen, moon: Moon, location: Location = DEFAULT_LOCATION): number {
@@ -324,9 +327,13 @@ function fill(template: string, slots: Record<string, string>): string {
 }
 
 export interface ResolveInput {
-  warband: WarbandLike; rival?: WarbandLike; night: number; orders: Order[]; state: HandState;
+  warband: WarbandLike; night: number; orders: Order[]; state: HandState;
+  /** The other warbands. With several, the night picks one to be the rival its vignettes speak of. */
+  rival?: WarbandLike | WarbandLike[];
   /** Where the night happens. Mordheim when not said. */
   location?: Location;
+  /** Lines (see OrderResult.line) written in the nights just before. The draw steers away from them, so a month rarely repeats itself. */
+  avoid?: readonly string[];
 }
 /** The templates for an errand at a place, falling back to Mordheim's so an odd order never leaves a night unwritten. */
 function templatesAt(errand: Errand, location: Location): TemplateBank {
@@ -344,8 +351,10 @@ export function resolveNight(input: ResolveInput): NightResult {
   const r = rng(hashSeed(campaign.id, warband.id, night, ...orders.map((o) => `${o.memberId}:${o.errand}:${o.standing ? 's' : 'o'}`)));
   const results: OrderResult[] = [];
   let favour = state.favour, shards = state.shards;
-  const rival = input.rival?.name ?? 'the rival warband';
-  const rivalLiving = input.rival?.members.filter((m) => !m.dead) ?? [];
+  const rivals = Array.isArray(input.rival) ? input.rival : input.rival ? [input.rival] : [];
+  const rivalBand = rivals.length > 1 ? pick(r, rivals) : rivals[0];
+  const rival = rivalBand?.name ?? 'the rival warband';
+  const rivalLiving = rivalBand?.members.filter((m) => !m.dead) ?? [];
   const detail = pick(r, location.details);
 
   orders.forEach((order, i) => {
@@ -380,7 +389,12 @@ export function resolveNight(input: ResolveInput): NightResult {
     favour += effective; shards += gained;
     // prose
     const bank = templatesAt(order.errand, location);
-    const template = pick(r, standing ? bank.standing : bank[outcome]);
+    const pool = standing ? bank.standing : bank[outcome];
+    const lineKey = (idx: number) => `${order.errand}:${standing ? 'standing' : outcome}:${idx}`;
+    let index = Math.floor(r() * pool.length);
+    // a line used in the nights just before is redrawn, a few times, when the bank is deep enough to allow it
+    if (input.avoid?.length && pool.length > 3) for (let tries = 0; tries < 3 && input.avoid.includes(lineKey(index)); tries++) index = Math.floor(r() * pool.length);
+    const template = pool[index];
     const other = orders.find((o) => o !== order);
     const otherMember = other && warband.members.find((m) => m.id === other.memberId);
     const slots = {
@@ -390,14 +404,14 @@ export function resolveNight(input: ResolveInput): NightResult {
     let prose = fill(template, slots);
     if (i === 1 && otherMember && r() < 0.35) prose += ' ' + fill(pick(r, location.pairs), { ...slots, other: firstName(member.name) });
     // the Moon leaves its mark on one errand a night, quietly
-    const tie = moonTieAt(moon, order.errand, location);
-    if (i === 0 && tie && r() < 0.6) prose += ' ' + fill(tie, slots);
+    const ties = moonTiesAt(moon, order.errand, location);
+    if (i === 0 && ties.length && r() < 0.6) prose += ' ' + fill(pick(r, ties), slots);
     // now and then the rival warband crosses their path; never on standing orders, which nobody remarks on
-    if (i === 0 && !standing && input.rival && location.encounters.length && r() < 0.15) {
+    if (i === 0 && !standing && rivalBand && location.encounters.length && r() < 0.15) {
       const rivalMember = rivalLiving.length ? firstName(pick(r, rivalLiving).name) : 'somebody';
       prose += ' ' + fill(pick(r, location.encounters), { ...slots, rivalMember });
     }
-    results.push({ memberId: member.id, errand: order.errand, outcome, standing, favour: effective, renown, shards: gained, token, rumour, convertedShards, prose });
+    results.push({ memberId: member.id, errand: order.errand, outcome, standing, favour: effective, renown, shards: gained, token, rumour, convertedShards, prose, line: lineKey(index) });
   });
 
   const ledger: string[] = [];

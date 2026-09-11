@@ -4,8 +4,8 @@ import { history } from '../data/history.ts';
 
 export function warbandById(id: string): Warband | undefined { return warbands.find((w) => w.id === id); }
 
-/** The other warband, for the rumours. With more than two, the one registered first that is not yours. */
-export function rivalOf(id: string): Warband | undefined { return warbands.find((w) => w.id !== id); }
+/** The other warbands, for the rumours and the encounters. The engine picks one a night. */
+export function rivalsOf(id: string): Warband[] { return warbands.filter((w) => w.id !== id); }
 
 /** Members who came out of the most recent recorded battle injured. */
 export function injuredInLastBattle(warbandId: string): string[] {
