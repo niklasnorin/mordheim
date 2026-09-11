@@ -9,6 +9,7 @@ import { overview, type Overview } from '../../server/admin/service';
 import { todayFor } from '../../server/curfew/service';
 import { CAMPAIGN, ERRAND_LABEL, HAND_SIZE, TOKEN_TYPES, dateForNight, moonForNight, tokenById } from '../../curfew/engine';
 import { sealSvg } from '../../curfew/glyphs';
+import { formatImperial, imperialForDate } from '../../lib/calendar';
 
 // The game master's console. Personal, current, never cached.
 export const prerender = false;
@@ -29,6 +30,7 @@ const tz = CAMPAIGN.timezone;
 const when = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
 const day = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'short', year: 'numeric' }).format(d);
 const nightDate = (n: number) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(dateForNight(n) + 'T12:00:00Z'));
+const imperialDate = (n: number) => formatImperial(imperialForDate(dateForNight(n)));
 const plural = (n: number, one: string, many = one + 's') => `${n} ${n === 1 ? one : many}`;
 const TONIGHT: Record<string, string> = { given: 'Orders given', barred: 'Door barred', standing: 'Standing orders', nothing: '—' };
 const KIND: Record<string, string> = { headline: 'Heard', happening: 'Happening', notice: 'Notice' };
@@ -79,7 +81,7 @@ const lastRun = data?.runs[0];
               </figcaption>
             </figure>
             <div class="wh-city">
-              <p class="wh-lede">{today < 1 ? `The first night is ${nightDate(1)}.` : `${nightDate(today)}. Dawn is written at midnight, ${tz.replace('_', ' ')}.`}</p>
+              <p class="wh-lede">{today < 1 ? `The first night is ${nightDate(1)}, ${imperialDate(1)}.` : `${nightDate(today)}, which the Empire writes as ${imperialDate(today)}. Dawn is written at midnight, ${tz.replace('_', ' ')}.`}</p>
               <ul class="wh-facts">
                 <li><b>{data.counts.ledgers}</b> of <b>{data.counts.warbands}</b> warbands have a keeper{data.ledgers.some((l) => l.behind > 0) ? <>; <b>{data.ledgers.filter((l) => l.behind > 0).length}</b> {data.ledgers.filter((l) => l.behind > 0).length === 1 ? 'is' : 'are'} behind on their dawns.</> : '.'}</li>
                 <li><b>{data.counts.players}</b> {data.counts.players === 1 ? 'player has' : 'players have'} signed in; <b>{data.counts.sessions}</b> {data.counts.sessions === 1 ? 'session is' : 'sessions are'} open now.</li>

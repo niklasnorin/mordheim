@@ -9,6 +9,8 @@ import type { WarbandState } from './ledger.ts';
 export interface NightEntry {
   night: number;
   warbandId: string;
+  /** Where the night happened; nights from before the campaign could move have none, and were in Mordheim. */
+  locationId?: string;
   errand: Errand;
   errandLabel: string;
   outcome: Outcome;
@@ -50,7 +52,7 @@ export function memberNights(ledgers: Ledger[]): Record<string, MemberNights> {
     for (const night of state.nights) {
       for (const r of night.results) {
         const m = (out[r.memberId] ??= { entries: [], nightsOut: 0, shards: 0, renown: 0 });
-        m.entries.push({ night: night.night, warbandId: warband.id, errand: r.errand, errandLabel: ERRAND_LABEL[r.errand], outcome: r.outcome, standing: r.standing, prose: r.prose, token: r.token?.name, rumour: r.rumour });
+        m.entries.push({ night: night.night, warbandId: warband.id, locationId: night.locationId, errand: r.errand, errandLabel: ERRAND_LABEL[r.errand], outcome: r.outcome, standing: r.standing, prose: r.prose, token: r.token?.name, rumour: r.rumour });
         m.nightsOut += 1;
         m.shards += r.shards;
         m.renown += r.renown;

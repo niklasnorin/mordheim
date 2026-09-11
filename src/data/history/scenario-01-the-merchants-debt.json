@@ -1,7 +1,8 @@
 {
   "id": "scenario-01-the-merchants-debt",
   "sequence": 1,
-  "date": "Date unrecorded",
+  "date": "Marktag, 5th of Pflugzeit, 2007 IC",
+  "playedOn": "2026-09-05",
   "scenario": "The Merchant’s Debt",
   "summary": "A whispered promise of gems brings the Nordost Kin to an abandoned market; an ancestral fraud brings the Bitterbrows to the same doorstep. Three buildings decide their first battle, and Mjølnir pays for the watchtower with a hand.",
   "report": {
@@ -50,7 +51,7 @@
       "The Nordost post-battle snapshot has been reconciled with the supplied app export: rating 124 and treasury 72 gc. The Bitterbrows’ bookkeeping and both warbands’ wyrdstone totals remain unconfirmed roster values. Battle and victory counts reflect this first encounter.",
       "Recorded Nordost experience: Agnar 24, Mjølnir 13, Biorn 15, Skalle 13, Torgrim 2, Baldur 3 and Ragnar 4. Biorn has +1 Strength, Agnar +1 Toughness, Torgrim +1 Attack, Baldur +1 Wound and Ragnar +1 Leadership; the snapshot statlines include these advances once.",
       "Baldur is promoted Hero Kin with access to Combat and Shooting skills, not two newly learned skills. Mjølnir’s injury is listed as Severe Arm Wound. Free daggers are included where listed in the export; owning a dagger and hammer does not let Mjølnir wield both at once.",
-      "The date, exact finishing turn and any voluntary rout were not recorded. The Nordost victory follows the reported objective positions.",
+      "The battle was fought on Marktag, 5th of Pflugzeit, 2007 IC. The exact finishing turn and any voluntary rout were not recorded. The Nordost victory follows the reported objective positions.",
       "Separate clues suggest the merchant moved his gems before the disaster because something beneath the cellar answered his counting. The Nordost found a dispatch leaf; the Bitterbrows obtained a boatman’s testimony and a rubbing of his routing token. Neither warband has shared its discovery.",
       "The routing-seal puzzle offers an optional lead for a future scenario, not a battle already played. The gems’ present location, the truth behind the knocking, the merchant’s whereabouts and the ancestral grudge remain unresolved."
     ],

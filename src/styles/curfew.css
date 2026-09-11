@@ -135,6 +135,7 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-dawn-side:empty { display: none; }
 .cf-dawn-nothing { font-style: italic; color: var(--bone-dim); margin: 1rem 0 0; padding-top: 0.8rem; border-top: 1px dashed var(--rule); }
 .cf-dawn-head { font-family: var(--title); font-weight: 700; font-size: 1.5rem; color: var(--bone); margin-bottom: 0.8rem; }
+.cf-dawn-date { display: block; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.72rem; color: var(--bone-dim); margin: -0.15rem 0 0.7rem; }
 .cf-dawn p { font-size: 1.15rem; line-height: 1.7; margin-bottom: 0.7rem; }
 .cf-ink { opacity: 0; animation: cf-ink 0.9s ease forwards; }
 @keyframes cf-ink { from { opacity: 0; filter: blur(2px); } to { opacity: 1; filter: blur(0); } }

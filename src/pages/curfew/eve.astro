@@ -56,7 +56,8 @@ const ledgerHref = `${base}/curfew/`;
 
 <script>
   import { warbands } from '../../data/warbands';
-  import { CAMPAIGN, HAND_SIZE, TOKEN_TYPES, cityProvidesLine, locationById, readTicket, tokenById, omenForNight } from '../../curfew/engine';
+  import { CAMPAIGN, HAND_SIZE, TOKEN_TYPES, cityProvidesLine, dateForNight, locationById, readTicket, tokenById, omenForNight } from '../../curfew/engine';
+  import { formatImperial, imperialForDate } from '../../lib/calendar';
   import type { Flourish, WarbandState } from '../../curfew/ledger';
   import { sealSvg } from '../../curfew/glyphs';
   import { carryDate, debugEnabled, renderDebugBar } from '../../curfew/debug';
@@ -94,7 +95,7 @@ const ledgerHref = `${base}/curfew/`;
     let state: WarbandState = boot.view.state;
     const warband = warbands.find((w) => w.id === boot.view!.warbandId)!;
     const place = locationById(boot.view.locationId);
-    $('nightline').innerHTML = `Night <strong>${today}</strong> · ${esc(place.name)} · ${esc(warband.name)}`;
+    $('nightline').innerHTML = `Night <strong>${today}</strong> · ${esc(place.name)} · ${esc(formatImperial(imperialForDate(dateForNight(today)), 'day'))} · ${esc(warband.name)}`;
     const dead = warband.members.filter((m) => m.dead);
 
     function tokenHtml(id: string, pick = false) {

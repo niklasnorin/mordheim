@@ -84,8 +84,10 @@ export interface ScenarioRecord {
   id: string;
   /** 1-based play order; higher = more recent. */
   sequence: number;
-  /** Date the scenario was played, in Imperial calendar. */
+  /** Date the scenario was played, in the Imperial Calendar, as `formatImperial` writes it. */
   date: string;
+  /** The real day it was played (YYYY-MM-DD), so the nights and the battles can be laid on one line. */
+  playedOn?: string;
   scenario: string;
   summary: string;
   report: BattleReport;
