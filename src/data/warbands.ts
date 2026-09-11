@@ -295,7 +295,7 @@ export const warbands: Warband[] = [
         equipment: [],
         skills: ['Wizard'],
         lore:
-          'An Imperial name and an Imperial education, both put to uses the Colleges would burn him for. Reinmar reads the rune where the brothers cannot: in the pattern a wound leaves on stone, in the way blood runs across broken ground. It is he who daubs the symbol of slaughter on a square when the fighting is done, and he who tells Merovech what it means. The brothers call him Bloodfather. Nobody in the Order remembers what his own father called him.',
+          'An Imperial name and an Imperial education, both put to uses the Colleges would burn him for. Reinmar reads the rune where the brothers cannot: in the pattern a wound leaves on stone, in the way blood runs across broken ground. It is he who daubs the symbol of slaughter on a square when the fighting is done, and he who tells Merovech what it means. The brothers call him Bloodfather.',
       },
       {
         id: 'guillame',
@@ -308,7 +308,7 @@ export const warbands: Warband[] = [
         equipment: [],
         skills: [],
         lore:
-          'The name was not given for shields he has carried. Guillame came to the Order the way most of its knights do, by winning the duel the Order demands of every keep it passes, and then finding he had nowhere to go home to. He fights close and he fights through, and the mailed fist on his surcoat is worn down to the bare thread where other men’s weapons have found it.',
+          'The name was not given for shields he has carried. Guillame came to the Order the way most of its knights do, by winning the duel the Order demands of every keep it passes, and then finding he had nowhere to go home to. He delights in seeking challenges with fellow knights, laughing in the face of their false chivalry as he adds yet more skulls to his collection. He hopes to lay them someday at the grand altar of the Ferric Keep for the glory of the Axe-Father.',
       },
       {
         id: 'krylov',
