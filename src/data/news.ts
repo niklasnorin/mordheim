@@ -9,6 +9,11 @@ export const issue = 'Issue I — Nachexen, 2000';
 
 export const news: NewsArticle[] = [
   {
+    headline: 'A Single Word Found Written in Blood on Tannery Wall',
+    byline: 'By our correspondent in the eastern quarter, who did not touch the wall',
+    body: 'Lamplighters passing the old tannery on the canal found one word written across its north wall, in letters the height of a man, in what the Watch describes as red paint and what the Watch’s own dog refused to go near. The word is MEROVECH. It is not a word in Reikspiel, nor in any tongue the Guild of Scribes was willing to name; a clerk of the Guild allowed that it had the shape of a name and declined to say whose. Nothing else was written. No symbol, no signature, no demand. Residents report that the letters were dry by morning and wet again by dusk, which the Watch attributes to the damp off the canal and the residents attribute to nothing they care to say aloud. Four armoured horsemen under a black pennant were seen at the eastern gate the same week. The Watch has ordered the wall whitewashed. The whitewash has not taken.',
+  },
+  {
     headline: 'Teal-Bannered Dwarfs Enter Mordheim; Purpose Filed Under “Old Business”',
     byline: 'By our correspondent at the eastern gate, from a respectful distance',
     body: 'A company of dwarfs calling itself the Bitterbrow Expedition entered Mordheim beneath a deep-teal sigil and with rather less luggage than weaponry. Their leader, Jorgrim Bitterbrow, has been seen comparing street names with entries in a heavy iron-bound book, though whether he seeks treasure, debtors, or something old enough to be both remains unclear. Asked what business brought them to the city, one clansman replied that the business had brought itself; our correspondent judged this answer complete and withdrew.',
