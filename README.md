@@ -79,7 +79,7 @@ Postgres, managed with [Drizzle](https://orm.drizzle.team). The schema is `src/s
 
 ```sh
 npm run db:generate    # write a new migration after changing the schema
-npm run db:migrate     # apply migrations to DATABASE_URL (Neon); the local database migrates itself on start
+npm run db:migrate     # apply migrations to DATABASE_URL (Neon) by hand; the local database migrates itself on start
 npm run db:studio      # browse DATABASE_URL
 npm run db:reset       # delete the local .pglite/ database
 ```
@@ -121,7 +121,7 @@ Detail pages are generated automatically at `/scenarios/<id>/`. Set the matching
 The site runs on Vercel's Hobby plan: the campaign pages are prerendered, and the Town Cryer, the Curfew pages, the API and the cron run as serverless functions.
 
 1. **Import the repository** at vercel.com. Astro is detected; no build settings need changing. Pushes to `main` deploy to production and every pull request gets a preview URL.
-2. **Add a database.** In the project's *Storage* tab, add **Neon** from the Marketplace (free plan). It sets `DATABASE_URL` on the project. To create the tables, copy the pooled connection string from the Neon console (`vercel env pull` cannot read it; the integration marks it sensitive and pulls a `[SENSITIVE]` placeholder) and run `DATABASE_URL='postgresql://…' npm run db:migrate` once; repeat after any new migration.
+2. **Add a database.** In the project's *Storage* tab, add **Neon** from the Marketplace (free plan). It sets `DATABASE_URL` on the project. The tables are created and kept current by the deploy itself: `npm run build` runs `scripts/migrate.mjs` first, which applies any migration under `drizzle/` the database has not seen, on production deploys only (a preview branch never changes the shared database's schema). Nothing to do by hand; to migrate from a laptop instead, copy the pooled connection string from the Neon console (`vercel env pull` cannot read it; the integration marks it sensitive) and run `DATABASE_URL='postgresql://…' npm run db:migrate`.
 3. **Set the secrets** under *Settings → Environment Variables*: `BETTER_AUTH_SECRET` (`openssl rand -base64 32`), `CRON_SECRET` (another random string), `ADMIN_EMAILS` (the game masters' sign-in emails) and `CURFEW_INVITE_CODE` (the word new players must give to sign up). `BETTER_AUTH_URL` can be left unset; the production domain is used.
 4. **Sign-in is email and password**, handled by Better Auth. No emails are sent: the address is only the name a player signs in with, so there is no verification and no reset link. A player who forgets their password asks the game master, who issues a **reset word** in the Watch House (three words and a tail, shown once, stored hashed, good for two days) and passes it on. "Forgotten your password?" at the Ledger trades the word for a new password and signs every device out. Redeploy after setting the variables so the functions start with them.
 5. **The nightly cron** is declared in `vercel.json` and needs no further setup. Hobby plans run crons once a day within the hour of the schedule; it is set for 23:15 UTC so that it lands after midnight in Stockholm summer or winter. A visit to a ledger writes any dawn that is still due, so a late cron costs nothing but the Town Cryer's punctuality.
