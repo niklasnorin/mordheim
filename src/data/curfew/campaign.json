@@ -3,6 +3,7 @@
   "name": "CURFEW — Nights in the City of the Damned",
   "start": "2026-09-10",
   "timezone": "Europe/Stockholm",
+  "anchor": { "date": "2026-09-05", "imperial": "Marktag, 5th of Pflugzeit, 2007 IC", "note": "The first game. Every real day since is one Imperial day." },
   "membersPerNight": 2,
   "nightsPerMoon": 7,
   "seasonMoons": 12,

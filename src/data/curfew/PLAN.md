@@ -119,7 +119,10 @@ Outcome odds: a base of roughly a quarter boon, a third poor, the rest fair, shi
 | Job | 3–5 nights | Content only |
 | Season | 12 Moons | Recorded in `campaign.json`; the finale is Phase 5 |
 
-Night 1 is 10 September 2026.
+Night 1 is 10 September 2026, which is Festag, 10th of Pflugzeit, 2007 IC.
+
+### The Imperial Calendar
+**Shipped.** `src/lib/calendar.ts` keeps the Empire's calendar: a 400-day year of twelve months of 32 or 33 days and six holy days that belong to no month and no weekday, and an eight-day week that runs on uninterrupted across them. The campaign is anchored on its first game (`anchor` in `campaign.json`: 5 September 2026 was Marktag, 5th of Pflugzeit, 2007 IC) and every real day since is one Imperial day. The Town Cryer dates its issue and its dispatches with it, the Ledger names each night's date under the Dawn Report header and in the nightline, the Watch House shows both calendars, and a warrior's story lays battles and nights on one line by date, the nights folded between the battles until asked for.
 
 ---
 

@@ -376,6 +376,20 @@ test('a Fussenbach night reads in the village\'s words, drops its charms, and no
   assert.ok(DEFAULT_LOCATION.epithets.train!.includes(epithetFor('torgrim', { train: 4 }, fussenbach)), 'a name earned at the Pit keeps the city\'s words');
 });
 
+test('a rival whose name begins with "The" is never "the The"', () => {
+  const order = { id: 'welling-rune', name: 'The Order of the Welling Rune', members: [{ id: 'merovech', name: 'Merovech', role: 'Captain' }] };
+  let named = 0;
+  for (let n = 1; n <= 200; n++) {
+    const res = resolveNight({ warband, rival: order, night: n, orders: [{ memberId: 'agnar', errand: 'spy' }], state: fresh, location: fussenbach });
+    const text = res.results[0].prose + ' ' + (res.results[0].rumour ?? '');
+    assert.doesNotMatch(text, /the The /);
+    if (text.includes('the Order of the Welling Rune')) named++;
+  }
+  assert.ok(named > 10, `${named}`);
+  const none = resolveNight({ warband, night: 3, orders: [{ memberId: 'agnar', errand: 'spy' }], state: fresh, location: fussenbach });
+  assert.doesNotMatch(none.results[0].prose + (none.results[0].rumour ?? ''), /the the /i);
+});
+
 test('a Mordheim night is unchanged in kind: no village words, and the rival crosses paths there too', () => {
   let encounters = 0;
   for (let n = 1; n <= 200; n++) {

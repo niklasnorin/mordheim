@@ -201,6 +201,7 @@ const boot = {
   import { lastGivenOrders, restingMembers, standingOrders, type WarbandState } from '../../curfew/ledger';
   import { sealSvg } from '../../curfew/glyphs';
   import { carryDate, debugEnabled, renderDebugBar, setDebug } from '../../curfew/debug';
+  import { formatImperial, imperialForDate } from '../../lib/calendar';
 
   interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean; locationId: string }
   interface Boot { today: number; debug: boolean; viewer: { name: string } | null; view: View | null; locationId: string; claims: { warbandId: string; ownerName: string }[] }
@@ -269,6 +270,8 @@ const boot = {
     const d = new Date(dateForNight(night) + 'T12:00:00Z');
     return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
   }
+  /** The night's date as the Empire writes it, counted on from the first game. */
+  const imperialDate = (night: number, style: 'long' | 'short' | 'day' = 'long') => formatImperial(imperialForDate(dateForNight(night)), style);
 
   // ── sign in / out ──
   const authForm = document.getElementById('auth-form') as HTMLFormElement | null;
@@ -378,7 +381,7 @@ const boot = {
     const moon = moonForNight(today);
     $('nightline').innerHTML = today < 1
       ? `${esc(Settlement())} sleeps until <strong>${esc(prettyDate(1))}</strong>`
-      : `Night <strong>${today}</strong> · ${esc(place.name)} · ${esc(moon.name)} · ${esc(prettyDate(today))}`;
+      : `Night <strong>${today}</strong> · ${esc(place.name)} · ${esc(imperialDate(today, 'day'))} · ${esc(moon.name)}`;
   }
 
   // 1. Last night
@@ -389,7 +392,7 @@ const boot = {
     if (n.closer) lines.push(n.closer);
     const paras = lines.map((l, i) => `<p class="${ink ? 'cf-ink' : ''}" style="animation-delay:${0.15 + i * 0.45}s">${esc(l)}</p>`).join('');
     const ledger = n.ledger.length ? `<div class="cf-ledger">Ledger: ${n.ledger.map((l) => `<strong>${esc(l)}</strong>`).join('<span class="cf-sep"> · </span>')}</div>` : '';
-    return { head: `<${headingTag} class="cf-dawn-head">${esc(n.header)}</${headingTag}>`, paras, ledger };
+    return { head: `<${headingTag} class="cf-dawn-head">${esc(n.header)}</${headingTag}><span class="cf-dawn-date">${esc(imperialDate(n.night))}</span>`, paras, ledger };
   }
   function nightHtml(n: NightResult, ink: boolean, headingTag: 'h3' | 'h4' = 'h3') {
     const part = nightParts(n, ink, headingTag);

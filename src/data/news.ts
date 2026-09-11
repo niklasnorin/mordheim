@@ -7,12 +7,9 @@ export interface NewsArticle {
   location?: string;
 }
 
-/** The issue line of the masthead, where the campaign is. */
-const issues: Record<string, string> = {
-  mordheim: 'Issue I — Nachexen, 2000',
-  fussenbach: 'Fussenbach Edition — Nachexen, 2000',
-};
-export function issueFor(locationId: string): string { return issues[locationId] ?? issues.mordheim; }
+/** The issue line of the masthead: the edition for where the campaign is, and the Imperial date it is printed. */
+const editions: Record<string, string> = { mordheim: 'Issue I', fussenbach: 'Fussenbach Edition' };
+export function issueFor(locationId: string, printed: string): string { return `${editions[locationId] ?? editions.mordheim} — ${printed}`; }
 
 export const news: NewsArticle[] = [
   {

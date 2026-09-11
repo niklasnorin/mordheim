@@ -4,7 +4,8 @@ import Icon from './Icon.astro';
 import { hasDatabase } from '../server/db/client';
 import { campaignMoves, recentDispatches, todayFor, type PrintedDispatch } from '../server/curfew/service';
 import { bylineFor } from '../curfew/cryer';
-import { DEFAULT_LOCATION_ID, locationForNight, type Move } from '../curfew/engine';
+import { DEFAULT_LOCATION_ID, dateForNight, locationForNight, type Move } from '../curfew/engine';
+import { formatImperial, imperialForDate } from '../lib/calendar';
 
 // What the Night Watch brought in, and where the campaign is. Without a database (a local build, say) the
 // broadsheet simply prints the news, from Mordheim.
@@ -17,10 +18,12 @@ if (hasDatabase()) {
 // The broadsheet is printed where the campaign is; the articles are the ones written for that place.
 const place = locationForNight(today, moves);
 const articles = news.filter((a) => (a.location ?? DEFAULT_LOCATION_ID) === place.id);
-const issue = issueFor(place.id);
+// Dated by the Imperial Calendar, counted on from the first game.
+const imperial = (night: number) => imperialForDate(dateForNight(night));
+const issue = issueFor(place.id, formatImperial(imperial(today)));
 const lastNight = dispatches.filter((d) => d.night === today - 1);
 const earlier = dispatches.filter((d) => d.night !== today - 1);
-const nightLabel = (n: number) => (n === today - 1 ? 'last night' : `night ${n}`);
+const nightLabel = (n: number) => (n === today - 1 ? 'last night' : formatImperial(imperial(n), 'day'));
 const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.slice(1);
 ---
 
@@ -63,7 +66,7 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
     <div class="cryer-curfew">
       <h3>{place.cryer.watchHeading}</h3>
       <p class="cryer-curfew-note">
-        {lastNight.length ? `What ${place.settlement} saw last night, night ${today - 1}.` : `What ${place.settlement} has seen after curfew.`}
+        {lastNight.length ? `What ${place.settlement} saw last night, ${formatImperial(imperial(today - 1), 'day')}.` : `What ${place.settlement} has seen after curfew.`}
       </p>
       <div class="cryer-watch">
         {[...lastNight, ...earlier].map((d) =>

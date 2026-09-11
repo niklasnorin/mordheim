@@ -22,7 +22,8 @@ Resolution happens twice over, and both ways agree: a nightly cron writes every 
 
 | File | Contents |
 | --- | --- |
-| `src/data/curfew/campaign.json` | Start date (night 1), time zone, members per night, soft caps, thresholds |
+| `src/data/curfew/campaign.json` | Start date (night 1), time zone, members per night, soft caps, thresholds, and the calendar anchor: the first game's real date and its Imperial date |
+| `src/lib/calendar.ts` | The Imperial Calendar: 400-day year, eight-day week, six holy days outside both; every real day since the first game is one Imperial day. Dates the Town Cryer's issues, the Curfew's nights and the archives' battles |
 | `src/data/curfew/omens.json` | The 30 Omens of the Tarot of the Damned, with readings and errand tilts |
 | `src/data/curfew/moons.json`, `tokens.json`, `patrons.json`, `jobs.json` | The weekly Moons, the tokens (some belong to one place) and 4 curses, and Phase 4 content |
 | `src/data/curfew/locations/*.json` | One pack per place the campaign can be in: its errands and why the others are not to be had, points of interest, Dawn Report templates, rumours, epithets, Moon tie-ins, and the Town Cryer's masthead and headlines. `mordheim.json` and `fussenbach.json` today |

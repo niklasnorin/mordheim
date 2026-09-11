@@ -353,7 +353,8 @@ export function resolveNight(input: ResolveInput): NightResult {
   let favour = state.favour, shards = state.shards;
   const rivals = Array.isArray(input.rival) ? input.rival : input.rival ? [input.rival] : [];
   const rivalBand = rivals.length > 1 ? pick(r, rivals) : rivals[0];
-  const rival = rivalBand?.name ?? 'the rival warband';
+  // templates say "the {rival}", so a name that begins with "The" sheds it: "the Nordost Kin", never "the The Nordost Kin"
+  const rival = rivalBand ? rivalBand.name.replace(/^the\s+/i, '') : 'rival warband';
   const rivalLiving = rivalBand?.members.filter((m) => !m.dead) ?? [];
   const detail = pick(r, location.details);
 
