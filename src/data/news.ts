@@ -9,6 +9,11 @@ export const issue = 'Issue I — Nachexen, 2000';
 
 export const news: NewsArticle[] = [
   {
+    headline: 'Scribblings in Blood Found on Tannery Wall; Author Signs Himself “Merovech”',
+    byline: 'By our correspondent in the eastern quarter, who did not touch the wall',
+    body: 'Lamplighters passing the old tannery on the canal discovered its north wall covered from cobble to eave in writing done in what the Watch describes as red paint and what the Watch’s own dog refused to go near. The hand is confident. The text, so far as our correspondent could follow it before the letters began to swim, is a recitation of titles — thrice honoured, taker of skulls, slayer of one Roland de Hauteville — signed at the foot by a Merovech, of an order calling itself the Welling Rune. Above the signature is daubed a symbol that three separate witnesses drew for us and no two drew alike. A scholar of the Cleansing Flame, consulted at his lodgings through a closed door, asked only whether the blood had dried, and on being told it had not, requested that we go away. Four armoured horsemen under a black pennant were seen at the gate the same week. The Watch has ordered the wall whitewashed. The whitewash has not taken.',
+  },
+  {
     headline: 'Teal-Bannered Dwarfs Enter Mordheim; Purpose Filed Under “Old Business”',
     byline: 'By our correspondent at the eastern gate, from a respectful distance',
     body: 'A company of dwarfs calling itself the Bitterbrow Expedition entered Mordheim beneath a deep-teal sigil and with rather less luggage than weaponry. Their leader, Jorgrim Bitterbrow, has been seen comparing street names with entries in a heavy iron-bound book, though whether he seeks treasure, debtors, or something old enough to be both remains unclear. Asked what business brought them to the city, one clansman replied that the business had brought itself; our correspondent judged this answer complete and withdrew.',
