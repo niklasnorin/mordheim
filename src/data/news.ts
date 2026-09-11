@@ -9,9 +9,9 @@ export const issue = 'Issue I — Nachexen, 2000';
 
 export const news: NewsArticle[] = [
   {
-    headline: 'Scribblings in Blood Found on Tannery Wall; Author Signs Himself “Merovech”',
+    headline: 'A Single Word Found Written in Blood on Tannery Wall',
     byline: 'By our correspondent in the eastern quarter, who did not touch the wall',
-    body: 'Lamplighters passing the old tannery on the canal discovered its north wall covered from cobble to eave in writing done in what the Watch describes as red paint and what the Watch’s own dog refused to go near. The hand is confident. The text, so far as our correspondent could follow it before the letters began to swim, is a recitation of titles — thrice honoured, taker of skulls, slayer of one Roland de Hauteville — signed at the foot by a Merovech, of an order calling itself the Welling Rune. Above the signature is daubed a symbol that three separate witnesses drew for us and no two drew alike. A scholar of the Cleansing Flame, consulted at his lodgings through a closed door, asked only whether the blood had dried, and on being told it had not, requested that we go away. Four armoured horsemen under a black pennant were seen at the gate the same week. The Watch has ordered the wall whitewashed. The whitewash has not taken.',
+    body: 'Lamplighters passing the old tannery on the canal found one word written across its north wall, in letters the height of a man, in what the Watch describes as red paint and what the Watch’s own dog refused to go near. The word is MEROVECH. It is not a word in Reikspiel, nor in any tongue the Guild of Scribes was willing to name; a clerk of the Guild allowed that it had the shape of a name and declined to say whose. Nothing else was written. No symbol, no signature, no demand. Residents report that the letters were dry by morning and wet again by dusk, which the Watch attributes to the damp off the canal and the residents attribute to nothing they care to say aloud. Four armoured horsemen under a black pennant were seen at the eastern gate the same week. The Watch has ordered the wall whitewashed. The whitewash has not taken.',
   },
   {
     headline: 'Teal-Bannered Dwarfs Enter Mordheim; Purpose Filed Under “Old Business”',
