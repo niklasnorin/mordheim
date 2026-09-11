@@ -188,3 +188,74 @@ test('the Eve: the City Provides, the table is laid with a flourish, the fight s
   assert.match(s.nights.at(-1)!.header, /the fight/);
   assert.throws(() => fightDone(s, 20), LedgerError);
 });
+
+// ───────────────────────── where the campaign is ─────────────────────────
+
+import { locationById } from './engine.ts';
+import { recentLines } from './ledger.ts';
+
+const village = locationById('fussenbach');
+
+test('the place refuses errands it has none of, and standing orders go where it sends them', () => {
+  const s = freshState(warband, 10);
+  assert.throws(() => giveOrders(s, warband, 10, [{ memberId: 'torgrim', errand: 'train' }], [], village), (e: unknown) => e instanceof LedgerError && /Pit/.test(e.message));
+  assert.throws(() => giveOrders(s, warband, 10, [{ memberId: 'torgrim', errand: 'dredge' }], []), (e: unknown) => e instanceof LedgerError && /basins/.test(e.message));
+  giveOrders(s, warband, 10, [{ memberId: 'torgrim', errand: 'dredge' }, { memberId: 'skalle', errand: 'pray' }], [], village);
+  assert.deepEqual(s.orders[10].map((o) => o.errand), ['dredge', 'pray']);
+  // before any selection the roles decide, among what the place offers
+  assert.deepEqual(standingOrders(freshState(warband, 10), warband, [], 10, village).map((o) => o.errand), ['trade', 'pray']);
+  // a selection made in the city runs on in the village, translated
+  const t = freshState(warband, 10);
+  giveOrders(t, warband, 10, [{ memberId: 'torgrim', errand: 'scavenge' }, { memberId: 'agnar', errand: 'train' }]);
+  assert.deepEqual(standingOrders(t, warband, [], 12, village).map((o) => [o.memberId, o.errand]), [['torgrim', 'dredge'], ['agnar', 'carouse']]);
+  assert.deepEqual(standingOrders(t, warband, [], 12).map((o) => o.errand), ['scavenge', 'train']);
+});
+
+test('a move takes effect from its night: earlier nights stay in the city, the first night away is news', () => {
+  const s = freshState(warband, 10);
+  giveOrders(s, warband, 10, [{ memberId: 'torgrim', errand: 'scavenge' }]);
+  giveOrders(s, warband, 12, [{ memberId: 'torgrim', errand: 'scavenge' }, { memberId: 'agnar', errand: 'train' }]);
+  const moves = [{ locationId: 'fussenbach', fromNight: 12 }];
+  const written = reconcile(s, warband, 14, [], undefined, moves);
+  assert.equal(written.length, 4);
+  assert.equal(written[0].locationId, 'mordheim');
+  assert.equal(written[1].locationId, 'mordheim');
+  assert.equal(written[2].locationId, 'fussenbach');
+  assert.deepEqual(written[2].results.map((r) => r.errand).sort(), ['carouse', 'dredge'], 'orders given before the move go where the village sends them');
+  assert.ok(written[2].results.every((r) => !r.standing), 'and still count as given in full');
+  assert.equal(written[3].locationId, 'fussenbach');
+  const arrivals = s.headlines.filter((h) => /Cracked Flagon/.test(h.text));
+  assert.equal(arrivals.length, 1);
+  assert.equal(arrivals[0].night, 12);
+  assert.match(arrivals[0].text, /^The Nordost Kin came up the Fussen/);
+  // and back again
+  reconcile(s, warband, 16, [], undefined, [...moves, { locationId: 'mordheim', fromNight: 15 }]);
+  assert.equal(s.nights.at(-1)!.locationId, 'mordheim');
+  assert.ok(s.headlines.some((h) => h.night === 15 && /back inside the walls/.test(h.text)));
+  assert.equal(s.headlines.filter((h) => /Cracked Flagon|back inside/.test(h.text)).length, 2, 'one headline per move, not per night');
+});
+
+test('the Dawn Report remembers its last ten nights and does not read the same line three times in a month', () => {
+  const s = freshState(warband, 1);
+  const E = village.errands;
+  for (let n = 1; n <= 30; n += 2) giveOrders(s, warband, n, [{ memberId: 'torgrim', errand: E[n % E.length] }, { memberId: 'agnar', errand: E[(n + 2) % E.length] }], [], village);
+  reconcile(s, warband, 31, [], undefined, [{ locationId: 'fussenbach', fromNight: 1 }]);
+  const counts = new Map<string, number>();
+  for (const n of s.nights) for (const r of n.results) { assert.ok(r.line, 'every result says which line it came from'); counts.set(r.line!, (counts.get(r.line!) ?? 0) + 1); }
+  assert.ok(Math.max(...counts.values()) <= 2, 'no line three times in a month');
+  assert.ok(recentLines(s, 31).length > 0 && recentLines(s, 31).every((l) => /^\w+:(boon|fair|poor|standing):\d+$/.test(l)));
+  assert.equal(recentLines(s, 100).length, 0, 'old nights are forgotten');
+});
+
+test('a ledger opened in the village announces no arrival, and old nights without a place read as Mordheim', () => {
+  const s = freshState(warband, 20);
+  reconcile(s, warband, 22, [], undefined, [{ locationId: 'fussenbach', fromNight: 5 }]);
+  assert.ok(s.headlines.every((h) => !/Fussen/.test(h.text)));
+  const old = freshState(warband, 1);
+  reconcile(old, warband, 3, []);
+  for (const n of old.nights) delete n.locationId; // as a ledger written before the campaign could move
+  reconcile(old, warband, 4, [], undefined, [{ locationId: 'fussenbach', fromNight: 3 }]);
+  assert.ok(s.nights.every((n) => n.locationId === 'fussenbach'));
+  assert.equal(old.headlines.filter((h) => /Fussen/.test(h.text)).length, 1, 'the move out of the city is still noticed');
+  assert.equal(provideIfEmpty(freshState(warband, 9), 9, village) !== null, true);
+});

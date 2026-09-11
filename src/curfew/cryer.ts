@@ -5,8 +5,7 @@
  * the broadsheet occasionally picks up one member's night as a "happening": a boon or a poor night more
  * often than a fair one, never a night on standing orders. One happening per warband per night at most.
  */
-import cryer from '../data/curfew/cryer.json' with { type: 'json' };
-import { CAMPAIGN, hashSeed, pick, rng, type Errand, type NightResult, type Outcome, type WarbandLike } from './engine.ts';
+import { CAMPAIGN, DEFAULT_LOCATION, hashSeed, locationById, pick, rng, type Location, type NightResult, type Outcome, type WarbandLike } from './engine.ts';
 import type { Headline } from './ledger.ts';
 
 export interface Dispatch {
@@ -36,15 +35,17 @@ export function dispatchesForNight(warband: WarbandLike, night: NightResult, hea
   return out;
 }
 
-/** The one member's night the broadsheet picks up, if the dice say so. */
+/** The one member's night the broadsheet picks up, if the dice say so. The headline is worded where the night happened. */
 export function happeningFor(warband: WarbandLike, night: NightResult): Dispatch | null {
   const r = rng(hashSeed(CAMPAIGN.id, 'cryer', warband.id, night.night));
+  const location = locationById(night.locationId);
   for (const res of night.results) {
     if (res.standing) continue;
     const member = warband.members.find((m) => m.id === res.memberId);
     if (!member) continue;
     if (r() >= PRINT_CHANCE[res.outcome]) continue;
-    const bank = (cryer.headlines as Record<Errand, Record<Outcome, string[]>>)[res.errand][res.outcome];
+    const bank = location.cryer.headlines[res.errand]?.[res.outcome] ?? DEFAULT_LOCATION.cryer.headlines[res.errand]?.[res.outcome];
+    if (!bank?.length) continue;
     const slots = { first: member.name.split(' ')[0], name: member.name, warband: warband.name };
     return {
       key: `${warband.id}:${night.night}:e`, warbandId: warband.id, night: night.night, kind: 'happening',
@@ -55,6 +56,6 @@ export function happeningFor(warband: WarbandLike, night: NightResult): Dispatch
   return null;
 }
 
-export function bylineFor(warbandId: string, night: number): string {
-  return pick(rng(hashSeed(CAMPAIGN.id, 'byline', warbandId, night)), cryer.bylines);
+export function bylineFor(warbandId: string, night: number, location: Location = DEFAULT_LOCATION): string {
+  return pick(rng(hashSeed(CAMPAIGN.id, 'byline', warbandId, night)), location.cryer.bylines);
 }

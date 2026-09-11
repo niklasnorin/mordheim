@@ -24,8 +24,16 @@ Short declaratives. Present tense. Name the members. One physical detail per vig
 
 ## Templates
 
-Templates live in `vignettes.json` and are filled with slots:
+Templates live in `locations/<place>.json`, one pack per place the campaign can be in, and are filled with slots:
 
 - `{name}` the member's full name, `{first}` their first name, `{they}` `{them}` `{their}` pronouns (always they/them unless the roster says otherwise).
-- `{district}` a place in the city, `{detail}` a physical detail, `{omen}` the Omen title, `{other}` the other member on the Watch, `{rival}` the rival warband.
-- A template must read correctly with every slot filled. If it needs a second member, put it under `pairs`.
+- `{district}` a place in the city, `{detail}` a physical detail, `{omen}` the Omen title, `{other}` the other member on the Watch, `{rival}` the rival warband, `{rivalMember}` (in `encounters` only) a living member of the rival warband, by first name.
+- A template must read correctly with every slot filled. If it needs a second member, put it under `pairs`; if it needs the rival, under `encounters`.
+
+## Places
+
+A pack has everything the engine says about a place: its `errands` and, for every errand it has none of, an `unavailable` line shown to the player as written; `templates` for each of its errands; `districts`, `details`, `closers`, `rumours`, `return`, `cityProvides`, `quiet`, `epithets`, `encounters`; `moonTies` where the Moons' own lines would not fit; and the Cryer's masthead and `headlines`.
+
+- The plots of a place are hinted at, never told. A rumour says what was seen; a detail says what was smelled. Nobody in a vignette explains anything.
+- A village is not a smaller city. One pub, one shrine, one wharf: name them. `{district}` still varies, but a carousing vignette says the Flagon and a praying one says the shrine.
+- The rival warband crosses paths rarely and lightly. A nod, a light in a window, a mark under a mark. Nothing is decided between them in the Chronicle.

@@ -192,6 +192,12 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-watch-foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
 .cf-errand-help { display: grid; gap: 0.3rem 1.2rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 1rem; font-size: 0.9rem; color: var(--bone-dim); }
 .cf-errand-help b { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; color: var(--bone); font-weight: 600; margin-right: 0.3rem; }
+/* errands the place has none of: listed, greyed, with the reason */
+.cf-member select option:disabled, .cf-member select option.cf-shut { color: #6f665b; font-style: italic; }
+.cf-errand-help .cf-shut { opacity: 0.55; font-style: italic; }
+.cf-errand-help .cf-shut b { color: var(--bone-dim); text-decoration: line-through; text-decoration-color: var(--rule); }
+.cf-errand-help .cf-shut-tag { display: inline-block; margin-right: 0.4rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.66rem; font-style: normal; padding: 0.1rem 0.4rem; border: 1px solid var(--rule); color: var(--bone-dim); vertical-align: 0.1em; }
+.cf-place-note { font-style: italic; margin-top: -0.4rem; }
 @media (max-width: 480px) { .cf-member .cf-who { flex-direction: column; gap: 0; } .cf-member select { min-width: 7.5rem; } .cf-member .cf-status-wrap { flex-direction: column; align-items: flex-end; gap: 0.3rem; } }
 
 /* ── the Hand & meters ── */

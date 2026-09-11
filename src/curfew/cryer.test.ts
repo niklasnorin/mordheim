@@ -33,3 +33,24 @@ test('a happening is occasional, never from standing orders, and reads the membe
   assert.ok(printed > 5 && printed < 55, `printed ${printed} of 60: occasional, not always`);
   for (let n = 1; n <= 20; n++) assert.equal(happeningFor(warband, night(n, true)), null, 'standing orders are too dull for the broadsheet');
 });
+
+test('a happening in the village is headlined in the village\'s words, with its own byline', async () => {
+  const { locationById } = await import('./engine.ts');
+  const { bylineFor } = await import('./cryer.ts');
+  const village = locationById('fussenbach');
+  let printed = 0;
+  for (let n = 1; n <= 60; n++) {
+    const res = resolveNight({ warband, night: n, orders: [{ memberId: 'torgrim', errand: 'dredge' }, { memberId: 'agnar', errand: 'carouse' }], state: fresh, location: village });
+    const h = happeningFor(warband, res);
+    if (!h) continue;
+    printed++;
+    assert.doesNotMatch(h.headline, /\{\w+\}/);
+    assert.doesNotMatch(h.headline, /Henrik|the Pit|Sisters/);
+    const templates = Object.values(village.cryer.headlines).flatMap((o) => Object.values(o!).flat());
+    const asRegex = (t: string) => new RegExp('^' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\{\w+\\\}/g, '.+') + '$');
+    assert.ok(templates.some((t) => asRegex(t).test(h.headline)), `${h.headline} is one of the village's headlines`);
+  }
+  assert.ok(printed > 5, `${printed}`);
+  assert.ok(village.cryer.bylines.includes(bylineFor('nordost', 4, village)));
+  assert.ok(!village.cryer.bylines.includes(bylineFor('nordost', 4)));
+});

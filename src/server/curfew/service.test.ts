@@ -9,7 +9,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { useDb } from '../db/client.ts';
 import * as schema from '../db/schema.ts';
-import { actions, claimWarband, listClaims, loadOwnLedger, recentDispatches, reconcileAll, releaseWarband, LedgerError } from './service.ts';
+import { actions, campaignMoves, claimWarband, currentLocation, listClaims, loadOwnLedger, moveCampaign, recentDispatches, reconcileAll, releaseWarband, LedgerError } from './service.ts';
 import { dispatchesForNight } from '../../curfew/cryer.ts';
 import { warbands } from '../../data/warbands.ts';
 import { restingMembers } from '../../curfew/ledger.ts';
@@ -104,6 +104,44 @@ test('the Eve: the City Provides, the table is laid, the fight is recorded', asy
   assert.equal(view.state.fights.length, 1);
   assert.match(view.state.nights.at(-1)!.header, /the fight/);
   assert.equal(view.state.hand.length, 0);
+});
+
+test('the game master moves the campaign; nights resolve where the campaign was, and the Curfew follows', async () => {
+  assert.equal((await currentLocation(9)).id, 'mordheim');
+  assert.deepEqual(await campaignMoves(), []);
+  await assert.rejects(moveCampaign('mordheim', 9), (e: unknown) => e instanceof LedgerError && e.status === 409);
+  await assert.rejects(moveCampaign('atlantis', 9), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  // orders for tonight given in the city, for an errand the village lacks
+  const before = await loadOwnLedger(NIKLAS, 9);
+  const free = warbands.find((w) => w.id === 'nordost')!.members.find((m) => !m.dead && !restingMembers(before!.state, 9).includes(m.id) && !before!.recovering.includes(m.id))!;
+  await actions.orders(NIKLAS, 9, [{ memberId: free.id, errand: 'train' }]);
+  const moved = await moveCampaign('fussenbach', 9);
+  assert.equal(moved.id, 'fussenbach');
+  assert.equal((await campaignMoves())[0].fromNight, 9);
+  const view = await loadOwnLedger(NIKLAS, 9);
+  assert.equal(view!.locationId, 'fussenbach', 'the view says where the campaign is tonight');
+  await assert.rejects(actions.orders(NIKLAS, 9, [{ memberId: free.id, errand: 'train' }]), (e: unknown) => e instanceof LedgerError && /Pit/.test(e.message));
+  const dawn = await loadOwnLedger(NIKLAS, 10);
+  const last = dawn!.state.nights.at(-1)!;
+  assert.equal(last.night, 9);
+  assert.equal(last.locationId, 'fussenbach');
+  assert.deepEqual(last.results.map((r) => r.errand), ['carouse'], 'the order for the Pit went to the Flagon');
+  assert.ok(dawn!.state.nights.filter((n) => n.night < 9).every((n) => n.locationId === 'mordheim'), 'earlier nights stay in the city');
+  assert.ok(dawn!.state.headlines.some((h) => h.night === 9 && /Cracked Flagon/.test(h.text)));
+  const printed = await recentDispatches(10, 50);
+  assert.ok(printed.some((d) => d.night === 9 && d.kind === 'headline' && /Cracked Flagon/.test(d.headline)), 'the arrival reaches the Cryer');
+  // the Eve deals from the village's charms too
+  await actions.eveDone(RIVAL, 10).catch(() => {});
+  const eve = await actions.eveOpen(RIVAL, 10);
+  assert.equal(eve.locationId, 'fussenbach');
+  assert.equal(eve.state.hand.length, 1);
+  // and home again
+  await moveCampaign('mordheim', 11);
+  assert.equal((await currentLocation(11)).id, 'mordheim');
+  assert.equal((await currentLocation(10)).id, 'fussenbach', 'the past keeps its place');
+  const home = await loadOwnLedger(NIKLAS, 12);
+  assert.equal(home!.state.nights.find((n) => n.night === 10)!.locationId, 'fussenbach');
+  assert.equal(home!.state.nights.find((n) => n.night === 11)!.locationId, 'mordheim');
 });
 
 test('burning starts afresh; giving up frees the warband', async () => {

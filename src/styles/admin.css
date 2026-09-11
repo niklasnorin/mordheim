@@ -50,6 +50,11 @@
 .wh-facts li::before { content: ''; position: absolute; left: 0; top: 0.72em; width: 0.35rem; height: 0.35rem; background: var(--candle-dim); transform: rotate(45deg); }
 .wh-facts b { color: var(--candle); font-family: var(--label); font-weight: 600; font-variant-numeric: tabular-nums; font-size: 1.05em; }
 .wh-facts .bad b { color: var(--blood-bright); }
+.wh-place { display: grid; gap: 0.6rem; margin-top: 1.2rem; padding: 0.9rem 1.1rem 1rem; border: 1px solid var(--rule); background: #100e0c; max-width: 60ch; }
+.wh-place p { color: var(--bone-dim); font-size: 0.95rem; }
+.wh-place p b { color: var(--candle); }
+.wh-place .wh-actions { justify-content: flex-start; max-width: none; margin-left: 0; }
+.wh-place .wh-moves { font-size: 0.8rem; font-style: italic; }
 .wh-health { list-style: none; display: grid; gap: 0.3rem 1.5rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); padding: 0.9rem 1.1rem; border: 1px solid var(--rule); background: #100e0c; font-size: 0.92rem; }
 .wh-health li { display: grid; grid-template-columns: 0.6rem auto minmax(0, 1fr); gap: 0.6rem; align-items: baseline; padding: 0.25rem 0; }
 .wh-health b { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.72rem; color: var(--bone); font-weight: 600; white-space: nowrap; }

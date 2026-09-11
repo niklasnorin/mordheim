@@ -7,8 +7,9 @@
  * on any machine, which is what makes the shared Omen and the Eve ticket honest.
  */
 import {
-  CAMPAIGN, HAND_SIZE, applyNight, availability, cityProvides, defaultErrand, epithetFor, eveTicket, handHas, nightForDate, omenForNight, quietNight, resolveNight, returnNight, titleFor, tokenById,
-  type Errand, type HandState, type HeldToken, type NightResult, type Order, type TokenOffer, type WarbandLike,
+  CAMPAIGN, DEFAULT_LOCATION, HAND_SIZE, applyNight, availability, cityProvides, defaultErrand, epithetFor, errandAt, eveTicket, handHas, isErrandAt, locationForNight, nightForDate, omenForNight,
+  quietNight, resolveNight, returnNight, titleFor, tokenById, unavailableReason,
+  type Errand, type HandState, type HeldToken, type Location, type Move, type NightResult, type Order, type TokenOffer, type WarbandLike,
 } from './engine.ts';
 
 export interface Flourish { kind: 'field' | 'headline' | 'weather' | 'dedication'; text: string }
@@ -75,8 +76,8 @@ export function restingMembers(state: WarbandState, night: number): string[] {
   return state.nights.find((n) => n.night === night - 1)?.results.map((r) => r.memberId) ?? [];
 }
 
-/** Record tonight's orders. Refuses members who cannot go out, and more than the night allows. */
-export function giveOrders(state: WarbandState, warband: WarbandLike, night: number, orders: Order[], recovering: string[] = []): void {
+/** Record tonight's orders. Refuses members who cannot go out, errands the place does not offer, and more than the night allows. */
+export function giveOrders(state: WarbandState, warband: WarbandLike, night: number, orders: Order[], recovering: string[] = [], location: Location = DEFAULT_LOCATION): void {
   if (night < 1) throw new LedgerError('The city sleeps until the first night.');
   const clean: Order[] = [];
   const avail = availability(warband, recovering, restingMembers(state, night));
@@ -85,6 +86,7 @@ export function giveOrders(state: WarbandState, warband: WarbandLike, night: num
     const a = avail.find((x) => x.memberId === o.memberId);
     if (!a) throw new LedgerError('That is not one of yours.');
     if (!a.available) throw new LedgerError(`${warband.members.find((m) => m.id === o.memberId)?.name ?? 'They'} cannot go out tonight.`);
+    if (!isErrandAt(o.errand, location)) throw new LedgerError(unavailableReason(o.errand, location));
     clean.push({ memberId: o.memberId, errand: o.errand });
   }
   if (clean.length > CAMPAIGN.membersPerNight) throw new LedgerError(`Only ${CAMPAIGN.membersPerNight} go out a night.`);
@@ -106,21 +108,38 @@ export function lastGivenOrders(state: WarbandState, before: number): { night: n
  * Standing orders for a night: the last selection the player made, run again at half yield for whoever is
  * still available. Whoever went out the night before rests, so a standing selection runs every other night.
  * Before any selection exists, the first two available members go out on the errand their role suggests.
+ * An errand the place does not offer (the Pit, after a move to the village) goes where the place sends it.
  */
-export function standingOrders(state: WarbandState, warband: WarbandLike, recovering: string[], night = Number.MAX_SAFE_INTEGER): Order[] {
+export function standingOrders(state: WarbandState, warband: WarbandLike, recovering: string[], night = Number.MAX_SAFE_INTEGER, location: Location = DEFAULT_LOCATION): Order[] {
   const avail = new Set(availability(warband, recovering, restingMembers(state, night)).filter((a) => a.available).map((a) => a.memberId));
   const last = lastGivenOrders(state, night);
   const source: Order[] = last
     ? last.orders
-    : warband.members.filter((m) => avail.has(m.id)).slice(0, CAMPAIGN.membersPerNight).map((m) => ({ memberId: m.id, errand: defaultErrand(m) }));
-  return source.filter((o) => avail.has(o.memberId)).slice(0, CAMPAIGN.membersPerNight).map((o) => ({ memberId: o.memberId, errand: o.errand, standing: true }));
+    : warband.members.filter((m) => avail.has(m.id)).slice(0, CAMPAIGN.membersPerNight).map((m) => ({ memberId: m.id, errand: defaultErrand(m, location) }));
+  return source.filter((o) => avail.has(o.memberId)).slice(0, CAMPAIGN.membersPerNight).map((o) => ({ memberId: o.memberId, errand: errandAt(o.errand, location), standing: true }));
+}
+
+/** How many nights back the Dawn Report remembers its own lines, so as not to repeat them. */
+export const AVOID_LINES_NIGHTS = 10;
+/** The template lines written in the nights just before `night`; see ResolveInput.avoid. */
+export function recentLines(state: WarbandState, night: number): string[] {
+  const out: string[] = [];
+  for (const n of state.nights) if (n.night >= night - AVOID_LINES_NIGHTS && n.night < night) for (const r of n.results) if (r.line) out.push(r.line);
+  return out;
+}
+
+/** Where the ledger's last written night happened. Nights from before the campaign could move were in Mordheim. Undefined for a blank ledger. */
+export function lastLocationId(state: WarbandState): string | undefined {
+  for (let i = state.nights.length - 1; i >= 0; i--) { const id = state.nights[i].locationId; if (id) return id; }
+  return state.nights.length ? DEFAULT_LOCATION.id : undefined;
 }
 
 /**
  * Write every dawn that is due, up to and including the night before `today`. Returns the nights written.
  * A gap longer than the campaign's return threshold collapses into a single Return vignette.
+ * `moves` says where the campaign was on each night; a night written after a move keeps the place it was in.
  */
-export function reconcile(state: WarbandState, warband: WarbandLike, today: number, recovering: string[], rival?: WarbandLike): NightResult[] {
+export function reconcile(state: WarbandState, warband: WarbandLike, today: number, recovering: string[], rival?: WarbandLike | WarbandLike[], moves: readonly Move[] = []): NightResult[] {
   const written: NightResult[] = [];
   const first = state.lastResolved + 1, last = today - 1;
   if (last < first) return written;
@@ -128,7 +147,7 @@ export function reconcile(state: WarbandState, warband: WarbandLike, today: numb
   const missed = Array.from({ length: pending }, (_, i) => first + i).filter((n) => !state.orders[n]).length;
 
   if (missed > CAMPAIGN.returnAfterNights && pending === missed) {
-    const result = returnNight(last, warband.id);
+    const result = returnNight(last, warband.id, locationForNight(last, moves));
     state.nights.push(result); written.push(result);
     state.favour = Math.max(state.favour, 20);
     state.lastResolved = last;
@@ -136,10 +155,13 @@ export function reconcile(state: WarbandState, warband: WarbandLike, today: numb
   }
 
   for (let night = first; night <= last; night++) {
+    const location = locationForNight(night, moves);
     const resting = restingMembers(state, night);
-    const given = state.orders[night]?.filter((o) => !resting.includes(o.memberId));
-    const orders = given && given.length ? given : standingOrders(state, warband, recovering, night);
-    const result = orders.length ? resolveNight({ warband, rival, night, orders, state }) : quietNight(night);
+    // orders given before a move for an errand the new place lacks go where the place sends them
+    const given = state.orders[night]?.filter((o) => !resting.includes(o.memberId)).map((o) => ({ ...o, errand: errandAt(o.errand, location) }));
+    const orders = given && given.length ? given : standingOrders(state, warband, recovering, night, location);
+    const arrived = lastLocationId(state);
+    const result = orders.length ? resolveNight({ warband, rival, night, orders, state, location, avoid: recentLines(state, night) }) : quietNight(night, location);
     const before = titleFor(state.renown);
     const applied = applyNight(state, result);
     Object.assign(state, applied.state);
@@ -147,7 +169,9 @@ export function reconcile(state: WarbandState, warband: WarbandLike, today: numb
     normalizeOffers(state);
     for (const res of result.results) if (res.rumour) state.rumours.push({ night, text: res.rumour });
     state.nights.push(result); written.push(result);
-    awardEpithets(state, warband, night);
+    // the first night in a new place is news
+    if (arrived && arrived !== location.id) state.headlines.push({ night, text: location.arrival.replace(/\{warband\}/g, warband.name) });
+    awardEpithets(state, warband, night, location);
     const after = titleFor(state.renown);
     if (after !== before) state.headlines.push({ night, text: `${warband.name} are spoken of in the taverns as ${after}.` });
     state.lastResolved = night;
@@ -157,7 +181,7 @@ export function reconcile(state: WarbandState, warband: WarbandLike, today: numb
   return written;
 }
 
-function awardEpithets(state: WarbandState, warband: WarbandLike, night: number): void {
+function awardEpithets(state: WarbandState, warband: WarbandLike, night: number, location: Location): void {
   const counts: Record<string, Partial<Record<Errand, number>>> = {};
   for (const n of state.nights) for (const r of n.results) {
     counts[r.memberId] ??= {};
@@ -169,7 +193,7 @@ function awardEpithets(state: WarbandState, warband: WarbandLike, night: number)
     if (total < CAMPAIGN.epithetAfterEntries) continue;
     const member = warband.members.find((m) => m.id === memberId);
     if (!member) continue;
-    const epithet = epithetFor(memberId, byErrand);
+    const epithet = epithetFor(memberId, byErrand, location);
     state.epithets[memberId] = epithet;
     state.headlines.push({ night, text: `${member.name} is called ${member.name.split(' ')[0]} ${epithet} now. Nobody remembers who started it.` });
   }
@@ -215,10 +239,10 @@ export function removeTokens(hand: HeldToken[], ids: string[]): HeldToken[] { re
 
 // ───────────────────────── the Eve of Battle ─────────────────────────
 
-/** The City Provides: an empty Hand at the Eve is dealt one charm. Returns its id, or null if the Hand was not empty. */
-export function provideIfEmpty(state: WarbandState, night: number): string | null {
+/** The City Provides: an empty Hand at the Eve is dealt one charm of the place's. Returns its id, or null if the Hand was not empty. */
+export function provideIfEmpty(state: WarbandState, night: number, location: Location = DEFAULT_LOCATION): string | null {
   if (state.hand.length) return null;
-  const token = cityProvides(state.warbandId, night);
+  const token = cityProvides(state.warbandId, night, location);
   state.hand.push({ id: token.id, earnedNight: night });
   state.provided = { night, tokenId: token.id };
   return token.id;

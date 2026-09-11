@@ -9,11 +9,17 @@ import campaign from '../data/curfew/campaign.json' with { type: 'json' };
 import omensData from '../data/curfew/omens.json' with { type: 'json' };
 import moonsData from '../data/curfew/moons.json' with { type: 'json' };
 import tokensData from '../data/curfew/tokens.json' with { type: 'json' };
-import vignettes from '../data/curfew/vignettes.json' with { type: 'json' };
+import mordheim from '../data/curfew/locations/mordheim.json' with { type: 'json' };
+import fussenbach from '../data/curfew/locations/fussenbach.json' with { type: 'json' };
 
-export type Errand = 'scavenge' | 'carouse' | 'train' | 'spy' | 'pray' | 'trade';
-export const ERRANDS: Errand[] = ['scavenge', 'carouse', 'train', 'spy', 'pray', 'trade'];
-export const ERRAND_LABEL: Record<Errand, string> = { scavenge: 'Scavenge', carouse: 'Carouse', train: 'Train', spy: 'Spy', pray: 'Pray', trade: 'Trade' };
+/**
+ * The seven errands the engine knows. Which of them a warband may actually be sent on depends on where the
+ * campaign is: Mordheim has rubble to sift and a Pit to fight in, Fussenbach has algae basins to dredge.
+ */
+export type Errand = 'scavenge' | 'carouse' | 'train' | 'spy' | 'pray' | 'trade' | 'dredge';
+export const ERRANDS: Errand[] = ['scavenge', 'carouse', 'train', 'spy', 'pray', 'trade', 'dredge'];
+export const ERRAND_LABEL: Record<Errand, string> = { scavenge: 'Scavenge', carouse: 'Carouse', train: 'Train', spy: 'Spy', pray: 'Pray', trade: 'Trade', dredge: 'Dredge' };
+/** What each errand brings, in a line. A location may word its own; see blurbFor. */
 export const ERRAND_BLURB: Record<Errand, string> = {
   scavenge: 'Sift the rubble for the green. Shards, and ink for the map.',
   carouse: 'Drink where the city talks. Favour, rumours, a Fortune charm.',
@@ -21,13 +27,55 @@ export const ERRAND_BLURB: Record<Errand, string> = {
   spy: 'Listen at the thin walls. Rumours and Sight.',
   pray: 'Keep the candles. Blessings, Fortune.',
   trade: 'Move the green quietly. Market chits; five shards make one.',
+  dredge: 'Work the algae basins for what glows in the silt. Shards, and the lie of the mudflats.',
 };
 
 export type TokenType = 'fortune' | 'ground' | 'market' | 'sight';
-export interface TokenDef { id: string; type: TokenType; name: string; effect: string }
+/** A charm. One with a `location` only turns up where the campaign is; one without may turn up anywhere. */
+export interface TokenDef { id: string; type: TokenType; name: string; effect: string; location?: string }
 export interface Omen { id: string; numeral: string; title: string; reading: string; tilt: Partial<Record<Errand, number>>; notes: string; image: string }
 /** A Moon favours one errand by a single point. Everything else about it is narrative, woven into the Dawn Report. */
 export interface Moon { id: string; name: string; reading: string; boost: Errand; ties: Partial<Record<Errand, string>> }
+
+export type Outcome = 'boon' | 'fair' | 'poor';
+type TemplateBank = Record<Outcome | 'standing', string[]>;
+/**
+ * Where the campaign is. A location is a whole content pack: which errands are open and why the others are not,
+ * the places, the Dawn Report templates, the rumours, the Town Cryer's headlines and masthead. The game master
+ * moves the campaign from the Watch House; the move takes effect from a night, so earlier nights keep their place.
+ */
+export interface Location {
+  id: string; name: string; kind: 'city' | 'village';
+  /** "the city", "the village": how the prose refers to the place. */
+  settlement: string;
+  /** "Nights in the City of the Damned": the Curfew's subtitle here. */
+  title: string; tagline: string;
+  errands: Errand[];
+  /** Why an errand is not to be had here, as shown to the player. */
+  unavailable: Partial<Record<Errand, string>>;
+  /** Where a standing order for an errand that is not to be had here goes instead. */
+  redirect: Partial<Record<Errand, Errand>>;
+  /** An errand that takes another's Omen tilt and Moon favour: Dredge is the village's Scavenge. */
+  inherits: Partial<Record<Errand, Errand>>;
+  /** A Moon whose favoured errand is not to be had here favours this one instead. */
+  moonBoost?: Record<string, Errand>;
+  /** The Moons' tie-in lines for this place, one or several per errand; without them the Moon's own lines are used. */
+  moonTies?: Record<string, Partial<Record<Errand, string | string[]>>>;
+  /** Headline for the Cryer when the campaign arrives here. */
+  arrival: string;
+  /** A line under "Who goes out?" about what the place offers. */
+  watchNote: string;
+  blurbs: Partial<Record<Errand, string>>;
+  cryer: { edition: string; banner: string; price: string; watchHeading: string; heard: string; bylines: string[]; headlines: Partial<Record<Errand, Record<Outcome, string[]>>> };
+  districts: string[]; details: string[]; closers: string[];
+  templates: Partial<Record<Errand, TemplateBank>>;
+  pairs: string[];
+  /** A line in which the rival warband crosses the member's path. Light, and rare. */
+  encounters: string[];
+  rumours: string[]; return: string[]; cityProvides: string[]; quiet: string[];
+  epithets: Partial<Record<Errand, string[]>>;
+}
+export interface Move { locationId: string; fromNight: number }
 
 export type StatKey = 'M' | 'WS' | 'BS' | 'S' | 'T' | 'W' | 'I' | 'A' | 'Ld';
 export type StatlineLike = Record<StatKey, number>;
@@ -35,7 +83,6 @@ export interface MemberLike { id: string; name: string; role: string; dead?: boo
 export interface WarbandLike { id: string; name: string; members: MemberLike[] }
 
 export interface Order { memberId: string; errand: Errand; standing?: boolean }
-export type Outcome = 'boon' | 'fair' | 'poor';
 export interface HeldToken { id: string; earnedNight: number }
 export interface HandState { favour: number; shards: number; renown: number; hand: HeldToken[] }
 
@@ -44,10 +91,14 @@ export interface OrderResult {
   favour: number; renown: number; shards: number;
   /** Token earned this night, if any. Whether it fits the Hand is decided by applyNight. */
   token?: TokenDef; rumour?: string; convertedShards?: number; prose: string;
+  /** Which template the prose came from (`errand:outcome:index`), so the nights after can steer away from it. */
+  line?: string;
 }
 export interface NightResult {
   night: number; omenId: string; moonId: string; header: string; results: OrderResult[];
   closer?: string; detail: string; ledger: string[];
+  /** Where the night happened. Nights written before the campaign could move have none, and were in Mordheim. */
+  locationId?: string;
 }
 export interface TokenOffer { night: number; incoming: string; held: string }
 
@@ -56,7 +107,36 @@ export const OMENS = omensData.omens as Omen[];
 export const MOONS = moonsData.moons as Moon[];
 export const TOKENS = tokensData.tokens as TokenDef[];
 export const TOKEN_TYPES = tokensData.types as Record<TokenType, { name: string; seal: string; flavour: string }>;
-export const TITLES = vignettes.titles as { renown: number; title: string }[];
+export const TITLES = campaign.titles as { renown: number; title: string }[];
+
+// ───────────────────────── where the campaign is ─────────────────────────
+
+export const LOCATIONS = [mordheim, fussenbach] as unknown as Location[];
+export const DEFAULT_LOCATION_ID = 'mordheim';
+export const DEFAULT_LOCATION: Location = LOCATIONS.find((l) => l.id === DEFAULT_LOCATION_ID)!;
+/** The location with this id; Mordheim for anything unknown, so an old ledger always reads. */
+export function locationById(id?: string | null): Location { return LOCATIONS.find((l) => l.id === id) ?? DEFAULT_LOCATION; }
+/** Where the campaign was on a night: the latest move on or before it, else Mordheim. Later moves on the same night win. */
+export function locationForNight(night: number, moves: readonly Move[]): Location {
+  let id = DEFAULT_LOCATION_ID;
+  for (const m of moves.slice().sort((a, b) => a.fromNight - b.fromNight)) if (m.fromNight <= night) id = m.locationId;
+  return locationById(id);
+}
+export function isErrandAt(errand: Errand, location: Location): boolean { return location.errands.includes(errand); }
+/** The errand itself where it is to be had; otherwise where the place sends it, or its first errand. */
+export function errandAt(errand: Errand, location: Location): Errand {
+  if (isErrandAt(errand, location)) return errand;
+  const to = location.redirect[errand];
+  return to && isErrandAt(to, location) ? to : location.errands[0];
+}
+export function unavailableReason(errand: Errand, location: Location): string {
+  return location.unavailable[errand] ?? `There is no ${ERRAND_LABEL[errand].toLowerCase()} to be had in ${location.name}.`;
+}
+export function blurbFor(errand: Errand, location: Location = DEFAULT_LOCATION): string { return location.blurbs[errand] ?? ERRAND_BLURB[errand]; }
+/** The charms that may turn up at a place: the ones of no fixed place, and the place's own. */
+export function tokensFor(type: TokenType | null, location: Location = DEFAULT_LOCATION): TokenDef[] {
+  return TOKENS.filter((t) => (!type || t.type === type) && (!t.location || t.location === location.id));
+}
 
 // ───────────────────────── randomness ─────────────────────────
 
@@ -128,10 +208,26 @@ export function moonForNight(night: number): Moon {
   const order = shuffle(rng(hashSeed(campaign.id, 'moons', cycle)), MOONS);
   return order[((idx % MOONS.length) + MOONS.length) % MOONS.length];
 }
+/**
+ * The errand a Moon favours at a place. Its own where that is to be had; else what the place says, else the
+ * errand that inherits from it (Dredge for Scavenge); else nothing, and the Moon is flat there.
+ */
+export function moonBoostAt(moon: Moon, location: Location = DEFAULT_LOCATION): Errand | undefined {
+  const said = location.moonBoost?.[moon.id];
+  if (said && isErrandAt(said, location)) return said;
+  if (isErrandAt(moon.boost, location)) return moon.boost;
+  return location.errands.find((e) => location.inherits[e] === moon.boost);
+}
+/** The Moon's tie-in lines for an errand at a place; empty if the Moon leaves none there. */
+export function moonTiesAt(moon: Moon, errand: Errand, location: Location = DEFAULT_LOCATION): string[] {
+  const tie = location.moonTies ? location.moonTies[moon.id]?.[errand] : moon.ties[errand];
+  return tie === undefined ? [] : Array.isArray(tie) ? tie : [tie];
+}
 /** Combined tilt for an errand on a night: the Omen's tilt plus one point for the Moon's favoured errand, clamped to ±3. */
-export function tiltFor(errand: Errand, omen: Omen, moon: Moon): number {
-  const o = omen.tilt[errand] ?? 0;
-  return Math.max(-3, Math.min(3, o + (moon.boost === errand ? 1 : 0)));
+export function tiltFor(errand: Errand, omen: Omen, moon: Moon, location: Location = DEFAULT_LOCATION): number {
+  const from = location.inherits[errand];
+  const o = omen.tilt[errand] ?? (from ? omen.tilt[from] : undefined) ?? 0;
+  return Math.max(-3, Math.min(3, o + (moonBoostAt(moon, location) === errand ? 1 : 0)));
 }
 
 // ───────────────────────── the edge ─────────────────────────
@@ -142,7 +238,7 @@ export function tiltFor(errand: Errand, omen: Omen, moon: Moon): number {
  * Sisters each have their strong and weak hands, and neither is favoured over the other.
  */
 export const ERRAND_STATS: Record<Errand, StatKey[]> = {
-  scavenge: ['M', 'I'], carouse: ['T', 'Ld'], train: ['WS', 'T'], spy: ['I', 'BS'], pray: ['Ld', 'W'], trade: ['Ld', 'I'],
+  scavenge: ['M', 'I'], carouse: ['T', 'Ld'], train: ['WS', 'T'], spy: ['I', 'BS'], pray: ['Ld', 'W'], trade: ['Ld', 'I'], dredge: ['S', 'T'],
 };
 export const STAT_LABEL: Record<StatKey, string> = { M: 'Movement', WS: 'Weapon Skill', BS: 'Ballistic Skill', S: 'Strength', T: 'Toughness', W: 'Wounds', I: 'Initiative', A: 'Attacks', Ld: 'Leadership' };
 export const EDGE_MAX = 2;
@@ -193,20 +289,25 @@ export function availability(warband: WarbandLike, recovering: string[], resting
     return { memberId: m.id, available: true };
   });
 }
-/** A sensible default errand from the role, for standing orders. */
-export function defaultErrand(member: MemberLike): Errand {
+/** A sensible default errand from the role, for standing orders, among those the place offers. */
+export function defaultErrand(member: MemberLike, location: Location = DEFAULT_LOCATION): Errand {
   const role = member.role.toLowerCase();
-  if (/priest|sister|confessor|flagellant|augur/.test(role)) return 'pray';
-  if (/jaeger|hunter|scout|ranger|archer|marksman/.test(role)) return 'scavenge';
-  if (/ogre|slayer|pit|champion|brother|troll/.test(role)) return 'train';
-  if (/thief|assassin|beardling|youngblood|urchin|night runner/.test(role)) return 'spy';
-  if (/lord|elder|captain|merchant|engineer|magister/.test(role)) return 'trade';
-  return 'carouse';
+  const byRole = (): Errand => {
+    if (/priest|sister|confessor|flagellant|augur/.test(role)) return 'pray';
+    if (/jaeger|hunter|scout|ranger|archer|marksman/.test(role)) return 'scavenge';
+    if (/ogre|slayer|pit|champion|brother|troll/.test(role)) return 'train';
+    if (/thief|assassin|beardling|youngblood|urchin|night runner/.test(role)) return 'spy';
+    if (/lord|elder|captain|merchant|engineer|magister/.test(role)) return 'trade';
+    return 'carouse';
+  };
+  return errandAt(byRole(), location);
 }
 
 // ───────────────────────── resolution ─────────────────────────
 
-const ERRAND_TOKEN_TYPE: Partial<Record<Errand, TokenType>> = { carouse: 'fortune', train: 'ground', spy: 'sight', pray: 'fortune', trade: 'market' };
+const ERRAND_TOKEN_TYPE: Partial<Record<Errand, TokenType>> = { carouse: 'fortune', train: 'ground', spy: 'sight', pray: 'fortune', trade: 'market', dredge: 'ground' };
+/** Errands that bring the green home. */
+const SHARD_ERRANDS: Errand[] = ['scavenge', 'dredge'];
 const FAVOUR: Record<Outcome, number> = { boon: 8, fair: 5, poor: 2 };
 
 function rollOutcome(r: () => number, tilt: number): Outcome {
@@ -226,7 +327,17 @@ function fill(template: string, slots: Record<string, string>): string {
 }
 
 export interface ResolveInput {
-  warband: WarbandLike; rival?: WarbandLike; night: number; orders: Order[]; state: HandState;
+  warband: WarbandLike; night: number; orders: Order[]; state: HandState;
+  /** The other warbands. With several, the night picks one to be the rival its vignettes speak of. */
+  rival?: WarbandLike | WarbandLike[];
+  /** Where the night happens. Mordheim when not said. */
+  location?: Location;
+  /** Lines (see OrderResult.line) written in the nights just before. The draw steers away from them, so a month rarely repeats itself. */
+  avoid?: readonly string[];
+}
+/** The templates for an errand at a place, falling back to Mordheim's so an odd order never leaves a night unwritten. */
+function templatesAt(errand: Errand, location: Location): TemplateBank {
+  return location.templates[errand] ?? DEFAULT_LOCATION.templates[errand] ?? { boon: [], fair: [], poor: [], standing: [] };
 }
 /**
  * Resolve one night for one warband. Deterministic: the same input always gives the same night.
@@ -234,38 +345,42 @@ export interface ResolveInput {
  */
 export function resolveNight(input: ResolveInput): NightResult {
   const { warband, night, state } = input;
+  const location = input.location ?? DEFAULT_LOCATION;
   const omen = omenForNight(night), moon = moonForNight(night);
   const orders = input.orders.slice(0, campaign.membersPerNight);
   const r = rng(hashSeed(campaign.id, warband.id, night, ...orders.map((o) => `${o.memberId}:${o.errand}:${o.standing ? 's' : 'o'}`)));
   const results: OrderResult[] = [];
   let favour = state.favour, shards = state.shards;
-  const rival = input.rival?.name ?? 'the rival warband';
-  const detail = pick(r, vignettes.details);
+  const rivals = Array.isArray(input.rival) ? input.rival : input.rival ? [input.rival] : [];
+  const rivalBand = rivals.length > 1 ? pick(r, rivals) : rivals[0];
+  const rival = rivalBand?.name ?? 'the rival warband';
+  const rivalLiving = rivalBand?.members.filter((m) => !m.dead) ?? [];
+  const detail = pick(r, location.details);
 
   orders.forEach((order, i) => {
     const member = warband.members.find((m) => m.id === order.memberId);
     if (!member) return;
     const standing = !!order.standing;
     // the Omen and the Moon set the night's odds; who you send moves them a little further
-    const tilt = Math.max(-3, Math.min(3, tiltFor(order.errand, omen, moon) + (standing ? 0 : statEdge(warband, member, order.errand))));
+    const tilt = Math.max(-3, Math.min(3, tiltFor(order.errand, omen, moon, location) + (standing ? 0 : statEdge(warband, member, order.errand))));
     const outcome: Outcome = standing ? (r() < 0.2 ? 'poor' : 'fair') : rollOutcome(r, tilt);
     let f = FAVOUR[outcome];
     if (standing) f = Math.ceil(f / 2);
     let renown = 0, gained = 0, token: TokenDef | undefined, rumour: string | undefined, convertedShards: number | undefined;
     // yields by errand
-    if (order.errand === 'scavenge') gained = standing ? (outcome === 'fair' && r() < 0.5 ? 1 : 0) : { boon: 2, fair: 1, poor: 0 }[outcome];
+    if (SHARD_ERRANDS.includes(order.errand)) gained = standing ? (outcome === 'fair' && r() < 0.5 ? 1 : 0) : { boon: 2, fair: 1, poor: 0 }[outcome];
     if (order.errand === 'train') renown += { boon: 3, fair: 1, poor: 0 }[outcome];
     if (order.errand === 'carouse' && outcome === 'boon') renown += 1;
-    if (order.errand === 'spy' && outcome !== 'poor') rumour = fill(pick(r, vignettes.rumours), { rival });
+    if (order.errand === 'spy' && outcome !== 'poor') rumour = fill(pick(r, location.rumours), { rival });
     if (order.errand === 'trade' && outcome !== 'poor' && shards >= 5) {
       convertedShards = 5; shards -= 5;
-      token = pick(r, TOKENS.filter((t) => t.type === 'market'));
+      token = pick(r, tokensFor('market', location));
     }
     // token drop: a boon always brings one, a fair night sometimes, standing orders never
     const type = ERRAND_TOKEN_TYPE[order.errand];
     if (type && !token && !standing) {
       const chance = outcome === 'boon' ? 1 : outcome === 'fair' ? Math.max(0.1, 0.35 + 0.1 * tilt) : 0;
-      if (r() < chance) token = pick(r, TOKENS.filter((t) => t.type === type));
+      if (r() < chance) token = pick(r, tokensFor(type, location));
     }
     // favour soft cap: past it the city forgets quickly and the surplus becomes a name
     let effective = f;
@@ -273,20 +388,30 @@ export function resolveNight(input: ResolveInput): NightResult {
     effective = Math.max(0, Math.min(effective, 100 - favour));
     favour += effective; shards += gained;
     // prose
-    const bank = (vignettes.templates as Record<Errand, Record<string, string[]>>)[order.errand];
-    const template = pick(r, standing ? bank.standing : bank[outcome]);
+    const bank = templatesAt(order.errand, location);
+    const pool = standing ? bank.standing : bank[outcome];
+    const lineKey = (idx: number) => `${order.errand}:${standing ? 'standing' : outcome}:${idx}`;
+    let index = Math.floor(r() * pool.length);
+    // a line used in the nights just before is redrawn, a few times, when the bank is deep enough to allow it
+    if (input.avoid?.length && pool.length > 3) for (let tries = 0; tries < 3 && input.avoid.includes(lineKey(index)); tries++) index = Math.floor(r() * pool.length);
+    const template = pool[index];
     const other = orders.find((o) => o !== order);
     const otherMember = other && warband.members.find((m) => m.id === other.memberId);
     const slots = {
       name: member.name, first: firstName(member.name), they: 'they', them: 'them', their: 'their',
-      district: pick(r, vignettes.districts), omen: omen.title, rival, other: otherMember ? firstName(otherMember.name) : 'nobody',
+      district: pick(r, location.districts), omen: omen.title, rival, other: otherMember ? firstName(otherMember.name) : 'nobody',
     };
     let prose = fill(template, slots);
-    if (i === 1 && otherMember && r() < 0.35) prose += ' ' + fill(pick(r, vignettes.pairs), { ...slots, other: firstName(member.name) });
+    if (i === 1 && otherMember && r() < 0.35) prose += ' ' + fill(pick(r, location.pairs), { ...slots, other: firstName(member.name) });
     // the Moon leaves its mark on one errand a night, quietly
-    const tie = moon.ties[order.errand];
-    if (i === 0 && tie && r() < 0.6) prose += ' ' + fill(tie, slots);
-    results.push({ memberId: member.id, errand: order.errand, outcome, standing, favour: effective, renown, shards: gained, token, rumour, convertedShards, prose });
+    const ties = moonTiesAt(moon, order.errand, location);
+    if (i === 0 && ties.length && r() < 0.6) prose += ' ' + fill(pick(r, ties), slots);
+    // now and then the rival warband crosses their path; never on standing orders, which nobody remarks on
+    if (i === 0 && !standing && rivalBand && location.encounters.length && r() < 0.15) {
+      const rivalMember = rivalLiving.length ? firstName(pick(r, rivalLiving).name) : 'somebody';
+      prose += ' ' + fill(pick(r, location.encounters), { ...slots, rivalMember });
+    }
+    results.push({ memberId: member.id, errand: order.errand, outcome, standing, favour: effective, renown, shards: gained, token, rumour, convertedShards, prose, line: lineKey(index) });
   });
 
   const ledger: string[] = [];
@@ -303,21 +428,21 @@ export function resolveNight(input: ResolveInput): NightResult {
     if (res.rumour) ledger.push(`${firstName(m.name)}: a rumour`);
   }
   const header = `Night ${night} — under ${omen.title}.`;
-  const closer = results.length && r() < 0.45 ? pick(r, vignettes.closers) : undefined;
-  return { night, omenId: omen.id, moonId: moon.id, header, results, closer, detail, ledger };
+  const closer = results.length && r() < 0.45 ? pick(r, location.closers) : undefined;
+  return { night, omenId: omen.id, moonId: moon.id, header, results, closer, detail, ledger, locationId: location.id };
 }
 
 /** The night nobody went out. Still a Chronicle line. */
-export function quietNight(night: number): NightResult {
+export function quietNight(night: number, location: Location = DEFAULT_LOCATION): NightResult {
   const omen = omenForNight(night), moon = moonForNight(night);
   const r = rng(hashSeed(campaign.id, 'quiet', night));
-  return { night, omenId: omen.id, moonId: moon.id, header: `Night ${night} — under ${omen.title}.`, results: [], detail: pick(r, vignettes.details), closer: pick(r, vignettes.quiet), ledger: [] };
+  return { night, omenId: omen.id, moonId: moon.id, header: `Night ${night} — under ${omen.title}.`, results: [], detail: pick(r, location.details), closer: pick(r, location.quiet), ledger: [], locationId: location.id };
 }
 /** The single vignette a player gets after a long absence. No summary of what they missed. */
-export function returnNight(night: number, warbandId: string): NightResult {
+export function returnNight(night: number, warbandId: string, location: Location = DEFAULT_LOCATION): NightResult {
   const omen = omenForNight(night), moon = moonForNight(night);
   const r = rng(hashSeed(campaign.id, 'return', warbandId, night));
-  return { night, omenId: omen.id, moonId: moon.id, header: `Night ${night} — the return.`, results: [], detail: pick(r, vignettes.return), ledger: ['Favour primed to 20'] };
+  return { night, omenId: omen.id, moonId: moon.id, header: `Night ${night} — the return.`, results: [], detail: pick(r, location.return), ledger: ['Favour primed to 20'], locationId: location.id };
 }
 
 // ───────────────────────── the Hand ─────────────────────────
@@ -343,12 +468,12 @@ export function applyNight(state: HandState, result: NightResult): { state: Hand
   }
   return { state: next, offers };
 }
-/** The City Provides: a warband at the Eve with an empty Hand is dealt one random token. */
-export function cityProvides(warbandId: string, night: number): TokenDef {
-  return pick(rng(hashSeed(campaign.id, 'provides', warbandId, night)), TOKENS);
+/** The City Provides: a warband at the Eve with an empty Hand is dealt one random token, from among the place's. */
+export function cityProvides(warbandId: string, night: number, location: Location = DEFAULT_LOCATION): TokenDef {
+  return pick(rng(hashSeed(campaign.id, 'provides', warbandId, night)), tokensFor(null, location));
 }
-export function cityProvidesLine(warbandId: string, night: number): string {
-  return pick(rng(hashSeed(campaign.id, 'provides-line', warbandId, night)), vignettes.cityProvides);
+export function cityProvidesLine(warbandId: string, night: number, location: Location = DEFAULT_LOCATION): string {
+  return pick(rng(hashSeed(campaign.id, 'provides-line', warbandId, night)), location.cityProvides);
 }
 export function titleFor(renown: number): string {
   let title = TITLES[0].title;
@@ -356,10 +481,10 @@ export function titleFor(renown: number): string {
   return title;
 }
 export function nextTitle(renown: number): { title: string; renown: number } | undefined { return TITLES.find((t) => t.renown > renown); }
-/** Epithets are earned by featuring in enough Chronicle entries; the errand they did most decides the flavour. */
-export function epithetFor(memberId: string, counts: Partial<Record<Errand, number>>): string {
+/** Epithets are earned by featuring in enough Chronicle entries; the errand they did most decides the flavour, the place the words. */
+export function epithetFor(memberId: string, counts: Partial<Record<Errand, number>>, location: Location = DEFAULT_LOCATION): string {
   const top = (Object.entries(counts) as [Errand, number][]).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'carouse';
-  const pool = (vignettes.epithets as Record<Errand, string[]>)[top];
+  const pool = location.epithets[top] ?? DEFAULT_LOCATION.epithets[top] ?? DEFAULT_LOCATION.epithets.carouse!;
   return pick(rng(hashSeed(campaign.id, 'epithet', memberId)), pool);
 }
 

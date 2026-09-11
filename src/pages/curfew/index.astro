@@ -7,7 +7,8 @@ import { base } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
 import { DEV_LOGIN_PASSWORD, env, isAdminEmail } from '../../server/env';
 import { getViewer } from '../../server/session';
-import { listClaims, loadOwnLedger, todayFor, type Claim, type LedgerView } from '../../server/curfew/service';
+import { currentLocation, listClaims, loadOwnLedger, todayFor, type Claim, type LedgerView } from '../../server/curfew/service';
+import { DEFAULT_LOCATION, type Location } from '../../curfew/engine';
 
 // The Ledger is personal: rendered on request, never cached.
 export const prerender = false;
@@ -19,16 +20,21 @@ const viewer = ready ? await getViewer(Astro.request) : null;
 let view: LedgerView | null = null;
 let claims: Claim[] = [];
 let trouble = false;
+// Where the campaign is colours the page before anyone signs in; without a database it is Mordheim.
+let location: Location = DEFAULT_LOCATION;
+if (ready) {
+  try { location = await currentLocation(today); } catch (e) { console.error('[curfew] location unavailable', e); }
+}
 if (viewer) {
   try { [view, claims] = await Promise.all([loadOwnLedger(viewer.id, today), listClaims()]); } catch (e) { console.error('[curfew] ledger unavailable', e); trouble = true; }
 }
 const boot = {
-  today, debug: env.CURFEW_DEBUG, viewer: viewer ? { name: viewer.name } : null, view,
+  today, debug: env.CURFEW_DEBUG, viewer: viewer ? { name: viewer.name } : null, view, locationId: location.id,
   claims: claims.map((c) => ({ warbandId: c.warbandId, ownerName: c.ownerName })),
 };
 ---
 
-<Base title="Curfew — Nights in the City of the Damned" description="Every real day is one night in Mordheim. Give your warband its orders at dusk; read what it cost them at dawn.">
+<Base title={`Curfew — ${location.title}`} description={`${location.tagline} Give your warband its orders at dusk; read what it cost them at dawn.`}>
   <Fragment slot="head">
     <link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Barlow+Condensed:wght@600&family=Cinzel:wght@700&display=swap" rel="stylesheet" />
     <meta name="theme-color" content="#0e0d0c" />
@@ -51,7 +57,7 @@ const boot = {
     {ready && !viewer && (
       <section class="cf-section cf-section-first" id="signin">
         <h1 class="cf-h2">Whose ledger is this?</h1>
-        <p class="cf-muted">Every real day is one night in Mordheim. At dusk you give your warband its orders. At midnight the city answers. At dawn you read what it cost them. Two minutes a day. The city takes nothing from those who stay away.</p>
+        <p class="cf-muted">{location.tagline} At dusk you give your warband its orders. At midnight {location.settlement} answers. At dawn you read what it cost them. Two minutes a day. {location.settlement.charAt(0).toUpperCase() + location.settlement.slice(1)} takes nothing from those who stay away.</p>
         <p>Sign in, so the ledger is yours from any device and the Town Cryer knows whose night it prints.</p>
         <form class="cf-auth" id="auth-form" data-mode="in" data-invite={env.INVITE_CODE ? 'required' : 'open'} novalidate>
           <div class="cf-auth-tabs" role="tablist" aria-label="Sign in or sign up">
@@ -133,6 +139,7 @@ const boot = {
         <div class="cf-watch" id="watch">
           <h3 class="cf-h3">Who goes out?</h3>
           <p class="cf-muted">Up to <span id="per-night">{campaign.membersPerNight}</span> a night, and nobody two nights running. The dead and the wounded stay home.</p>
+          <p class="cf-muted cf-place-note" id="place-note" hidden></p>
           <div class="cf-watch-list" id="watch-list"></div>
           <div class="cf-orders-given" id="orders-given"></div>
           <details class="cf-details cf-details-quiet">
@@ -169,7 +176,7 @@ const boot = {
       </section>
 
       <footer class="cf-foot">
-        <span>Nights turn at midnight in the city ({campaign.timezone.replace('_', ' ')}). Stay away longer than {campaign.returnAfterNights} nights and the city simply waits. The ledger is kept for you; open it from any device.</span>
+        <span>Nights turn at midnight in {location.settlement} ({campaign.timezone.replace('_', ' ')}). Stay away longer than {campaign.returnAfterNights} nights and {location.settlement} simply waits. The ledger is kept for you; open it from any device.</span>
         <span class="cf-foot-actions">
           <button type="button" class="cf-linkbtn" id="reset">Burn this ledger</button>
           <button type="button" class="cf-linkbtn" id="release">Give up the warband</button>
@@ -187,15 +194,16 @@ const boot = {
   import { createAuthClient } from 'better-auth/client';
   import { warbands } from '../../data/warbands';
   import {
-    CAMPAIGN, ERRANDS, ERRAND_LABEL, ERRAND_BLURB, TOKEN_TYPES, HAND_SIZE, availability, moonForNight, omenForNight, tiltFor, titleFor, nextTitle, tokenById, dateForNight, statEdge, ERRAND_STATS, STAT_LABEL,
+    CAMPAIGN, ERRANDS, ERRAND_LABEL, TOKEN_TYPES, HAND_SIZE, availability, moonForNight, omenForNight, tiltFor, titleFor, nextTitle, tokenById, dateForNight, statEdge, ERRAND_STATS, STAT_LABEL,
+    blurbFor, isErrandAt, locationById, moonBoostAt, unavailableReason,
     type Errand, type MemberLike, type NightResult, type Order, type TokenOffer,
   } from '../../curfew/engine';
   import { lastGivenOrders, restingMembers, standingOrders, type WarbandState } from '../../curfew/ledger';
   import { sealSvg } from '../../curfew/glyphs';
   import { carryDate, debugEnabled, renderDebugBar, setDebug } from '../../curfew/debug';
 
-  interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean }
-  interface Boot { today: number; debug: boolean; viewer: { name: string } | null; view: View | null; claims: { warbandId: string; ownerName: string }[] }
+  interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean; locationId: string }
+  interface Boot { today: number; debug: boolean; viewer: { name: string } | null; view: View | null; locationId: string; claims: { warbandId: string; ownerName: string }[] }
 
   document.body.classList.add('curfew-body');
   const root = document.getElementById('main-content')!;
@@ -210,6 +218,9 @@ const boot = {
   let view: View | null = boot.view;
   let warband = view ? warbands.find((w) => w.id === view!.warbandId) ?? null : null;
   let state: WarbandState | null = view?.state ?? null;
+  // Where the campaign is tonight: which errands are open, whose words the page uses.
+  let place = locationById(view?.locationId ?? boot.locationId);
+  const Settlement = () => place.settlement.charAt(0).toUpperCase() + place.settlement.slice(1);
   let chronShown = 6;
 
   function toast(text: string) {
@@ -232,6 +243,7 @@ const boot = {
     view = next;
     state = next?.state ?? null;
     warband = next ? warbands.find((w) => w.id === next.warbandId) ?? null : null;
+    if (next) place = locationById(next.locationId);
     if (view && warband) { showPicker(false); $('ledger').hidden = false; renderAll(view.fresh); }
     else { $('ledger').hidden = true; showPicker(true); }
   }
@@ -365,8 +377,8 @@ const boot = {
   function renderNightline() {
     const moon = moonForNight(today);
     $('nightline').innerHTML = today < 1
-      ? `The city sleeps until <strong>${esc(prettyDate(1))}</strong>`
-      : `Night <strong>${today}</strong> · ${esc(moon.name)} · ${esc(prettyDate(today))}`;
+      ? `${esc(Settlement())} sleeps until <strong>${esc(prettyDate(1))}</strong>`
+      : `Night <strong>${today}</strong> · ${esc(place.name)} · ${esc(moon.name)} · ${esc(prettyDate(today))}`;
   }
 
   // 1. Last night
@@ -473,12 +485,16 @@ const boot = {
     const omen = omenForNight(today), moon = moonForNight(today);
     const img = $<HTMLImageElement>('omen-img');
     img.src = `${base}${omen.image}`; img.alt = `${omen.title}. ${omen.reading}`;
-    const tilts = ERRANDS.map((e) => ({ e, t: tiltFor(e, omen, moon) })).filter((x) => x.t !== 0);
+    const tilts = place.errands.map((e) => ({ e, t: tiltFor(e, omen, moon, place) })).filter((x) => x.t !== 0);
     $('omen-tilts').innerHTML = tilts.length
       ? tilts.map(({ e, t }) => `<li class="cf-tilt ${t > 0 ? 'up' : 'down'}"><span>${esc(ERRAND_LABEL[e])}</span><span aria-label="${t > 0 ? 'favoured' : 'perilous'} ${Math.abs(t)}">${t > 0 ? '▲'.repeat(t) : '▼'.repeat(-t)}</span></li>`).join('')
       : '<li class="cf-tilt flat">A flat night</li>';
+    const boost = moonBoostAt(moon, place);
+    const favours = boost
+      ? `This Moon favours <b>${esc(ERRAND_LABEL[boost])}</b>${boost !== moon.boost ? ` here, where there is no ${esc(ERRAND_LABEL[moon.boost].toLowerCase())} to be had,` : ''} and colours everything else.`
+      : `This Moon favours <b>${esc(ERRAND_LABEL[moon.boost])}</b>, which ${esc(place.name)} has none of. It colours everything else.`;
     $('omen-text').innerHTML = `
-      <div class="cf-moon"><h3 class="cf-h3"><span class="cf-week">This week</span>${esc(moon.name)}</h3><p class="cf-reading">${esc(moon.reading)}</p><p class="cf-note">This Moon favours <b>${esc(ERRAND_LABEL[moon.boost])}</b> and colours everything else.</p></div>`;
+      <div class="cf-moon"><h3 class="cf-h3"><span class="cf-week">This week</span>${esc(moon.name)}</h3><p class="cf-reading">${esc(moon.reading)}</p><p class="cf-note">${favours}</p></div>`;
     const card = $('omen-card'), tiltList = $('omen-tilts');
     [...tiltList.children].forEach((li, i) => (li as HTMLElement).style.setProperty('--d', `${0.12 * i}s`));
     const key = `curfew:revealed:${warband!.id}:${today}`;
@@ -513,9 +529,15 @@ const boot = {
     const rec = recovering();
     const av = availability(w, rec, resting());
     const given = s.orders[today] ?? [];
-    const standing = given.length ? [] : standingOrders(s, w, rec, today);
+    const standing = given.length ? [] : standingOrders(s, w, rec, today, place);
     const shown = given.length ? given : standing;
-    const options = (m: MemberLike, sel?: Errand) => `<option value="" ${sel ? '' : 'selected'}>Stays home</option>` + ERRANDS.map((e) => `<option value="${e}" ${e === sel ? 'selected' : ''}>${ERRAND_LABEL[e]}${arrows(statEdge(w, m, e))}</option>`).join('');
+    // the place's errands first; the ones it has none of stay in the list, greyed, so the player sees what is missing
+    const open = ERRANDS.filter((e) => isErrandAt(e, place)), shut = ERRANDS.filter((e) => !isErrandAt(e, place));
+    const options = (m: MemberLike, sel?: Errand) => `<option value="" ${sel ? '' : 'selected'}>Stays home</option>`
+      + open.map((e) => `<option value="${e}" ${e === sel ? 'selected' : ''}>${ERRAND_LABEL[e]}${arrows(statEdge(w, m, e))}</option>`).join('')
+      + shut.map((e) => `<option value="${e}" disabled class="cf-shut">${ERRAND_LABEL[e]} — not in ${esc(place.name)}</option>`).join('');
+    const note = $('place-note');
+    note.hidden = !place.watchNote; note.textContent = place.watchNote;
     $('watch-list').innerHTML = w.members.map((m) => {
       const a = av.find((x) => x.memberId === m.id)!;
       const order = shown.find((o) => o.memberId === m.id);
@@ -531,7 +553,9 @@ const boot = {
       }
       return `<div class="cf-member ${order ? 'is-chosen' : ''}" data-member="${esc(m.id)}">${who}<span class="cf-choice">${edgeChip(m, order?.errand)}<select aria-label="Tonight, ${esc(m.name)}">${options(m, order?.errand)}</select></span></div>`;
     }).join('');
-    $('errand-help').innerHTML = ERRANDS.map((e) => `<div><b>${ERRAND_LABEL[e]}</b>${esc(ERRAND_BLURB[e])} <span class="cf-leans">Leans on ${ERRAND_STATS[e].join(' and ')}.</span></div>`).join('')
+    $('errand-help').innerHTML = [...open, ...shut].map((e) => isErrandAt(e, place)
+      ? `<div><b>${ERRAND_LABEL[e]}</b>${esc(blurbFor(e, place))} <span class="cf-leans">Leans on ${ERRAND_STATS[e].join(' and ')}.</span></div>`
+      : `<div class="cf-shut"><b>${ERRAND_LABEL[e]}</b><span class="cf-shut-tag">Not in ${esc(place.name)}</span>${esc(unavailableReason(e, place))}</div>`).join('')
       + `<p class="cf-edge-note">A warrior who is the warband's best hand for an errand, by those characteristics, gets an edge: <span class="cf-edge is-on">▲</span> a point on the odds, <span class="cf-edge is-on">▲▲</span> two when they also stand well above the band's usual. It is measured within your own warband, so no band is favoured over another.</p>`;
     limitSelects(); renderOrdersLine();
   }
@@ -557,9 +581,9 @@ const boot = {
     const s = state!, el = $('orders-given');
     if (today < 1) { el.innerHTML = `<p>The first night is ${esc(prettyDate(1))}.</p>`; return; }
     const given = s.orders[today];
-    if (given?.length) { el.innerHTML = `<p><b>Orders given.</b> ${describe(given)}. The city answers at midnight.</p>${STANDING_NOTE}`; return; }
+    if (given?.length) { el.innerHTML = `<p><b>Orders given.</b> ${describe(given)}. ${esc(Settlement())} answers at midnight.</p>${STANDING_NOTE}`; return; }
     if (given && !given.length) { el.innerHTML = `<p><b>Nobody goes out.</b> The door stays barred tonight.</p>${STANDING_NOTE}`; return; }
-    const standing = standingOrders(s, warband!, recovering(), today);
+    const standing = standingOrders(s, warband!, recovering(), today, place);
     const last = lastGivenOrders(s, today);
     if (!standing.length) {
       const rest = resting().map(firstName);
@@ -593,12 +617,12 @@ const boot = {
       return;
     }
     limitSelects();
-    await act('orders', { orders }, () => toast(orders.length ? `${describe(orders).replace(/&#39;/g, "'")}. The city answers at midnight.` : 'Nobody goes out. The door stays barred tonight.'));
+    await act('orders', { orders }, () => toast(orders.length ? `${describe(orders).replace(/&#39;/g, "'")}. ${Settlement()} answers at midnight.` : 'Nobody goes out. The door stays barred tonight.'));
   });
   $('orders-given').addEventListener('click', async (e) => {
     if (!(e.target as HTMLElement).closest('#keep-standing') || !state) return;
-    const orders = standingOrders(state, warband!, recovering(), today).map((o) => ({ memberId: o.memberId, errand: o.errand }));
-    await act('orders', { orders }, () => toast('Orders given in full. The city answers at midnight.'));
+    const orders = standingOrders(state, warband!, recovering(), today, place).map((o) => ({ memberId: o.memberId, errand: o.errand }));
+    await act('orders', { orders }, () => toast(`Orders given in full. ${Settlement()} answers at midnight.`));
   });
   $('watch-list').addEventListener('click', async (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-heal]'); if (!b || !state) return;
@@ -614,12 +638,12 @@ const boot = {
     $('hand-list').innerHTML = slots.join('');
     const title = titleFor(s.renown), next = nextTitle(s.renown);
     $('meters').innerHTML = `
-      <div class="cf-meter"><div class="cf-meter-label"><span>Favour</span><strong>${s.favour}<small> / 100</small></strong></div><div class="cf-bar" role="img" aria-label="Favour ${s.favour} of 100, soft cap ${CAMPAIGN.favourSoftCap}"><span style="transform:scaleX(${s.favour / 100})"></span><i class="cf-cap" style="left:${CAMPAIGN.favourSoftCap}%"></i></div><div class="cf-note">The city forgets quickly. Past ${CAMPAIGN.favourSoftCap} the surplus becomes a name. Spend it at the Eve.</div></div>
+      <div class="cf-meter"><div class="cf-meter-label"><span>Favour</span><strong>${s.favour}<small> / 100</small></strong></div><div class="cf-bar" role="img" aria-label="Favour ${s.favour} of 100, soft cap ${CAMPAIGN.favourSoftCap}"><span style="transform:scaleX(${s.favour / 100})"></span><i class="cf-cap" style="left:${CAMPAIGN.favourSoftCap}%"></i></div><div class="cf-note">${esc(Settlement())} forgets quickly. Past ${CAMPAIGN.favourSoftCap} the surplus becomes a name. Spend it at the Eve.</div></div>
       <div class="cf-stats">
         <div class="cf-stat"><span>Shards</span><b class="wyrd">${s.shards}</b><small>${s.shards >= 5 ? 'Five make a Market chit at Trade' : 'Never rot'}</small></div>
         <div class="cf-stat"><span>Renown</span><b>${s.renown}</b><small>${next ? `${esc(next.title)} at ${next.renown}` : 'A name that will keep'}</small></div>
       </div>
-      <div class="cf-title-line">${esc(warband!.name)} are called <b>${esc(title)}</b>.</div>`;
+      <div class="cf-title-line">${esc(warband!.name)} are called <b>${esc(title)}</b>${place.kind === 'village' ? ` in ${esc(place.name)}` : ''}.</div>`;
   }
 
   // 4. Memory

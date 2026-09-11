@@ -8,15 +8,15 @@
  */
 import { and, desc, eq, gte, lte } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { cryerDispatches, curfewLedgers, curfewRuns, user } from '../db/schema.ts';
+import { cryerDispatches, curfewLedgers, curfewMoves, curfewRuns, user } from '../db/schema.ts';
 import { env } from '../env.ts';
-import { currentNight, type NightResult, type Order, type TokenOffer } from '../../curfew/engine.ts';
+import { currentNight, locationById, locationForNight, type Location, type Move, type NightResult, type Order, type TokenOffer } from '../../curfew/engine.ts';
 import {
   LedgerError, coerceState, fightDone, freshState, giveOrders, heal, layTable, nightForOverride, provideIfEmpty, putBack, reconcile, recoveringMembers, settleOffer,
   type Flourish, type WarbandState,
 } from '../../curfew/ledger.ts';
 import { dispatchesForNight, type Dispatch } from '../../curfew/cryer.ts';
-import { injuredInLastBattle, rivalOf, warbandById } from '../../curfew/roster.ts';
+import { injuredInLastBattle, rivalsOf, warbandById } from '../../curfew/roster.ts';
 import { memberNights, warbandStandings, type Ledger, type MemberNights, type WarbandStanding } from '../../curfew/story.ts';
 import type { Warband } from '../../data/warbands.ts';
 
@@ -30,6 +30,8 @@ export interface LedgerView {
   recovering: string[];
   /** Nights written by this very request: the dawn is fresh, so the report inks in. */
   fresh: boolean;
+  /** Where the campaign is tonight. */
+  locationId: string;
 }
 
 export interface Claim { warbandId: string; ownerId: string; ownerName: string }
@@ -43,6 +45,30 @@ export function todayFor(url: URL | null, now = new Date()): number {
     if (n !== null) return n;
   }
   return currentNight(now);
+}
+
+// ───────────────────────── where the campaign is ─────────────────────────
+
+export interface CampaignMove extends Move { id: number; movedAt: Date }
+
+/** Every move the game master has made, oldest first. Empty means the campaign has always been in Mordheim. */
+export async function campaignMoves(): Promise<CampaignMove[]> {
+  const rows = await db().select().from(curfewMoves).orderBy(curfewMoves.fromNight, curfewMoves.id);
+  return rows.map((r) => ({ id: r.id, locationId: r.locationId, fromNight: r.fromNight, movedAt: r.movedAt }));
+}
+export async function currentLocation(today: number): Promise<Location> { return locationForNight(today, await campaignMoves()); }
+
+/**
+ * Move the campaign, from tonight. Nights already written keep their place; tonight and after resolve in the
+ * new one, and the Curfew and the Cryer change with it. Refused when the campaign is already there.
+ */
+export async function moveCampaign(locationId: string, today: number): Promise<Location> {
+  const location = locationById(locationId);
+  if (location.id !== locationId) throw new LedgerError('No such place is on the map.', 404);
+  const moves = await campaignMoves();
+  if (locationForNight(today, moves).id === location.id) throw new LedgerError(`The campaign is already in ${location.name}.`, 409);
+  await db().insert(curfewMoves).values({ locationId: location.id, fromNight: Math.max(1, today) });
+  return location;
 }
 
 // ───────────────────────── claims ─────────────────────────
@@ -65,7 +91,7 @@ export async function claimWarband(userId: string, warbandId: string, today: num
   const state = freshState(warband, today);
   const inserted = await db().insert(curfewLedgers).values({ warbandId, ownerId: userId, state }).onConflictDoNothing().returning({ warbandId: curfewLedgers.warbandId });
   if (!inserted.length) throw new LedgerError(`${warband.name} already have a keeper.`, 409);
-  return { warbandId, state, today, recovering: recoveringMembers(state, injuredInLastBattle(warbandId)), fresh: false };
+  return { warbandId, state, today, recovering: recoveringMembers(state, injuredInLastBattle(warbandId)), fresh: false, locationId: (await currentLocation(today)).id };
 }
 
 /** Give up the ledger entirely, so someone else may take the warband. Everything in it is lost. */
@@ -84,26 +110,27 @@ export async function loadOwnLedger(userId: string, today: number): Promise<Ledg
 
 /**
  * Load, reconcile, apply a change, save. On a version clash the whole thing is redone on the fresh row.
- * The change may throw a LedgerError to refuse; nothing is saved then.
+ * The change may throw a LedgerError to refuse; nothing is saved then. It is told where the campaign is tonight.
  */
-export async function withLedger(userId: string, today: number, change: (state: WarbandState, warband: Warband, recovering: string[]) => void): Promise<LedgerView> {
+export async function withLedger(userId: string, today: number, change: (state: WarbandState, warband: Warband, recovering: string[], location: Location) => void): Promise<LedgerView> {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const row = await ownRow(userId);
+    const [row, moves] = await Promise.all([ownRow(userId), campaignMoves()]);
     if (!row) throw new LedgerError('You keep no ledger yet.', 404);
     const warband = warbandById(row.warbandId);
     if (!warband) throw new LedgerError('That warband has left the city.', 410);
+    const location = locationForNight(today, moves);
     const state = coerceState(row.state, warband, today);
     const recovering = recoveringMembers(state, injuredInLastBattle(warband.id));
-    const written = reconcile(state, warband, today, recovering, rivalOf(warband.id));
+    const written = reconcile(state, warband, today, recovering, rivalsOf(warband.id), moves);
     const before = JSON.stringify(row.state);
-    change(state, warband, recoveringMembers(state, injuredInLastBattle(warband.id)));
+    change(state, warband, recoveringMembers(state, injuredInLastBattle(warband.id)), location);
     const after = JSON.stringify(state);
     if (after !== before) {
       const saved = await save(row.warbandId, row.version, state);
       if (!saved) continue;
       await publish(warband, state, written, today);
     }
-    return { warbandId: warband.id, state, today, recovering: recoveringMembers(state, injuredInLastBattle(warband.id)), fresh: written.length > 0 };
+    return { warbandId: warband.id, state, today, recovering: recoveringMembers(state, injuredInLastBattle(warband.id)), fresh: written.length > 0, locationId: location.id };
   }
   throw new LedgerError('The ledger was being written elsewhere. Try again.', 409);
 }
@@ -131,11 +158,11 @@ async function publish(warband: Warband, state: WarbandState, written: NightResu
 // ───────────────────────── the actions ─────────────────────────
 
 export const actions = {
-  orders: (userId: string, today: number, orders: Order[]) => withLedger(userId, today, (s, w, rec) => giveOrders(s, w, today, orders, rec)),
+  orders: (userId: string, today: number, orders: Order[]) => withLedger(userId, today, (s, w, rec, loc) => giveOrders(s, w, today, orders, rec, loc)),
   heal: (userId: string, today: number, memberId: string) => withLedger(userId, today, (s, w) => heal(s, w, memberId)),
   offer: (userId: string, today: number, offer: TokenOffer, keep: 'incoming' | 'held') => withLedger(userId, today, (s) => settleOffer(s, offer, keep)),
   /** Opening the Eve with an empty Hand: the City Provides one charm. */
-  eveOpen: (userId: string, today: number) => withLedger(userId, today, (s) => { if (!s.eve && today >= 1) provideIfEmpty(s, today); }),
+  eveOpen: (userId: string, today: number) => withLedger(userId, today, (s, _w, _rec, loc) => { if (!s.eve && today >= 1) provideIfEmpty(s, today, loc); }),
   eveLay: (userId: string, today: number, bring: string[], flourish?: Flourish) => withLedger(userId, today, (s, w) => layTable(s, w, today, bring, flourish)),
   eveDone: (userId: string, today: number) => withLedger(userId, today, (s) => fightDone(s, today)),
   eveUndo: (userId: string, today: number) => withLedger(userId, today, (s) => putBack(s)),
@@ -150,13 +177,13 @@ export interface RunResult { ledgers: number; nights: number; dispatches: number
 /** Write every ledger's due dawns and record the run. By the cron once a night, or by hand from the console; harmless to run again. */
 export async function reconcileAll(today: number, source: 'cron' | 'admin' = 'cron'): Promise<RunResult> {
   const started = Date.now();
-  const rows = await db().select().from(curfewLedgers);
+  const [rows, moves] = await Promise.all([db().select().from(curfewLedgers), campaignMoves()]);
   let nights = 0, dispatches = 0;
   for (const row of rows) {
     const warband = warbandById(row.warbandId);
     if (!warband) continue;
     const state = coerceState(row.state, warband, today);
-    const written = reconcile(state, warband, today, recoveringMembers(state, injuredInLastBattle(warband.id)), rivalOf(warband.id));
+    const written = reconcile(state, warband, today, recoveringMembers(state, injuredInLastBattle(warband.id)), rivalsOf(warband.id), moves);
     if (!written.length) continue;
     if (!(await save(row.warbandId, row.version, state))) continue; // someone else wrote it first; their dawn is the same dawn
     const out = written.flatMap((n) => dispatchesForNight(warband, n, state.headlines));

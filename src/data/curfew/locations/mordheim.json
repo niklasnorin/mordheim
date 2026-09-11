@@ -1,4 +1,144 @@
 {
+  "id": "mordheim",
+  "name": "Mordheim",
+  "kind": "city",
+  "settlement": "the city",
+  "title": "Nights in the City of the Damned",
+  "tagline": "Every real day is one night in Mordheim.",
+  "errands": ["scavenge", "carouse", "train", "spy", "pray", "trade"],
+  "unavailable": {
+    "dredge": "There are no algae basins in Mordheim. The green here is under the rubble; sift for it."
+  },
+  "redirect": { "dredge": "scavenge" },
+  "inherits": {},
+  "arrival": "{warband} are back inside the walls of Mordheim. The city did not notice they had gone.",
+  "watchNote": "",
+  "blurbs": {
+    "scavenge": "Sift the rubble for the green. Shards, and ink for the map.",
+    "carouse": "Drink where the city talks. Favour, rumours, a Fortune charm.",
+    "train": "The Pit, or the yard. A name, and Ground.",
+    "spy": "Listen at the thin walls. Rumours and Sight.",
+    "pray": "Keep the candles. Blessings, Fortune.",
+    "trade": "Move the green quietly. Market chits; five shards make one."
+  },
+  "cryer": {
+    "edition": "Dispatches from the ruins",
+    "banner": "HEAR YE! HEAR YE! ALL THE NEWS FROM THE CITY OF THE DAMNED",
+    "price": "Price: 2 Shillings",
+    "watchHeading": "From the Night Watch",
+    "heard": "Heard in the taverns",
+    "bylines": [
+      "From our correspondent on the night watch, who was not asleep",
+      "By our tavern correspondent, from a stool near the door",
+      "Overheard after curfew by a reader who wishes to remain nameless",
+      "From the Night Watch, who deny all knowledge of it",
+      "By a lamplighter who saw more than he was paid to"
+    ],
+    "headlines": {
+      "scavenge": {
+        "boon": [
+          "{warband} Warrior Returns From the Rubble With Full Pockets; Declines to Say Which Rubble",
+          "Green Glow Reported From {first}'s Lodgings; Neighbours Advised to Look Elsewhere",
+          "Warm Ash Found in the Ruins, Then Dug Until Cold; {warband} Call It Nothing"
+        ],
+        "fair": [
+          "{first} Seen Sifting After Curfew; Yield Described as 'Enough'",
+          "Digging Continues in the Ruins; {warband} Insist It Is Not Digging",
+          "A Street Not on the Map Reported by {first}; Map-Makers Unmoved"
+        ],
+        "poor": [
+          "{first} Returns Empty-Handed; Blames the Stones",
+          "Ruins Yield Dust and a Cough; {warband} Call It Reconnaissance",
+          "Somebody Got There First, Says {first}; Somebody Usually Does"
+        ]
+      },
+      "carouse": {
+        "boon": [
+          "{first} Holds the Table Until the Candles Go; Bill Unresolved",
+          "Whole Tavern Now Knows {first}'s Name; Several Regret It",
+          "{first} Sings; It Should Not Have Worked; It Worked"
+        ],
+        "fair": [
+          "{first} Buys a Round, Is Bought Two; Arithmetic Disputed",
+          "Boatmen Report a New Face at Their Table; Face Belongs to {first}",
+          "Back Room Found by {first}; Nothing Decided, Nothing Lost"
+        ],
+        "poor": [
+          "{first} Asked to Leave Tavern, Politely, the First Time",
+          "{warband} Warrior Loses Purse and Finds Song; Neighbours Prefer the Purse",
+          "{first} Says Too Much to the Wrong Table; the Table Is Keeping It"
+        ]
+      },
+      "train": {
+        "boon": [
+          "{first} Wins at the Pit Without Drawing Steel; Bookmakers in Mourning",
+          "Crowd at the Pit Wanted Blood; {first} Gave Them a Name Instead",
+          "Man Twice {first}'s Weight Still Explaining Three Rounds"
+        ],
+        "fair": [
+          "{first} Takes a Bout and a Bruise; Crowd Judged 'Fair', Which Is to Say Not",
+          "Two Hundred Cuts Practised in the Yard; Twenty Reported Correct",
+          "{first} Watches the Pit More Than Fights It; Pit Unbothered"
+        ],
+        "poor": [
+          "{first} Loses at the Pit Before the Crowd Sits Down; No Refunds",
+          "Pit Closed; {warband} Warrior Stands in Rain on Principle",
+          "{first} Pulls Something in Training; the Something Has Opinions"
+        ]
+      },
+      "spy": {
+        "boon": [
+          "Someone Lay in a Gutter for Four Hours Last Night; the Watch Is Taking It Personally",
+          "Child Sells Three Rumours for a Penny, Two of Them True; Buyer Believed to Be {warband}",
+          "A Door Was Followed Until It Said Something; {first} Not Available for Comment"
+        ],
+        "fair": [
+          "Someone Was Listening at the Well Last Night; the Well Declines to Comment",
+          "Figure Seen on a Roof Above a Rival Camp; Rival Also Awake",
+          "{first} Learns Which Alley the Watch Does Not Walk; the Watch Would Like to Know Too"
+        ],
+        "poor": [
+          "{first} Seen in the Wrong Part of Town; Not Caught, Merely Seen",
+          "Man Followed Through the Streets Turns Out to Be Following Back; Both Embarrassed",
+          "Two Hours at a Door That Was the Wrong Door; {warband} Deny Everything"
+        ]
+      },
+      "pray": {
+        "boon": [
+          "Every Candle at the Shrine Held Until Dawn; Sisters Investigating",
+          "{first} Kneels Until the Stone Hurts; Something Answers; Details Withheld",
+          "Candle Lit for Each of the Dead, With Wax to Spare; Chandlers Baffled"
+        ],
+        "fair": [
+          "Candles at the Shrine Held Until the Third Hour; Considered a Good Night",
+          "{first} Sits With the Sisters and Says Little; Sisters Approve",
+          "One Candle Lit by {first} Did Not Go Out; Take That as Given"
+        ],
+        "poor": [
+          "Draught Takes the Shrine's Candles One by One; Sigmar Not Reached for Comment",
+          "Shrine Found Full; {first} Stands at the Back and Leaves Early",
+          "{first} Prays and Hears Only Rain; Rain Declines to Elaborate"
+        ]
+      },
+      "trade": {
+        "boon": [
+          "Henrik Breaks First in Silent Haggle; Onlookers Stunned",
+          "Green Changes Hands in the Dark; Buyer Pays as if He Knew Where It Came From",
+          "{first} Sells a Story Along With the Goods; the Story Fetches More"
+        ],
+        "fair": [
+          "Fair Weight, Fair Price, a Chit for Later; Henrik Weighs It Twice Anyway",
+          "{first} Argues Over a Sliver Until Dawn; Argument Judged Better Than the Sliver",
+          "{warband} Return With Less Green and More Coin, About the Same Weight"
+        ],
+        "poor": [
+          "Fence Vanishes, Shutters Open; {warband} Report Nothing Taken but the Night",
+          "Buyer Sends Word at Midnight That He Is Dead; Deal Postponed",
+          "{first} Offered an Insulting Price; Takes the Long Way Home to Think About It"
+        ]
+      }
+    }
+  },
   "districts": [
     "the Merchant's Quarter", "the Poor Quarter", "Cutthroat's Haven", "the Rock", "Executioner's Square", "the Drowned Quarter",
     "the ruins by Sigmar's Bridge", "the tanneries", "the Broken Bell", "the old Guild Hall", "the cattle market", "the Steinhardt tenements",
@@ -166,6 +306,12 @@
     "The two of them did not speak on the way home.",
     "{other} kept watch on the door. Nobody tried it."
   ],
+  "encounters": [
+    "{rivalMember} of the {rival} was working the same street. Neither warband mentioned it in the morning.",
+    "The {rival} had been through first. They left the door open, which is a kind of message.",
+    "{first} passed {rivalMember} of the {rival} under the same lantern. Both kept walking.",
+    "Somebody from the {rival} was asking after {first} in the tavern. The tavern told them nothing, for a price."
+  ],
   "rumours": [
     "The Sisters are buying candles by the crate.", "Somebody is paying for names of the dead.", "The fence on the Rock has a new scale and an old debt.",
     "There is a bell under the ash in the Poor Quarter. It rings at the third hour.", "The Watch has stopped walking the tannery lane. Nobody asked them to.",
@@ -194,9 +340,5 @@
     "spy": ["Who Listens", "the Unseen", "of the Wrong Door", "Who Was Not Caught"],
     "pray": ["Who Held the Candles", "Who Knelt", "the Answered", "of the Third Hour"],
     "trade": ["Henrik's Friend", "Fair Weight", "Who Broke the Silence", "the Unpriced"]
-  },
-  "titles": [
-    { "renown": 0, "title": "Newcomers" }, { "renown": 10, "title": "Sifters" }, { "renown": 25, "title": "Ratcatchers" }, { "renown": 50, "title": "Confessors" },
-    { "renown": 80, "title": "Pit-Dogs" }, { "renown": 120, "title": "The Named" }, { "renown": 200, "title": "Those Who Stayed" }
-  ]
+  }
 }
