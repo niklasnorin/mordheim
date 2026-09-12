@@ -116,6 +116,8 @@ export interface Location {
   moonBoost?: Record<string, Errand>;
   /** The Moons' tie-in lines for this place, one or several per errand; without them the Moon's own lines are used. */
   moonTies?: Record<string, Partial<Record<Errand, string | string[]>>>;
+  /** How this place's band (`public/curfew/places/<id>-band.jpg`) is framed in the Ledger's letterbox. Centred when not said. */
+  art?: { focus?: string };
   /** Headline for the Cryer when the campaign arrives here. */
   arrival: string;
   /** A line under "Who goes out?" about what the place offers. */

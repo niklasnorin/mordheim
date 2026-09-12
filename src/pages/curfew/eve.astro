@@ -6,7 +6,9 @@ import { base } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
 import { env } from '../../server/env';
 import { getViewer } from '../../server/session';
-import { LedgerError, actions, todayFor, type LedgerView } from '../../server/curfew/service';
+import PlaceBand from '../../components/PlaceBand.astro';
+import { LedgerError, actions, currentLocation, todayFor, type LedgerView } from '../../server/curfew/service';
+import { DEFAULT_LOCATION, locationById, type Location } from '../../curfew/engine';
 import { isDryRun } from '../../server/curfew/dry';
 
 export const prerender = false;
@@ -18,10 +20,16 @@ const today = todayFor(Astro.url, viewer);
 let view: LedgerView | null = null;
 let trouble = false;
 const dry = !!viewer && isDryRun(Astro.request, viewer);
+// Where the campaign is tonight, so the band is the same letterhead the Ledger carries, database or no.
+let place: Location = DEFAULT_LOCATION;
+if (ready) {
+  try { place = await currentLocation(today); } catch (e) { console.error('[curfew] location unavailable', e); }
+}
 if (viewer) {
   // Arriving at the Eve with an empty Hand, the City Provides one charm. Nothing else changes on a visit. In a dry run, nothing at all does.
   try { view = await actions.eveOpen(viewer.id, today, dry ? {} : undefined); } catch (e) { if (!(e instanceof LedgerError && e.status === 404)) { console.error('[curfew] eve unavailable', e); trouble = true; } }
 }
+if (view) place = locationById(view.locationId);
 const boot = { today, debug: env.CURFEW_DEBUG, dry, view };
 const ledgerHref = `${base}/curfew/`;
 ---
@@ -38,6 +46,8 @@ const ledgerHref = `${base}/curfew/`;
       <a class="cf-wordmark" href={ledgerHref}>Curfew</a>
       <div class="cf-nightline" id="nightline">The Eve</div>
     </header>
+
+    <PlaceBand place={place} />
 
     <section class="cf-section cf-section-first">
       <h1 class="cf-h2">The Eve of Battle</h1>

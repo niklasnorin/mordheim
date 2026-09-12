@@ -11,6 +11,7 @@
   },
   "redirect": { "dredge": "scavenge" },
   "inherits": {},
+  "art": { "focus": "50% 34%" },
   "arrival": "{warband} are back inside the walls of Mordheim. The city did not notice they had gone.",
   "watchNote": "",
   "blurbs": {

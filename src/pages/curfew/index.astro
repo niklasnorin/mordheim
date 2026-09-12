@@ -7,6 +7,7 @@ import { base } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
 import { DEV_LOGIN_PASSWORD, env, isAdminEmail } from '../../server/env';
 import { getViewer } from '../../server/session';
+import PlaceBand from '../../components/PlaceBand.astro';
 import { currentLocation, listClaims, loadOwnLedger, todayFor, type Claim, type LedgerView } from '../../server/curfew/service';
 import { isDryRun } from '../../server/curfew/dry';
 import { DEFAULT_LOCATION, type Location } from '../../curfew/engine';
@@ -50,6 +51,8 @@ const boot = {
       <a class="cf-wordmark" href={`${base}/curfew/`}>Curfew</a>
       <div class="cf-nightline" id="nightline">Night <strong>—</strong></div>
     </header>
+
+    <PlaceBand place={location} />
 
     {!ready && (
       <section class="cf-section cf-section-first">
@@ -391,9 +394,22 @@ const boot = {
   }
   function renderNightline() {
     const moon = moonForNight(today);
+    const mark = `<img class="cf-place-mark" src="${base}/curfew/places/${place.id}-mark.jpg" alt="" width="96" height="96" />`;
     $('nightline').innerHTML = today < 1
-      ? `${esc(Settlement())} sleeps until <strong>${esc(prettyDate(1))}</strong>`
-      : `Night <strong>${today}</strong> · ${esc(place.name)} · ${esc(imperialDate(today, 'day'))} · ${esc(moon.name)}`;
+      ? `${mark}${esc(Settlement())} sleeps until <strong>${esc(prettyDate(1))}</strong>`
+      : `${mark}Night <strong>${today}</strong> · ${esc(place.name)} · ${esc(imperialDate(today, 'day'))} · ${esc(moon.name)}`;
+    renderPlaceBand();
+  }
+  /** The band was rendered on the server for tonight's place; keep it true if the place changes under us. */
+  function renderPlaceBand() {
+    const band = document.getElementById('place-band');
+    if (!band || band.dataset.place === place.id) return;
+    band.dataset.place = place.id;
+    const art = $<HTMLImageElement>('place-art');
+    art.src = `${base}/curfew/places/${place.id}-band.jpg`;
+    art.style.objectPosition = place.art?.focus ?? '50% 50%';
+    $('place-name').textContent = place.name;
+    $('place-sub').textContent = place.title;
   }
 
   // 1. Last night
