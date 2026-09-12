@@ -4,7 +4,7 @@
 
 ### Implementation plan, revised after Phase 1
 
-Revision 4, 11 September 2026. Phases 0 and 1 are built; the server arrived (see §9) and the ledgers moved from the browser to Postgres on Vercel; the campaign can now leave the city (see §2a). Sections below keep the original plan's shape and mark what shipped, what changed, and what is still to come. Status markers: **Shipped**, **Changed**, **Open**.
+Revision 5, 12 September 2026 (Night 3). Phases 0 and 1 are built; the server arrived (see §9) and the ledgers moved from the browser to Postgres on Vercel; the campaign can now leave the city (see §2a); the Empire's calendar dates everything (see §6). This revision is a sanity check of the plan against the code: every **Shipped** claim below was read against the source on this date, and what had drifted is marked **Changed** or listed under §12. Sections keep the original plan's shape and mark what shipped, what changed, and what is still to come. Status markers: **Shipped**, **Changed**, **Open**.
 
 ---
 
@@ -58,7 +58,9 @@ The game master moves the campaign from the Watch House. Moves are logged by nig
 
 Rival warbands cross paths lightly: now and then (about one night in seven, never on standing orders) a member's vignette ends with a line about the rival, by warband and by a living member's name; with several other warbands the night picks which one. Nothing is decided between them.
 
-The Fussenbach pack is sized for a month of nightly play by four warbands: a dozen or more templates per errand and outcome, six standing lines, forty-odd rumours and details, three Moon tie-in lines per Moon and errand, eighteen encounters, ten epithets per errand and eight Cryer headlines per errand and outcome. A first sentence repeating within one warband's month should be the exception: the ledger hands the engine the lines of the last ten nights and the draw is retaken, a few times, when it lands on one of them (`avoid` on `resolveNight`, `line` on each result).
+The Fussenbach pack is sized for a month of nightly play by four warbands: twelve to sixteen templates per errand and outcome, six standing lines, forty-odd rumours and details, three Moon tie-in lines per Moon and errand, eighteen encounters, ten epithets per errand and eight Cryer headlines per errand and outcome. A first sentence repeating within one warband's month should be the exception: the ledger hands the engine the lines of the last ten nights and the draw is retaken, a few times, when it lands on one of them (`avoid` on `resolveNight`, `line` on each result).
+
+**Open.** The Mordheim pack is still the first plan's: four templates per errand and outcome, two standing lines, three Cryer headlines per errand and outcome, four epithets per errand, four encounters, twelve rumours, sixteen districts and details. It will repeat itself within a Moon. Size it like Fussenbach before the campaign returns to the city.
 
 ---
 
@@ -105,7 +107,8 @@ Outcome odds: a base of roughly a quarter boon, a third poor, the rest fair, shi
 - **The Chronicle.** **Shipped** as the ledger's scroll of nights, newest first, with the current report shown separately above it. Shareable and printable versions are Phase 6.
 - **Epithets.** **Shipped.** A member who features in five entries earns one, flavoured by the errand they did most, and the Town Cryer prints it.
 - **Renown titles.** **Shipped** as text. Banner marks are Phase 3.
-- **Town Cryer plants.** **Shipped** as "From the Night Watch", now for every warband: epithets, title changes, headline flourishes and arrivals in a new place are always printed, and the broadsheet occasionally picks up one member's night as a happening (a boon or a poor night more often than a fair one, never a night on standing orders), under a headline from the place's pack. Dispatches are written when a night resolves and are keyed so nothing prints twice.
+- **Town Cryer plants.** **Shipped** as "From the Night Watch", now for every warband: epithets, title changes, headline flourishes and arrivals in a new place are always printed, and the broadsheet occasionally picks up one member's night as a happening (a boon or a poor night more often than a fair one, never a night on standing orders), under a headline from the place's pack. Dispatches are written when a night resolves and are keyed so nothing prints twice. The game master can pull a dispatch or post a notice from the Watch, which prints under the same heading.
+- **The nights on the campaign site.** **Shipped.** A warband's card carries its tavern title and a link to its ledger; a warrior's profile lays battles and nights on one line by date, with an epithet and a count of nights out (`src/curfew/story.ts`). Both render without a database.
 - **Epitaphs, the Ashen Quarter, Patrons, the Comet's Wane.** **Open.** Patrons and Jobs exist as content (`patrons.json`, `jobs.json`).
 
 ---
@@ -163,18 +166,20 @@ On a phone this is one column. From 1100px the night is laid out side by side: i
 - `src/curfew/ledger.ts` is the ledger as pure functions on a serialisable `WarbandState`: orders by night, resolved nights, standing orders, healed members, rumours, epithets, headlines, pending offers, the Eve. It refuses bad orders with a `LedgerError` the page can show as written.
 - `src/curfew/cryer.ts` turns a resolved night into Town Cryer dispatches; headline templates live in the place's pack, and a night is headlined where it happened.
 - `src/server/curfew/service.ts` keeps one ledger per warband in Postgres as JSON, owned by the player who claimed it. Every read reconciles first; every write is load, reconcile, change, save under a version check, then publish dispatches. `reconcileAll` is what the cron calls.
-- `src/pages/api/curfew/[action].ts` is the JSON API the pages call (claim, release, reset, orders, heal, offer, the Eve). Same-origin, signed-in, validated with zod; the answer is always the whole ledger view. `src/pages/api/cron/midnight.ts` is the cron, guarded by `CRON_SECRET`.
+- `src/pages/api/curfew/[action].ts` is the JSON API the pages call (claim, release, reset, orders, heal, offer, the Eve). Same-origin, signed-in, validated with zod; the answer is always the whole ledger view. `src/pages/api/cron/midnight.ts` is the cron, guarded by `CRON_SECRET`, scheduled in `vercel.json` for a quarter past midnight in the campaign's time zone in winter (a quarter past one in summer); every run, by cron or by hand, is recorded in `curfew_runs`.
+- Migrations are Drizzle files under `drizzle/`, generated from the schema and applied by `scripts/migrate.mjs` at the start of a production build, so a schema change ships with the code that needs it.
+- Forgotten passwords: the game master issues a reset word from the Watch House (`src/server/account/service.ts`; hashed like a password, two-day expiry, spent on use) and the player trades it for a new password at the Ledger. There is no email anywhere in the system.
 - The pages render on the server from the session and the ledger; the browser keeps only the rendering and calls the API for every change. `?date=` overrides are honoured only where `CURFEW_DEBUG` is set.
 - Content is data in `src/data/curfew/*.json` and `locations/*.json`; adding a card, a Moon, a headline or a whole place is a text edit.
-- Tests: `npm test` (engine, ledger, Cryer, and the service on an in-memory Postgres).
+- Tests: `npm test` (engine, ledger, Cryer, story, calendar, and the Curfew, admin and account services on an in-memory Postgres); seventy tests on this date. CI runs the tests, `astro check` and the build on every pull request.
 
 ### Integration points today
 - **Members:** `dead` and `stats` from the roster; `injured` from the latest battle report until healed by the player.
 - **Town Cryer:** reads the dispatch table on every request (cached at the edge for a few minutes).
-- **Navigation:** none. Curfew is reached by direct URL for now.
+- **Navigation:** **Changed.** The header shows a Curfew link to signed-in players and a Watch House link to the game master, filled in after the page loads (the campaign pages are prerendered for everyone). Warband cards and warrior profiles link to the ledger where a ledger is kept. A visitor who is not signed in still sees no link.
 
 ### The Watch House
-`/admin/` is the game master's console: tonight at a glance, where the campaign is (and the button to move it), every ledger with its keeper and backlog, the players and their sessions, the Town Cryer's dispatches (pull one, or post a notice from the Watch), and midnight by hand with the history of runs. Admission by `ADMIN_EMAILS`.
+`/admin/` is the game master's console: tonight at a glance, where the campaign is (and the button to move it), every ledger with its keeper and backlog (inspect, burn, or release it), the players and their sessions (sign one out everywhere, issue a reset word), the Town Cryer's dispatches (pull one, or post a notice from the Watch), midnight by hand with the history of runs, and a health check of database, secrets and sign-in. Admission by `ADMIN_EMAILS`; under the dev sign-in everyone is admitted.
 
 ### What the server does not do yet
 Warband rosters, standings and battle reports are still content in the repository. Rival glimpses at the Eve still go by ticket, though the server could now answer with the count. PvP and the mini-games are unchanged in scope.
@@ -187,13 +192,14 @@ Warband rosters, standings and battle reports are still content in the repositor
 | **1 — The Night** | Engine, ledger, Omen, Watch, Dawn Report, Chronicle, the Hand, Eve of Battle, Town Cryer hook, standing orders, The City Provides, The Return | **Shipped** |
 | **1a — The server** | Vercel, Postgres, email-and-password sign-in, ledgers per player, nightly cron, Town Cryer dispatches for every warband | **Shipped** |
 | **1c — The road out** | Locations as content packs; Fussenbach with Dredge, its charms and its plots; the campaign moved from the Watch House; the Cryer printed where the campaign is; light rival encounters | **Shipped** |
-| **1b — First Moon of play** | Let a real week of nights shape the odds, the copy, and the offer rule | **Next** |
+| **1d — The Imperial Calendar** | The Empire's calendar anchored on the first game; every date on the site goes through it; battles and nights on one line in a warrior's story | **Shipped** |
+| **1b — First Moon of play** | Let a real week of nights (Nights 1–7, 10–16 September) shape the odds, the copy, and the offer rule; watch for repeated first sentences, the standing-orders rhythm with two-member nights, and whether the happenings print too often or too rarely | **Now** (Night 3) |
 | **2 — Hands-on** | Sifting, The Shrine, The Bazaar as optional mini-games with opt-in risk and curses; the Market Moon multiplier | Open |
-| **3 — Rivalry** | Crooked Bones and The Pit as async PvP, wagers, weekly ladders, banner marks; needs a server | Open |
+| **3 — Rivalry** | Crooked Bones and The Pit as async PvP, wagers, weekly ladders, banner marks; the server it needed now exists | Open |
 | **4 — Depth** | Whispers, Jobs, Moon events, Patrons and contracts, Sigmar's Mercy | Open |
 | **5 — The City** | The Ashen Quarter map, naming, landmarks into scenarios, the Comet's Wane and finale | Open |
 | **6 — Atmosphere** | Optional sound, epitaphs, shareable and printable season Chronicle | Open |
-| **Housekeeping** | WebP card images for phones; skip the main site's fonts on Curfew pages; record the incumbent design system (`/impeccable document`) | Open |
+| **Housekeeping** | Size the Mordheim pack like Fussenbach's (§2a); WebP card images for phones (the deck is 36 MB of PNG, about 1.1 MB a card, and the Ledger loads two at 1050×1800); skip the main site's three font families on Curfew pages (both sets load today; `Base.astro` has no way to leave them out); record the incumbent design system (`/impeccable document`; `PRODUCT.md` exists, a design record does not); bring `PRODUCT.md` up to date (it still says two warbands, six errands, social login and no navigation link) | Open |
 
 ---
 
@@ -208,15 +214,32 @@ Taken:
 - Templates only for prose; no LLM pass.
 - Season length twelve Moons, in `campaign.json`.
 - Curses only from opt-in risk, never from dice or absence.
-- No navigation link to Curfew until the first Moon has been played.
+- **Changed.** Signed-in players get a Curfew link in the header, and the game master a Watch House link; visitors who are not signed in see neither. The first plan held the link back until the first Moon had been played; a player who has claimed a ledger needs the way back to it more than the site needs the secret.
 - A move takes effect from tonight, never retroactively; the log of moves decides a night's place, so a written night is never rewritten.
 - The Omen deck is the same everywhere: portents are portents. Places reword the Moons' tie-ins instead.
 
 Still open:
+- Whether Curfew should be shown to visitors who are not signed in once the first Moon has been played.
 - Whether the Eve should be opened automatically when a scenario is recorded.
 - How many members per night when more warbands and larger rosters join.
 - Whether the Eve's glimpse should ask the server for the rival's count instead of a ticket.
 - When warband rosters and battle reports move to the server.
+
+## 12. What the sanity check found
+
+Read against the code on 12 September 2026, Night 3. `npm test` passes (70 tests) and `astro check` reports no errors.
+
+Held up as written: the Night loop, the Omen deck and its thirty cards, the edge, the currencies and titles (`campaign.json`), the Hand and the one-offer-per-type rule, standing orders and the resting rule, The Return, the Eve with its ticket, Fussenbach's pack sizes, the move log, the Imperial Calendar, the cron and the reconcile-on-visit, and every "Open" item (Sigmar's Mercy, the server-side glimpse, mini-games, PvP, epitaphs, the map, the finale) is indeed unbuilt.
+
+Corrected in this revision:
+- Curfew has had a navigation link for signed-in players since 10 September; §9 and §11 said it had none.
+- The Mordheim pack is a quarter the size of Fussenbach's and was not marked as work to do (§2a, Housekeeping).
+- Migrations on deploy, reset words, the run log, the health check and the Watch's notices had shipped without a line in the plan (§5, §9).
+- The nights' presence on the campaign site (warband cards, warrior profiles) was only implied (§5).
+- The Imperial Calendar had no row in the phase table (§10).
+- `PRODUCT.md`, which §8 calls binding, is behind on four facts (Housekeeping).
+
+Three warbands are registered on this date: the Nordost Kin, the Bitterbrow Expedition and the Order of the Welling Rune. One battle is recorded.
 
 ---
 
