@@ -2,7 +2,7 @@
 
 ## A proposal: choices the warband made last night, decided this morning
 
-Proposal, 12 September 2026. Not decided. Written to fit the plan (`PLAN.md`) and the code as they stand on Night 3; §9 says what it would cost. If taken, it becomes a phase in the plan's table and this file is folded into it.
+Proposed and **built** on 12 September 2026 (Night 3), as steps A and B below; the plan records it as phase 1e in `PLAN.md` §2b. Steps C (standing) and D (the rival) are still proposals. What was built differs from the text below in two small ways: a carry is a tilt or a night kept home, not a forced errand; and a road's effects live in the pack and are read when the road is taken, exactly as §8 asked.
 
 ---
 

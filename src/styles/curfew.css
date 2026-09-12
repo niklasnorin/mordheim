@@ -163,6 +163,21 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-offer-confirm { margin-top: 1rem; padding-top: 0.9rem; border-top: 1px dashed var(--rule); }
 .cf-offer-confirm p { margin-bottom: 0.7rem; }
 .cf-offer-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+/* the Crossroads: the roads one member could take, decided at dawn */
+.cf-crossroads .cf-roads { display: grid; gap: 0.5rem; margin-top: 0.8rem; max-width: 34rem; }
+.cf-road { position: relative; text-align: left; font: inherit; font-size: 1.05rem; line-height: 1.45; color: var(--bone); min-height: 2.75rem; padding: 0.75rem 1rem; border: 1px solid var(--rule); background: #100e0c; cursor: pointer; transition: border-color 0.2s, background 0.2s, opacity 0.2s; }
+.cf-road:hover { border-color: var(--candle-dim); background: #1b1813; }
+.cf-road[aria-pressed='true'] { border-color: var(--candle); background: #1f1a12; box-shadow: 0 0 0 1px var(--candle) inset; }
+.cf-road[aria-pressed='true']::after { content: 'So it was'; position: absolute; right: 0.7rem; top: 0.55rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.65rem; color: var(--candle); }
+.cf-roads:has([aria-pressed='true']) .cf-road[aria-pressed='false'] { opacity: 0.55; }
+.cf-dawn .cf-chose, .cf-chron .cf-chose { margin-top: 0.4rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.78rem; line-height: 1.7; color: var(--bone-dim); }
+.cf-chose-label { color: var(--candle); margin-right: 0.6rem; }
+.cf-chose-label::after { content: '·'; margin-left: 0.6rem; }
+.cf-chose small { display: block; font-size: 0.7rem; letter-spacing: 0.1em; opacity: 0.8; }
+.cf-ledger-waiting { font-style: italic; letter-spacing: 0; }
+.cf-member .cf-status.kept { color: var(--candle-dim); cursor: help; text-align: right; }
+.cf-member .cf-status.kept small { display: block; text-transform: none; letter-spacing: 0; font-size: 0.72rem; color: var(--bone-dim); }
+.cf-afflictions b { color: var(--bone); font-weight: 600; }
 
 /* ── the Watch ── */
 .cf-watch-list { display: grid; gap: 0.35rem; }

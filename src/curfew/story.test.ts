@@ -27,3 +27,16 @@ test('a member\'s nights are gathered newest first, with what they brought back;
   assert.equal(standing.title, 'Newcomers');
   assert.deepEqual(memberNights([]), {});
 });
+
+test('a road taken shows in the warrior\'s story as the choice, and the marks are gathered', () => {
+  const s = freshState(warband, 1);
+  giveOrders(s, warband, 1, [{ memberId: 'torgrim', errand: 'scavenge' }]);
+  reconcile(s, warband, 2, []);
+  const night = s.nights[0];
+  night.crossroads = { id: 'x', memberId: 'torgrim', kind: 'moral', setup: 'A hand in the rubble.', options: [{ id: 'a', label: 'Take the rings.' }], decided: { roadId: 'a', label: 'Take the rings.', outcome: 'Three rings.', ledger: ['+1 shard'], defaulted: true, on: 2 } };
+  s.marks.torgrim = [{ id: 'took-the-rings', name: 'took the rings off a warm hand', night: 1 }];
+  const nights = memberNights([{ warband, state: s }]);
+  assert.deepEqual(nights.torgrim.entries[0].choice, { setup: 'A hand in the rubble.', label: 'Take the rings.', outcome: 'Three rings.', defaulted: true });
+  assert.deepEqual(nights.torgrim.marks.map((m) => m.name), ['took the rings off a warm hand']);
+  assert.deepEqual(nights.agnar?.marks ?? [], []);
+});

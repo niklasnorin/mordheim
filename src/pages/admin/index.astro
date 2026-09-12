@@ -128,7 +128,7 @@ const lastRun = data?.runs[0];
                             <td class="num">{s.renown}</td>
                             <td><span class="wh-hand" aria-label={s.hand.length ? s.hand.map((h) => tokenById(h.id).name).join(', ') : 'an empty Hand'}>{s.hand.map((h) => { const t = tokenById(h.id); return <span class="wh-seal" style={`--seal:${TOKEN_TYPES[t.type].seal}`} title={t.name} set:html={sealSvg(t.type)} />; })}{Array.from({ length: HAND_SIZE - s.hand.length }).map(() => <span class="wh-seal is-empty" aria-hidden="true"></span>)}</span></td>
                             <td class:list={{ bad: l.behind > 0, dim: !last }}>{l.behind > 0 ? `${plural(l.behind, 'night')} behind` : last ? `Night ${last.night}` : 'None yet'}</td>
-                            <td class:list={{ dim: l.tonight === 'standing' || l.tonight === 'nothing' }}>{TONIGHT[l.tonight]}{s.eve ? <> <span class="wh-chip on">Eve laid</span></> : null}{s.offers.length ? <> <span class="wh-chip">{plural(s.offers.length, 'offer')} pending</span></> : null}</td>
+                            <td class:list={{ dim: l.tonight === 'standing' || l.tonight === 'nothing' }}>{TONIGHT[l.tonight]}{s.eve ? <> <span class="wh-chip on">Eve laid</span></> : null}{s.offers.length ? <> <span class="wh-chip">{plural(s.offers.length, 'offer')} pending</span></> : null}{l.waiting ? <> <span class="wh-chip on">Crossroads waiting</span></> : null}</td>
                             <td><div class="wh-actions">
                               <button type="button" class="cf-btn cf-btn-ghost sm" data-inspect={l.warbandId} aria-expanded="false" aria-controls={`detail-${l.warbandId}`}>Inspect</button>
                               <button type="button" class="cf-btn cf-btn-ghost sm" data-act="burn" data-body={JSON.stringify({ warbandId: l.warbandId })} data-confirm={`Burn ${l.name}'s ledger? Every night, charm and rumour goes with it. ${l.keeper.name} keeps the warband.`}>Burn</button>
@@ -166,6 +166,9 @@ const lastRun = data?.runs[0];
                                   <dt>Rumours</dt><dd>{plural(s.rumours.length, 'rumour')} warm</dd>
                                   <dt>Epithets</dt><dd>{Object.keys(s.epithets).length ? Object.entries(s.epithets).map(([m, e]) => `${m} ${e}`).join(', ') : 'none yet'}</dd>
                                   <dt>Healed</dt><dd>{s.healed.length ? s.healed.join(', ') : 'nobody marked'}</dd>
+                                  <dt>Crossroads</dt><dd>{s.nights.some((n) => n.crossroads) ? s.nights.filter((n) => n.crossroads).map((n) => `night ${n.night}, ${n.crossroads!.memberId}: ${n.crossroads!.decided ? `${n.crossroads!.decided.label}${n.crossroads!.decided.defaulted ? ' (decided alone)' : ''}` : 'waiting'}`).join('; ') : 'none met'}</dd>
+                                  <dt>Marks</dt><dd>{Object.keys(s.marks ?? {}).length ? Object.entries(s.marks).map(([m, list]) => `${m}: ${list.map((k) => k.name).join(', ')}`).join('; ') : 'none'}</dd>
+                                  <dt>Afflictions</dt><dd>{s.afflictions?.length ? s.afflictions.map((a) => `${a.memberId}: ${a.curseId} until night ${a.fromNight + a.nights - 1}`).join('; ') : 'none standing'}</dd>
                                   <dt>The Eve</dt><dd>{s.eve ? `laid on night ${s.eve.night}, ${plural(s.eve.tokens.length, 'charm')}, ticket ${s.eve.ticket}` : `not laid; ${plural(s.fights.length, 'fight')} recorded`}</dd>
                                   <dt>Saved</dt><dd>{l.updatedAt ? when(l.updatedAt) : '—'}</dd>
                                 </dl>

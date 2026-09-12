@@ -56,7 +56,8 @@ const ledgerHref = `${base}/curfew/`;
 
 <script>
   import { warbands } from '../../data/warbands';
-  import { CAMPAIGN, HAND_SIZE, TOKEN_TYPES, cityProvidesLine, dateForNight, locationById, readTicket, tokenById, omenForNight } from '../../curfew/engine';
+  import { CAMPAIGN, HAND_SIZE, TOKEN_TYPES, cityProvidesLine, curseById, dateForNight, locationById, readTicket, tokenById, omenForNight } from '../../curfew/engine';
+  import { afflictionsAt } from '../../curfew/ledger';
   import { formatImperial, imperialForDate } from '../../lib/calendar';
   import type { Flourish, WarbandState } from '../../curfew/ledger';
   import { sealSvg } from '../../curfew/glyphs';
@@ -116,10 +117,15 @@ const ledgerHref = `${base}/curfew/`;
         provided = `<div class="cf-offer"><h3 class="cf-offer-title">${place.kind === 'village' ? 'The Village Provides' : 'The City Provides'}</h3><p class="cf-italic">${esc(cityProvidesLine(warband.id, today, place))}</p><p>An empty Hand at the Eve is dealt one charm: <b>${esc(token.name)}</b>.</p></div>`;
       }
       const canFlourish = state.favour >= cost;
+      // curses still standing on the warband: the table should know
+      const standing = afflictionsAt(state, today);
+      const afflicted = standing.length
+        ? `<p class="cf-note cf-afflictions">Standing on the warband tonight: ${standing.map((a) => { const left = a.fromNight + a.nights - today; return `<b>${esc(warband.members.find((m) => m.id === a.memberId)?.name.split(' ')[0] ?? a.memberId)}: ${esc(curseById(a.curseId)?.name ?? a.curseId)}</b> (${esc(curseById(a.curseId)?.effect ?? '')} ${left} ${left === 1 ? 'night' : 'nights'} more.)`; }).join(' ')} Tell the table.</p>`
+        : '';
       table.innerHTML = `
         <h2 class="cf-h2">${esc(warband.name)}</h2>
         <p class="cf-muted">Under ${esc(omenForNight(today).title)}, night ${today}.</p>
-        ${provided}
+        ${provided}${afflicted}
         <h3 class="cf-h3">Bring to the fight</h3>
         <p class="cf-note">One per type, three at most. Tap a charm to leave it behind. Whatever is not brought is lost; the night before a fight, nothing keeps.</p>
         <div class="cf-hand" id="bring">${padSlots(state.hand.map((h) => tokenHtml(h.id, true)), 'an empty palm')}</div>

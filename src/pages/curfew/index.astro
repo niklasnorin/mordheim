@@ -198,7 +198,7 @@ const boot = {
     blurbFor, isErrandAt, locationById, moonBoostAt, unavailableReason,
     type Errand, type MemberLike, type NightResult, type Order, type TokenOffer,
   } from '../../curfew/engine';
-  import { lastGivenOrders, restingMembers, standingOrders, type WarbandState } from '../../curfew/ledger';
+  import { keptMembers, keptReason, lastGivenOrders, restingMembers, standingOrders, type WarbandState } from '../../curfew/ledger';
   import { sealSvg } from '../../curfew/glyphs';
   import { carryDate, debugEnabled, renderDebugBar, setDebug } from '../../curfew/debug';
   import { formatImperial, imperialForDate } from '../../lib/calendar';
@@ -264,6 +264,7 @@ const boot = {
 
   function recovering(): string[] { return view?.recovering ?? []; }
   function resting(): string[] { return state ? restingMembers(state, today) : []; }
+  function kept(): string[] { return state ? keptMembers(state, today) : []; }
   function memberName(id: string) { return warband?.members.find((m) => m.id === id)?.name ?? id; }
   function firstName(id: string) { return memberName(id).split(' ')[0]; }
   function prettyDate(night: number) {
@@ -386,13 +387,21 @@ const boot = {
 
   // 1. Last night
   function nightParts(n: NightResult, ink: boolean, headingTag: 'h3' | 'h4' = 'h3') {
+    const c = n.crossroads, waiting = !!c && !c.decided;
     const lines: string[] = [];
-    lines.push(...n.results.map((r) => r.prose));
-    lines.push(n.detail);
-    if (n.closer) lines.push(n.closer);
-    const paras = lines.map((l, i) => `<p class="${ink ? 'cf-ink' : ''}" style="animation-delay:${0.15 + i * 0.45}s">${esc(l)}</p>`).join('');
-    const ledger = n.ledger.length ? `<div class="cf-ledger">Ledger: ${n.ledger.map((l) => `<strong>${esc(l)}</strong>`).join('<span class="cf-sep"> · </span>')}</div>` : '';
-    return { head: `<${headingTag} class="cf-dawn-head">${esc(n.header)}</${headingTag}><span class="cf-dawn-date">${esc(imperialDate(n.night))}</span>`, paras, ledger };
+    for (const r of n.results) {
+      lines.push(r.prose);
+      // the report stops at the crossroads until the player, or midnight, decides
+      if (c?.memberId === r.memberId) { lines.push(c.setup); if (c.decided) lines.push(c.decided.outcome); }
+    }
+    if (!waiting) { lines.push(n.detail); if (n.closer) lines.push(n.closer); }
+    let paras = lines.map((l, i) => `<p class="${ink ? 'cf-ink' : ''}" style="animation-delay:${0.15 + i * 0.45}s">${esc(l)}</p>`).join('');
+    if (c?.decided) paras += `<p class="cf-chose"><span class="cf-chose-label">What ${esc(firstName(c.memberId))} did</span>${esc(c.decided.label)}${c.decided.defaulted ? '<small>Nobody was asked. The character decided.</small>' : ''}</p>`;
+    const items = [...n.ledger, ...(c?.decided?.ledger ?? [])];
+    const ledger = waiting
+      ? `<div class="cf-ledger cf-ledger-waiting">The ledger waits on ${esc(firstName(c!.memberId))}.</div>`
+      : items.length ? `<div class="cf-ledger">Ledger: ${items.map((l) => `<strong>${esc(l)}</strong>`).join('<span class="cf-sep"> · </span>')}</div>` : '';
+    return { head: `<${headingTag} class="cf-dawn-head">${esc(n.header)}</${headingTag}><span class="cf-dawn-date">${esc(imperialDate(n.night))}</span>`, paras, ledger, waiting };
   }
   function nightHtml(n: NightResult, ink: boolean, headingTag: 'h3' | 'h4' = 'h3') {
     const part = nightParts(n, ink, headingTag);
@@ -407,8 +416,8 @@ const boot = {
     }
     // The prose leads; the ledger line, what came home, and any decision follow. On a wide screen they sit beside it.
     const part = nightParts(last, fresh && !reduced);
-    const side = part.ledger + gainsHtml(last) || '<p class="cf-dawn-nothing">Nothing to enter in the ledger.</p>';
-    const decisions = state!.offers.map((offer) => offerHtml(offer, last)).join('');
+    const side = part.ledger + (part.waiting ? '' : gainsHtml(last)) || '<p class="cf-dawn-nothing">Nothing to enter in the ledger.</p>';
+    const decisions = (part.waiting ? crossroadsHtml(last) : '') + state!.offers.map((offer) => offerHtml(offer, last)).join('');
     el.innerHTML = `<div class="cf-dawn-main">${part.head}${part.paras}</div><div class="cf-dawn-side">${side}</div>${decisions ? `<div class="cf-dawn-foot">${decisions}</div>` : ''}`;
   }
   /** What the night brought home, beyond the ledger line: charms, rumours, and names earned. */
@@ -425,6 +434,50 @@ const boot = {
     for (const h of names) html += `<p class="cf-gain-name">${esc(h.text)}</p>`;
     return html + '</div>';
   }
+  // ── the Crossroads: what one member did last night is decided here, at dawn ──
+  // The road the player has marked, per night, before confirming. Never saved: a reload clears it.
+  const roadPicks = new Map<number, string>();
+  function crossroadsHtml(n: NightResult) {
+    const c = n.crossroads!, first = firstName(c.memberId);
+    const pick = roadPicks.get(n.night);
+    const road = c.options.find((o) => o.id === pick);
+    const footer = road
+      ? `<div class="cf-offer-confirm" role="group" aria-label="Confirm the road">
+          <p><b>${esc(road.label)}</b> That is what ${esc(first)} did. Nothing else was.</p>
+          <div class="cf-offer-actions"><button type="button" class="cf-btn cf-btn-blood" data-road-confirm="${esc(road.id)}">So it was</button><button type="button" class="cf-btn cf-btn-ghost" data-road-unpick>Not yet</button></div>
+        </div>`
+      : `<p class="cf-note cf-offer-hint">Choose for ${esc(first)}. Nothing is decided until you confirm. Left until midnight, ${esc(first)} decides alone.</p>`;
+    return `<div class="cf-offer cf-crossroads" data-night="${n.night}">
+      <h4 class="cf-offer-title">What ${esc(first)} did</h4>
+      <div class="cf-roads" role="group" aria-label="The roads">${c.options.map((o) => `<button type="button" class="cf-road" data-road="${esc(o.id)}" aria-pressed="${pick === o.id}">${esc(o.label)}</button>`).join('')}</div>
+      ${footer}
+    </div>`;
+  }
+  $('dawn-report').addEventListener('click', async (e) => {
+    const target = e.target as HTMLElement;
+    const box = target.closest<HTMLElement>('.cf-crossroads'); if (!box || !state) return;
+    const night = Number(box.dataset.night);
+    const n = state.nights.find((x) => x.night === night);
+    if (!n?.crossroads || n.crossroads.decided) return;
+    const pickBtn = target.closest<HTMLElement>('[data-road]');
+    const confirmBtn = target.closest<HTMLElement>('[data-road-confirm]');
+    const unpick = target.closest<HTMLElement>('[data-road-unpick]');
+    if (pickBtn) {
+      const id = pickBtn.dataset.road!;
+      if (roadPicks.get(night) === id) roadPicks.delete(night); else roadPicks.set(night, id);
+      box.outerHTML = crossroadsHtml(n);
+      const fresh = $('dawn-report').querySelector<HTMLElement>('.cf-crossroads');
+      (fresh?.querySelector<HTMLElement>('[data-road-confirm]') ?? fresh?.querySelector<HTMLElement>(`[data-road="${id}"]`))?.focus();
+    } else if (unpick) {
+      roadPicks.delete(night);
+      box.outerHTML = crossroadsHtml(n);
+    } else if (confirmBtn) {
+      const roadId = confirmBtn.dataset.roadConfirm!;
+      roadPicks.delete(night);
+      await act('decide', { night, roadId }, () => toast('So it was. The ledger is written.'));
+    }
+  });
+
   // Which charm the player has marked to keep, per offer, before confirming. Never saved: a reload clears it.
   const offerPicks = new Map<string, 'incoming' | 'held'>();
   const offerKey = (o: TokenOffer) => `${o.night}:${o.incoming}:${o.held}`;
@@ -530,7 +583,7 @@ const boot = {
   function renderWatch() {
     const w = warband!, s = state!;
     const rec = recovering();
-    const av = availability(w, rec, resting());
+    const av = availability(w, rec, resting(), kept());
     const given = s.orders[today] ?? [];
     const standing = given.length ? [] : standingOrders(s, w, rec, today, place);
     const shown = given.length ? given : standing;
@@ -551,6 +604,8 @@ const boot = {
           ? '<span class="cf-status dead">Dead</span>'
           : a.reason === 'resting'
           ? '<span class="cf-status resting" title="Went out last night. Nobody is sent two nights running.">Resting</span>'
+          : a.reason === 'kept'
+          ? `<span class="cf-status kept" title="${esc(keptReason(s, today, m.id) ?? 'Kept home by what happened last night.')}">Kept home<small>${esc(keptReason(s, today, m.id) ?? '')}</small></span>`
           : `<span class="cf-status-wrap"><span class="cf-status">Recovering</span><button type="button" class="cf-btn cf-btn-ghost cf-heal" data-heal="${esc(m.id)}">Back on their feet</button></span>`;
         return `<div class="cf-member is-out">${who}${status}</div>`;
       }

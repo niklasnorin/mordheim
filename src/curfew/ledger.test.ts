@@ -259,3 +259,99 @@ test('a ledger opened in the village announces no arrival, and old nights withou
   assert.equal(old.headlines.filter((h) => /Fussen/.test(h.text)).length, 1, 'the move out of the city is still noticed');
   assert.equal(provideIfEmpty(freshState(warband, 9), 9, village) !== null, true);
 });
+
+// ───────────────────────── the Crossroads ─────────────────────────
+
+import { afflictionsAt, decide, keptMembers, waitingCrossroads } from './ledger.ts';
+import { crossroadById, defaultRoad } from './engine.ts';
+
+/** Play nights until one meets a crossroads. Orders are given every night, so it is never on standing orders. */
+function playToCrossroads(s: ReturnType<typeof freshState>, from: number, moves: { locationId: string; fromNight: number }[] = []) {
+  for (let night = from; night < from + 300; night++) {
+    const free = warband.members.filter((m) => !m.dead && !restingMembers(s, night).includes(m.id) && !keptMembers(s, night).includes(m.id)).slice(0, 2);
+    const location = locationById(moves.at(-1)?.locationId);
+    giveOrders(s, warband, night, free.map((m, i) => ({ memberId: m.id, errand: location.errands[(night + i) % location.errands.length] })), [], location);
+    reconcile(s, warband, night + 1, [], undefined, moves);
+    const waiting = waitingCrossroads(s);
+    if (waiting) return { waiting, today: night + 1 };
+  }
+  throw new Error('no crossroads in 300 nights');
+}
+
+test('a crossroads waits for a decision; the road taken lands on the ledger, the story and the warrior\'s marks', () => {
+  const s = freshState(warband, 10);
+  const { waiting, today } = playToCrossroads(s, 10);
+  assert.equal(waiting.night, today - 1, 'it is last night\'s');
+  assert.ok(s.seenCrossroads.includes(waiting.crossroads!.id));
+  const c = crossroadById(locationById(waiting.locationId), waiting.crossroads!.id)!;
+  const road = c.options.find((o) => !o.default && !o.risk) ?? c.options.find((o) => !o.default)!;
+  assert.throws(() => decide(s, warband, waiting.night, 'no-such-road', { on: today }), (e: unknown) => e instanceof LedgerError && /nowhere/.test(e.message));
+  assert.throws(() => decide(s, warband, waiting.night - 1, road.id, { on: today }), LedgerError, 'no crossroads waited the night before');
+  const before = { favour: s.favour, shards: s.shards, renown: s.renown };
+  const taken = decide(s, warband, waiting.night, road.id, { on: today, rival: warband });
+  assert.equal(waiting.crossroads!.decided?.roadId, road.id);
+  assert.equal(waiting.crossroads!.decided?.defaulted, false);
+  assert.equal(waiting.crossroads!.decided?.on, today);
+  assert.ok(waiting.crossroads!.decided!.outcome.length > 10);
+  assert.equal(s.favour, Math.max(0, Math.min(100, before.favour + taken.favour)));
+  assert.equal(s.shards, Math.max(0, before.shards + taken.shards));
+  assert.equal(s.renown, Math.max(0, before.renown + taken.renown));
+  if (taken.mark) assert.ok(s.marks[waiting.crossroads!.memberId].some((m) => m.id === taken.mark!.id && m.name === taken.mark!.name));
+  if (taken.staysHome) assert.ok(keptMembers(s, today).includes(waiting.crossroads!.memberId));
+  if (taken.carryTilt) assert.deepEqual(s.carry, { night: today, memberId: waiting.crossroads!.memberId, tilt: taken.carryTilt });
+  if (taken.headline) assert.ok(s.headlines.some((h) => h.night === waiting.night && h.text === taken.headline));
+  assert.throws(() => decide(s, warband, waiting.night, road.id, { on: today }), (e: unknown) => e instanceof LedgerError && /already|decided/i.test(e.message));
+  assert.equal(waitingCrossroads(s), undefined);
+  // the next night is written without another crossroads: never two nights running
+  giveOrders(s, warband, today, standingOrders(s, warband, [], today).map((o) => ({ memberId: o.memberId, errand: o.errand })));
+  reconcile(s, warband, today + 1, []);
+  assert.equal(s.nights.at(-1)!.crossroads, undefined);
+  assert.equal(s.carry, undefined, 'what was carried into tonight is spent');
+});
+
+test('a crossroads nobody decides is decided by the character at the next midnight, along the default road', () => {
+  const s = freshState(warband, 10);
+  const { waiting, today } = playToCrossroads(s, 10);
+  const c = crossroadById(locationById(waiting.locationId), waiting.crossroads!.id)!;
+  reconcile(s, warband, today + 1, []);
+  assert.equal(waiting.crossroads!.decided?.roadId, defaultRoad(c, warband.id, waiting.night).id);
+  assert.equal(waiting.crossroads!.decided?.defaulted, true);
+  assert.equal(waiting.crossroads!.decided?.on, today);
+  assert.ok(waiting.crossroads!.decided!.outcome.length > 10);
+  assert.equal(waitingCrossroads(s), undefined);
+  // many nights at once: still only the default, still nothing waiting but the very last
+  const t = freshState(warband, 10);
+  const far = playToCrossroads(t, 10);
+  reconcile(t, warband, far.today + 9, []);
+  assert.equal(t.nights.filter((n) => n.crossroads && !n.crossroads.decided).length <= 1, true);
+  assert.ok(far.waiting.crossroads!.decided?.defaulted);
+});
+
+test('a version 1 ledger is kept whole and gains the Crossroads\' fields', () => {
+  const s = freshState(warband, 10);
+  giveOrders(s, warband, 10, [{ memberId: 'torgrim', errand: 'scavenge' }]);
+  reconcile(s, warband, 11, []);
+  const raw = JSON.parse(JSON.stringify(s)) as Record<string, unknown>;
+  raw.version = 1; delete raw.marks; delete raw.afflictions; delete raw.kept; delete raw.seenCrossroads;
+  const back = coerceState(raw, warband, 11);
+  assert.equal(back.version, 2);
+  assert.equal(back.nights.length, 1);
+  assert.deepEqual(back.marks, {});
+  assert.deepEqual(back.seenCrossroads, []);
+  assert.equal(coerceState({ ...raw, version: 3 }, warband, 11).nights.length, 0, 'a version from the future starts afresh');
+});
+
+test('a member kept home is refused tonight and free again after; a curse stands its nights and fades', () => {
+  const s = freshState(warband, 10);
+  s.kept.push({ memberId: 'agnar', fromNight: 10, nights: 1, reason: 'Hungover' });
+  s.afflictions.push({ memberId: 'agnar', curseId: 'hungover', fromNight: 10, nights: 1 }, { memberId: 'torgrim', curseId: 'wyrdstone-cough', fromNight: 10, nights: 3 });
+  assert.throws(() => giveOrders(s, warband, 10, [{ memberId: 'agnar', errand: 'trade' }]), (e: unknown) => e instanceof LedgerError && /cannot go out/.test(e.message));
+  assert.deepEqual(standingOrders(s, warband, [], 10).map((o) => o.memberId), ['skalle', 'torgrim'], 'standing orders skip the kept');
+  assert.deepEqual(afflictionsAt(s, 10).map((a) => a.curseId), ['hungover', 'wyrdstone-cough']);
+  reconcile(s, warband, 11, []);
+  assert.deepEqual(keptMembers(s, 11), []);
+  assert.deepEqual(afflictionsAt(s, 11).map((a) => a.curseId), ['wyrdstone-cough']);
+  giveOrders(s, warband, 11, [{ memberId: 'agnar', errand: 'trade' }]);
+  reconcile(s, warband, 13, []);
+  assert.deepEqual(s.afflictions.map((a) => a.curseId), [], 'faded');
+});

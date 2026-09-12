@@ -64,6 +64,18 @@ The Fussenbach pack is sized for a month of nightly play by four warbands: twelv
 
 ---
 
+## 2b. The Crossroads
+
+**Shipped** (12 September 2026), from the proposal in `CROSSROADS.md`. About one night in five (`crossroadsChance`), one member out on real orders comes to a crossroads: the Dawn Report stops at that moment and two or three roads say what {first} could do. The player decides at dawn, in the offer's two-step dress, and the report finishes with the road's outcome and its ledger line. Never on standing orders, never two nights running, never the same crossroads twice in a season, never in The Return.
+
+- **Kinds.** Moral, risk, loyalty, lore and light, weighted so most are hard and not all. A risk road is opt-in risk without a mini-game: the player chooses the risk, seeded dice choose the branch, and the bad branch is where the four curses in `tokens.json` now come from (Hungover keeps a member home a night, Marked costs Renown and prints a notice, Swindled costs a shard, Wyrdstone Cough is cosmetic for three nights). They stand on the ledger as `afflictions`, and the Eve names any still standing.
+- **What a road does.** Favour, shards and Renown within a good night's reach; a charm through the offer rule; a rumour; a **mark** on the warrior, permanent and named in the pack's words, shown in their story and able to open or close later crossroads (`requires.mark`, `requires.notMark`); and a **carry** into tonight: a tilt on that member's errand, or a night kept home (`kept`, shown in the Watch with the reason).
+- **The absent.** A crossroads nobody decides is decided by the character at the next midnight, along the road marked `default`, which never carries a curse and never costs. The outcome then opens with one of the pack's `undecided` lines. With many nights written at once every crossroads but the last is defaulted on the spot, so only one ever waits.
+- **Where it lives.** Content in the packs (`crossroads`, `undecided`, `markNames`): twenty-four in Fussenbach, twelve in Mordheim. The night stores only what was met and, once decided, the road, its words and its ledger line; effects are read from the pack when the road is taken (`takeRoad`), so nothing a player could peek at reaches the browser. The ledger is `version: 2` and a version 1 ledger is kept whole. The Cryer prints a night's happening only once its crossroads is decided, and a road may carry its own headline. The Watch House flags a ledger whose crossroads waits and lists the roads taken.
+- **Still to come** from the proposal: standing with the place's names (step C) and roads that touch the rival (step D). Forced errands were left out of `carry` on purpose; a tilt and a night at home first.
+
+---
+
 ## 3. Errands and mini-games
 
 | Errand | Mini-game (Phase 2–4) | Dice yield today |
@@ -193,8 +205,9 @@ Warband rosters, standings and battle reports are still content in the repositor
 | **1a — The server** | Vercel, Postgres, email-and-password sign-in, ledgers per player, nightly cron, Town Cryer dispatches for every warband | **Shipped** |
 | **1c — The road out** | Locations as content packs; Fussenbach with Dredge, its charms and its plots; the campaign moved from the Watch House; the Cryer printed where the campaign is; light rival encounters | **Shipped** |
 | **1d — The Imperial Calendar** | The Empire's calendar anchored on the first game; every date on the site goes through it; battles and nights on one line in a warrior's story | **Shipped** |
-| **1b — First Moon of play** | Let a real week of nights (Nights 1–7, 10–16 September) shape the odds, the copy, and the offer rule; watch for repeated first sentences, the standing-orders rhythm with two-member nights, and whether the happenings print too often or too rarely | **Now** (Night 3) |
-| **2 — Hands-on** | Sifting, The Shrine, The Bazaar as optional mini-games with opt-in risk and curses; the Market Moon multiplier | Open |
+| **1e — The Crossroads** | Choices a member met last night, decided by the player at dawn; marks, carries, risk roads and the curses; content for both places (§2b, `CROSSROADS.md`) | **Shipped** |
+| **1b — First Moon of play** | Let a real week of nights (Nights 1–7, 10–16 September) shape the odds, the copy, and the offer rule; watch for repeated first sentences, the standing-orders rhythm with two-member nights, whether the happenings print too often or too rarely, and whether one crossroads in five nights is the right weight | **Now** (Night 3) |
+| **2 — Hands-on** | Sifting, The Shrine, The Bazaar as optional mini-games with opt-in risk; the Market Moon multiplier. Curses already arrive through the Crossroads' risk roads | Open |
 | **3 — Rivalry** | Crooked Bones and The Pit as async PvP, wagers, weekly ladders, banner marks; the server it needed now exists | Open |
 | **4 — Depth** | Whispers, Jobs, Moon events, Patrons and contracts, Sigmar's Mercy | Open |
 | **5 — The City** | The Ashen Quarter map, naming, landmarks into scenarios, the Comet's Wane and finale | Open |
@@ -213,13 +226,14 @@ Taken:
 - No token gifting between warbands in season one.
 - Templates only for prose; no LLM pass.
 - Season length twelve Moons, in `campaign.json`.
-- Curses only from opt-in risk, never from dice or absence.
+- Curses only from opt-in risk, never from dice or absence. The risk roads at the Crossroads are that opt-in.
+- The Crossroads: one a morning at most; the default road risks nothing; marks are public in the warrior's story; a carry is a tilt or a night at home, never a forced errand for now.
 - **Changed.** Signed-in players get a Curfew link in the header, and the game master a Watch House link; visitors who are not signed in see neither. The first plan held the link back until the first Moon had been played; a player who has claimed a ledger needs the way back to it more than the site needs the secret.
 - A move takes effect from tonight, never retroactively; the log of moves decides a night's place, so a written night is never rewritten.
 - The Omen deck is the same everywhere: portents are portents. Places reword the Moons' tie-ins instead.
 
 Still open:
-- Whether to build the Crossroads: choices a member met last night, decided by the player at dawn, with consequences that outlive the night. Proposed in `CROSSROADS.md`; would be phase 1e.
+- Whether the Crossroads should go on to standing with the place's names, and to roads that touch the rival (`CROSSROADS.md` §9, steps C and D).
 - Whether Curfew should be shown to visitors who are not signed in once the first Moon has been played.
 - Whether the Eve should be opened automatically when a scenario is recorded.
 - How many members per night when more warbands and larger rosters join.

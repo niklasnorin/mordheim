@@ -12,6 +12,7 @@
   "returnAfterNights": 7,
   "rumourWarmNights": 7,
   "epithetAfterEntries": 5,
+  "crossroadsChance": 0.2,
   "titles": [
     {"renown": 0, "title": "Newcomers"},
     {"renown": 10, "title": "Sifters"},

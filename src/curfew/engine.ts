@@ -39,6 +39,59 @@ export interface Moon { id: string; name: string; reading: string; boost: Errand
 
 export type Outcome = 'boon' | 'fair' | 'poor';
 type TemplateBank = Record<Outcome | 'standing', string[]>;
+
+/**
+ * A curse. Content in `tokens.json`; it reaches a warrior only through a risk road at a crossroads, never from
+ * dice nights or absence. `nights` says how long it stands; `effects` what it does the moment it lands.
+ */
+export interface CurseDef { id: string; name: string; effect: string; source?: string; nights: number; effects?: { renown?: number; shards?: number; staysHome?: number }; headline?: string }
+
+// ───────────────────────── the Crossroads ─────────────────────────
+// Some nights one member comes to a crossroads. The Dawn Report stops there; the player decides at dawn. See CROSSROADS.md.
+
+export type CrossroadKind = 'moral' | 'risk' | 'loyalty' | 'lore' | 'light';
+/** What taking a road does. Every number is bounded by content; none should move more than a good night brings. */
+export interface RoadEffects {
+  favour?: number; shards?: number; renown?: number;
+  /** A charm of this type, of the place's, through the Hand's offer rule as any other. */
+  token?: TokenType;
+  /** A rumour of the place's, warm as any other. */
+  rumour?: boolean;
+  /** A permanent mark on the warrior, named in the pack's `markNames`. */
+  mark?: string;
+  /** Reaches into tonight: a tilt on that member's errand, or a night kept home. */
+  carry?: { tilt?: number; staysHome?: number };
+  /** A curse by id. Risk roads only, on their bad branch. */
+  curse?: string;
+}
+export interface RoadBranch { outcome: string; effects?: RoadEffects }
+export interface Road extends RoadBranch {
+  id: string;
+  /** What the character does, present tense, four to eight words. */
+  label: string;
+  /** A gamble: the dice choose good or bad when the road is taken. `chance` is the odds of good; 0.5 when not said. */
+  risk?: { chance?: number; good: RoadBranch; bad: RoadBranch };
+  /** The road the character takes when nobody decides. Never the poorer road in mechanics. */
+  default?: boolean;
+  /** The Cryer may print this when the road is taken. */
+  headline?: string;
+}
+export interface Crossroad {
+  id: string; kind: CrossroadKind;
+  errands: Errand[];
+  /** Only after these outcomes; any when not said. */
+  outcomes?: Outcome[];
+  requires?: { moon?: string[]; omen?: string[]; mark?: string[]; notMark?: string[] };
+  weight?: number;
+  setup: string;
+  options: Road[];
+}
+/** A crossroads a night met, as written in the ledger. Roads carry their labels only; effects are read from the pack when a road is taken. */
+export interface CrossroadsMet {
+  id: string; memberId: string; kind: CrossroadKind; setup: string;
+  options: { id: string; label: string }[];
+  decided?: { roadId: string; label: string; outcome: string; ledger: string[]; defaulted: boolean; on: number };
+}
 /**
  * Where the campaign is. A location is a whole content pack: which errands are open and why the others are not,
  * the places, the Dawn Report templates, the rumours, the Town Cryer's headlines and masthead. The game master
@@ -74,6 +127,12 @@ export interface Location {
   encounters: string[];
   rumours: string[]; return: string[]; cityProvides: string[]; quiet: string[];
   epithets: Partial<Record<Errand, string[]>>;
+  /** The choices a member may come to on an errand here, decided by the player at dawn. */
+  crossroads?: Crossroad[];
+  /** How the outcome opens when nobody decided and the character chose for themselves. */
+  undecided?: string[];
+  /** What each mark is called in the ledger line and the warrior's story. */
+  markNames?: Record<string, string>;
 }
 export interface Move { locationId: string; fromNight: number }
 
@@ -99,6 +158,8 @@ export interface NightResult {
   closer?: string; detail: string; ledger: string[];
   /** Where the night happened. Nights written before the campaign could move have none, and were in Mordheim. */
   locationId?: string;
+  /** The crossroads one member came to, if any. Undecided until the player, or the next midnight, decides. */
+  crossroads?: CrossroadsMet;
 }
 export interface TokenOffer { night: number; incoming: string; held: string }
 
@@ -106,6 +167,8 @@ export const CAMPAIGN = campaign;
 export const OMENS = omensData.omens as Omen[];
 export const MOONS = moonsData.moons as Moon[];
 export const TOKENS = tokensData.tokens as TokenDef[];
+export const CURSES = tokensData.curses as CurseDef[];
+export function curseById(id: string): CurseDef | undefined { return CURSES.find((c) => c.id === id); }
 export const TOKEN_TYPES = tokensData.types as Record<TokenType, { name: string; seal: string; flavour: string }>;
 export const TITLES = campaign.titles as { renown: number; title: string }[];
 
@@ -279,13 +342,14 @@ export function statEdge(warband: WarbandLike, member: MemberLike, errand: Erran
 
 // ───────────────────────── availability ─────────────────────────
 
-export interface Availability { memberId: string; available: boolean; reason?: 'dead' | 'recovering' | 'resting' }
-/** Who can go out tonight. The dead never; the wounded not until healed; whoever went out last night rests. */
-export function availability(warband: WarbandLike, recovering: string[], resting: string[] = []): Availability[] {
+export interface Availability { memberId: string; available: boolean; reason?: 'dead' | 'recovering' | 'resting' | 'kept' }
+/** Who can go out tonight. The dead never; the wounded not until healed; whoever went out last night rests; a road taken may keep someone home. */
+export function availability(warband: WarbandLike, recovering: string[], resting: string[] = [], kept: string[] = []): Availability[] {
   return warband.members.map((m) => {
     if (m.dead) return { memberId: m.id, available: false, reason: 'dead' };
     if (recovering.includes(m.id)) return { memberId: m.id, available: false, reason: 'recovering' };
     if (resting.includes(m.id)) return { memberId: m.id, available: false, reason: 'resting' };
+    if (kept.includes(m.id)) return { memberId: m.id, available: false, reason: 'kept' };
     return { memberId: m.id, available: true };
   });
 }
@@ -334,6 +398,10 @@ export interface ResolveInput {
   location?: Location;
   /** Lines (see OrderResult.line) written in the nights just before. The draw steers away from them, so a month rarely repeats itself. */
   avoid?: readonly string[];
+  /** A road taken at dawn reaching into tonight: a tilt on one member's errand. */
+  carry?: { memberId: string; tilt?: number };
+  /** What the crossroads draw needs to know about the ledger. Without it no crossroads is met (quiet nights, tests of the dice alone). */
+  crossroads?: { seen: readonly string[]; marks: Record<string, { id: string }[]>; recent: boolean };
 }
 /** The templates for an errand at a place, falling back to Mordheim's so an odd order never leaves a night unwritten. */
 function templatesAt(errand: Errand, location: Location): TemplateBank {
@@ -363,7 +431,8 @@ export function resolveNight(input: ResolveInput): NightResult {
     if (!member) return;
     const standing = !!order.standing;
     // the Omen and the Moon set the night's odds; who you send moves them a little further
-    const tilt = Math.max(-3, Math.min(3, tiltFor(order.errand, omen, moon, location) + (standing ? 0 : statEdge(warband, member, order.errand))));
+    const carried = input.carry?.memberId === member.id ? input.carry.tilt ?? 0 : 0;
+    const tilt = Math.max(-3, Math.min(3, tiltFor(order.errand, omen, moon, location) + (standing ? 0 : statEdge(warband, member, order.errand)) + carried));
     const outcome: Outcome = standing ? (r() < 0.2 ? 'poor' : 'fair') : rollOutcome(r, tilt);
     let f = FAVOUR[outcome];
     if (standing) f = Math.ceil(f / 2);
@@ -430,7 +499,126 @@ export function resolveNight(input: ResolveInput): NightResult {
   }
   const header = `Night ${night} — under ${omen.title}.`;
   const closer = results.length && r() < 0.45 ? pick(r, location.closers) : undefined;
-  return { night, omenId: omen.id, moonId: moon.id, header, results, closer, detail, ledger, locationId: location.id };
+  // last of all, and only after the dice have said their piece: does one of them come to a crossroads?
+  const crossroads = input.crossroads ? drawCrossroads(r, warband, night, results, location, input.crossroads, { rival }) : undefined;
+  return { night, omenId: omen.id, moonId: moon.id, header, results, closer, detail, ledger, locationId: location.id, ...(crossroads ? { crossroads } : {}) };
+}
+
+// ───────────────────────── the Crossroads ─────────────────────────
+
+/** The crossroads a member could come to after this errand and outcome, here, given what they already carry. */
+export function crossroadsFor(location: Location, errand: Errand, outcome: Outcome, night: number, marks: { id: string }[], seen: readonly string[]): Crossroad[] {
+  const omen = omenForNight(night), moon = moonForNight(night);
+  const has = (id: string) => marks.some((m) => m.id === id);
+  return (location.crossroads ?? []).filter((c) =>
+    c.errands.includes(errand)
+    && (!c.outcomes || c.outcomes.includes(outcome))
+    && !seen.includes(c.id)
+    && (!c.requires?.moon || c.requires.moon.includes(moon.id))
+    && (!c.requires?.omen || c.requires.omen.includes(omen.id))
+    && (!c.requires?.mark || c.requires.mark.every(has))
+    && (!c.requires?.notMark || !c.requires.notMark.some(has)));
+}
+function weighted<T extends { weight?: number }>(r: () => number, list: readonly T[]): T {
+  const total = list.reduce((a, c) => a + (c.weight ?? 1), 0);
+  let x = r() * total;
+  for (const c of list) { x -= c.weight ?? 1; if (x < 0) return c; }
+  return list[list.length - 1];
+}
+/**
+ * About one night in five, the first member out on real orders whose errand has a crossroads to offer comes to one.
+ * Never on standing orders, never two nights running, never the same crossroads twice in a season.
+ */
+function drawCrossroads(r: () => number, warband: WarbandLike, night: number, results: OrderResult[], location: Location, ctx: NonNullable<ResolveInput['crossroads']>, extra: { rival: string }): CrossroadsMet | undefined {
+  const hit = r() < campaign.crossroadsChance;
+  if (!hit || ctx.recent) return undefined;
+  for (const res of results) {
+    if (res.standing) continue;
+    const member = warband.members.find((m) => m.id === res.memberId);
+    if (!member) continue;
+    const candidates = crossroadsFor(location, res.errand, res.outcome, night, ctx.marks[member.id] ?? [], ctx.seen);
+    if (!candidates.length) continue;
+    const c = weighted(r, candidates);
+    const other = results.find((x) => x !== res);
+    const otherMember = other && warband.members.find((m) => m.id === other.memberId);
+    const slots = roadSlots(warband, member, otherMember, location, r, extra.rival);
+    return { id: c.id, memberId: member.id, kind: c.kind, setup: fill(c.setup, slots), options: c.options.map((o) => ({ id: o.id, label: fill(o.label, slots) })) };
+  }
+  return undefined;
+}
+function roadSlots(warband: WarbandLike, member: MemberLike, other: MemberLike | undefined, location: Location, r: () => number, rival: string): Record<string, string> {
+  return {
+    name: member.name, first: firstName(member.name), they: 'they', them: 'them', their: 'their',
+    district: pick(r, location.districts), other: other ? firstName(other.name) : 'nobody', rival, warband: warband.name,
+  };
+}
+/** The road the character takes when nobody decides: the one marked default, else a seeded pick. */
+export function defaultRoad(c: Crossroad, warbandId: string, night: number): Road {
+  return c.options.find((o) => o.default) ?? pick(rng(hashSeed(campaign.id, 'undecided', warbandId, night, c.id)), c.options);
+}
+export function crossroadById(location: Location, id: string): Crossroad | undefined { return location.crossroads?.find((c) => c.id === id); }
+
+/** What actually happened once a road was taken: the numbers, the charm, the words. */
+export interface RoadTaken {
+  road: Road; label: string; outcome: string; headline?: string;
+  favour: number; shards: number; renown: number;
+  tokenId?: string; rumour?: string; mark?: { id: string; name: string }; carryTilt?: number; staysHome?: number; curse?: CurseDef;
+}
+export interface TakeRoadInput { warband: WarbandLike; night: NightResult; roadId: string; location: Location; defaulted?: boolean; rival?: WarbandLike | WarbandLike[] }
+/**
+ * Take a road at a crossroads. Deterministic in (campaign, warband, night, crossroads, road): the dice inside a risk road,
+ * the charm, the rumour and the words fall the same way on every machine. Does not touch state; the ledger does the bookkeeping.
+ */
+export function takeRoad(input: TakeRoadInput): RoadTaken {
+  const { warband, night, location } = input;
+  const met = night.crossroads;
+  if (!met) throw new Error('No crossroads was met that night.');
+  const c = crossroadById(location, met.id) ?? crossroadById(DEFAULT_LOCATION, met.id);
+  if (!c) throw new Error(`The pack has no crossroads ${met.id}.`);
+  const road = c.options.find((o) => o.id === input.roadId);
+  if (!road) throw new Error(`No road ${input.roadId} at ${met.id}.`);
+  const member = warband.members.find((m) => m.id === met.memberId) ?? { id: met.memberId, name: 'Somebody', role: '' };
+  const r = rng(hashSeed(campaign.id, 'road', warband.id, night.night, c.id, road.id));
+  const rivals = Array.isArray(input.rival) ? input.rival : input.rival ? [input.rival] : [];
+  const rivalBand = rivals.length > 1 ? pick(r, rivals) : rivals[0];
+  const rival = rivalBand ? rivalBand.name.replace(/^the\s+/i, '') : 'rival warband';
+  const otherRes = night.results.find((x) => x.memberId !== met.memberId);
+  const other = otherRes && warband.members.find((m) => m.id === otherRes.memberId);
+  const slots = roadSlots(warband, member, other, location, r, rival);
+  // a risk road: the player chose the risk, the dice choose the branch
+  let branch: RoadBranch = road;
+  let outcome = fill(road.outcome, slots);
+  if (road.risk) {
+    branch = r() < (road.risk.chance ?? 0.5) ? road.risk.good : road.risk.bad;
+    outcome = `${outcome} ${fill(branch.outcome, slots)}`.trim();
+  }
+  if (input.defaulted && location.undecided?.length) outcome = `${pick(r, location.undecided).replace(/\{first\}/g, slots.first)} ${outcome}`;
+  const fx = branch.effects ?? {};
+  const curse = fx.curse ? curseById(fx.curse) : undefined;
+  const out: RoadTaken = {
+    road, label: fill(road.label, slots), outcome, headline: road.headline ? fill(road.headline, slots) : curse?.headline ? fill(curse.headline, slots) : undefined,
+    favour: (fx.favour ?? 0), shards: (fx.shards ?? 0) + (curse?.effects?.shards ?? 0), renown: (fx.renown ?? 0) + (curse?.effects?.renown ?? 0),
+    tokenId: fx.token ? pick(r, tokensFor(fx.token, location)).id : undefined,
+    rumour: fx.rumour ? fill(pick(r, location.rumours), { rival }) : undefined,
+    mark: fx.mark ? { id: fx.mark, name: location.markNames?.[fx.mark] ?? DEFAULT_LOCATION.markNames?.[fx.mark] ?? fx.mark.replace(/-/g, ' ') } : undefined,
+    carryTilt: fx.carry?.tilt, staysHome: fx.carry?.staysHome ?? curse?.effects?.staysHome, curse,
+  };
+  return out;
+}
+/** The ledger line a road taken adds beneath the night's own. */
+export function roadLedger(taken: RoadTaken, member: MemberLike): string[] {
+  const first = firstName(member.name), out: string[] = [];
+  const signed = (n: number) => (n > 0 ? `+${n}` : `−${-n}`);
+  if (taken.favour) out.push(`${signed(taken.favour)} Favour`);
+  if (taken.shards) out.push(`${signed(taken.shards)} ${Math.abs(taken.shards) === 1 ? 'shard' : 'shards'}`);
+  if (taken.renown) out.push(`${signed(taken.renown)} Renown`);
+  if (taken.tokenId) out.push(`${first}: ${tokenById(taken.tokenId).name}`);
+  if (taken.rumour) out.push(`${first}: a rumour`);
+  if (taken.curse) out.push(`${first}: ${taken.curse.name}${taken.curse.nights > 1 ? ` (${taken.curse.nights} nights)` : ''}`);
+  if (taken.mark) out.push(`${first}: ${taken.mark.name}`);
+  if (taken.carryTilt) out.push(`${first}: ${taken.carryTilt > 0 ? '▲'.repeat(taken.carryTilt) : '▼'.repeat(-taken.carryTilt)} tonight`);
+  if (taken.staysHome) out.push(`${first} stays in tonight`);
+  return out;
 }
 
 /** The night nobody went out. Still a Chronicle line. */

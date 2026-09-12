@@ -850,5 +850,968 @@
     "spy": ["Who Heard the Count", "Under the Wharf", "of the Manor Road", "Who Was Seen", "Who Counted Eleven", "the Cliff-Path", "Who Found Anselm", "of the Tithe Barn Loft", "Who Listens Under Floors", "the Reed-Still"],
     "pray": ["Who Held the Shrine", "Justinian's Friend", "Who Heard the Floor", "of the Third Hour", "Who Blessed the Ferry", "the Candle-Carrier", "Who Did Not Look Down", "of the Wayshrine", "Who Prayed on the Bridge", "Who Stopped the Chattering"],
     "trade": ["Bargeman's Friend", "Who Would Not Ask", "of the Ferry Stair", "the Unsealed", "the Tollhouse Dealer", "Who Pays the Tenth", "the Fair Weight", "Who Sold to the Woods", "of the Fish-Gut Quay", "Who Filed the Seal"]
+  },
+  "crossroads": [
+    {
+      "id": "the-ring-in-the-silt",
+      "kind": "moral",
+      "errands": [
+        "dredge"
+      ],
+      "outcomes": [
+        "fair",
+        "boon"
+      ],
+      "weight": 2,
+      "setup": "At the third basin the rake caught a ring, and a finger still in it. Old Henrik was on the bank, not looking away.",
+      "options": [
+        {
+          "id": "keep",
+          "label": "Keep the ring. Say nothing.",
+          "outcome": "{first} worked the ring free and the finger went back in the silt. Henrik nodded once, as if agreeing a price.",
+          "effects": {
+            "shards": 1,
+            "renown": -2,
+            "mark": "kept-the-ring"
+          }
+        },
+        {
+          "id": "morr",
+          "label": "Take it to Morr's Garden.",
+          "outcome": "{first} carried it up to the Garden in {their} cap. The priest did not ask where. Nobody pays for that kind of honesty, but it was seen.",
+          "effects": {
+            "favour": 3,
+            "mark": "gave-morr-his-due"
+          },
+          "headline": "{first} of {warband} Seen at Morr's Garden Before Dawn, Carrying Something Small"
+        },
+        {
+          "id": "leave",
+          "label": "Leave it where it lies.",
+          "default": true,
+          "outcome": "{first} pushed it back under with the rake and finished the row. The basin keeps what it keeps."
+        }
+      ]
+    },
+    {
+      "id": "the-warm-basin",
+      "kind": "risk",
+      "errands": [
+        "dredge"
+      ],
+      "setup": "The water at the fourth basin was warm, and the silt moved when nobody touched it.",
+      "options": [
+        {
+          "id": "dig",
+          "label": "Dig where it moves.",
+          "outcome": "{first} put the rake in where the silt was breathing.",
+          "risk": {
+            "chance": 0.5,
+            "good": {
+              "outcome": "Two slivers the size of a thumbnail, and nothing bit.",
+              "effects": {
+                "shards": 2,
+                "mark": "dug-where-it-moved"
+              }
+            },
+            "bad": {
+              "outcome": "Something under the silt breathed out as {first} dug. The cough started before the wharf.",
+              "effects": {
+                "curse": "wyrdstone-cough",
+                "mark": "dug-where-it-moved"
+              }
+            }
+          }
+        },
+        {
+          "id": "cold",
+          "label": "Rake the cold side.",
+          "default": true,
+          "outcome": "The cold side gave what the cold side gives. {first} kept {their} boots dry."
+        }
+      ]
+    },
+    {
+      "id": "the-algae-mens-boy",
+      "kind": "loyalty",
+      "errands": [
+        "dredge"
+      ],
+      "setup": "The algae men's boy was working their basin alone and crying, with a rake too big for him. The green was showing on his side, not {first}'s.",
+      "options": [
+        {
+          "id": "help",
+          "label": "Work his basin for him.",
+          "outcome": "They finished before the tide. The boy said nothing. The green went in his rag, not {first}'s.",
+          "effects": {
+            "favour": 4,
+            "mark": "worked-the-boys-basin"
+          }
+        },
+        {
+          "id": "own",
+          "label": "Work {their} own basin.",
+          "default": true,
+          "outcome": "The green went in {first}'s rag. The boy was still there at dawn.",
+          "effects": {
+            "shards": 1
+          }
+        },
+        {
+          "id": "take",
+          "label": "Take his green while he cries.",
+          "outcome": "{first} came home heavier. The boy will tell it his way, and boys are believed here.",
+          "effects": {
+            "shards": 2,
+            "renown": -3,
+            "mark": "took-the-boys-green"
+          }
+        }
+      ]
+    },
+    {
+      "id": "the-bargeman-in-the-reeds",
+      "kind": "moral",
+      "errands": [
+        "dredge",
+        "spy"
+      ],
+      "weight": 2,
+      "setup": "A bargeman was in the reed beds with his throat marked and his purse whole. He was breathing.",
+      "options": [
+        {
+          "id": "carry",
+          "label": "Carry him to the Flagon.",
+          "outcome": "It took until dawn. The landlord gave {first} a bed by the fire and asked no questions, which is a kind of question.",
+          "effects": {
+            "favour": 5,
+            "mark": "carried-the-bargeman",
+            "carry": {
+              "staysHome": 1
+            }
+          },
+          "headline": "Bargeman Found Alive in the Reed Beds; Carried In by {first} of {warband}"
+        },
+        {
+          "id": "purse",
+          "label": "Take the purse. Leave him breathing.",
+          "outcome": "A shard and a Baron's coin. He watched {first} go and did not call out. He may have known better.",
+          "effects": {
+            "shards": 1,
+            "favour": 2,
+            "renown": -2,
+            "mark": "took-the-bargemans-purse"
+          }
+        },
+        {
+          "id": "leave",
+          "label": "Leave him for the Watch to find.",
+          "default": true,
+          "outcome": "The Watch found him at first light. Or somebody in the Watch's coat did."
+        }
+      ]
+    },
+    {
+      "id": "the-glow-under-warehouse-4",
+      "kind": "lore",
+      "errands": [
+        "dredge"
+      ],
+      "requires": {
+        "notMark": [
+          "looked-under-warehouse-4"
+        ]
+      },
+      "setup": "At low tide the mud below Warehouse 4 gave onto a grate, and through the grate a light the colour of the wrong green. Somebody inside was singing.",
+      "options": [
+        {
+          "id": "look",
+          "label": "Look through the grate.",
+          "outcome": "{first} looked. Crates, and a man in the Baron's livery packing them by the light of what he was packing. He looked up. {first} will not sleep well tonight.",
+          "effects": {
+            "mark": "looked-under-warehouse-4",
+            "rumour": true,
+            "carry": {
+              "tilt": -1
+            }
+          }
+        },
+        {
+          "id": "walk",
+          "label": "Walk on. Say nothing.",
+          "default": true,
+          "outcome": "{first} walked on. The singing stopped when {they} passed, and started again.",
+          "effects": {
+            "mark": "walked-past-warehouse-4"
+          }
+        }
+      ]
+    },
+    {
+      "id": "the-sergeants-price",
+      "kind": "loyalty",
+      "errands": [
+        "carouse"
+      ],
+      "weight": 2,
+      "setup": "In the Flagon a Watch sergeant, deep in his cups, said the name of somebody in {warband} and a price for it.",
+      "options": [
+        {
+          "id": "listen",
+          "label": "Buy him another and hear the rest.",
+          "outcome": "Two more cups and he named the buyer, or a buyer. {first} paid for the cups and remembered the name.",
+          "effects": {
+            "rumour": true,
+            "renown": -1,
+            "mark": "listened"
+          }
+        },
+        {
+          "id": "yard",
+          "label": "Put him out in the yard.",
+          "outcome": "The sergeant went out on his back. The Flagon went quiet, then loud. Nobody in the Watch will forget it.",
+          "effects": {
+            "favour": -3,
+            "renown": 2,
+            "mark": "stood-by-their-own"
+          }
+        },
+        {
+          "id": "finish",
+          "label": "Finish the cup and go.",
+          "default": true,
+          "outcome": "The cup was finished. The sergeant was still talking when the door closed."
+        }
+      ]
+    },
+    {
+      "id": "the-drowned-mans-tab",
+      "kind": "moral",
+      "errands": [
+        "carouse"
+      ],
+      "setup": "The landlord said the drowned bargeman had left a tab of six crowns and a wife in the mill cottages, and asked, not quite asking, who would settle it.",
+      "options": [
+        {
+          "id": "settle",
+          "label": "Settle it.",
+          "outcome": "{first} paid it in green. The landlord wiped the slate. The mill cottages will hear by morning.",
+          "effects": {
+            "favour": 6,
+            "shards": -1,
+            "mark": "settled-the-drowned-mans-tab"
+          }
+        },
+        {
+          "id": "half",
+          "label": "Settle half, loudly.",
+          "outcome": "Three crowns on the bar and the room heard it. The other three are still a slate.",
+          "effects": {
+            "favour": 3,
+            "renown": 1,
+            "mark": "settled-half-loudly"
+          }
+        },
+        {
+          "id": "not",
+          "label": "Say it is not {their} debt.",
+          "default": true,
+          "outcome": "It is not. The slate stayed as it was."
+        }
+      ]
+    },
+    {
+      "id": "the-crooked-bones-table",
+      "kind": "risk",
+      "errands": [
+        "carouse"
+      ],
+      "setup": "A man with no fingers on his left hand was rattling bones in a cup at the corner table and wanted a game. He was winning against people who had all their fingers.",
+      "options": [
+        {
+          "id": "sit",
+          "label": "Sit down. Stake a shard.",
+          "outcome": "{first} sat.",
+          "risk": {
+            "chance": 0.45,
+            "good": {
+              "outcome": "The bones fell {first}'s way twice. The man smiled with all his teeth, which was worse than losing.",
+              "effects": {
+                "shards": 1,
+                "favour": 3,
+                "mark": "beat-the-fingerless-man"
+              }
+            },
+            "bad": {
+              "outcome": "The bones fell his way. So did the shard.",
+              "effects": {
+                "shards": -1,
+                "curse": "swindled",
+                "mark": "lost-to-the-fingerless-man"
+              }
+            }
+          }
+        },
+        {
+          "id": "watch",
+          "label": "Watch from the bar.",
+          "default": true,
+          "outcome": "{first} watched three men lose. One of them said something worth keeping.",
+          "effects": {
+            "rumour": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "the-watchman-off-duty",
+      "kind": "moral",
+      "errands": [
+        "carouse"
+      ],
+      "setup": "A watchman off duty, very drunk, told {first} the manor road shift is paid to look at the river and not the road. He wanted to be told it was all right.",
+      "options": [
+        {
+          "id": "allright",
+          "label": "Tell him it is all right.",
+          "outcome": "{first} told him. He cried, then slept. The manor road went unwatched again.",
+          "effects": {
+            "favour": 3,
+            "mark": "told-the-watchman-it-was-all-right"
+          }
+        },
+        {
+          "id": "truth",
+          "label": "Tell him what it makes him.",
+          "outcome": "{first} told him. He did not hit {them}; he went out into the rain instead. Somebody in the Watch heard.",
+          "effects": {
+            "renown": 2,
+            "favour": -2,
+            "mark": "told-the-watchman-what-he-was"
+          }
+        },
+        {
+          "id": "leave",
+          "label": "Leave him to it.",
+          "default": true,
+          "outcome": "He was still talking when {first} left, to nobody."
+        }
+      ]
+    },
+    {
+      "id": "the-song-about-the-baron",
+      "kind": "light",
+      "errands": [
+        "carouse"
+      ],
+      "outcomes": [
+        "fair",
+        "boon"
+      ],
+      "setup": "Somebody started the song about the Baron's shutters. Everybody knew the words. Nobody would sing the third verse.",
+      "options": [
+        {
+          "id": "sing",
+          "label": "Sing the third verse.",
+          "outcome": "{first} sang it. The Flagon roared, and then checked the windows.",
+          "effects": {
+            "renown": 2,
+            "favour": 1,
+            "mark": "sang-the-third-verse"
+          },
+          "headline": "Third Verse Sung Aloud in the Flagon; Singer Named as {first} of {warband}"
+        },
+        {
+          "id": "hum",
+          "label": "Hum along.",
+          "default": true,
+          "outcome": "{first} hummed. It was enough.",
+          "effects": {
+            "favour": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "the-sleeping-lookout",
+      "kind": "loyalty",
+      "errands": [
+        "spy"
+      ],
+      "setup": "The {rival}'s lookout was asleep at the ferry stair with a lantern burning and a satchel open beside him.",
+      "options": [
+        {
+          "id": "satchel",
+          "label": "Look in the satchel.",
+          "outcome": "Letters, a map of the basins with three marked, and bread. {first} read the letters. The bread was left.",
+          "effects": {
+            "rumour": true,
+            "renown": -1,
+            "mark": "read-the-rivals-letters"
+          }
+        },
+        {
+          "id": "wake",
+          "label": "Wake him, and say nothing about it.",
+          "outcome": "{first} kicked his boot. He came awake reaching for a knife, saw who it was, and nodded once. Debts go both ways here.",
+          "effects": {
+            "renown": 2,
+            "mark": "woke-the-rivals-lookout"
+          }
+        },
+        {
+          "id": "pass",
+          "label": "Walk past.",
+          "default": true,
+          "outcome": "The lantern was still burning when {first} looked back."
+        }
+      ]
+    },
+    {
+      "id": "the-coat-in-the-cemetery",
+      "kind": "lore",
+      "errands": [
+        "spy",
+        "pray"
+      ],
+      "requires": {
+        "notMark": [
+          "followed-the-coat"
+        ]
+      },
+      "setup": "Somebody in the old Baron's coat was walking the rows in Morr's Garden, stopping at every stone, reading each one aloud to the dark.",
+      "options": [
+        {
+          "id": "follow",
+          "label": "Follow the coat.",
+          "outcome": "{first} followed as far as the wall and no further. The coat went through the gate the gravediggers chain. The chain was not touched.",
+          "effects": {
+            "mark": "followed-the-coat",
+            "rumour": true,
+            "carry": {
+              "tilt": -1
+            }
+          }
+        },
+        {
+          "id": "other",
+          "label": "Go home by the other road.",
+          "default": true,
+          "outcome": "{first} took the mill race road. The reading went on behind {them} for a long time.",
+          "effects": {
+            "mark": "left-the-coat-alone"
+          }
+        }
+      ]
+    },
+    {
+      "id": "the-list-of-names",
+      "kind": "moral",
+      "errands": [
+        "spy"
+      ],
+      "weight": 2,
+      "setup": "In the tithe barn a clerk of the Baron's had left a list on the table: eleven names, four struck through. {first} knew two of the eleven.",
+      "options": [
+        {
+          "id": "take",
+          "label": "Take the list.",
+          "outcome": "It is in {first}'s boot. Whoever comes for it will come for the boot.",
+          "effects": {
+            "rumour": true,
+            "renown": -2,
+            "mark": "took-the-list",
+            "carry": {
+              "tilt": -1
+            }
+          }
+        },
+        {
+          "id": "warn",
+          "label": "Warn the two {they} know.",
+          "outcome": "Both were told by dawn. One laughed. One packed.",
+          "effects": {
+            "favour": 4,
+            "mark": "warned-the-two"
+          }
+        },
+        {
+          "id": "leave",
+          "label": "Leave it as it was.",
+          "default": true,
+          "outcome": "The list stayed where it was. Eleven names, four struck through. Tomorrow perhaps five."
+        }
+      ]
+    },
+    {
+      "id": "the-ferrymans-offer",
+      "kind": "risk",
+      "errands": [
+        "spy"
+      ],
+      "setup": "The ferryman said he could put {first} on the manor's water stair at the turn of the tide, for a shard and no questions.",
+      "options": [
+        {
+          "id": "cross",
+          "label": "Pay him. Cross.",
+          "outcome": "The shard changed hands and the ferry went out into the dark.",
+          "risk": {
+            "chance": 0.5,
+            "good": {
+              "outcome": "The water stair was unwatched. What {first} saw through the study shutters is a rumour now, and a thing to keep.",
+              "effects": {
+                "shards": -1,
+                "rumour": true,
+                "token": "sight",
+                "mark": "crossed-to-the-manor"
+              }
+            },
+            "bad": {
+              "outcome": "The stair was watched. {first} was seen, named, and rowed back in a hurry. The Baron's clerk writes things down.",
+              "effects": {
+                "shards": -1,
+                "curse": "marked",
+                "mark": "crossed-to-the-manor"
+              }
+            }
+          }
+        },
+        {
+          "id": "stay",
+          "label": "Stay on this bank.",
+          "default": true,
+          "outcome": "The ferry went across empty. The tide turned without {first}."
+        }
+      ]
+    },
+    {
+      "id": "what-the-mill-wheel-caught",
+      "kind": "light",
+      "errands": [
+        "spy"
+      ],
+      "setup": "The mill wheel jammed again while {first} was under the race. Whatever it had caught was still moving, and looked at {them}.",
+      "options": [
+        {
+          "id": "free",
+          "label": "Cut it free.",
+          "outcome": "The wheel turned. The thing went downstream, slowly, still looking.",
+          "effects": {
+            "favour": 2,
+            "renown": 1,
+            "mark": "freed-the-wheel"
+          }
+        },
+        {
+          "id": "kill",
+          "label": "Kill it.",
+          "outcome": "It took three blows and did not scream. The miller found {first} washing in the race.",
+          "effects": {
+            "renown": 2,
+            "favour": -2,
+            "mark": "killed-the-thing-in-the-wheel"
+          }
+        },
+        {
+          "id": "leave",
+          "label": "Leave it for the miller.",
+          "default": true,
+          "outcome": "The miller freed it at dawn with a boat hook and said nothing about legs."
+        }
+      ]
+    },
+    {
+      "id": "what-breathes-under-the-shrine",
+      "kind": "risk",
+      "errands": [
+        "pray"
+      ],
+      "weight": 2,
+      "setup": "The candle guttered at the third hour and something under the shrine floor breathed in. Father Justinian said the word for it was 'stay'.",
+      "options": [
+        {
+          "id": "stay",
+          "label": "Stay until dawn.",
+          "outcome": "{first} stayed.",
+          "risk": {
+            "chance": 0.55,
+            "good": {
+              "outcome": "The candle held. Whatever breathed, breathed out. The Father put a thing from the altar in {first}'s hand and offered no explanation.",
+              "effects": {
+                "favour": 6,
+                "token": "fortune",
+                "mark": "kept-the-vigil"
+              }
+            },
+            "bad": {
+              "outcome": "The candle held. So did the cold. {first} came out at dawn coughing green, and the Father pretended not to see.",
+              "effects": {
+                "favour": 2,
+                "curse": "wyrdstone-cough",
+                "mark": "kept-the-vigil"
+              }
+            }
+          }
+        },
+        {
+          "id": "snuff",
+          "label": "Snuff the candle. Go.",
+          "default": true,
+          "outcome": "The candle was out when {first} looked back. Nobody was looking after it."
+        }
+      ]
+    },
+    {
+      "id": "the-beggar-on-the-step",
+      "kind": "moral",
+      "errands": [
+        "pray"
+      ],
+      "setup": "A beggar was asleep on the shrine step in the rain. The Father's rule is that the step is Morr's, and the Watch clears it at midnight.",
+      "options": [
+        {
+          "id": "inside",
+          "label": "Carry him inside.",
+          "outcome": "The Father said nothing. The Watch came, looked at the empty step, and went. The beggar slept in a corner of the nave.",
+          "effects": {
+            "favour": 3,
+            "mark": "carried-the-beggar-in"
+          }
+        },
+        {
+          "id": "coat",
+          "label": "Give him {their} coat and leave him.",
+          "outcome": "The Watch took him at midnight, coat and all. {first} walked home wet.",
+          "effects": {
+            "favour": 4,
+            "renown": 1,
+            "mark": "gave-the-beggar-a-coat",
+            "carry": {
+              "tilt": -1
+            }
+          }
+        },
+        {
+          "id": "step",
+          "label": "Step over him.",
+          "default": true,
+          "outcome": "The Watch cleared the step at midnight. It rained until dawn."
+        }
+      ]
+    },
+    {
+      "id": "the-chained-headstone",
+      "kind": "lore",
+      "errands": [
+        "pray"
+      ],
+      "requires": {
+        "notMark": [
+          "unchained-a-stone"
+        ]
+      },
+      "setup": "One of the chained headstones in Morr's Garden had worked loose. The chain was on the ground. The earth in front of it was not settled.",
+      "options": [
+        {
+          "id": "chain",
+          "label": "Put the chain back.",
+          "outcome": "It took both hands. The earth stopped whatever it was doing.",
+          "effects": {
+            "favour": 3,
+            "mark": "chained-the-stone"
+          }
+        },
+        {
+          "id": "pull",
+          "label": "Pull the stone.",
+          "outcome": "Under it, a hole. In the hole, a smell like the Basins, and a ladder. {first} did not go down. Not tonight.",
+          "effects": {
+            "rumour": true,
+            "renown": 1,
+            "mark": "unchained-a-stone",
+            "carry": {
+              "tilt": -1
+            }
+          }
+        },
+        {
+          "id": "tell",
+          "label": "Tell the gravediggers.",
+          "default": true,
+          "outcome": "They came with a fresh chain and did not ask how {first} knew."
+        }
+      ]
+    },
+    {
+      "id": "the-fathers-spears",
+      "kind": "loyalty",
+      "errands": [
+        "pray"
+      ],
+      "outcomes": [
+        "fair",
+        "boon"
+      ],
+      "setup": "Father Justinian asked {first}, quietly, whether {warband} would stand in the nave with spears on the Silent Moon. He did not say against what.",
+      "options": [
+        {
+          "id": "promise",
+          "label": "Promise it.",
+          "outcome": "{first} promised for the warband. The Father wrote it in a book. It is written now.",
+          "effects": {
+            "favour": 5,
+            "renown": 1,
+            "mark": "promised-the-father"
+          }
+        },
+        {
+          "id": "refuse",
+          "label": "Refuse.",
+          "outcome": "The Father thanked {them} for honesty and went back to counting spears.",
+          "effects": {
+            "favour": -2,
+            "renown": 1,
+            "mark": "refused-the-father"
+          }
+        },
+        {
+          "id": "ask",
+          "label": "Say {they} will ask the others.",
+          "default": true,
+          "outcome": "The Father nodded as if he had heard that before."
+        }
+      ]
+    },
+    {
+      "id": "the-candle-that-would-not-light",
+      "kind": "light",
+      "errands": [
+        "pray"
+      ],
+      "setup": "One candle on the altar would not take the flame. Three tries. The Father said leave it; the Sisters say a candle that will not light is a name that should not be said.",
+      "options": [
+        {
+          "id": "light",
+          "label": "Light it from {their} own.",
+          "outcome": "It took. It burned a colour {first} did not look at for long.",
+          "effects": {
+            "favour": 2,
+            "mark": "lit-the-stubborn-candle"
+          }
+        },
+        {
+          "id": "dark",
+          "label": "Leave it dark.",
+          "default": true,
+          "outcome": "It stayed dark. The other candles leaned away from it."
+        }
+      ]
+    },
+    {
+      "id": "the-barons-silver",
+      "kind": "moral",
+      "errands": [
+        "trade"
+      ],
+      "weight": 2,
+      "setup": "Old Henrik counted out Baron's silver for the green, twice what the green is worth, and said the Baron would like to know where {warband} finds it.",
+      "options": [
+        {
+          "id": "tell",
+          "label": "Take the silver. Tell him.",
+          "outcome": "The silver is good. Henrik wrote the place in a book that goes to the manor.",
+          "effects": {
+            "favour": 8,
+            "renown": -3,
+            "mark": "took-the-barons-silver"
+          }
+        },
+        {
+          "id": "back",
+          "label": "Take the green back.",
+          "outcome": "Henrik shrugged. The Baron will hear of the refusal too. Refusals are also worth something to him.",
+          "effects": {
+            "favour": -2,
+            "renown": 3,
+            "mark": "refused-the-barons-silver"
+          }
+        },
+        {
+          "id": "fair",
+          "label": "Take the fair price. Say nothing.",
+          "default": true,
+          "outcome": "Henrik paid the usual and did not ask twice. He will ask twice next time.",
+          "effects": {
+            "favour": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "the-warm-crate",
+      "kind": "risk",
+      "errands": [
+        "trade"
+      ],
+      "setup": "A bargeman offered {first} a crate off the Warehouse 4 boat, unopened, for a shard. It was warm through the slats.",
+      "options": [
+        {
+          "id": "buy",
+          "label": "Buy it.",
+          "outcome": "The shard changed hands and the crate came off the boat.",
+          "risk": {
+            "chance": 0.5,
+            "good": {
+              "outcome": "Inside, wrapped in Baron's cloth, chits from a fence in Bechafen and a thing that hummed. Henrik paid for the chits and would not touch the thing.",
+              "effects": {
+                "shards": -1,
+                "token": "market",
+                "favour": 3,
+                "mark": "bought-the-warm-crate"
+              }
+            },
+            "bad": {
+              "outcome": "Inside, wrapped in Baron's cloth, river stones. Warm river stones. The bargeman's boat was gone.",
+              "effects": {
+                "shards": -1,
+                "curse": "swindled",
+                "mark": "bought-the-warm-crate"
+              }
+            }
+          }
+        },
+        {
+          "id": "pass",
+          "label": "Let it pass.",
+          "default": true,
+          "outcome": "The crate went on upriver, warm, to whoever was waiting."
+        }
+      ]
+    },
+    {
+      "id": "the-widows-shards",
+      "kind": "moral",
+      "errands": [
+        "trade"
+      ],
+      "setup": "A woman from the mill cottages had two shards in a cloth and no idea what they were worth. She asked {first}.",
+      "options": [
+        {
+          "id": "truth",
+          "label": "Tell her the truth.",
+          "outcome": "{first} told her Henrik's price and Henrik's tricks. She got the price. Henrik saw who told her.",
+          "effects": {
+            "favour": 4,
+            "mark": "told-the-widow-the-price"
+          }
+        },
+        {
+          "id": "buy",
+          "label": "Buy them for bread money.",
+          "outcome": "Two shards for a loaf's worth of coin. She thanked {first}. That was the worst of it.",
+          "effects": {
+            "shards": 2,
+            "renown": -2,
+            "mark": "bought-the-widows-shards"
+          }
+        },
+        {
+          "id": "shrug",
+          "label": "Say {they} do not know.",
+          "default": true,
+          "outcome": "She went to Henrik. Henrik knew."
+        }
+      ]
+    },
+    {
+      "id": "the-toll-at-the-mud-gate",
+      "kind": "loyalty",
+      "errands": [
+        "trade",
+        "carouse"
+      ],
+      "setup": "The Mud-Gate watch was charging a toll to come back in after curfew. It was not the Baron's toll. The sergeant holding out his hand was the one who takes the Baron's silver.",
+      "options": [
+        {
+          "id": "pay",
+          "label": "Pay it.",
+          "outcome": "{first} paid. The sergeant said {warband} would be remembered as reasonable.",
+          "effects": {
+            "favour": -3,
+            "mark": "paid-the-mud-gate-toll"
+          }
+        },
+        {
+          "id": "name",
+          "label": "Name the toll for what it is, loudly.",
+          "outcome": "The cottages heard it. So did the sergeant. Tomorrow's gate will not be a friendly one.",
+          "effects": {
+            "renown": 3,
+            "favour": -1,
+            "mark": "named-the-toll",
+            "carry": {
+              "tilt": -1
+            }
+          }
+        },
+        {
+          "id": "wait",
+          "label": "Wait until the shift changes.",
+          "default": true,
+          "outcome": "{first} waited in the reeds two hours. The next shift did not hold out a hand."
+        }
+      ]
+    }
+  ],
+  "undecided": [
+    "There was nobody to ask. {first} kept walking.",
+    "{first} did not wait to be told.",
+    "Nobody was there to say otherwise, so {first} did what {first} does.",
+    "The river does not wait for orders, and neither did {first}.",
+    "By the time anyone might have asked, it was done."
+  ],
+  "markNames": {
+    "kept-the-ring": "kept the ring",
+    "gave-morr-his-due": "gave Morr his due",
+    "dug-where-it-moved": "dug where the silt moved",
+    "worked-the-boys-basin": "worked the algae boy's basin",
+    "took-the-boys-green": "took the algae boy's green",
+    "carried-the-bargeman": "carried the bargeman in",
+    "took-the-bargemans-purse": "took the bargeman's purse",
+    "looked-under-warehouse-4": "looked under Warehouse 4",
+    "walked-past-warehouse-4": "walked past Warehouse 4",
+    "listened": "listened to the sergeant",
+    "stood-by-their-own": "stood by their own",
+    "settled-the-drowned-mans-tab": "settled the drowned man's tab",
+    "settled-half-loudly": "settled half a tab, loudly",
+    "beat-the-fingerless-man": "beat the fingerless man at bones",
+    "lost-to-the-fingerless-man": "lost to the fingerless man",
+    "told-the-watchman-it-was-all-right": "told a watchman it was all right",
+    "told-the-watchman-what-he-was": "told a watchman what he was",
+    "sang-the-third-verse": "sang the third verse",
+    "read-the-rivals-letters": "read the rival's letters",
+    "woke-the-rivals-lookout": "woke the rival's lookout",
+    "followed-the-coat": "followed the coat into the Garden",
+    "left-the-coat-alone": "left the coat alone",
+    "took-the-list": "took the Baron's list",
+    "warned-the-two": "warned two on the list",
+    "crossed-to-the-manor": "crossed to the manor stair",
+    "freed-the-wheel": "freed the mill wheel",
+    "killed-the-thing-in-the-wheel": "killed the thing in the wheel",
+    "kept-the-vigil": "kept the vigil",
+    "carried-the-beggar-in": "carried the beggar in",
+    "gave-the-beggar-a-coat": "gave the beggar a coat",
+    "chained-the-stone": "chained the stone again",
+    "unchained-a-stone": "pulled a chained stone",
+    "promised-the-father": "promised the Father spears",
+    "refused-the-father": "refused the Father",
+    "lit-the-stubborn-candle": "lit the candle that would not light",
+    "took-the-barons-silver": "took the Baron's silver",
+    "refused-the-barons-silver": "refused the Baron's silver",
+    "bought-the-warm-crate": "bought the warm crate",
+    "told-the-widow-the-price": "told the widow the price",
+    "bought-the-widows-shards": "bought the widow's shards",
+    "paid-the-mud-gate-toll": "paid the Mud-Gate toll",
+    "named-the-toll": "named the toll for what it is"
   }
 }

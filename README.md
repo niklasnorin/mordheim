@@ -20,14 +20,16 @@ Players sign in with an email and a password (no emails are sent; the game maste
 
 Resolution happens twice over, and both ways agree: a nightly cron writes every ledger's dawn just after midnight (so the Town Cryer has last night before anyone looks in), and any visit to a ledger first writes whatever dawns are still due. Missed nights run on standing orders at half yield; a gap longer than a week collapses into a single Return vignette and nothing is lost but opportunity.
 
+Some nights one member comes to a **crossroads**: the Dawn Report stops there and the player decides at dawn what the character did. Roads cost or bring Favour, shards, Renown, a charm or a rumour, leave a permanent mark in the warrior's story, can reach into tonight, and on a risk road may bring a curse home. A crossroads nobody decides is decided by the character at the next midnight, along the road that risks nothing. See `src/data/curfew/CROSSROADS.md`.
+
 | File | Contents |
 | --- | --- |
 | `src/data/curfew/campaign.json` | Start date (night 1), time zone, members per night, soft caps, thresholds, and the calendar anchor: the first game's real date and its Imperial date |
 | `src/lib/calendar.ts` | The Imperial Calendar: 400-day year, eight-day week, six holy days outside both; every real day since the first game is one Imperial day. Dates the Town Cryer's issues, the Curfew's nights and the archives' battles |
 | `src/data/curfew/omens.json` | The 30 Omens of the Tarot of the Damned, with readings and errand tilts |
 | `src/data/curfew/moons.json`, `tokens.json`, `patrons.json`, `jobs.json` | The weekly Moons, the tokens (some belong to one place) and 4 curses, and Phase 4 content |
-| `src/data/curfew/locations/*.json` | One pack per place the campaign can be in: its errands and why the others are not to be had, points of interest, Dawn Report templates, rumours, epithets, Moon tie-ins, and the Town Cryer's masthead and headlines. `mordheim.json` and `fussenbach.json` today |
-| `src/data/curfew/STYLE.md`, `PLAN.md` | The writing style guide; the implementation plan with phase status |
+| `src/data/curfew/locations/*.json` | One pack per place the campaign can be in: its errands and why the others are not to be had, points of interest, Dawn Report templates, rumours, epithets, Moon tie-ins, its crossroads and the names of the marks they leave, and the Town Cryer's masthead and headlines. `mordheim.json` and `fussenbach.json` today |
+| `src/data/curfew/STYLE.md`, `PLAN.md`, `CROSSROADS.md` | The writing style guide; the implementation plan with phase status; the Crossroads, proposed and built |
 | `src/curfew/engine.ts` | The pure Night engine: calendar, seeded draws, errand resolution, the Hand |
 | `src/curfew/ledger.ts` | The ledger as pure functions: orders, reconciliation of passed nights, absence rules, offers, the Eve |
 | `src/curfew/cryer.ts` | What a resolved night gives the Town Cryer: every headline, and occasionally one member's night |

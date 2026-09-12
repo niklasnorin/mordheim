@@ -154,3 +154,29 @@ test('burning starts afresh; giving up frees the warband', async () => {
   const taken = await claimWarband(NIKLAS, 'nordost', 9);
   assert.equal(taken.warbandId, 'nordost');
 });
+
+test('a road is taken through the service, once, and the Cryer prints the night only then', async () => {
+  const { waitingCrossroads, keptMembers } = await import('../../curfew/ledger.ts');
+  const nordost = warbands.find((w) => w.id === 'nordost')!;
+  let today = 12, waiting: Awaited<ReturnType<typeof loadOwnLedger>> = null;
+  for (; today < 400; today++) {
+    const view = (await loadOwnLedger(NIKLAS, today))!;
+    if (waitingCrossroads(view.state)) { waiting = view; break; }
+    const free = nordost.members.filter((m) => !m.dead && !restingMembers(view.state, today).includes(m.id) && !keptMembers(view.state, today).includes(m.id) && !view.recovering.includes(m.id)).slice(0, 2);
+    await actions.orders(NIKLAS, today, free.map((m, i) => ({ memberId: m.id, errand: (['scavenge', 'carouse', 'spy', 'pray', 'trade', 'train'] as const)[(today + i) % 6] })));
+  }
+  assert.ok(waiting, 'a crossroads was met');
+  const night = waitingCrossroads(waiting!.state)!;
+  assert.equal(night.night, today - 1);
+  const printedBefore = (await recentDispatches(today, 200)).filter((d) => d.night === night.night && d.kind === 'happening');
+  assert.equal(printedBefore.length, 0, 'the broadsheet waits');
+  const road = night.crossroads!.options[0];
+  const view = await actions.decide(NIKLAS, today, night.night, road.id);
+  const decided = view.state.nights.find((n) => n.night === night.night)!.crossroads!.decided!;
+  assert.equal(decided.roadId, road.id);
+  assert.equal(decided.on, today);
+  await assert.rejects(actions.decide(NIKLAS, today, night.night, road.id), (e: unknown) => e instanceof LedgerError && /decided/.test(e.message));
+  const expected = dispatchesForNight(nordost, view.state.nights.find((n) => n.night === night.night)!, view.state.headlines);
+  const printed = await recentDispatches(today, 200);
+  for (const d of expected) assert.ok(printed.some((p) => p.key === d.key), `${d.key} reached the Cryer on the decision`);
+});

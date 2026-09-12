@@ -12,7 +12,7 @@ import { cryerDispatches, curfewLedgers, curfewMoves, curfewRuns, user } from '.
 import { env } from '../env.ts';
 import { currentNight, locationById, locationForNight, type Location, type Move, type NightResult, type Order, type TokenOffer } from '../../curfew/engine.ts';
 import {
-  LedgerError, coerceState, fightDone, freshState, giveOrders, heal, layTable, nightForOverride, provideIfEmpty, putBack, reconcile, recoveringMembers, settleOffer,
+  LedgerError, coerceState, decide, fightDone, freshState, giveOrders, heal, layTable, nightForOverride, provideIfEmpty, putBack, reconcile, recoveringMembers, settleOffer,
   type Flourish, type WarbandState,
 } from '../../curfew/ledger.ts';
 import { dispatchesForNight, type Dispatch } from '../../curfew/cryer.ts';
@@ -143,10 +143,17 @@ async function save(warbandId: string, version: number, state: WarbandState): Pr
   return updated.length > 0;
 }
 
+/** The dispatches a ledger owes the Cryer now: the nights just written, and any night whose crossroads was decided today. */
+function dispatchesDue(warband: Warband, state: WarbandState, written: NightResult[], today: number): Dispatch[] {
+  const out: Dispatch[] = [];
+  const nights = [...written, ...state.nights.filter((n) => n.crossroads?.decided?.on === today && !written.includes(n))];
+  for (const n of nights) out.push(...dispatchesForNight(warband, n, state.headlines));
+  return out;
+}
+
 /** Hand the Town Cryer what these nights gave it, plus anything planted today. Idempotent by key. */
 async function publish(warband: Warband, state: WarbandState, written: NightResult[], today: number): Promise<void> {
-  const out: Dispatch[] = [];
-  for (const n of written) out.push(...dispatchesForNight(warband, n, state.headlines));
+  const out: Dispatch[] = dispatchesDue(warband, state, written, today);
   // planted at the Eve tonight: the same key scheme as a resolved night's headlines
   state.headlines.filter((h) => h.night === today).forEach((h, i) => {
     out.push({ key: `${warband.id}:${today}:h${i}`, warbandId: warband.id, night: today, kind: 'headline', headline: h.text });
@@ -161,6 +168,8 @@ export const actions = {
   orders: (userId: string, today: number, orders: Order[]) => withLedger(userId, today, (s, w, rec, loc) => giveOrders(s, w, today, orders, rec, loc)),
   heal: (userId: string, today: number, memberId: string) => withLedger(userId, today, (s, w) => heal(s, w, memberId)),
   offer: (userId: string, today: number, offer: TokenOffer, keep: 'incoming' | 'held') => withLedger(userId, today, (s) => settleOffer(s, offer, keep)),
+  /** Take a road at the crossroads last night met. */
+  decide: (userId: string, today: number, night: number, roadId: string) => withLedger(userId, today, (s, w) => { decide(s, w, night, roadId, { on: today, rival: rivalsOf(w.id) }); }),
   /** Opening the Eve with an empty Hand: the City Provides one charm. */
   eveOpen: (userId: string, today: number) => withLedger(userId, today, (s, _w, _rec, loc) => { if (!s.eve && today >= 1) provideIfEmpty(s, today, loc); }),
   eveLay: (userId: string, today: number, bring: string[], flourish?: Flourish) => withLedger(userId, today, (s, w) => layTable(s, w, today, bring, flourish)),
@@ -186,7 +195,7 @@ export async function reconcileAll(today: number, source: 'cron' | 'admin' = 'cr
     const written = reconcile(state, warband, today, recoveringMembers(state, injuredInLastBattle(warband.id)), rivalsOf(warband.id), moves);
     if (!written.length) continue;
     if (!(await save(row.warbandId, row.version, state))) continue; // someone else wrote it first; their dawn is the same dawn
-    const out = written.flatMap((n) => dispatchesForNight(warband, n, state.headlines));
+    const out = dispatchesDue(warband, state, written, today);
     if (out.length) await db().insert(cryerDispatches).values(out.map((d) => ({ key: d.key, warbandId: d.warbandId, night: d.night, kind: d.kind, headline: d.headline, body: d.body ?? null }))).onConflictDoNothing();
     nights += written.length; dispatches += out.length;
   }

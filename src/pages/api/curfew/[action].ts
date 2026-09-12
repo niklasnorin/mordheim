@@ -21,6 +21,7 @@ const schemas = {
   orders: z.object({ orders: z.array(z.object({ memberId: z.string().min(1).max(64), errand })).max(12) }),
   heal: z.object({ memberId: z.string().min(1).max(64) }),
   offer: z.object({ offer: z.object({ night: z.number().int(), incoming: z.string().max(64), held: z.string().max(64) }), keep: z.enum(['incoming', 'held']) }),
+  decide: z.object({ night: z.number().int(), roadId: z.string().min(1).max(64) }),
   'eve-open': z.object({}),
   'eve-lay': z.object({ bring: z.array(z.string().max(64)).max(3), flourish: z.object({ kind: z.enum(['field', 'headline', 'weather', 'dedication']), text: z.string().max(120) }).optional() }),
   'eve-done': z.object({}),
@@ -54,6 +55,7 @@ export const POST: APIRoute = async ({ request, params }) => {
       case 'orders': return json({ view: await actions.orders(viewer.id, today, (input as z.infer<typeof schemas.orders>).orders as Parameters<typeof actions.orders>[2]) });
       case 'heal': return json({ view: await actions.heal(viewer.id, today, (input as z.infer<typeof schemas.heal>).memberId) });
       case 'offer': { const i = input as z.infer<typeof schemas.offer>; return json({ view: await actions.offer(viewer.id, today, i.offer, i.keep) }); }
+      case 'decide': { const i = input as z.infer<typeof schemas.decide>; return json({ view: await actions.decide(viewer.id, today, i.night, i.roadId) }); }
       case 'eve-open': return json({ view: await actions.eveOpen(viewer.id, today) });
       case 'eve-lay': { const i = input as z.infer<typeof schemas['eve-lay']>; return json({ view: await actions.eveLay(viewer.id, today, i.bring, i.flourish) }); }
       case 'eve-done': return json({ view: await actions.eveDone(viewer.id, today) });
