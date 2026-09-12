@@ -35,7 +35,7 @@ Some nights one member comes to a **crossroads**: the Dawn Report stops there an
 | `src/curfew/cryer.ts` | What a resolved night gives the Town Cryer: every headline, and occasionally one member's night |
 | `src/server/curfew/service.ts` | Ledgers in Postgres: claims, load-reconcile-save with optimistic locking, the nightly run, dispatches |
 | `src/pages/api/curfew/[action].ts`, `src/pages/api/cron/midnight.ts` | The JSON API the Ledger and Eve pages call, and the cron endpoint |
-| `public/curfew/omens/` | Card images, regenerated with `scripts/curfew/` |
+| `public/curfew/omens/`, `public/curfew/places/` | Omen card images, and the band and mark of each place the campaign can be in; both regenerated with `scripts/curfew/` |
 
 For game masters, `?date=YYYY-MM-DD` is allowed on Curfew URLs and the dim **Debug** toggle in the Ledger's footer adds previous/next-night buttons and a date picker. A player's clock is never steered, whatever the URL says, and the Watch House always acts on the real night, so debugging cannot touch anyone else's ledger. This is on everywhere, production included; `CURFEW_DEBUG=false` turns it off. While the toggle is on, every request is a **dry run**: the server computes the night in memory and saves nothing, the browser keeps the sandbox between steps (in `sessionStorage`, sent back as `dry.base`), the strip says how many nights the sandbox is ahead of the real ledger and what the Cryer would have printed, and turning the toggle off drops the sandbox. The real ledger is exactly as it was.
 

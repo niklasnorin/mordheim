@@ -13,6 +13,7 @@
   "redirect": { "scavenge": "dredge", "train": "carouse" },
   "inherits": { "dredge": "scavenge" },
   "moonBoost": { "hunters-moon": "pray" },
+  "art": { "focus": "50% 22%" },
   "arrival": "{warband} came up the Fussen on a grain barge and took the rooms above the Cracked Flagon. The village noticed, and said nothing.",
   "watchNote": "A village of thirteen hundred and one pub. There is no rubble to sift and no Pit to fight in; the basins, the Flagon, the shrine and the wharf will have to do.",
   "blurbs": {

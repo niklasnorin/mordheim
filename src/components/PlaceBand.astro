@@ -1,0 +1,29 @@
+---
+/**
+ * Where the campaign is, as a band of the place's own painting: the letterhead of every Curfew page.
+ * The art is cut and graded by `scripts/curfew/render-places.py`; where it is framed is the pack's own
+ * business (`art.focus`), so a new place ships its band with the rest of its content.
+ */
+import { base } from '../lib/site';
+import type { Location } from '../curfew/engine';
+
+interface Props { place: Location }
+const { place } = Astro.props;
+---
+
+<div class="cf-place" id="place-band" data-place={place.id}>
+  <img
+    class="cf-place-art"
+    id="place-art"
+    src={`${base}/curfew/places/${place.id}-band.jpg`}
+    style={`object-position:${place.art?.focus ?? '50% 50%'}`}
+    alt=""
+    width="1100"
+    height="495"
+    fetchpriority="high"
+  />
+  <div class="cf-place-plate">
+    <p class="cf-place-name" id="place-name">{place.name}</p>
+    <p class="cf-place-sub" id="place-sub">{place.title}</p>
+  </div>
+</div>
