@@ -44,7 +44,7 @@ In `astro dev` (or with `CURFEW_DEBUG=true`, never in production) `?date=YYYY-MM
 - inspect any ledger (last night, the Hand, pending offers, the Eve, the raw record), burn one to start it afresh, or release a warband from its keeper;
 - moderate the Town Cryer: pull a dispatch, or post a notice from the Watch that prints in the broadsheet;
 - move the campaign between the places in `src/data/curfew/locations/` (Mordheim and Fussenbach). The move takes effect from tonight: earlier nights keep their place, the Curfew greys out the errands the new place has none of and offers its own, and the Town Cryer prints from there;
-- see every player with their sign-in provider, sessions and last visit, and sign one out everywhere;
+- see every player with their sessions and last visit, sign one out everywhere, and issue a reset word when a password is forgotten;
 - run midnight by hand and read the history of runs.
 
 Admission is by `ADMIN_EMAILS`, a comma-separated list of sign-in emails. Locally, with the dev sign-in and no list, every player is admitted.

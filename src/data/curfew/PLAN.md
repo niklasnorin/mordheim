@@ -199,7 +199,7 @@ Warband rosters, standings and battle reports are still content in the repositor
 | **4 — Depth** | Whispers, Jobs, Moon events, Patrons and contracts, Sigmar's Mercy | Open |
 | **5 — The City** | The Ashen Quarter map, naming, landmarks into scenarios, the Comet's Wane and finale | Open |
 | **6 — Atmosphere** | Optional sound, epitaphs, shareable and printable season Chronicle | Open |
-| **Housekeeping** | Size the Mordheim pack like Fussenbach's (§2a); WebP card images for phones (the deck is 36 MB of PNG, about 1.1 MB a card, and the Ledger loads two at 1050×1800); skip the main site's three font families on Curfew pages (both sets load today; `Base.astro` has no way to leave them out); record the incumbent design system (`/impeccable document`; `PRODUCT.md` exists, a design record does not); bring `PRODUCT.md` up to date (it still says two warbands, six errands, social login and no navigation link) | Open |
+| **Housekeeping** | Size the Mordheim pack like Fussenbach's (§2a); WebP card images for phones (the deck is 36 MB of PNG, about 1.1 MB a card, and the Ledger loads two at 1050×1800); skip the main site's three font families on Curfew pages (both sets load today; `Base.astro` has no way to leave them out); record the incumbent design system (`/impeccable document`; `PRODUCT.md` exists, a design record does not); bring `PRODUCT.md` up to date (**done** in revision 5) | Open |
 
 ---
 
@@ -237,7 +237,7 @@ Corrected in this revision:
 - Migrations on deploy, reset words, the run log, the health check and the Watch's notices had shipped without a line in the plan (§5, §9).
 - The nights' presence on the campaign site (warband cards, warrior profiles) was only implied (§5).
 - The Imperial Calendar had no row in the phase table (§10).
-- `PRODUCT.md`, which §8 calls binding, is behind on four facts (Housekeeping).
+- `PRODUCT.md`, which §8 calls binding, had drifted: two warbands, six errands, no navigation link, and nothing of the Watch House, the places or the Imperial Calendar. Brought up to date in this revision.
 
 Three warbands are registered on this date: the Nordost Kin, the Bitterbrow Expedition and the Order of the Welling Rune. One battle is recorded.
 
