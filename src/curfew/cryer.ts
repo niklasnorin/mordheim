@@ -18,7 +18,8 @@ export interface Dispatch {
   body?: string;
 }
 
-const PRINT_CHANCE: Record<Outcome, number> = { boon: 0.6, poor: 0.4, fair: 0.2 };
+/** How often one member's night is picked up as a happening, by outcome. */
+export const PRINT_CHANCE: Record<Outcome, number> = { boon: 0.6, poor: 0.4, fair: 0.2 };
 
 function fill(template: string, slots: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, k) => slots[k] ?? `{${k}}`);

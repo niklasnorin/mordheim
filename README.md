@@ -47,7 +47,8 @@ For game masters, `?date=YYYY-MM-DD` is allowed on Curfew URLs and the dim **Deb
 - moderate the Town Cryer: pull a dispatch, or post a notice from the Watch that prints in the broadsheet;
 - move the campaign between the places in `src/data/curfew/locations/` (Mordheim and Fussenbach). The move takes effect from tonight: earlier nights keep their place, the Curfew greys out the errands the new place has none of and offers its own, and the Town Cryer prints from there;
 - see every player with their sessions and last visit, sign one out everywhere, and issue a reset word when a password is forgotten;
-- run midnight by hand and read the history of runs.
+- run midnight by hand and read the history of runs;
+- read **the Odds** at `/admin/odds/`: outcome, charm, crossroads and Cryer chances by tilt, expected yield per errand, standing orders, a simulation of real nights for any warband and place, and where each dial lives in the code. Computed from the engine's own constants, so it cannot drift from the dice.
 
 Admission is by `ADMIN_EMAILS`, a comma-separated list of sign-in emails. Locally, with the dev sign-in and no list, every player is admitted.
 

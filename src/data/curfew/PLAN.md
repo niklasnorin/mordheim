@@ -193,6 +193,8 @@ On a phone this is one column. From 1100px the night is laid out side by side: i
 ### The Watch House
 `/admin/` is the game master's console: tonight at a glance, where the campaign is (and the button to move it), every ledger with its keeper and backlog (inspect, burn, or release it), the players and their sessions (sign one out everywhere, issue a reset word), the Town Cryer's dispatches (pull one, or post a notice from the Watch), midnight by hand with the history of runs, and a health check of database, secrets and sign-in. Admission by `ADMIN_EMAILS`; under the dev sign-in everyone is admitted.
 
+**The Odds** (`/admin/odds/`, shipped 12 September) is the game designer's page: outcome, charm, crossroads and Cryer odds by tilt from −3 to +3 with a regular night at 0 and special ones at ±1 and ±2, expected yield per errand and on standing orders, the crossroads pool per place with its risk roads, a simulation of real nights for any warband and place, and a table of where every dial lives. It reads the engine's own constants (`outcomeOdds`, `TOKEN_CHANCE`, `FAVOUR`, `YIELDS`, `PRINT_CHANCE`, `crossroadsChance`), so it cannot drift from the dice, and the dials stay code on purpose.
+
 ### What the server does not do yet
 Warband rosters, standings and battle reports are still content in the repository. Rival glimpses at the Eve still go by ticket, though the server could now answer with the count. PvP and the mini-games are unchanged in scope.
 

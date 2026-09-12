@@ -371,26 +371,37 @@ export function defaultErrand(member: MemberLike, location: Location = DEFAULT_L
 
 // ───────────────────────── resolution ─────────────────────────
 
-const ERRAND_TOKEN_TYPE: Partial<Record<Errand, TokenType>> = { carouse: 'fortune', train: 'ground', spy: 'sight', pray: 'fortune', trade: 'market', dredge: 'ground' };
+export const ERRAND_TOKEN_TYPE: Partial<Record<Errand, TokenType>> = { carouse: 'fortune', train: 'ground', spy: 'sight', pray: 'fortune', trade: 'market', dredge: 'ground' };
 /** Errands that bring the green home. */
-const SHARD_ERRANDS: Errand[] = ['scavenge', 'dredge'];
-const FAVOUR: Record<Outcome, number> = { boon: 8, fair: 5, poor: 2 };
+export const SHARD_ERRANDS: Errand[] = ['scavenge', 'dredge'];
+export const FAVOUR: Record<Outcome, number> = { boon: 8, fair: 5, poor: 2 };
 const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
 /** The odds a night brings a charm home, by outcome and tilt. See the note at the drop. */
 export const TOKEN_CHANCE = {
-  boon: (tilt: number) => clamp(0.33 + 0.05 * tilt, 0.2, 0.5),
-  fair: (tilt: number) => clamp(0.07 + 0.02 * tilt, 0.02, 0.13),
+  boon: (tilt: number) => clamp(0.3 + 0.05 * tilt, 0.2, 0.5),
+  fair: (tilt: number) => clamp(0.06 + 0.02 * tilt, 0.02, 0.12),
 };
 
+/** The odds of each outcome at a tilt: a quarter boon and a third poor at zero, eight points per point of tilt, never below one in twenty. */
+export function outcomeOdds(tilt: number): Record<Outcome, number> {
+  const boon = clamp(0.25 + 0.08 * tilt, 0.05, 0.6), poor = clamp(0.3 - 0.08 * tilt, 0.05, 0.6);
+  return { boon, poor, fair: 1 - boon - poor };
+}
 function rollOutcome(r: () => number, tilt: number): Outcome {
-  let boon = 0.25 + 0.08 * tilt, poor = 0.3 - 0.08 * tilt;
-  boon = Math.max(0.05, Math.min(0.6, boon));
-  poor = Math.max(0.05, Math.min(0.6, poor));
+  const { boon, poor } = outcomeOdds(tilt);
   const x = r();
   if (x < boon) return 'boon';
   if (x > 1 - poor) return 'poor';
   return 'fair';
 }
+/** What an errand yields by outcome, beyond Favour. The odds page reads these too, so they are named. */
+export const YIELDS = {
+  shards: { boon: 2, fair: 1, poor: 0 } as Record<Outcome, number>,
+  trainRenown: { boon: 3, fair: 1, poor: 0 } as Record<Outcome, number>,
+  carouseBoonRenown: 1,
+  /** Standing orders: one poor night in five, else fair; half Favour; a shard half the time on a fair night at a shard errand. */
+  standing: { poor: 0.2, shardOnFair: 0.5 },
+};
 function firstName(name: string): string { return name.split(' ')[0]; }
 function fill(template: string, slots: Record<string, string>): string {
   return template
@@ -441,14 +452,14 @@ export function resolveNight(input: ResolveInput): NightResult {
     // the Omen and the Moon set the night's odds; who you send moves them a little further
     const carried = input.carry?.memberId === member.id ? input.carry.tilt ?? 0 : 0;
     const tilt = Math.max(-3, Math.min(3, tiltFor(order.errand, omen, moon, location) + (standing ? 0 : statEdge(warband, member, order.errand)) + carried));
-    const outcome: Outcome = standing ? (r() < 0.2 ? 'poor' : 'fair') : rollOutcome(r, tilt);
+    const outcome: Outcome = standing ? (r() < YIELDS.standing.poor ? 'poor' : 'fair') : rollOutcome(r, tilt);
     let f = FAVOUR[outcome];
     if (standing) f = Math.ceil(f / 2);
     let renown = 0, gained = 0, token: TokenDef | undefined, rumour: string | undefined, convertedShards: number | undefined;
     // yields by errand
-    if (SHARD_ERRANDS.includes(order.errand)) gained = standing ? (outcome === 'fair' && r() < 0.5 ? 1 : 0) : { boon: 2, fair: 1, poor: 0 }[outcome];
-    if (order.errand === 'train') renown += { boon: 3, fair: 1, poor: 0 }[outcome];
-    if (order.errand === 'carouse' && outcome === 'boon') renown += 1;
+    if (SHARD_ERRANDS.includes(order.errand)) gained = standing ? (outcome === 'fair' && r() < YIELDS.standing.shardOnFair ? 1 : 0) : YIELDS.shards[outcome];
+    if (order.errand === 'train') renown += YIELDS.trainRenown[outcome];
+    if (order.errand === 'carouse' && outcome === 'boon') renown += YIELDS.carouseBoonRenown;
     if (order.errand === 'spy' && outcome !== 'poor') rumour = fill(pick(r, location.rumours), { rival });
     if (order.errand === 'trade' && outcome !== 'poor' && shards >= 5) {
       convertedShards = 5; shards -= 5;

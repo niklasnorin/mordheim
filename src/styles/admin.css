@@ -156,3 +156,18 @@
 /* one motion moment: the toast slides up, everything else just changes */
 .wh ~ .cf-toast { animation: wh-toast 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @keyframes wh-toast { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* The Odds: the game master's tables of chances */
+.wh-nav-page { margin-left: auto; color: var(--candle) !important; }
+.wh-odds td.is-regular, .wh-odds tr.is-regular td, .wh-odds tr.is-regular th { background: #17140f; }
+.wh-odds tr.is-far td, .wh-odds tr.is-far th { color: var(--bone-dim); }
+.wh-odds th[scope='row'] small { display: block; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.62rem; font-weight: 400; margin-top: 0.15rem; }
+.wh-odds.wh-narrow { min-width: 0; }
+.wh-dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.45rem 1.2rem; margin: 0.4rem 0 1rem; font-size: 0.95rem; }
+.wh-dl dt { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.7rem; color: var(--bone-dim); padding-top: 0.2rem; }
+.wh-dl dd { color: var(--bone); }
+.wh-dl dd b { color: var(--candle); font-weight: 600; }
+.wh-form-inline { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.8rem 1.2rem; margin: 0 0 1.2rem; }
+.wh-form-inline label { display: flex; flex-direction: column; gap: 0.3rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.7rem; color: var(--bone-dim); }
+.wh-form-inline select, .wh-form-inline input { font-family: var(--body); font-size: 0.95rem; background: var(--ash-deep); color: var(--bone); border: 1px solid var(--rule); padding: 0.4rem 0.6rem; min-height: 2.5rem; color-scheme: dark; }
+.wh-form-inline input[type=number] { width: 5.5rem; }
