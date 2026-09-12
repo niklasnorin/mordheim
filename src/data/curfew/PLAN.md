@@ -219,6 +219,7 @@ Taken:
 - The Omen deck is the same everywhere: portents are portents. Places reword the Moons' tie-ins instead.
 
 Still open:
+- Whether to build the Crossroads: choices a member met last night, decided by the player at dawn, with consequences that outlive the night. Proposed in `CROSSROADS.md`; would be phase 1e.
 - Whether Curfew should be shown to visitors who are not signed in once the first Moon has been played.
 - Whether the Eve should be opened automatically when a scenario is recorded.
 - How many members per night when more warbands and larger rosters join.
