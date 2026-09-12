@@ -2,12 +2,17 @@
 
 Astro 7 on Vercel. Campaign pages are prerendered; the Town Cryer, the Curfew pages, `/api/*` and the cron are serverless functions. Postgres (Neon) via Drizzle; email-and-password sign-in via Better Auth (no emails are sent; an optional `CURFEW_INVITE_CODE` gates sign-up).
 
+## Start here
+
+`AGENTS.md` is the one-minute version of this file for any tool. `docs/agents/` goes deeper: `workflow.md` (local stack, definition of done, tests, commits), `architecture.md` (how the halves and layers fit), `glossary.md` (the campaign's words mapped to code), `writing.md` (the four voices). The common tasks are skills under `.claude/skills/`: `record-battle`, `add-warband`, `town-cryer`, `curfew-pack`, `curfew-engine`, `schema-change`, `preflight`. Use the matching one before improvising.
+
 ## Commands
 
 - `npm run dev` — local dev with a PGlite database under `.pglite/`, a name-only dev sign-in, and the Debug strip (step nights with `?date=`). No `.env` needed.
 - `npm test` — engine, ledger, Town Cryer and service tests (`node --test`, TypeScript run natively; relative imports need `.ts` extensions).
 - `npm run check` — `astro check`. Keep it at 0 errors.
-- `npm run build` — Vercel build; on a production deploy it first applies any pending migration (`scripts/migrate.mjs`). `npm run db:generate` after a schema change and commit the files under `drizzle/`; `npm run db:reset` wipes the local database.
+- `npm run build` — Vercel build; on a production deploy it first applies any pending migration (`scripts/migrate.mjs`). `npm run db:generate -- --name <name>` after a schema change and commit the files under `drizzle/`; `npm run db:reset` wipes the local database.
+- Done means all three pass (CI runs exactly them), plus `node .claude/skills/record-battle/scripts/check-history.mjs` after touching the archives or rosters and `node .claude/skills/curfew-pack/scripts/lint-pack.mjs` after touching a pack. The `preflight` skill runs the lot.
 
 ## Content model: source first, database for the nights
 
@@ -35,3 +40,7 @@ This is a hybrid. The campaign's record is source code, edited by people and by 
 - The ledger refuses with `LedgerError`; its message is shown to the player as written.
 - Never put secrets or `import.meta.env` reads in client scripts; go through `src/server/env.ts`.
 - No backend for warband rosters, standings or battle reports yet; those stay content in the repo.
+- Ids are forever: warband and member ids in `warbands.ts` key the archives, the ledgers and the dispatches; `campaign.json`'s `id`, `start`, `timezone` and `anchor` seed every draw and date. Do not rename or move them once play has begun.
+- Tests are `node:test` with `.ts` extensions on relative imports in `src/curfew` and `src/server`; a rule change ships with its test. Service tests run on an in-memory PGlite and are ordered within a file.
+- Prose is content: British spelling, typographic apostrophes, no exclamation marks, the voice of its surface (`docs/agents/writing.md`). Commit messages are sentence-case imperative with a body that says why.
+- Work on the branch you were given; do not open a pull request unless asked; never commit `.env`, `.pglite/`, `dist/` or hand-written SQL under `drizzle/`.

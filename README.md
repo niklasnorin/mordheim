@@ -72,7 +72,7 @@ npm run check          # type-check pages and scripts
 npm run build          # build for Vercel into ./dist and ./.vercel/output
 ```
 
-VS Code users get the Astro extension recommended on opening the folder. There is a `CLAUDE.md` for Claude Code with the same map of the repository.
+VS Code users get the Astro extension recommended on opening the folder. Coding agents start at `AGENTS.md` and `CLAUDE.md` (the same map of the repository), go deeper in `docs/agents/`, and have checklists for the common tasks under `.claude/skills/`.
 
 ### Database
 
