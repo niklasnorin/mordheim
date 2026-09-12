@@ -32,7 +32,7 @@ The pillars hold, and two are sharpened.
 
 Seeded and deterministic, inside `resolveNight`, from the same draw as the rest of the night. So the same orders on the same night at the same place always meet the same crossroads, on every machine, which is what keeps the cron and a visit honest with each other.
 
-- About **one night in five** (`crossroadsChance` in `campaign.json`, 0.2 to start; the first Moon of play tunes it). With two out on real orders that is one or two a Moon per warband.
+- About **one night in three** (`crossroadsChance` in `campaign.json` is the raw draw, 0.5; the night's rest after a crossroads brings the rate to about a third; raised from one in five on 12 September). With two out on real orders that is two or three a Moon per warband, so a pack's crossroads are all met within a season: Mordheim's twelve in about five weeks, Fussenbach's twenty-four in about ten. After that the least recently met come round again rather than the nights going quiet. More crossroads per pack is the real answer.
 - It attaches to **one member**, the first in the orders whose errand has a crossroads to offer at this place.
 - **Never** on standing orders, never on a quiet night, never in The Return, never two nights running for the same warband (`cooldown` of one night), never the same crossroads twice in a season for the same warband (the ledger keeps `crossroads.seen`).
 - Tilt does not change the odds of a crossroads. The Omen and Moon may **colour** which one: a crossroads can require a Moon, an Omen, an outcome (a poor night meets different crossroads than a boon), a mark the member already carries, or a standing with one of the place's names (§5).
@@ -151,7 +151,7 @@ Step A is worth doing before Phase 2. It gives the nights a second decision a Mo
 2. **How far a choice reaches into tonight.** A tilt only, or also a forced errand and a night at home. My recommendation: tilt and a night at home in step A, forced errands in step B once the Watch has shown the reason well.
 3. **Whether marks are shown to other players.** The warrior's story is public on the campaign site, so marks will be read by the rival. I would keep that: being known for a thing is the point. The alternative is marks on the Ledger only.
 4. **Whether a game master may plant a crossroads for one night.** Per the content model, not from the Watch House. A `night` field on a crossroads in the pack does the same thing as a commit, and keeps the record in source.
-5. **Odds.** One in five, or one in four. Play a Moon with one in five first.
+5. **Odds.** One in three, decided on 12 September after the first nights of play; it began at one in five.
 
 ---
 

@@ -89,6 +89,8 @@ export interface Crossroad {
 /** A crossroads a night met, as written in the ledger. Roads carry their labels only; effects are read from the pack when a road is taken. */
 export interface CrossroadsMet {
   id: string; memberId: string; kind: CrossroadKind; setup: string;
+  /** The rival warband the setup and the roads name, so the road taken names the same one. */
+  rival?: string;
   options: { id: string; label: string }[];
   decided?: { roadId: string; label: string; outcome: string; ledger: string[]; defaulted: boolean; on: number };
 }
@@ -373,6 +375,12 @@ const ERRAND_TOKEN_TYPE: Partial<Record<Errand, TokenType>> = { carouse: 'fortun
 /** Errands that bring the green home. */
 const SHARD_ERRANDS: Errand[] = ['scavenge', 'dredge'];
 const FAVOUR: Record<Outcome, number> = { boon: 8, fair: 5, poor: 2 };
+const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
+/** The odds a night brings a charm home, by outcome and tilt. See the note at the drop. */
+export const TOKEN_CHANCE = {
+  boon: (tilt: number) => clamp(0.33 + 0.05 * tilt, 0.2, 0.5),
+  fair: (tilt: number) => clamp(0.07 + 0.02 * tilt, 0.02, 0.13),
+};
 
 function rollOutcome(r: () => number, tilt: number): Outcome {
   let boon = 0.25 + 0.08 * tilt, poor = 0.3 - 0.08 * tilt;
@@ -446,10 +454,11 @@ export function resolveNight(input: ResolveInput): NightResult {
       convertedShards = 5; shards -= 5;
       token = pick(r, tokensFor('market', location));
     }
-    // token drop: a boon always brings one, a fair night sometimes, standing orders never
+    // token drop: a boon often brings one, a fair night now and then, a poor night and standing orders never.
+    // Tuned so a warband with two out finds a charm about one night in three; the Omen, the Moon and the edge push it a little.
     const type = ERRAND_TOKEN_TYPE[order.errand];
     if (type && !token && !standing) {
-      const chance = outcome === 'boon' ? 1 : outcome === 'fair' ? Math.max(0.1, 0.35 + 0.1 * tilt) : 0;
+      const chance = outcome === 'boon' ? TOKEN_CHANCE.boon(tilt) : outcome === 'fair' ? TOKEN_CHANCE.fair(tilt) : 0;
       if (r() < chance) token = pick(r, tokensFor(type, location));
     }
     // favour soft cap: past it the city forgets quickly and the surplus becomes a name
@@ -519,6 +528,16 @@ export function crossroadsFor(location: Location, errand: Errand, outcome: Outco
     && (!c.requires?.mark || c.requires.mark.every(has))
     && (!c.requires?.notMark || !c.requires.notMark.some(has)));
 }
+/** Unmet crossroads first; when every fitting one has been met, all but the most recent half of them; failing that, any that fits. */
+function crossroadsWithFallback(location: Location, errand: Errand, outcome: Outcome, night: number, marks: { id: string }[], seen: readonly string[]): Crossroad[] {
+  const unmet = crossroadsFor(location, errand, outcome, night, marks, seen);
+  if (unmet.length) return unmet;
+  const any = crossroadsFor(location, errand, outcome, night, marks, []);
+  if (!any.length) return any;
+  const recent = seen.filter((id) => any.some((c) => c.id === id)).slice(-Math.floor(any.length / 2));
+  const older = any.filter((c) => !recent.includes(c.id));
+  return older.length ? older : any;
+}
 function weighted<T extends { weight?: number }>(r: () => number, list: readonly T[]): T {
   const total = list.reduce((a, c) => a + (c.weight ?? 1), 0);
   let x = r() * total;
@@ -526,8 +545,10 @@ function weighted<T extends { weight?: number }>(r: () => number, list: readonly
   return list[list.length - 1];
 }
 /**
- * About one night in five, the first member out on real orders whose errand has a crossroads to offer comes to one.
- * Never on standing orders, never two nights running, never the same crossroads twice in a season.
+ * About one night in three (`crossroadsChance` is the raw draw; the night's rest after a crossroads brings it down to
+ * about a third), the first member out on real orders whose errand has a crossroads to offer comes to one.
+ * Never on standing orders, never two nights running, and not the same crossroads again while others are still unmet:
+ * once a pack's crossroads have all been met, the least recently met come round again rather than the nights going quiet.
  */
 function drawCrossroads(r: () => number, warband: WarbandLike, night: number, results: OrderResult[], location: Location, ctx: NonNullable<ResolveInput['crossroads']>, extra: { rival: string }): CrossroadsMet | undefined {
   const hit = r() < campaign.crossroadsChance;
@@ -536,13 +557,13 @@ function drawCrossroads(r: () => number, warband: WarbandLike, night: number, re
     if (res.standing) continue;
     const member = warband.members.find((m) => m.id === res.memberId);
     if (!member) continue;
-    const candidates = crossroadsFor(location, res.errand, res.outcome, night, ctx.marks[member.id] ?? [], ctx.seen);
+    const candidates = crossroadsWithFallback(location, res.errand, res.outcome, night, ctx.marks[member.id] ?? [], ctx.seen);
     if (!candidates.length) continue;
     const c = weighted(r, candidates);
     const other = results.find((x) => x !== res);
     const otherMember = other && warband.members.find((m) => m.id === other.memberId);
     const slots = roadSlots(warband, member, otherMember, location, r, extra.rival);
-    return { id: c.id, memberId: member.id, kind: c.kind, setup: fill(c.setup, slots), options: c.options.map((o) => ({ id: o.id, label: fill(o.label, slots) })) };
+    return { id: c.id, memberId: member.id, kind: c.kind, setup: fill(c.setup, slots), rival: extra.rival, options: c.options.map((o) => ({ id: o.id, label: fill(o.label, slots) })) };
   }
   return undefined;
 }
@@ -579,9 +600,10 @@ export function takeRoad(input: TakeRoadInput): RoadTaken {
   if (!road) throw new Error(`No road ${input.roadId} at ${met.id}.`);
   const member = warband.members.find((m) => m.id === met.memberId) ?? { id: met.memberId, name: 'Somebody', role: '' };
   const r = rng(hashSeed(campaign.id, 'road', warband.id, night.night, c.id, road.id));
+  // the rival named when the crossroads was met; only a night written before rivals were remembered falls back to a draw
   const rivals = Array.isArray(input.rival) ? input.rival : input.rival ? [input.rival] : [];
   const rivalBand = rivals.length > 1 ? pick(r, rivals) : rivals[0];
-  const rival = rivalBand ? rivalBand.name.replace(/^the\s+/i, '') : 'rival warband';
+  const rival = met.rival ?? (rivalBand ? rivalBand.name.replace(/^the\s+/i, '') : 'rival warband');
   const otherRes = night.results.find((x) => x.memberId !== met.memberId);
   const other = otherRes && warband.members.find((m) => m.id === otherRes.memberId);
   const slots = roadSlots(warband, member, other, location, r, rival);

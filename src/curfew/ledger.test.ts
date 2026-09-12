@@ -288,8 +288,10 @@ test('a crossroads waits for a decision; the road taken lands on the ledger, the
   assert.throws(() => decide(s, warband, waiting.night, 'no-such-road', { on: today }), (e: unknown) => e instanceof LedgerError && /nowhere/.test(e.message));
   assert.throws(() => decide(s, warband, waiting.night - 1, road.id, { on: today }), LedgerError, 'no crossroads waited the night before');
   const before = { favour: s.favour, shards: s.shards, renown: s.renown };
-  const taken = decide(s, warband, waiting.night, road.id, { on: today, rival: warband });
+  const offered = waiting.crossroads!.options.find((o) => o.id === road.id)!.label;
+  const taken = decide(s, warband, waiting.night, road.id, { on: today, rival: [warband, { id: 'other', name: 'The Other Lot', members: [{ id: 'x', name: 'Xan', role: 'Thief' }] }] });
   assert.equal(waiting.crossroads!.decided?.roadId, road.id);
+  assert.equal(waiting.crossroads!.decided?.label, offered, 'the road taken reads exactly as it was offered, rival and all');
   assert.equal(waiting.crossroads!.decided?.defaulted, false);
   assert.equal(waiting.crossroads!.decided?.on, today);
   assert.ok(waiting.crossroads!.decided!.outcome.length > 10);

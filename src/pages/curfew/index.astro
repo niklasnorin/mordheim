@@ -397,16 +397,21 @@ const boot = {
   }
 
   // 1. Last night
-  function nightParts(n: NightResult, ink: boolean, headingTag: 'h3' | 'h4' = 'h3') {
+  function nightParts(n: NightResult, ink: boolean, headingTag: 'h3' | 'h4' = 'h3', card = '') {
     const c = n.crossroads, waiting = !!c && !c.decided;
-    const lines: string[] = [];
+    const chunks: string[] = [];
+    const para = (text: string) => chunks.push(`<p class="${ink ? 'cf-ink' : ''}" style="animation-delay:${0.15 + chunks.length * 0.45}s">${esc(text)}</p>`);
     for (const r of n.results) {
-      lines.push(r.prose);
-      // the report stops at the crossroads until the player, or midnight, decides
-      if (c?.memberId === r.memberId) { lines.push(c.setup); if (c.decided) lines.push(c.decided.outcome); }
+      para(r.prose);
+      // the report reaches the crossroads right after that member's own night; the choice is made there, before reading on
+      if (c?.memberId === r.memberId) {
+        para(c.setup);
+        if (c.decided) para(c.decided.outcome);
+        else if (card) chunks.push(`<div class="${ink ? 'cf-ink' : ''}" style="animation-delay:${0.15 + chunks.length * 0.45}s">${card}</div>`);
+      }
     }
-    if (!waiting) { lines.push(n.detail); if (n.closer) lines.push(n.closer); }
-    let paras = lines.map((l, i) => `<p class="${ink ? 'cf-ink' : ''}" style="animation-delay:${0.15 + i * 0.45}s">${esc(l)}</p>`).join('');
+    if (!waiting) { para(n.detail); if (n.closer) para(n.closer); }
+    let paras = chunks.join('');
     if (c?.decided) paras += `<p class="cf-chose"><span class="cf-chose-label">What ${esc(firstName(c.memberId))} did</span>${esc(c.decided.label)}${c.decided.defaulted ? '<small>Nobody was asked. The character decided.</small>' : ''}</p>`;
     const items = [...n.ledger, ...(c?.decided?.ledger ?? [])];
     const ledger = waiting
@@ -426,9 +431,10 @@ const boot = {
       return;
     }
     // The prose leads; the ledger line, what came home, and any decision follow. On a wide screen they sit beside it.
-    const part = nightParts(last, fresh && !reduced);
+    const waiting = !!last.crossroads && !last.crossroads.decided;
+    const part = nightParts(last, fresh && !reduced, 'h3', waiting ? crossroadsHtml(last) : '');
     const side = part.ledger + (part.waiting ? '' : gainsHtml(last)) || '<p class="cf-dawn-nothing">Nothing to enter in the ledger.</p>';
-    const decisions = (part.waiting ? crossroadsHtml(last) : '') + state!.offers.map((offer) => offerHtml(offer, last)).join('');
+    const decisions = state!.offers.map((offer) => offerHtml(offer, last)).join('');
     el.innerHTML = `<div class="cf-dawn-main">${part.head}${part.paras}</div><div class="cf-dawn-side">${side}</div>${decisions ? `<div class="cf-dawn-foot">${decisions}</div>` : ''}`;
   }
   /** What the night brought home, beyond the ledger line: charms, rumours, and names earned. */

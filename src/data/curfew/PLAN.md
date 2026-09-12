@@ -66,7 +66,7 @@ The Fussenbach pack is sized for a month of nightly play by four warbands: twelv
 
 ## 2b. The Crossroads
 
-**Shipped** (12 September 2026), from the proposal in `CROSSROADS.md`. About one night in five (`crossroadsChance`), one member out on real orders comes to a crossroads: the Dawn Report stops at that moment and two or three roads say what {first} could do. The player decides at dawn, in the offer's two-step dress, and the report finishes with the road's outcome and its ledger line. Never on standing orders, never two nights running, never the same crossroads twice in a season, never in The Return.
+**Shipped** (12 September 2026), from the proposal in `CROSSROADS.md`. About one night in three (`crossroadsChance` is the raw draw of one in two; the rest after a crossroads brings it to a third), one member out on real orders comes to a crossroads: the Dawn Report stops at that moment and two or three roads say what {first} could do. The player decides at dawn, in the offer's two-step dress, and the report finishes with the road's outcome and its ledger line. Never on standing orders, never two nights running, never in The Return, and not the same crossroads again while others are unmet. At this rate a pack's crossroads are all met within a season; then the least recently met come round again. Writing more is on the housekeeping list.
 
 - **Kinds.** Moral, risk, loyalty, lore and light, weighted so most are hard and not all. A risk road is opt-in risk without a mini-game: the player chooses the risk, seeded dice choose the branch, and the bad branch is where the four curses in `tokens.json` now come from (Hungover keeps a member home a night, Marked costs Renown and prints a notice, Swindled costs a shard, Wyrdstone Cough is cosmetic for three nights). They stand on the ledger as `afflictions`, and the Eve names any still standing.
 - **What a road does.** Favour, shards and Renown within a good night's reach; a charm through the offer rule; a rumour; a **mark** on the warrior, permanent and named in the pack's words, shown in their story and able to open or close later crossroads (`requires.mark`, `requires.notMark`); and a **carry** into tonight: a tilt on that member's errand, or a night kept home (`kept`, shown in the Watch with the reason).
@@ -88,7 +88,7 @@ The Fussenbach pack is sized for a month of nightly play by four warbands: twelv
 | **Trade** | The Bazaar | Favour, a Market token; five shards convert to one |
 | **Dredge** (Fussenbach only) | The Basins | Shards (0–2), Favour, a Ground token |
 
-**Changed.** Curses are content only (`tokens.json`) and never drop from dice nights. They arrive with opt-in risk in the mini-games. A boon always brings a token, a fair night sometimes, a poor night never. Standing orders never bring tokens.
+**Changed.** Curses are content only (`tokens.json`) and never drop from dice nights. They arrive with opt-in risk in the mini-games. A boon brings a charm about half the time, a fair night about one time in ten, a poor night never; the Omen, the Moon and the edge push the odds a little (`TOKEN_CHANCE` in the engine). Two out a night finds a charm about one night in three. Standing orders never bring tokens. (Until 12 September a boon always brought one, which came to a charm a night.)
 
 Outcome odds: a base of roughly a quarter boon, a third poor, the rest fair, shifted eight points per point of tilt. Tilt is the Omen's tilt plus one point for the Moon's favoured errand plus the warrior's edge, clamped to ±3. The tilts are listed under the card in the app, not printed on it.
 
@@ -212,7 +212,7 @@ Warband rosters, standings and battle reports are still content in the repositor
 | **4 — Depth** | Whispers, Jobs, Moon events, Patrons and contracts, Sigmar's Mercy | Open |
 | **5 — The City** | The Ashen Quarter map, naming, landmarks into scenarios, the Comet's Wane and finale | Open |
 | **6 — Atmosphere** | Optional sound, epitaphs, shareable and printable season Chronicle | Open |
-| **Housekeeping** | Size the Mordheim pack like Fussenbach's (§2a); WebP card images for phones (the deck is 36 MB of PNG, about 1.1 MB a card, and the Ledger loads two at 1050×1800); skip the main site's three font families on Curfew pages (both sets load today; `Base.astro` has no way to leave them out); record the incumbent design system (`/impeccable document`; `PRODUCT.md` exists, a design record does not); bring `PRODUCT.md` up to date (**done** in revision 5) | Open |
+| **Housekeeping** | More crossroads for both packs, since at one night in three they are all met within a season (§2b); size the Mordheim pack like Fussenbach's (§2a); WebP card images for phones (the deck is 36 MB of PNG, about 1.1 MB a card, and the Ledger loads two at 1050×1800); skip the main site's three font families on Curfew pages (both sets load today; `Base.astro` has no way to leave them out); record the incumbent design system (`/impeccable document`; `PRODUCT.md` exists, a design record does not); bring `PRODUCT.md` up to date (**done** in revision 5) | Open |
 
 ---
 
