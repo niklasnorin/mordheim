@@ -8,13 +8,15 @@ import { z } from 'zod';
 import { ERRANDS } from '../../../curfew/engine';
 import { hasDatabase } from '../../../server/db/client';
 import { getViewer } from '../../../server/session';
-import { LedgerError, actions, claimWarband, releaseWarband, todayFor } from '../../../server/curfew/service';
+import { LedgerError, actions, claimWarband, releaseWarband, todayFor, type DryRun } from '../../../server/curfew/service';
+import { isDryRun } from '../../../server/curfew/dry';
 import { json, sameOrigin } from '../../../server/http';
 
 export const prerender = false;
 
 const errand = z.enum(ERRANDS as [string, ...string[]]);
 const schemas = {
+  look: z.object({}),
   claim: z.object({ warbandId: z.string().min(1).max(64) }),
   release: z.object({}),
   reset: z.object({}),
@@ -42,24 +44,31 @@ export const POST: APIRoute = async ({ request, params }) => {
 
   let body: unknown;
   try { body = await request.json(); } catch { return json({ error: 'The orders could not be read.' }, 400); }
-  const parsed = schema.safeParse(body ?? {});
+  // a dry run: the browser carries the sandbox in `dry.base`; only the Watch, with debug on, may ask for one
+  const { dry: dryBody, ...rest } = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  const dryRun = isDryRun(request, viewer);
+  if (dryBody !== undefined && !dryRun) return json({ error: 'Dry runs are for the Watch, with debug on.' }, 403);
+  const dry: DryRun | undefined = dryRun ? { base: (dryBody as { base?: unknown } | undefined)?.base } : undefined;
+  if (dry && (action === 'claim' || action === 'release')) return json({ error: 'Not in a dry run. Turn debug off first.' }, 400);
+  const parsed = schema.safeParse(rest);
   if (!parsed.success) return json({ error: 'The orders could not be read.' }, 400);
   const input = parsed.data as z.infer<typeof schema>;
   const today = todayFor(url);
 
   try {
     switch (action) {
+      case 'look': return json({ view: await actions.look(viewer.id, today, dry) });
       case 'claim': return json({ view: await claimWarband(viewer.id, (input as z.infer<typeof schemas.claim>).warbandId, today) });
       case 'release': await releaseWarband(viewer.id); return json({ view: null });
-      case 'reset': return json({ view: await actions.reset(viewer.id, today) });
-      case 'orders': return json({ view: await actions.orders(viewer.id, today, (input as z.infer<typeof schemas.orders>).orders as Parameters<typeof actions.orders>[2]) });
-      case 'heal': return json({ view: await actions.heal(viewer.id, today, (input as z.infer<typeof schemas.heal>).memberId) });
-      case 'offer': { const i = input as z.infer<typeof schemas.offer>; return json({ view: await actions.offer(viewer.id, today, i.offer, i.keep) }); }
-      case 'decide': { const i = input as z.infer<typeof schemas.decide>; return json({ view: await actions.decide(viewer.id, today, i.night, i.roadId) }); }
-      case 'eve-open': return json({ view: await actions.eveOpen(viewer.id, today) });
-      case 'eve-lay': { const i = input as z.infer<typeof schemas['eve-lay']>; return json({ view: await actions.eveLay(viewer.id, today, i.bring, i.flourish) }); }
-      case 'eve-done': return json({ view: await actions.eveDone(viewer.id, today) });
-      case 'eve-undo': return json({ view: await actions.eveUndo(viewer.id, today) });
+      case 'reset': return json({ view: await actions.reset(viewer.id, today, dry) });
+      case 'orders': return json({ view: await actions.orders(viewer.id, today, (input as z.infer<typeof schemas.orders>).orders as Parameters<typeof actions.orders>[2], dry) });
+      case 'heal': return json({ view: await actions.heal(viewer.id, today, (input as z.infer<typeof schemas.heal>).memberId, dry) });
+      case 'offer': { const i = input as z.infer<typeof schemas.offer>; return json({ view: await actions.offer(viewer.id, today, i.offer, i.keep, dry) }); }
+      case 'decide': { const i = input as z.infer<typeof schemas.decide>; return json({ view: await actions.decide(viewer.id, today, i.night, i.roadId, dry) }); }
+      case 'eve-open': return json({ view: await actions.eveOpen(viewer.id, today, dry) });
+      case 'eve-lay': { const i = input as z.infer<typeof schemas['eve-lay']>; return json({ view: await actions.eveLay(viewer.id, today, i.bring, i.flourish, dry) }); }
+      case 'eve-done': return json({ view: await actions.eveDone(viewer.id, today, dry) });
+      case 'eve-undo': return json({ view: await actions.eveUndo(viewer.id, today, dry) });
       default: return json({ error: 'No such errand.' }, 404);
     }
   } catch (e) {

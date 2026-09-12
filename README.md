@@ -37,7 +37,7 @@ Some nights one member comes to a **crossroads**: the Dawn Report stops there an
 | `src/pages/api/curfew/[action].ts`, `src/pages/api/cron/midnight.ts` | The JSON API the Ledger and Eve pages call, and the cron endpoint |
 | `public/curfew/omens/` | Card images, regenerated with `scripts/curfew/` |
 
-In `astro dev` (or with `CURFEW_DEBUG=true`, never in production) `?date=YYYY-MM-DD` is allowed on Curfew URLs and the dim **Debug** toggle in the Ledger's footer adds previous/next-night buttons and a date picker.
+In `astro dev` (or with `CURFEW_DEBUG=true`, never in production) `?date=YYYY-MM-DD` is allowed on Curfew URLs and the dim **Debug** toggle in the Ledger's footer, shown to game masters, adds previous/next-night buttons and a date picker. While the toggle is on, every request is a **dry run**: the server computes the night in memory and saves nothing, the browser keeps the sandbox between steps (in `sessionStorage`, sent back as `dry.base`), the strip says how many nights the sandbox is ahead of the real ledger and what the Cryer would have printed, and turning the toggle off drops the sandbox. The real ledger is exactly as it was.
 
 ## The Watch House — admin console
 

@@ -4,7 +4,7 @@ Astro 7 on Vercel. Campaign pages are prerendered; the Town Cryer, the Curfew pa
 
 ## Commands
 
-- `npm run dev` — local dev with a PGlite database under `.pglite/`, a name-only dev sign-in, and the Debug strip (step nights with `?date=`). No `.env` needed.
+- `npm run dev` — local dev with a PGlite database under `.pglite/`, a name-only dev sign-in, and the Debug strip (step nights with `?date=`; with the strip on, a game master's requests are dry runs that save nothing, see `src/server/curfew/dry.ts`). No `.env` needed.
 - `npm test` — engine, ledger, Town Cryer and service tests (`node --test`, TypeScript run natively; relative imports need `.ts` extensions).
 - `npm run check` — `astro check`. Keep it at 0 errors.
 - `npm run build` — Vercel build; on a production deploy it first applies any pending migration (`scripts/migrate.mjs`). `npm run db:generate` after a schema change and commit the files under `drizzle/`; `npm run db:reset` wipes the local database.

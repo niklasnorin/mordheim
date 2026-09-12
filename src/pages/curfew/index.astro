@@ -8,6 +8,7 @@ import { hasDatabase } from '../../server/db/client';
 import { DEV_LOGIN_PASSWORD, env, isAdminEmail } from '../../server/env';
 import { getViewer } from '../../server/session';
 import { currentLocation, listClaims, loadOwnLedger, todayFor, type Claim, type LedgerView } from '../../server/curfew/service';
+import { isDryRun } from '../../server/curfew/dry';
 import { DEFAULT_LOCATION, type Location } from '../../curfew/engine';
 
 // The Ledger is personal: rendered on request, never cached.
@@ -25,11 +26,13 @@ let location: Location = DEFAULT_LOCATION;
 if (ready) {
   try { location = await currentLocation(today); } catch (e) { console.error('[curfew] location unavailable', e); }
 }
+// With the Debug strip on, a game master's visit is a dry run: nothing this request computes is saved.
+const dry = !!viewer && isDryRun(Astro.request, viewer);
 if (viewer) {
-  try { [view, claims] = await Promise.all([loadOwnLedger(viewer.id, today), listClaims()]); } catch (e) { console.error('[curfew] ledger unavailable', e); trouble = true; }
+  try { [view, claims] = await Promise.all([loadOwnLedger(viewer.id, today, dry ? {} : undefined), listClaims()]); } catch (e) { console.error('[curfew] ledger unavailable', e); trouble = true; }
 }
 const boot = {
-  today, debug: env.CURFEW_DEBUG, viewer: viewer ? { name: viewer.name } : null, view, locationId: location.id,
+  today, debug: env.CURFEW_DEBUG, dry, viewer: viewer ? { name: viewer.name, admin: isAdminEmail(viewer.email) } : null, view, locationId: location.id,
   claims: claims.map((c) => ({ warbandId: c.warbandId, ownerName: c.ownerName })),
 };
 ---
@@ -200,11 +203,11 @@ const boot = {
   } from '../../curfew/engine';
   import { keptMembers, keptReason, lastGivenOrders, restingMembers, standingOrders, type WarbandState } from '../../curfew/ledger';
   import { sealSvg } from '../../curfew/glyphs';
-  import { carryDate, debugEnabled, renderDebugBar, setDebug } from '../../curfew/debug';
+  import { carryDate, clearSandbox, debugEnabled, loadSandbox, renderDebugBar, saveSandbox, setDebug } from '../../curfew/debug';
   import { formatImperial, imperialForDate } from '../../lib/calendar';
 
-  interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean; locationId: string }
-  interface Boot { today: number; debug: boolean; viewer: { name: string } | null; view: View | null; locationId: string; claims: { warbandId: string; ownerName: string }[] }
+  interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean; locationId: string; dry?: boolean; wouldPrint?: { headline: string }[] }
+  interface Boot { today: number; debug: boolean; dry: boolean; viewer: { name: string; admin: boolean } | null; view: View | null; locationId: string; claims: { warbandId: string; ownerName: string }[] }
 
   document.body.classList.add('curfew-body');
   const root = document.getElementById('main-content')!;
@@ -230,15 +233,21 @@ const boot = {
   }
 
   // ── the server ──
+  // A dry run (the Debug strip on, for a game master): the server saves nothing, and the sandbox it answers with is sent back with the next request.
+  const dryRun = boot.dry && debugEnabled();
+  const realLastResolved = boot.view?.state.lastResolved ?? 0;
   /** One errand to the API. Every answer is the whole ledger again, so the page re-renders from it. */
   async function api(action: string, body: Record<string, unknown> = {}): Promise<View | null> {
     const url = new URL(`${base}/api/curfew/${action}`, location.href);
     const date = new URLSearchParams(location.search).get('date');
     if (date) url.searchParams.set('date', date);
+    if (dryRun && warband) body = { ...body, dry: { base: loadSandbox(warband.id)?.state } };
     const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), credentials: 'same-origin' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error ?? 'The city did not answer. Try again.');
-    return data.view ?? null;
+    const next: View | null = data.view ?? null;
+    if (dryRun && next?.dry) saveSandbox(next.warbandId, next.state, realLastResolved);
+    return next;
   }
   function applyView(next: View | null) {
     view = next;
@@ -247,6 +256,7 @@ const boot = {
     if (next) place = locationById(next.locationId);
     if (view && warband) { showPicker(false); $('ledger').hidden = false; renderAll(view.fresh); }
     else { $('ledger').hidden = true; showPicker(true); }
+    renderDebug();
   }
   /** Run an errand and re-render; a refusal becomes a toast and the page stays as the server has it. */
   async function act(action: string, body: Record<string, unknown>, done?: (v: View) => void): Promise<boolean> {
@@ -732,18 +742,26 @@ const boot = {
     }
   });
 
-  // ── debug: step through nights (only where the server allows a date override) ──
+  // ── debug: step through nights (only where the server allows a date override, and only for the Watch) ──
   function renderDebug() {
-    if (!boot.debug) { setDebug(false); return; }
+    if (!boot.debug || !boot.viewer?.admin) { setDebug(false); return; }
     $('debug-toggle').hidden = false;
     const on = debugEnabled();
     $('debug-toggle').setAttribute('aria-pressed', String(on));
-    $('debug-toggle').textContent = on ? 'Debug on' : 'Debug';
-    renderDebugBar($('debug-bar'), today);
+    $('debug-toggle').textContent = on ? 'Debug on · dry run' : 'Debug';
+    const dry = on && boot.dry && warband
+      ? { sandbox: loadSandbox(warband.id), wouldPrint: (view?.wouldPrint ?? []).map((d) => d.headline), onReset: () => { clearSandbox(); location.reload(); } }
+      : undefined;
+    renderDebugBar($('debug-bar'), today, dry);
     if (on) carryDate($<HTMLAnchorElement>('eve-link'));
   }
-  $('debug-toggle').addEventListener('click', () => { setDebug(!debugEnabled()); renderDebug(); if (!debugEnabled() && new URLSearchParams(location.search).has('date')) location.href = location.pathname; });
-  renderDebug();
+  $('debug-toggle').addEventListener('click', () => {
+    // turning the strip on or off changes what the server does with the next request, so the page starts over
+    setDebug(!debugEnabled());
+    location.href = debugEnabled() ? location.href : location.pathname;
+  });
 
   applyView(view);
+  // A dry run with a sandbox from an earlier step: the page was rendered from the real ledger, so ask again with the sandbox as the base.
+  if (dryRun && warband && loadSandbox(warband.id)) act('look', {});
 </script>
