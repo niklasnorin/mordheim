@@ -16,8 +16,9 @@ export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 
 const ready = hasDatabase();
-const today = todayFor(Astro.url);
 const viewer = ready ? await getViewer(Astro.request) : null;
+// a game master may look at another night; a player always sees tonight
+const today = todayFor(Astro.url, viewer);
 let view: LedgerView | null = null;
 let claims: Claim[] = [];
 let trouble = false;

@@ -16,7 +16,8 @@ export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 
 const ready = hasDatabase();
-const today = todayFor(Astro.url);
+// The console reads and acts on every ledger, so its clock is never steered: a debug date here would write other players' nights.
+const today = todayFor(null);
 const { viewer, admin } = ready ? await admission(Astro.request) : { viewer: null, admin: false };
 let data: Overview | null = null;
 let trouble = false;

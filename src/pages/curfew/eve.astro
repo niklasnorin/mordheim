@@ -13,8 +13,8 @@ export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 
 const ready = hasDatabase();
-const today = todayFor(Astro.url);
 const viewer = ready ? await getViewer(Astro.request) : null;
+const today = todayFor(Astro.url, viewer);
 let view: LedgerView | null = null;
 let trouble = false;
 const dry = !!viewer && isDryRun(Astro.request, viewer);

@@ -9,7 +9,8 @@
 import { and, desc, eq, gte, lte } from 'drizzle-orm';
 import { db } from '../db/client.ts';
 import { cryerDispatches, curfewLedgers, curfewMoves, curfewRuns, user } from '../db/schema.ts';
-import { env } from '../env.ts';
+import { env, isAdminEmail } from '../env.ts';
+import type { Viewer } from '../session.ts';
 import { currentNight, locationById, locationForNight, type Location, type Move, type NightResult, type Order, type TokenOffer } from '../../curfew/engine.ts';
 import {
   LedgerError, coerceState, decide, fightDone, freshState, giveOrders, heal, layTable, nightForOverride, provideIfEmpty, putBack, reconcile, recoveringMembers, settleOffer,
@@ -47,9 +48,13 @@ export interface Claim { warbandId: string; ownerId: string; ownerName: string }
 
 // ───────────────────────── the clock ─────────────────────────
 
-/** Tonight's number. A `?date=` override is honoured only where CURFEW_DEBUG is on. */
-export function todayFor(url: URL | null, now = new Date()): number {
-  if (env.CURFEW_DEBUG && url) {
+/**
+ * Tonight's number. A `?date=` override is honoured only where CURFEW_DEBUG is on and the viewer is a game master;
+ * a player always gets the real night, whatever the URL says. Pass `null` for the URL where the clock must never be
+ * steered: the cron, the prerendered pages, and everything the Watch House does to other players' ledgers.
+ */
+export function todayFor(url: URL | null, viewer: Viewer | null = null, now = new Date()): number {
+  if (env.CURFEW_DEBUG && url && viewer && isAdminEmail(viewer.email)) {
     const n = nightForOverride(url.searchParams.get('date'));
     if (n !== null) return n;
   }
