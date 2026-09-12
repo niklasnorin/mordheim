@@ -3,7 +3,9 @@
  *
  * With the Debug strip on, the browser sets a `curfew-dry` cookie. While it is set, and only where `CURFEW_DEBUG`
  * is on and the viewer is a game master, every ledger request is computed in memory and nothing is saved or
- * published: the page and the API answer as if the night had been written, and the real ledger is untouched.
+ * published. The `?date=` override itself is also for game masters only (`todayFor`), so debugging can never touch
+ * a player's ledger, and the Watch House never takes a steered clock, so it can never touch everyone's.
+ * The page and the API answer as if the night had been written, and the real ledger is untouched.
  * The browser carries the sandbox state between requests (`dry.base`), so a run of nights builds on itself;
  * turning the strip off drops the sandbox and the warband is exactly as it was.
  */

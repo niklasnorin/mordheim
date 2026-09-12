@@ -7,7 +7,7 @@ The repository names technical things in the fiction's words. This maps each wor
 | Word | Meaning | Code |
 | --- | --- | --- |
 | **Night** | One real day. Night 1 is `campaign.json` `start` (2026-09-10); nights turn at midnight in `campaign.json` `timezone` (Europe/Stockholm). Nights before the start are zero or negative; the first game was night -4. | `nightForDate`, `dateForNight`, `currentNight`, `localDate` in `src/curfew/engine.ts` |
-| **today** | The night the server treats as current, always passed into the services as a number. With `CURFEW_DEBUG` on, `?date=YYYY-MM-DD` overrides it. | `todayFor(url)` in `src/server/curfew/service.ts` |
+| **today** | The night the server treats as current, always passed into the services as a number. With `CURFEW_DEBUG` on, `?date=YYYY-MM-DD` overrides it for a game master's own Ledger and Eve; never for a player, never in the Watch House, never for the cron. | `todayFor(url, viewer)` in `src/server/curfew/service.ts` |
 | **Moon** | Seven nights. Eight Moons in `moons.json`, drawn as a seeded shuffle per cycle. A Moon favours one errand by one point (`boost`) and carries a tie-in line per errand. | `moonIndex`, `moonForNight`, `moonBoostAt`, `moonTiesAt` |
 | **Season** | Twelve Moons (`seasonMoons`). The finale is unbuilt. | `campaign.json` |
 | **Imperial Calendar, IC** | The Empire's 400-day year, eight-day week and six holy days. Every date shown to a player goes through it; the anchor is the first game. "Marktag, 5th of Pflugzeit, 2007 IC". | `src/lib/calendar.ts`: `imperialForDate`, `formatImperial`, `parseImperial`, `ANCHOR` |
@@ -79,7 +79,7 @@ The repository names technical things in the fiction's words. This maps each wor
 | **Viewer** | The signed-in user. | `getViewer` in `session.ts` |
 | **Reset word** | Three words and a tail, issued by the game master, hashed like a password, good for 48 hours, spent on use. The only way to reset a forgotten password; there is no email. | `issueResetWord`, `resetWithWord`, `curfew_recovery` |
 | **Dev sign-in, Local player** | A name-only sign-in that exists only off Vercel. Two names make two players. | `env.DEV_LOGIN`, `DEV_LOGIN_PASSWORD` |
-| **Debug strip** | Previous and next night buttons and a date picker in the Ledger's footer, on with `CURFEW_DEBUG` and shown to game masters. Its per-device switch lives in `localStorage`; while it is on, a `curfew-dry` cookie makes every request a **dry run**. | `src/curfew/debug.ts`, `env.CURFEW_DEBUG` |
+| **Debug strip** | Previous and next night buttons and a date picker in the Ledger's footer, shown to game masters; on everywhere unless `CURFEW_DEBUG=false`. Its per-device switch lives in `localStorage`; while it is on, a `curfew-dry` cookie makes every request a **dry run**. | `src/curfew/debug.ts`, `env.CURFEW_DEBUG` |
 | **Dry run** | With the strip on, the server computes a game master's request in memory from a sandbox the browser carries (`dry.base`, kept in `sessionStorage`) and saves nothing, publishes nothing. Needs `CURFEW_DEBUG`, a game master and the cookie. The strip says how far the sandbox is ahead of the real ledger and what the Cryer would print. | `src/server/curfew/dry.ts`, `DryRun` and `look` in the service |
 | **PGlite** | The in-process Postgres under `.pglite/` that `astro dev` uses with no `DATABASE_URL`, and that the service tests use in memory. | `env.LOCAL_DB`, `src/server/db/client.ts` |
 

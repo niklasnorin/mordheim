@@ -94,7 +94,7 @@ function health(lastRun?: typeof curfewRuns.$inferSelect): HealthItem[] {
     { label: 'Cron secret', ok: Boolean(env.CRON_SECRET), detail: env.CRON_SECRET ? 'set' : 'missing: the nightly cron will be refused' },
     { label: 'Last midnight', ok: lastRun ? Date.now() - lastRun.ranAt.getTime() < 36 * 3600 * 1000 : null, detail: lastRun ? `${lastRun.source}, night ${lastRun.night}, ${lastRun.nights} nights written` : 'never run' },
     { label: 'Admins', ok: env.ADMIN_EMAILS.length > 0 || env.DEV_LOGIN, detail: env.ADMIN_EMAILS.length ? `${env.ADMIN_EMAILS.length} on the allowlist` : env.DEV_LOGIN ? 'everyone, under the dev sign-in' : 'nobody: set ADMIN_EMAILS' },
-    { label: 'Debug', ok: env.CURFEW_DEBUG ? (env.ON_VERCEL ? false : null) : true, detail: env.CURFEW_DEBUG ? '?date= overrides are on' : 'off' },
+    { label: 'Debug', ok: true, detail: env.CURFEW_DEBUG ? 'on: ?date= for game masters only, dry runs with the strip; players and the Watch House keep the real night' : 'off (CURFEW_DEBUG=false)' },
     { label: 'Origin', ok: true, detail: env.BASE_URL + (env.ON_VERCEL ? ' on Vercel' : ' locally') },
   ];
   return items;

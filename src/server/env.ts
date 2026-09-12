@@ -34,8 +34,12 @@ export const env = {
   /** Preview deployments get their own origin; allow it so a sign-in there is not rejected as cross-site. */
   VERCEL_URL: read('VERCEL_URL') ? `https://${read('VERCEL_URL')}` : undefined,
   CRON_SECRET: read('CRON_SECRET'),
-  /** `?date=` overrides and the Debug strip. On by default in `astro dev`, never by default on Vercel. */
-  CURFEW_DEBUG: flag('CURFEW_DEBUG', DEV && !ON_VERCEL),
+  /**
+   * `?date=` overrides and the Debug strip, for game masters only: a player's clock is never steered, the Watch House's
+   * never is, and with the strip on a game master's requests are dry runs that save nothing. Safe to leave on, so it is;
+   * `CURFEW_DEBUG=false` turns it off.
+   */
+  CURFEW_DEBUG: flag('CURFEW_DEBUG', true),
   /** A name-only sign-in for local development, skipping the password. Cannot be enabled on Vercel. */
   DEV_LOGIN: !ON_VERCEL && flag('CURFEW_DEV_LOGIN', DEV),
   /** Game masters, by sign-in email, lower-cased. Empty means nobody, except under the local dev sign-in. */

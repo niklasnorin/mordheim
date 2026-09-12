@@ -243,3 +243,26 @@ test('a dry run needs debug on, a game master, and the strip\'s cookie', async (
     env.ADMIN_EMAILS.splice(0, env.ADMIN_EMAILS.length, ...before.admins);
   }
 });
+
+test('the clock is steered only for a game master: a player, the cron and the Watch House always get the real night', async () => {
+  const { todayFor } = await import('./service.ts');
+  const { currentNight } = await import('../../curfew/engine.ts');
+  const { env } = await import('../env.ts');
+  const url = new URL('http://localhost/curfew/?date=2026-10-01');
+  const wanted = 22, real = currentNight();
+  const before = { debug: env.CURFEW_DEBUG, admins: env.ADMIN_EMAILS.slice() };
+  try {
+    (env as { CURFEW_DEBUG: boolean }).CURFEW_DEBUG = true;
+    env.ADMIN_EMAILS.splice(0, env.ADMIN_EMAILS.length, 'gm@example.com');
+    assert.equal(todayFor(url, { id: 'g', name: 'GM', email: 'GM@example.com' }), wanted, 'a game master may look at another night');
+    assert.equal(todayFor(url, { id: 'p', name: 'Player', email: 'player@example.com' }), real, 'a player never can');
+    assert.equal(todayFor(url, null), real, 'nobody signed in');
+    assert.equal(todayFor(url), real, 'no viewer given');
+    assert.equal(todayFor(null, { id: 'g', name: 'GM', email: 'gm@example.com' }), real, 'a null URL is never steered, whoever asks');
+    (env as { CURFEW_DEBUG: boolean }).CURFEW_DEBUG = false;
+    assert.equal(todayFor(url, { id: 'g', name: 'GM', email: 'gm@example.com' }), real, 'debug off: not even a game master');
+  } finally {
+    (env as { CURFEW_DEBUG: boolean }).CURFEW_DEBUG = before.debug;
+    env.ADMIN_EMAILS.splice(0, env.ADMIN_EMAILS.length, ...before.admins);
+  }
+});

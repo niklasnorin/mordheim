@@ -39,7 +39,8 @@ export const POST: APIRoute = async ({ request, params }) => {
   try { body = await request.json(); } catch { return json({ error: 'The order could not be read.' }, 400); }
   const parsed = schema.safeParse(body ?? {});
   if (!parsed.success) return json({ error: 'The order could not be read.' }, 400);
-  const today = todayFor(new URL(request.url));
+  // never steered: these actions reach every ledger
+  const today = todayFor(null);
 
   try {
     switch (action) {

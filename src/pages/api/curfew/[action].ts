@@ -53,7 +53,7 @@ export const POST: APIRoute = async ({ request, params }) => {
   const parsed = schema.safeParse(rest);
   if (!parsed.success) return json({ error: 'The orders could not be read.' }, 400);
   const input = parsed.data as z.infer<typeof schema>;
-  const today = todayFor(url);
+  const today = todayFor(url, viewer);
 
   try {
     switch (action) {
