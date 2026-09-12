@@ -59,7 +59,8 @@ npm test
 
 ## Charms, Moons and Omens
 
-- **Charm** (`tokens.json` `tokens[]`): `id` unique, `type` one of fortune, ground, market, sight, `name`, an `effect` in rulebook terms, optional `location`. Curses in `curses[]` are content only and never drop.
+- **Charm** (`tokens.json` `tokens[]`): `id` unique, `type` one of fortune, ground, market, sight, `name`, an `effect` in rulebook terms, optional `location`. Curses in `curses[]` carry `nights` and `effects` and arrive only on the bad branch of a risk road at a crossroads, never from dice or absence.
+- **Crossroads** (`crossroads[]` in a pack, with `undecided[]` and `markNames`): a `setup`, two or three roads with `label`, `outcome`, `effects` (favour, shards, renown within a good night's reach; `token`, `rumour`, `mark`, `carry`; `curse` on a risk road's bad branch only), exactly one road marked `default` that costs nothing, optional `requires` (moon, omen, mark, notMark) and `outcomes`. Every `mark` must be named in `markNames`. The writing rules are in `STYLE.md` under Crossroads; the engine test "every road in every pack can be taken" checks the shape.
 - **Moon** (`moons.json`): `id`, `name`, `reading`, `boost` errand, `ties` per Mordheim errand. Eight today; the deck cycles every 56 nights, and adding one reshuffles future Moons for everyone (written nights keep theirs). Give every place with `moonTies` lines for it.
 - **Omen** (`omens.json`): `id`, `numeral`, `title`, `reading`, sparse `tilt` from -2 to +2, `notes`, `image`. Thirty today; adding one reshuffles future draws and needs a card rendered with `scripts/curfew/` (see its README).
 

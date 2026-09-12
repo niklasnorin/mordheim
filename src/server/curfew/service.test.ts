@@ -154,3 +154,92 @@ test('burning starts afresh; giving up frees the warband', async () => {
   const taken = await claimWarband(NIKLAS, 'nordost', 9);
   assert.equal(taken.warbandId, 'nordost');
 });
+
+test('a road is taken through the service, once, and the Cryer prints the night only then', async () => {
+  const { waitingCrossroads, keptMembers } = await import('../../curfew/ledger.ts');
+  const nordost = warbands.find((w) => w.id === 'nordost')!;
+  let today = 12, waiting: Awaited<ReturnType<typeof loadOwnLedger>> = null;
+  for (; today < 400; today++) {
+    const view = (await loadOwnLedger(NIKLAS, today))!;
+    if (waitingCrossroads(view.state)) { waiting = view; break; }
+    const free = nordost.members.filter((m) => !m.dead && !restingMembers(view.state, today).includes(m.id) && !keptMembers(view.state, today).includes(m.id) && !view.recovering.includes(m.id)).slice(0, 2);
+    await actions.orders(NIKLAS, today, free.map((m, i) => ({ memberId: m.id, errand: (['scavenge', 'carouse', 'spy', 'pray', 'trade', 'train'] as const)[(today + i) % 6] })));
+  }
+  assert.ok(waiting, 'a crossroads was met');
+  const night = waitingCrossroads(waiting!.state)!;
+  assert.equal(night.night, today - 1);
+  const printedBefore = (await recentDispatches(today, 200)).filter((d) => d.night === night.night && d.kind === 'happening');
+  assert.equal(printedBefore.length, 0, 'the broadsheet waits');
+  const road = night.crossroads!.options[0];
+  const view = await actions.decide(NIKLAS, today, night.night, road.id);
+  const decided = view.state.nights.find((n) => n.night === night.night)!.crossroads!.decided!;
+  assert.equal(decided.roadId, road.id);
+  assert.equal(decided.on, today);
+  await assert.rejects(actions.decide(NIKLAS, today, night.night, road.id), (e: unknown) => e instanceof LedgerError && /decided/.test(e.message));
+  const expected = dispatchesForNight(nordost, view.state.nights.find((n) => n.night === night.night)!, view.state.headlines);
+  const printed = await recentDispatches(today, 200);
+  for (const d of expected) assert.ok(printed.some((p) => p.key === d.key), `${d.key} reached the Cryer on the decision`);
+});
+
+test('a dry run computes the night and saves nothing; the sandbox it answers with is the base of the next step', async () => {
+  const { waitingCrossroads } = await import('../../curfew/ledger.ts');
+  const real = (await loadOwnLedger(NIKLAS, 400))!;
+  const realNights = real.state.nights.length, realState = JSON.parse(JSON.stringify(real.state));
+  const printedBefore = (await recentDispatches(500, 500)).length;
+  // step one: orders for tonight, dry, on the real ledger as the base
+  const nordost = warbands.find((w) => w.id === 'nordost')!;
+  const free = nordost.members.filter((m) => !m.dead && !restingMembers(real.state, 400).includes(m.id) && !real.recovering.includes(m.id)).slice(0, 2);
+  let dry = await actions.orders(NIKLAS, 400, free.map((m) => ({ memberId: m.id, errand: 'pray' })), {});
+  assert.equal(dry.dry, true);
+  assert.equal(dry.state.orders[400].length, free.length);
+  assert.deepEqual(Array.isArray(dry.wouldPrint), true);
+  assert.equal((await loadOwnLedger(NIKLAS, 400))!.state.orders[400], undefined, 'the real ledger has no such orders');
+  // step two: the next morning, with the sandbox as the base: the dry night is written in the sandbox only
+  dry = await actions.look(NIKLAS, 401, { base: dry.state });
+  assert.equal(dry.state.nights.length, realNights + 1);
+  assert.deepEqual(dry.state.nights.at(-1)!.results.map((r) => r.errand), free.map(() => 'pray'), 'the sandbox remembers the dry orders');
+  assert.ok(dry.wouldPrint!.every((d) => d.night === 400));
+  // many nights, decisions included, and still nothing real moves
+  for (let t = 402; t < 430; t++) {
+    const waiting = waitingCrossroads(dry.state);
+    if (waiting) dry = await actions.decide(NIKLAS, t - 1, waiting.night, waiting.crossroads!.options[0].id, { base: dry.state });
+    dry = await actions.look(NIKLAS, t, { base: dry.state });
+  }
+  assert.ok(dry.state.nights.length >= realNights + 20);
+  const after = (await loadOwnLedger(NIKLAS, 400))!;
+  assert.equal(after.state.nights.length, realNights, 'the real ledger is where it was');
+  assert.deepEqual(JSON.parse(JSON.stringify(after.state)), realState, 'in every field');
+  assert.equal((await recentDispatches(500, 500)).length, printedBefore, 'the Cryer got nothing from the dry run');
+  // a sandbox from another warband is ignored: the real ledger is the base
+  const other = await actions.look(NIKLAS, 400, { base: { ...dry.state, warbandId: 'bitterbrow-expedition' } });
+  assert.equal(other.state.nights.length, realNights);
+  // the Eve dry: the City Provides in the sandbox only
+  const eve = await actions.eveOpen(NIKLAS, 400, { base: { ...real.state, hand: [] } });
+  assert.equal(eve.state.hand.length, 1);
+  assert.deepEqual((await loadOwnLedger(NIKLAS, 400))!.state.hand, real.state.hand);
+});
+
+test('a dry run needs debug on, a game master, and the strip\'s cookie', async () => {
+  const { isDryRun, hasDryCookie, DRY_COOKIE } = await import('./dry.ts');
+  const { env } = await import('../env.ts');
+  const viewer = { id: 'x', name: 'X', email: 'gm@example.com' };
+  const req = (cookie?: string) => new Request('http://localhost/api/curfew/look', { headers: cookie ? { cookie } : {} });
+  assert.equal(hasDryCookie(req(`${DRY_COOKIE}=1`)), true);
+  assert.equal(hasDryCookie(req(`other=1; ${DRY_COOKIE}=1`)), true);
+  assert.equal(hasDryCookie(req(`${DRY_COOKIE}=0`)), false);
+  assert.equal(hasDryCookie(req()), false);
+  assert.equal(isDryRun(req(`${DRY_COOKIE}=1`), null), false, 'nobody signed in');
+  const before = { debug: env.CURFEW_DEBUG, admins: env.ADMIN_EMAILS.slice() };
+  try {
+    (env as { CURFEW_DEBUG: boolean }).CURFEW_DEBUG = true;
+    env.ADMIN_EMAILS.splice(0, env.ADMIN_EMAILS.length, 'gm@example.com');
+    assert.equal(isDryRun(req(`${DRY_COOKIE}=1`), viewer), true);
+    assert.equal(isDryRun(req(), viewer), false, 'no cookie, no dry run');
+    assert.equal(isDryRun(req(`${DRY_COOKIE}=1`), { ...viewer, email: 'player@example.com' }), false, 'not a game master');
+    (env as { CURFEW_DEBUG: boolean }).CURFEW_DEBUG = false;
+    assert.equal(isDryRun(req(`${DRY_COOKIE}=1`), viewer), false, 'debug off for the deployment');
+  } finally {
+    (env as { CURFEW_DEBUG: boolean }).CURFEW_DEBUG = before.debug;
+    env.ADMIN_EMAILS.splice(0, env.ADMIN_EMAILS.length, ...before.admins);
+  }
+});

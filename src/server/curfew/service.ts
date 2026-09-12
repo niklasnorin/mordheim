@@ -12,7 +12,7 @@ import { cryerDispatches, curfewLedgers, curfewMoves, curfewRuns, user } from '.
 import { env } from '../env.ts';
 import { currentNight, locationById, locationForNight, type Location, type Move, type NightResult, type Order, type TokenOffer } from '../../curfew/engine.ts';
 import {
-  LedgerError, coerceState, fightDone, freshState, giveOrders, heal, layTable, nightForOverride, provideIfEmpty, putBack, reconcile, recoveringMembers, settleOffer,
+  LedgerError, coerceState, decide, fightDone, freshState, giveOrders, heal, layTable, nightForOverride, provideIfEmpty, putBack, reconcile, recoveringMembers, settleOffer,
   type Flourish, type WarbandState,
 } from '../../curfew/ledger.ts';
 import { dispatchesForNight, type Dispatch } from '../../curfew/cryer.ts';
@@ -32,7 +32,16 @@ export interface LedgerView {
   fresh: boolean;
   /** Where the campaign is tonight. */
   locationId: string;
+  /** A dry run: computed in memory, nothing saved. `wouldPrint` is what the Cryer would have been handed. */
+  dry?: boolean;
+  wouldPrint?: Dispatch[];
 }
+
+/**
+ * A dry run. `base` is the sandbox the browser carries from the last dry answer, so stepped nights build on
+ * each other; without it the real ledger is the base. Nothing a dry run computes is saved or published.
+ */
+export interface DryRun { base?: unknown }
 
 export interface Claim { warbandId: string; ownerId: string; ownerName: string }
 
@@ -102,35 +111,39 @@ export async function releaseWarband(userId: string): Promise<void> {
 // ───────────────────────── the ledger ─────────────────────────
 
 /** The signed-in player's ledger, with every due dawn written. Null if they keep none. */
-export async function loadOwnLedger(userId: string, today: number): Promise<LedgerView | null> {
+export async function loadOwnLedger(userId: string, today: number, dry?: DryRun): Promise<LedgerView | null> {
   const row = await ownRow(userId);
   if (!row) return null;
-  return withLedger(userId, today, () => {});
+  return withLedger(userId, today, () => {}, dry);
 }
 
 /**
  * Load, reconcile, apply a change, save. On a version clash the whole thing is redone on the fresh row.
  * The change may throw a LedgerError to refuse; nothing is saved then. It is told where the campaign is tonight.
  */
-export async function withLedger(userId: string, today: number, change: (state: WarbandState, warband: Warband, recovering: string[], location: Location) => void): Promise<LedgerView> {
+export async function withLedger(userId: string, today: number, change: (state: WarbandState, warband: Warband, recovering: string[], location: Location) => void, dry?: DryRun): Promise<LedgerView> {
   for (let attempt = 0; attempt < 3; attempt++) {
     const [row, moves] = await Promise.all([ownRow(userId), campaignMoves()]);
     if (!row) throw new LedgerError('You keep no ledger yet.', 404);
     const warband = warbandById(row.warbandId);
     if (!warband) throw new LedgerError('That warband has left the city.', 410);
     const location = locationForNight(today, moves);
-    const state = coerceState(row.state, warband, today);
+    // a dry run builds on the sandbox the browser carries, if it is this warband's; else on the real ledger
+    const base = dry && (dry.base as { warbandId?: string } | undefined)?.warbandId === row.warbandId ? dry.base : row.state;
+    const state = coerceState(base, warband, today);
     const recovering = recoveringMembers(state, injuredInLastBattle(warband.id));
     const written = reconcile(state, warband, today, recovering, rivalsOf(warband.id), moves);
-    const before = JSON.stringify(row.state);
+    const before = JSON.stringify(base);
     change(state, warband, recoveringMembers(state, injuredInLastBattle(warband.id)), location);
     const after = JSON.stringify(state);
+    const view: LedgerView = { warbandId: warband.id, state, today, recovering: recoveringMembers(state, injuredInLastBattle(warband.id)), fresh: written.length > 0, locationId: location.id };
+    if (dry) return { ...view, dry: true, wouldPrint: dispatchesDue(warband, state, written, today) };
     if (after !== before) {
       const saved = await save(row.warbandId, row.version, state);
       if (!saved) continue;
       await publish(warband, state, written, today);
     }
-    return { warbandId: warband.id, state, today, recovering: recoveringMembers(state, injuredInLastBattle(warband.id)), fresh: written.length > 0, locationId: location.id };
+    return view;
   }
   throw new LedgerError('The ledger was being written elsewhere. Try again.', 409);
 }
@@ -143,10 +156,17 @@ async function save(warbandId: string, version: number, state: WarbandState): Pr
   return updated.length > 0;
 }
 
+/** The dispatches a ledger owes the Cryer now: the nights just written, and any night whose crossroads was decided today. */
+function dispatchesDue(warband: Warband, state: WarbandState, written: NightResult[], today: number): Dispatch[] {
+  const out: Dispatch[] = [];
+  const nights = [...written, ...state.nights.filter((n) => n.crossroads?.decided?.on === today && !written.includes(n))];
+  for (const n of nights) out.push(...dispatchesForNight(warband, n, state.headlines));
+  return out;
+}
+
 /** Hand the Town Cryer what these nights gave it, plus anything planted today. Idempotent by key. */
 async function publish(warband: Warband, state: WarbandState, written: NightResult[], today: number): Promise<void> {
-  const out: Dispatch[] = [];
-  for (const n of written) out.push(...dispatchesForNight(warband, n, state.headlines));
+  const out: Dispatch[] = dispatchesDue(warband, state, written, today);
   // planted at the Eve tonight: the same key scheme as a resolved night's headlines
   state.headlines.filter((h) => h.night === today).forEach((h, i) => {
     out.push({ key: `${warband.id}:${today}:h${i}`, warbandId: warband.id, night: today, kind: 'headline', headline: h.text });
@@ -158,16 +178,20 @@ async function publish(warband: Warband, state: WarbandState, written: NightResu
 // ───────────────────────── the actions ─────────────────────────
 
 export const actions = {
-  orders: (userId: string, today: number, orders: Order[]) => withLedger(userId, today, (s, w, rec, loc) => giveOrders(s, w, today, orders, rec, loc)),
-  heal: (userId: string, today: number, memberId: string) => withLedger(userId, today, (s, w) => heal(s, w, memberId)),
-  offer: (userId: string, today: number, offer: TokenOffer, keep: 'incoming' | 'held') => withLedger(userId, today, (s) => settleOffer(s, offer, keep)),
+  /** Look at the ledger as of tonight, writing what is due. Mostly for dry runs, which have to ask for every night. */
+  look: (userId: string, today: number, dry?: DryRun) => withLedger(userId, today, () => {}, dry),
+  orders: (userId: string, today: number, orders: Order[], dry?: DryRun) => withLedger(userId, today, (s, w, rec, loc) => giveOrders(s, w, today, orders, rec, loc), dry),
+  heal: (userId: string, today: number, memberId: string, dry?: DryRun) => withLedger(userId, today, (s, w) => heal(s, w, memberId), dry),
+  offer: (userId: string, today: number, offer: TokenOffer, keep: 'incoming' | 'held', dry?: DryRun) => withLedger(userId, today, (s) => settleOffer(s, offer, keep), dry),
+  /** Take a road at the crossroads last night met. */
+  decide: (userId: string, today: number, night: number, roadId: string, dry?: DryRun) => withLedger(userId, today, (s, w) => { decide(s, w, night, roadId, { on: today, rival: rivalsOf(w.id) }); }, dry),
   /** Opening the Eve with an empty Hand: the City Provides one charm. */
-  eveOpen: (userId: string, today: number) => withLedger(userId, today, (s, _w, _rec, loc) => { if (!s.eve && today >= 1) provideIfEmpty(s, today, loc); }),
-  eveLay: (userId: string, today: number, bring: string[], flourish?: Flourish) => withLedger(userId, today, (s, w) => layTable(s, w, today, bring, flourish)),
-  eveDone: (userId: string, today: number) => withLedger(userId, today, (s) => fightDone(s, today)),
-  eveUndo: (userId: string, today: number) => withLedger(userId, today, (s) => putBack(s)),
+  eveOpen: (userId: string, today: number, dry?: DryRun) => withLedger(userId, today, (s, _w, _rec, loc) => { if (!s.eve && today >= 1) provideIfEmpty(s, today, loc); }, dry),
+  eveLay: (userId: string, today: number, bring: string[], flourish?: Flourish, dry?: DryRun) => withLedger(userId, today, (s, w) => layTable(s, w, today, bring, flourish), dry),
+  eveDone: (userId: string, today: number, dry?: DryRun) => withLedger(userId, today, (s) => fightDone(s, today), dry),
+  eveUndo: (userId: string, today: number, dry?: DryRun) => withLedger(userId, today, (s) => putBack(s), dry),
   /** Burn the ledger: start afresh tonight, keeping the warband. */
-  reset: (userId: string, today: number) => withLedger(userId, today, (s, w) => Object.assign(s, freshState(w, today))),
+  reset: (userId: string, today: number, dry?: DryRun) => withLedger(userId, today, (s, w) => Object.assign(s, freshState(w, today)), dry),
 };
 
 // ───────────────────────── midnight ─────────────────────────
@@ -186,7 +210,7 @@ export async function reconcileAll(today: number, source: 'cron' | 'admin' = 'cr
     const written = reconcile(state, warband, today, recoveringMembers(state, injuredInLastBattle(warband.id)), rivalsOf(warband.id), moves);
     if (!written.length) continue;
     if (!(await save(row.warbandId, row.version, state))) continue; // someone else wrote it first; their dawn is the same dawn
-    const out = written.flatMap((n) => dispatchesForNight(warband, n, state.headlines));
+    const out = dispatchesDue(warband, state, written, today);
     if (out.length) await db().insert(cryerDispatches).values(out.map((d) => ({ key: d.key, warbandId: d.warbandId, night: d.night, kind: d.kind, headline: d.headline, body: d.body ?? null }))).onConflictDoNothing();
     nights += written.length; dispatches += out.length;
   }

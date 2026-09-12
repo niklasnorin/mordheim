@@ -19,6 +19,8 @@ export interface NightEntry {
   /** The charm they brought back, by name, if any. */
   token?: string;
   rumour?: string;
+  /** The crossroads they came to that night and the road they took, once decided. */
+  choice?: { setup: string; label: string; outcome: string; defaulted: boolean };
 }
 
 export interface MemberNights {
@@ -29,6 +31,8 @@ export interface MemberNights {
   epithet?: string;
   shards: number;
   renown: number;
+  /** What they are known for, from the roads they took, oldest first. */
+  marks: { id: string; name: string; night: number }[];
 }
 
 export interface WarbandStanding {
@@ -51,14 +55,19 @@ export function memberNights(ledgers: Ledger[]): Record<string, MemberNights> {
   for (const { warband, state } of ledgers) {
     for (const night of state.nights) {
       for (const r of night.results) {
-        const m = (out[r.memberId] ??= { entries: [], nightsOut: 0, shards: 0, renown: 0 });
-        m.entries.push({ night: night.night, warbandId: warband.id, locationId: night.locationId, errand: r.errand, errandLabel: ERRAND_LABEL[r.errand], outcome: r.outcome, standing: r.standing, prose: r.prose, token: r.token?.name, rumour: r.rumour });
+        const m = (out[r.memberId] ??= { entries: [], nightsOut: 0, shards: 0, renown: 0, marks: [] });
+        const c = night.crossroads?.memberId === r.memberId && night.crossroads.decided ? night.crossroads : undefined;
+        m.entries.push({
+          night: night.night, warbandId: warband.id, locationId: night.locationId, errand: r.errand, errandLabel: ERRAND_LABEL[r.errand], outcome: r.outcome, standing: r.standing, prose: r.prose, token: r.token?.name, rumour: r.rumour,
+          ...(c ? { choice: { setup: c.setup, label: c.decided!.label, outcome: c.decided!.outcome, defaulted: c.decided!.defaulted } } : {}),
+        });
         m.nightsOut += 1;
         m.shards += r.shards;
         m.renown += r.renown;
       }
     }
-    for (const [memberId, epithet] of Object.entries(state.epithets)) (out[memberId] ??= { entries: [], nightsOut: 0, shards: 0, renown: 0 }).epithet = epithet;
+    for (const [memberId, epithet] of Object.entries(state.epithets)) (out[memberId] ??= { entries: [], nightsOut: 0, shards: 0, renown: 0, marks: [] }).epithet = epithet;
+    for (const [memberId, marks] of Object.entries(state.marks ?? {})) (out[memberId] ??= { entries: [], nightsOut: 0, shards: 0, renown: 0, marks: [] }).marks.push(...marks);
   }
   for (const m of Object.values(out)) m.entries.sort((a, b) => b.night - a.night);
   return out;

@@ -20,14 +20,16 @@ Players sign in with an email and a password (no emails are sent; the game maste
 
 Resolution happens twice over, and both ways agree: a nightly cron writes every ledger's dawn just after midnight (so the Town Cryer has last night before anyone looks in), and any visit to a ledger first writes whatever dawns are still due. Missed nights run on standing orders at half yield; a gap longer than a week collapses into a single Return vignette and nothing is lost but opportunity.
 
+Some nights one member comes to a **crossroads**: the Dawn Report stops there and the player decides at dawn what the character did. Roads cost or bring Favour, shards, Renown, a charm or a rumour, leave a permanent mark in the warrior's story, can reach into tonight, and on a risk road may bring a curse home. A crossroads nobody decides is decided by the character at the next midnight, along the road that risks nothing. See `src/data/curfew/CROSSROADS.md`.
+
 | File | Contents |
 | --- | --- |
 | `src/data/curfew/campaign.json` | Start date (night 1), time zone, members per night, soft caps, thresholds, and the calendar anchor: the first game's real date and its Imperial date |
 | `src/lib/calendar.ts` | The Imperial Calendar: 400-day year, eight-day week, six holy days outside both; every real day since the first game is one Imperial day. Dates the Town Cryer's issues, the Curfew's nights and the archives' battles |
 | `src/data/curfew/omens.json` | The 30 Omens of the Tarot of the Damned, with readings and errand tilts |
 | `src/data/curfew/moons.json`, `tokens.json`, `patrons.json`, `jobs.json` | The weekly Moons, the tokens (some belong to one place) and 4 curses, and Phase 4 content |
-| `src/data/curfew/locations/*.json` | One pack per place the campaign can be in: its errands and why the others are not to be had, points of interest, Dawn Report templates, rumours, epithets, Moon tie-ins, and the Town Cryer's masthead and headlines. `mordheim.json` and `fussenbach.json` today |
-| `src/data/curfew/STYLE.md`, `PLAN.md` | The writing style guide; the implementation plan with phase status |
+| `src/data/curfew/locations/*.json` | One pack per place the campaign can be in: its errands and why the others are not to be had, points of interest, Dawn Report templates, rumours, epithets, Moon tie-ins, its crossroads and the names of the marks they leave, and the Town Cryer's masthead and headlines. `mordheim.json` and `fussenbach.json` today |
+| `src/data/curfew/STYLE.md`, `PLAN.md`, `CROSSROADS.md` | The writing style guide; the implementation plan with phase status; the Crossroads, proposed and built |
 | `src/curfew/engine.ts` | The pure Night engine: calendar, seeded draws, errand resolution, the Hand |
 | `src/curfew/ledger.ts` | The ledger as pure functions: orders, reconciliation of passed nights, absence rules, offers, the Eve |
 | `src/curfew/cryer.ts` | What a resolved night gives the Town Cryer: every headline, and occasionally one member's night |
@@ -35,7 +37,7 @@ Resolution happens twice over, and both ways agree: a nightly cron writes every 
 | `src/pages/api/curfew/[action].ts`, `src/pages/api/cron/midnight.ts` | The JSON API the Ledger and Eve pages call, and the cron endpoint |
 | `public/curfew/omens/` | Card images, regenerated with `scripts/curfew/` |
 
-In `astro dev` (or with `CURFEW_DEBUG=true`, never in production) `?date=YYYY-MM-DD` is allowed on Curfew URLs and the dim **Debug** toggle in the Ledger's footer adds previous/next-night buttons and a date picker.
+In `astro dev` (or with `CURFEW_DEBUG=true`, never in production) `?date=YYYY-MM-DD` is allowed on Curfew URLs and the dim **Debug** toggle in the Ledger's footer, shown to game masters, adds previous/next-night buttons and a date picker. While the toggle is on, every request is a **dry run**: the server computes the night in memory and saves nothing, the browser keeps the sandbox between steps (in `sessionStorage`, sent back as `dry.base`), the strip says how many nights the sandbox is ahead of the real ledger and what the Cryer would have printed, and turning the toggle off drops the sandbox. The real ledger is exactly as it was.
 
 ## The Watch House — admin console
 
@@ -44,7 +46,7 @@ In `astro dev` (or with `CURFEW_DEBUG=true`, never in production) `?date=YYYY-MM
 - inspect any ledger (last night, the Hand, pending offers, the Eve, the raw record), burn one to start it afresh, or release a warband from its keeper;
 - moderate the Town Cryer: pull a dispatch, or post a notice from the Watch that prints in the broadsheet;
 - move the campaign between the places in `src/data/curfew/locations/` (Mordheim and Fussenbach). The move takes effect from tonight: earlier nights keep their place, the Curfew greys out the errands the new place has none of and offers its own, and the Town Cryer prints from there;
-- see every player with their sign-in provider, sessions and last visit, and sign one out everywhere;
+- see every player with their sessions and last visit, sign one out everywhere, and issue a reset word when a password is forgotten;
 - run midnight by hand and read the history of runs.
 
 Admission is by `ADMIN_EMAILS`, a comma-separated list of sign-in emails. Locally, with the dev sign-in and no list, every player is admitted.

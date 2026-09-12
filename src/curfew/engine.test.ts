@@ -402,3 +402,89 @@ test('a Mordheim night is unchanged in kind: no village words, and the rival cro
   const standing = resolveNight({ warband, rival, night: 7, orders: [{ memberId: 'agnar', errand: 'carouse', standing: true }], state: fresh });
   assert.doesNotMatch(standing.results[0].prose, /Welling Rune/, 'nobody remarks on standing orders');
 });
+
+// ───────────────────────── the Crossroads ─────────────────────────
+
+const ctx = { seen: [] as string[], marks: {} as Record<string, { id: string }[]>, recent: false };
+
+test('a crossroads is met about one night in five, on real orders only, never twice running, never the same one twice', async () => {
+  const { crossroadsFor, locationById } = await import('./engine.ts');
+  let met = 0; const ids = new Set<string>();
+  for (let n = 1; n <= 300; n++) {
+    const res = resolveNight({ warband, night: n, orders: [{ memberId: 'torgrim', errand: ALL[n % 6] }, { memberId: 'agnar', errand: 'carouse' }], state: fresh, crossroads: ctx });
+    if (!res.crossroads) continue;
+    met++; ids.add(res.crossroads.id);
+    assert.ok(['torgrim', 'agnar'].includes(res.crossroads.memberId));
+    assert.doesNotMatch(res.crossroads.setup, /\{\w+\}/, 'the setup is filled');
+    assert.ok(res.crossroads.options.length >= 2);
+    for (const o of res.crossroads.options) assert.doesNotMatch(o.label, /\{\w+\}/);
+    assert.equal(res.crossroads.decided, undefined);
+  }
+  assert.ok(met > 35 && met < 95, `met ${met} of 300 nights: about one in five`);
+  assert.ok(ids.size > 5, 'more than a handful of different crossroads');
+  for (let n = 1; n <= 60; n++) {
+    assert.equal(resolveNight({ warband, night: n, orders: [{ memberId: 'torgrim', errand: 'scavenge', standing: true }], state: fresh, crossroads: ctx }).crossroads, undefined, 'never on standing orders');
+    assert.equal(resolveNight({ warband, night: n, orders: [{ memberId: 'torgrim', errand: 'scavenge' }], state: fresh, crossroads: { ...ctx, recent: true } }).crossroads, undefined, 'never two nights running');
+    assert.equal(resolveNight({ warband, night: n, orders: [{ memberId: 'torgrim', errand: 'scavenge' }], state: fresh }).crossroads, undefined, 'none without the ledger\'s context');
+  }
+  const city = locationById('mordheim');
+  const all = city.crossroads!.map((c) => c.id);
+  for (let n = 1; n <= 60; n++) assert.equal(resolveNight({ warband, night: n, orders: [{ memberId: 'torgrim', errand: 'scavenge' }], state: fresh, crossroads: { ...ctx, seen: all } }).crossroads, undefined, 'never the same one twice');
+  assert.ok(crossroadsFor(city, 'scavenge', 'fair', 3, [], []).length >= 2);
+  assert.equal(crossroadsFor(city, 'spy', 'fair', 3, [{ id: 'looked-in-the-sisters-crate' }], []).some((c) => c.id === 'the-sisters-crates'), false, 'a mark already carried closes that crossroads');
+});
+
+test('every road in every pack can be taken: filled words, bounded numbers, a default that risks nothing', async () => {
+  const { LOCATIONS, takeRoad, defaultRoad, roadLedger, CURSES } = await import('./engine.ts');
+  for (const location of LOCATIONS) {
+    assert.ok(location.crossroads!.length >= 10, `${location.id} has crossroads`);
+    assert.ok(location.undecided!.length >= 3);
+    for (const c of location.crossroads!) {
+      const def = defaultRoad(c, 'nordost', 4);
+      assert.ok(c.options.includes(def), `${c.id} has a default road`);
+      const met = { id: c.id, memberId: 'torgrim', kind: c.kind, setup: c.setup, options: c.options.map((o) => ({ id: o.id, label: o.label })) };
+      const night = { ...resolveNight({ warband, night: 4, orders: [{ memberId: 'torgrim', errand: c.errands[0] }, { memberId: 'agnar', errand: 'carouse' }], state: fresh, location }), crossroads: met };
+      for (const road of c.options) {
+        for (let n = 1; n <= 6; n++) {
+          const taken = takeRoad({ warband, night: { ...night, night: n }, roadId: road.id, location, defaulted: road === def && n % 2 === 0, rival: warband });
+          assert.doesNotMatch(taken.outcome, /\{\w+\}/, `${c.id}/${road.id}: ${taken.outcome}`);
+          assert.doesNotMatch(taken.label, /\{\w+\}/);
+          if (taken.headline) assert.doesNotMatch(taken.headline, /\{\w+\}/);
+          assert.ok(Math.abs(taken.favour) <= 8 && Math.abs(taken.shards) <= 2 && Math.abs(taken.renown) <= 5, `${c.id}/${road.id} moves no more than a good night`);
+          if (taken.mark) assert.ok(location.markNames![taken.mark.id], `${taken.mark.id} is named`);
+          if (taken.curse) assert.ok(CURSES.includes(taken.curse));
+          if (road === def) { assert.equal(taken.curse, undefined, `${c.id}: the default road carries no curse`); assert.ok(taken.favour >= 0 && taken.shards >= 0 && taken.renown >= 0, `${c.id}: the default road costs nothing`); }
+          if (road === def && n % 2 === 0) assert.ok(location.undecided!.some((u) => taken.outcome.startsWith(u.replace(/\{first\}/g, 'Torgrim').split(' ')[0])), 'an undecided road opens with the pack\'s line');
+          for (const l of roadLedger(taken, warband.members[2])) assert.ok(l.length > 2);
+        }
+      }
+    }
+  }
+});
+
+test('a risk road falls both ways over many nights, and always the same way on the same night', async () => {
+  const { takeRoad, locationById } = await import('./engine.ts');
+  const village = locationById('fussenbach');
+  const c = village.crossroads!.find((x) => x.id === 'the-warm-basin')!;
+  const met = { id: c.id, memberId: 'torgrim', kind: c.kind, setup: c.setup, options: c.options.map((o) => ({ id: o.id, label: o.label })) };
+  let good = 0, bad = 0;
+  for (let n = 1; n <= 60; n++) {
+    const night = { ...resolveNight({ warband, night: n, orders: [{ memberId: 'torgrim', errand: 'dredge' }], state: fresh, location: village }), crossroads: met };
+    const a = takeRoad({ warband, night, roadId: 'dig', location: village }), b = takeRoad({ warband, night, roadId: 'dig', location: village });
+    assert.deepEqual(a, b);
+    if (a.curse) { bad++; assert.equal(a.curse.id, 'wyrdstone-cough'); assert.equal(a.shards, 0); } else { good++; assert.equal(a.shards, 2); }
+    assert.equal(a.mark?.id, 'dug-where-it-moved');
+  }
+  assert.ok(good > 10 && bad > 10, `${good} good, ${bad} bad`);
+});
+
+test('a road reaching into tonight tilts that member\'s dice; a kept member is unavailable', () => {
+  let moved = 0;
+  for (let n = 1; n <= 80; n++) {
+    const plain = resolveNight({ warband, night: n, orders: [{ memberId: 'torgrim', errand: 'scavenge' }], state: fresh });
+    const carried = resolveNight({ warband, night: n, orders: [{ memberId: 'torgrim', errand: 'scavenge' }], state: fresh, carry: { memberId: 'torgrim', tilt: 3 } });
+    if (plain.results[0].outcome !== carried.results[0].outcome) moved++;
+  }
+  assert.ok(moved > 5, `a tilt of three moved ${moved} of 80 nights`);
+  assert.deepEqual(availability(warband, [], [], ['agnar']).map((a) => a.reason), ['kept', undefined, undefined, 'dead']);
+});

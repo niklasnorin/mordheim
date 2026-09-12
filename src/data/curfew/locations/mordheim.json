@@ -340,5 +340,489 @@
     "spy": ["Who Listens", "the Unseen", "of the Wrong Door", "Who Was Not Caught"],
     "pray": ["Who Held the Candles", "Who Knelt", "the Answered", "of the Third Hour"],
     "trade": ["Henrik's Friend", "Fair Weight", "Who Broke the Silence", "the Unpriced"]
+  },
+  "crossroads": [
+    {
+      "id": "the-hand-in-the-rubble",
+      "kind": "moral",
+      "errands": [
+        "scavenge"
+      ],
+      "weight": 2,
+      "setup": "Under a fallen lintel in {district}, a hand, and on the hand three rings. The arm it belonged to was still warm.",
+      "options": [
+        {
+          "id": "rings",
+          "label": "Take the rings.",
+          "outcome": "Three rings, one with a Merchant's Guild seal. The hand did not close.",
+          "effects": {
+            "shards": 1,
+            "favour": 2,
+            "renown": -2,
+            "mark": "took-the-rings"
+          }
+        },
+        {
+          "id": "dig",
+          "label": "Dig them out.",
+          "outcome": "It took until dawn and the lintel moved twice. A woman, breathing, with no memory of her name. {first} came home with nothing but her.",
+          "effects": {
+            "favour": 4,
+            "mark": "dug-them-out",
+            "carry": {
+              "staysHome": 1
+            }
+          },
+          "headline": "Woman Pulled Alive From the Rubble by {first} of {warband}; Remembers Nothing"
+        },
+        {
+          "id": "mark",
+          "label": "Mark the place. Move on.",
+          "default": true,
+          "outcome": "The place is marked. The hand was gone in the morning."
+        }
+      ]
+    },
+    {
+      "id": "the-green-glow-below",
+      "kind": "risk",
+      "errands": [
+        "scavenge"
+      ],
+      "setup": "A cellar under {district} glowed green through the floorboards, brighter than a sliver has any right to.",
+      "options": [
+        {
+          "id": "down",
+          "label": "Go down.",
+          "outcome": "{first} went down.",
+          "risk": {
+            "chance": 0.5,
+            "good": {
+              "outcome": "A vein of it in the wall. Two shards prised out before the light started to move.",
+              "effects": {
+                "shards": 2,
+                "mark": "went-down-into-the-glow"
+              }
+            },
+            "bad": {
+              "outcome": "A vein of it in the wall, and in the air around it. One shard, and a cough that tastes of it.",
+              "effects": {
+                "shards": 1,
+                "curse": "wyrdstone-cough",
+                "mark": "went-down-into-the-glow"
+              }
+            }
+          }
+        },
+        {
+          "id": "daylight",
+          "label": "Mark it for daylight.",
+          "default": true,
+          "outcome": "In daylight the cellar was full of water and nothing glowed."
+        }
+      ]
+    },
+    {
+      "id": "the-witch-hunters-question",
+      "kind": "loyalty",
+      "errands": [
+        "carouse"
+      ],
+      "weight": 2,
+      "setup": "A Witch Hunter at the bar of the Broken Bell asked {first}, pleasantly, whether anyone in {warband} had been seen praying to the wrong thing.",
+      "options": [
+        {
+          "id": "no",
+          "label": "Say no, and buy him a drink.",
+          "outcome": "He drank it. He thanked {first}. He wrote something down anyway.",
+          "effects": {
+            "favour": 3,
+            "mark": "lied-to-the-hunter"
+          }
+        },
+        {
+          "id": "silent",
+          "label": "Say nothing at all.",
+          "outcome": "Silence is an answer to a Witch Hunter. He left a card.",
+          "effects": {
+            "renown": 1,
+            "favour": -2,
+            "mark": "said-nothing-to-the-hunter"
+          }
+        },
+        {
+          "id": "rival",
+          "label": "Ask about the {rival} instead.",
+          "default": true,
+          "outcome": "He was happy to talk about them. Some of it may even be true.",
+          "effects": {
+            "rumour": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "the-pit-fighters-wager",
+      "kind": "risk",
+      "errands": [
+        "carouse"
+      ],
+      "setup": "A Pit fighter with one ear wanted to arm-wrestle for a shard. The table was already wet with the last man's blood.",
+      "options": [
+        {
+          "id": "wager",
+          "label": "Take the wager.",
+          "outcome": "{first} put an elbow in the blood.",
+          "risk": {
+            "chance": 0.45,
+            "good": {
+              "outcome": "The table cracked. So did something in his wrist. The Bell paid up.",
+              "effects": {
+                "shards": 1,
+                "renown": 2,
+                "mark": "beat-the-one-eared-man"
+              }
+            },
+            "bad": {
+              "outcome": "{first} lost, and then lost the rest of the night to the Bell's consolation.",
+              "effects": {
+                "shards": -1,
+                "curse": "hungover",
+                "mark": "lost-to-the-one-eared-man"
+              }
+            }
+          }
+        },
+        {
+          "id": "drink",
+          "label": "Buy him a drink instead.",
+          "default": true,
+          "outcome": "He told a story about the Pit that {first} will not repeat.",
+          "effects": {
+            "favour": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "the-boy-in-the-pit",
+      "kind": "moral",
+      "errands": [
+        "train"
+      ],
+      "weight": 2,
+      "setup": "The Pit's master put a boy of twelve in against {first} for the crowd's amusement. The boy had a knife and no idea.",
+      "options": [
+        {
+          "id": "gentle",
+          "label": "Put him down gently.",
+          "outcome": "The crowd booed. The boy wept. The master paid half.",
+          "effects": {
+            "renown": 1,
+            "favour": 3,
+            "mark": "spared-the-boy"
+          }
+        },
+        {
+          "id": "show",
+          "label": "Give the crowd its show.",
+          "outcome": "The crowd got it. The boy will walk again, they say. {first} was paid in full.",
+          "effects": {
+            "renown": 4,
+            "favour": -2,
+            "mark": "gave-the-crowd-its-show"
+          }
+        },
+        {
+          "id": "walk",
+          "label": "Walk out of the ring.",
+          "default": true,
+          "outcome": "The master shouted. {first} kept walking. It will be remembered, one way or the other.",
+          "effects": {
+            "mark": "walked-out-of-the-pit"
+          }
+        }
+      ]
+    },
+    {
+      "id": "the-ogres-advice",
+      "kind": "light",
+      "errands": [
+        "train"
+      ],
+      "setup": "An Ogre training in the yard offered to show {first} a thing about elbows. It involved being hit in the elbow.",
+      "options": [
+        {
+          "id": "learn",
+          "label": "Learn it.",
+          "outcome": "It hurt. It works. {first} will try it tonight.",
+          "effects": {
+            "renown": 1,
+            "carry": {
+              "tilt": 1
+            },
+            "mark": "learned-the-ogres-trick"
+          }
+        },
+        {
+          "id": "rail",
+          "label": "Watch from the rail.",
+          "default": true,
+          "outcome": "The Ogre showed the next man. That man will not use the elbow for a Moon."
+        }
+      ]
+    },
+    {
+      "id": "the-sisters-crates",
+      "kind": "lore",
+      "errands": [
+        "spy"
+      ],
+      "requires": {
+        "notMark": [
+          "looked-in-the-sisters-crate"
+        ]
+      },
+      "setup": "Behind the Sisters' chapel, novices were unloading candles by the crate under a tarpaulin. One crate was not candles.",
+      "options": [
+        {
+          "id": "look",
+          "label": "Look under the tarpaulin.",
+          "outcome": "Not candles. Hammers, and something long wrapped in altar cloth. A novice saw {first} see.",
+          "effects": {
+            "rumour": true,
+            "mark": "looked-in-the-sisters-crate",
+            "carry": {
+              "tilt": -1
+            }
+          }
+        },
+        {
+          "id": "count",
+          "label": "Count the crates and go.",
+          "default": true,
+          "outcome": "Fourteen crates. That is a great many candles, or a great many of something.",
+          "effects": {
+            "rumour": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "the-rivals-mark",
+      "kind": "loyalty",
+      "errands": [
+        "spy"
+      ],
+      "setup": "On the wall of the {rival}'s lodging somebody had chalked the Ratcatchers' mark: the sign for a house to be burned out. {first} was the only one who saw it.",
+      "options": [
+        {
+          "id": "rub",
+          "label": "Rub it out.",
+          "outcome": "The chalk came off on {first}'s sleeve. Nobody will ever know, which is the point.",
+          "effects": {
+            "renown": 2,
+            "mark": "rubbed-out-the-mark"
+          }
+        },
+        {
+          "id": "spread",
+          "label": "Chalk it on the wall opposite as well.",
+          "outcome": "Two marks. The Ratcatchers will wonder who is doing their work for them.",
+          "effects": {
+            "renown": -1,
+            "favour": 2,
+            "mark": "spread-the-mark"
+          }
+        },
+        {
+          "id": "leave",
+          "label": "Leave it.",
+          "default": true,
+          "outcome": "It was still there at dawn. So was the lodging, for now.",
+          "effects": {
+            "mark": "left-the-mark"
+          }
+        }
+      ]
+    },
+    {
+      "id": "the-plague-doctors-request",
+      "kind": "moral",
+      "errands": [
+        "pray"
+      ],
+      "setup": "A plague doctor at the Broken Bell asked {first} to hold a lantern while he opened a man who was not, strictly, dead yet.",
+      "options": [
+        {
+          "id": "hold",
+          "label": "Hold the lantern.",
+          "outcome": "{first} held it. The man stopped not being dead. The doctor learned something and said so.",
+          "effects": {
+            "favour": 3,
+            "renown": 1,
+            "mark": "held-the-lantern",
+            "carry": {
+              "tilt": -1
+            }
+          }
+        },
+        {
+          "id": "refuse",
+          "label": "Refuse.",
+          "default": true,
+          "outcome": "The doctor found a novice. The lantern shook."
+        }
+      ]
+    },
+    {
+      "id": "the-sisters-candle",
+      "kind": "risk",
+      "errands": [
+        "pray"
+      ],
+      "weight": 2,
+      "setup": "Sister Agathe left {first} alone with one candle and a door that was bolted from the other side. Keep it lit until the bell, she said.",
+      "options": [
+        {
+          "id": "keep",
+          "label": "Keep it lit.",
+          "outcome": "{first} kept it lit.",
+          "risk": {
+            "chance": 0.6,
+            "good": {
+              "outcome": "The bell rang. The candle was an inch. The Sister unbolted the door and put something in {first}'s hand.",
+              "effects": {
+                "favour": 5,
+                "token": "fortune",
+                "mark": "kept-the-sisters-candle"
+              }
+            },
+            "bad": {
+              "outcome": "The candle burned green for an hour before the bell. {first} breathed it.",
+              "effects": {
+                "favour": 1,
+                "curse": "wyrdstone-cough",
+                "mark": "kept-the-sisters-candle"
+              }
+            }
+          }
+        },
+        {
+          "id": "bang",
+          "label": "Bang on the door.",
+          "default": true,
+          "outcome": "The Sister opened it without a word and took the candle back."
+        }
+      ]
+    },
+    {
+      "id": "the-fences-scales",
+      "kind": "moral",
+      "errands": [
+        "trade"
+      ],
+      "setup": "The fence on the Rock weighed {first}'s green on a scale {first} could see was crooked, and paid for the light side.",
+      "options": [
+        {
+          "id": "name",
+          "label": "Name the scale.",
+          "outcome": "The fence laughed, paid the difference, and said not to come back. {first} will come back.",
+          "effects": {
+            "favour": 2,
+            "renown": 2,
+            "mark": "named-the-crooked-scale"
+          }
+        },
+        {
+          "id": "thumb",
+          "label": "Put a thumb on the other side.",
+          "outcome": "Two thumbs on one scale. The fence noticed, and respected it, and will cheat harder.",
+          "effects": {
+            "shards": 1,
+            "renown": -1,
+            "mark": "thumbed-the-scale"
+          }
+        },
+        {
+          "id": "light",
+          "label": "Take the light price.",
+          "default": true,
+          "outcome": "It was the light price. Next time {first} brings {their} own weights."
+        }
+      ]
+    },
+    {
+      "id": "the-man-in-grey",
+      "kind": "lore",
+      "errands": [
+        "trade"
+      ],
+      "requires": {
+        "notMark": [
+          "asked-the-man-in-grey"
+        ]
+      },
+      "setup": "A man in grey at the cattle market bought nothing and asked {first} what {warband} would take to leave a certain cellar in {district} alone for a Moon.",
+      "options": [
+        {
+          "id": "price",
+          "label": "Name a price.",
+          "outcome": "He paid it without haggling, which means it was too low.",
+          "effects": {
+            "favour": 6,
+            "mark": "named-a-price-to-the-man-in-grey"
+          }
+        },
+        {
+          "id": "ask",
+          "label": "Ask what is in the cellar.",
+          "outcome": "He told {first} what would happen to whoever asked twice. It was very detailed.",
+          "effects": {
+            "renown": 1,
+            "favour": -1,
+            "mark": "asked-the-man-in-grey"
+          }
+        },
+        {
+          "id": "nothing",
+          "label": "Say the cellar is nothing to {warband}.",
+          "default": true,
+          "outcome": "He said good, and that it should stay that way, and where he could be found.",
+          "effects": {
+            "rumour": true
+          }
+        }
+      ]
+    }
+  ],
+  "undecided": [
+    "There was nobody to ask. {first} kept walking.",
+    "{first} did not wait to be told.",
+    "The city does not wait for orders, and neither did {first}.",
+    "By the time anyone might have asked, it was done."
+  ],
+  "markNames": {
+    "took-the-rings": "took the rings off a warm hand",
+    "dug-them-out": "dug a stranger out of the rubble",
+    "went-down-into-the-glow": "went down into the glow",
+    "lied-to-the-hunter": "lied to a Witch Hunter",
+    "said-nothing-to-the-hunter": "said nothing to a Witch Hunter",
+    "beat-the-one-eared-man": "beat the one-eared man",
+    "lost-to-the-one-eared-man": "lost to the one-eared man",
+    "spared-the-boy": "spared the boy in the Pit",
+    "gave-the-crowd-its-show": "gave the Pit its show",
+    "walked-out-of-the-pit": "walked out of the Pit",
+    "learned-the-ogres-trick": "learned the Ogre's trick",
+    "looked-in-the-sisters-crate": "looked in the Sisters' crate",
+    "rubbed-out-the-mark": "rubbed out the Ratcatchers' mark",
+    "spread-the-mark": "spread the Ratcatchers' mark",
+    "left-the-mark": "left the Ratcatchers' mark",
+    "held-the-lantern": "held the plague doctor's lantern",
+    "kept-the-sisters-candle": "kept the Sister's candle",
+    "named-the-crooked-scale": "named the crooked scale",
+    "thumbed-the-scale": "put a thumb on the scale",
+    "named-a-price-to-the-man-in-grey": "named a price to the man in grey",
+    "asked-the-man-in-grey": "asked the man in grey twice"
   }
 }

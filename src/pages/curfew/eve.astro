@@ -7,6 +7,7 @@ import { hasDatabase } from '../../server/db/client';
 import { env } from '../../server/env';
 import { getViewer } from '../../server/session';
 import { LedgerError, actions, todayFor, type LedgerView } from '../../server/curfew/service';
+import { isDryRun } from '../../server/curfew/dry';
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -16,11 +17,12 @@ const today = todayFor(Astro.url);
 const viewer = ready ? await getViewer(Astro.request) : null;
 let view: LedgerView | null = null;
 let trouble = false;
+const dry = !!viewer && isDryRun(Astro.request, viewer);
 if (viewer) {
-  // Arriving at the Eve with an empty Hand, the City Provides one charm. Nothing else changes on a visit.
-  try { view = await actions.eveOpen(viewer.id, today); } catch (e) { if (!(e instanceof LedgerError && e.status === 404)) { console.error('[curfew] eve unavailable', e); trouble = true; } }
+  // Arriving at the Eve with an empty Hand, the City Provides one charm. Nothing else changes on a visit. In a dry run, nothing at all does.
+  try { view = await actions.eveOpen(viewer.id, today, dry ? {} : undefined); } catch (e) { if (!(e instanceof LedgerError && e.status === 404)) { console.error('[curfew] eve unavailable', e); trouble = true; } }
 }
-const boot = { today, debug: env.CURFEW_DEBUG, view };
+const boot = { today, debug: env.CURFEW_DEBUG, dry, view };
 const ledgerHref = `${base}/curfew/`;
 ---
 
@@ -56,14 +58,15 @@ const ledgerHref = `${base}/curfew/`;
 
 <script>
   import { warbands } from '../../data/warbands';
-  import { CAMPAIGN, HAND_SIZE, TOKEN_TYPES, cityProvidesLine, dateForNight, locationById, readTicket, tokenById, omenForNight } from '../../curfew/engine';
+  import { CAMPAIGN, HAND_SIZE, TOKEN_TYPES, cityProvidesLine, curseById, dateForNight, locationById, readTicket, tokenById, omenForNight } from '../../curfew/engine';
+  import { afflictionsAt } from '../../curfew/ledger';
   import { formatImperial, imperialForDate } from '../../lib/calendar';
   import type { Flourish, WarbandState } from '../../curfew/ledger';
   import { sealSvg } from '../../curfew/glyphs';
-  import { carryDate, debugEnabled, renderDebugBar } from '../../curfew/debug';
+  import { carryDate, debugEnabled, loadSandbox, renderDebugBar, saveSandbox } from '../../curfew/debug';
 
-  interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean; locationId: string }
-  interface Boot { today: number; debug: boolean; view: View | null }
+  interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean; locationId: string; dry?: boolean }
+  interface Boot { today: number; debug: boolean; dry: boolean; view: View | null }
 
   document.body.classList.add('curfew-body');
   const root = document.getElementById('main-content')!;
@@ -76,8 +79,11 @@ const ledgerHref = `${base}/curfew/`;
 
   const today = boot.today;
   const table = $('table');
+  // a dry run: the sandbox the Ledger stepped is the base here too, and nothing is saved
+  const dryRun = boot.dry && debugEnabled();
+  const realLastResolved = boot.view?.state.lastResolved ?? 0;
   if (boot.debug && debugEnabled()) {
-    renderDebugBar($('debug-bar'), today);
+    renderDebugBar($('debug-bar'), today, dryRun && boot.view ? { sandbox: loadSandbox(boot.view.warbandId), wouldPrint: [], onReset: () => { location.href = `${base}/curfew/`; } } : undefined);
     carryDate(document.querySelector<HTMLAnchorElement>('.cf-back')); carryDate(document.querySelector<HTMLAnchorElement>('.cf-wordmark'));
   }
 
@@ -85,10 +91,13 @@ const ledgerHref = `${base}/curfew/`;
     const url = new URL(`${base}/api/curfew/${action}`, location.href);
     const date = new URLSearchParams(location.search).get('date');
     if (date) url.searchParams.set('date', date);
+    if (dryRun && boot.view) body = { ...body, dry: { base: loadSandbox(boot.view.warbandId)?.state } };
     const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), credentials: 'same-origin' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error ?? 'The city did not answer. Try again.');
-    return data.view;
+    const next: View = data.view;
+    if (dryRun && next?.dry) saveSandbox(next.warbandId, next.state, realLastResolved);
+    return next;
   }
 
   if (boot.view) {
@@ -116,10 +125,15 @@ const ledgerHref = `${base}/curfew/`;
         provided = `<div class="cf-offer"><h3 class="cf-offer-title">${place.kind === 'village' ? 'The Village Provides' : 'The City Provides'}</h3><p class="cf-italic">${esc(cityProvidesLine(warband.id, today, place))}</p><p>An empty Hand at the Eve is dealt one charm: <b>${esc(token.name)}</b>.</p></div>`;
       }
       const canFlourish = state.favour >= cost;
+      // curses still standing on the warband: the table should know
+      const standing = afflictionsAt(state, today);
+      const afflicted = standing.length
+        ? `<p class="cf-note cf-afflictions">Standing on the warband tonight: ${standing.map((a) => { const left = a.fromNight + a.nights - today; return `<b>${esc(warband.members.find((m) => m.id === a.memberId)?.name.split(' ')[0] ?? a.memberId)}: ${esc(curseById(a.curseId)?.name ?? a.curseId)}</b> (${esc(curseById(a.curseId)?.effect ?? '')} ${left} ${left === 1 ? 'night' : 'nights'} more.)`; }).join(' ')} Tell the table.</p>`
+        : '';
       table.innerHTML = `
         <h2 class="cf-h2">${esc(warband.name)}</h2>
         <p class="cf-muted">Under ${esc(omenForNight(today).title)}, night ${today}.</p>
-        ${provided}
+        ${provided}${afflicted}
         <h3 class="cf-h3">Bring to the fight</h3>
         <p class="cf-note">One per type, three at most. Tap a charm to leave it behind. Whatever is not brought is lost; the night before a fight, nothing keeps.</p>
         <div class="cf-hand" id="bring">${padSlots(state.hand.map((h) => tokenHtml(h.id, true)), 'an empty palm')}</div>
@@ -191,6 +205,9 @@ const ledgerHref = `${base}/curfew/`;
       });
     }
 
-    if (state.eve) renderLaid(); else renderLaying();
+    if (dryRun && loadSandbox(warband.id)) {
+      // the page was rendered from the real ledger; the sandbox is the base of this dry run
+      api('eve-open').then((v) => { state = v.state; if (state.eve) renderLaid(); else renderLaying(); }).catch((e) => toast((e as Error).message));
+    } else if (state.eve) renderLaid(); else renderLaying();
   }
 </script>

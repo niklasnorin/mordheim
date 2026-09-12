@@ -54,3 +54,23 @@ test('a happening in the village is headlined in the village\'s words, with its 
   assert.ok(village.cryer.bylines.includes(bylineFor('nordost', 4, village)));
   assert.ok(!village.cryer.bylines.includes(bylineFor('nordost', 4)));
 });
+
+test('a night whose crossroads still waits prints no happening; once decided it prints, reading the road taken', () => {
+  let checked = 0;
+  for (let n = 1; n <= 80 && checked < 3; n++) {
+    const plain = night(n);
+    const printed = happeningFor(warband, plain);
+    if (!printed) continue;
+    const member = plain.results.find((r) => printed.body!.startsWith(r.prose))!.memberId;
+    const met = { id: 'x', memberId: member, kind: 'moral' as const, setup: 'A door stood open that should not have.', options: [{ id: 'a', label: 'Go in.' }, { id: 'b', label: 'Walk on.' }] };
+    assert.equal(happeningFor(warband, { ...plain, crossroads: met }), null, 'undecided: not yet a story');
+    assert.deepEqual(dispatchesForNight(warband, { ...plain, crossroads: met }, [{ night: n, text: 'a headline' }]).map((d) => d.kind), ['headline'], 'headlines still print');
+    const decided = { ...met, decided: { roadId: 'a', label: 'Go in.', outcome: 'Nobody was inside. Something had been.', ledger: [], defaulted: false, on: n + 1 } };
+    const h = happeningFor(warband, { ...plain, crossroads: decided })!;
+    assert.ok(h);
+    assert.match(h.body!, /A door stood open/);
+    assert.match(h.body!, /Nobody was inside/);
+    checked++;
+  }
+  assert.ok(checked > 0);
+});

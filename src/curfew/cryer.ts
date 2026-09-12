@@ -39,6 +39,8 @@ export function dispatchesForNight(warband: WarbandLike, night: NightResult, hea
 export function happeningFor(warband: WarbandLike, night: NightResult): Dispatch | null {
   const r = rng(hashSeed(CAMPAIGN.id, 'cryer', warband.id, night.night));
   const location = locationById(night.locationId);
+  // a night whose crossroads still waits is not yet a story; the decision publishes it
+  if (night.crossroads && !night.crossroads.decided) return null;
   for (const res of night.results) {
     if (res.standing) continue;
     const member = warband.members.find((m) => m.id === res.memberId);
@@ -50,7 +52,9 @@ export function happeningFor(warband: WarbandLike, night: NightResult): Dispatch
     return {
       key: `${warband.id}:${night.night}:e`, warbandId: warband.id, night: night.night, kind: 'happening',
       headline: fill(pick(r, bank), slots),
-      body: `${res.prose} ${night.detail}`,
+      body: night.crossroads?.memberId === res.memberId && night.crossroads.decided
+        ? `${res.prose} ${night.crossroads.setup} ${night.crossroads.decided.outcome}`
+        : `${res.prose} ${night.detail}`,
     };
   }
   return null;

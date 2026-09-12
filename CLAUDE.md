@@ -8,7 +8,7 @@ Astro 7 on Vercel. Campaign pages are prerendered; the Town Cryer, the Curfew pa
 
 ## Commands
 
-- `npm run dev` — local dev with a PGlite database under `.pglite/`, a name-only dev sign-in, and the Debug strip (step nights with `?date=`). No `.env` needed.
+- `npm run dev` — local dev with a PGlite database under `.pglite/`, a name-only dev sign-in, and the Debug strip (step nights with `?date=`; with the strip on, a game master's requests are dry runs that save nothing, see `src/server/curfew/dry.ts`). No `.env` needed.
 - `npm test` — engine, ledger, Town Cryer and service tests (`node --test`, TypeScript run natively; relative imports need `.ts` extensions).
 - `npm run check` — `astro check`. Keep it at 0 errors.
 - `npm run build` — Vercel build; on a production deploy it first applies any pending migration (`scripts/migrate.mjs`). `npm run db:generate -- --name <name>` after a schema change and commit the files under `drizzle/`; `npm run db:reset` wipes the local database.
@@ -22,11 +22,11 @@ This is a hybrid. The campaign's record is source code, edited by people and by 
 - A member's profile shows the roster entry, the battle reports, and "Nights in the City" from their ledger (`src/curfew/story.ts`); a warband card carries its tavern title.
 - Never move source content into the database or make the admin console edit rosters, scenarios or articles; those changes are commits.
 - When adding a Curfew feature, ask which half it belongs to. Deterministic story that a night produces is database; anything a game master would author is source.
-- Locations follow the same split: a place is a content pack in `src/data/curfew/locations/*.json` (its errands, points of interest, templates, rumours, Cryer headlines, Moon tie-ins, charms tagged with `location` in `tokens.json`); *which* place the campaign is in is a game master's switch in the Watch House, logged by night so earlier nights keep their place.
+- Locations follow the same split: a place is a content pack in `src/data/curfew/locations/*.json` (its errands, points of interest, templates, rumours, Cryer headlines, Moon tie-ins, crossroads and mark names, charms tagged with `location` in `tokens.json`); *which* place the campaign is in is a game master's switch in the Watch House, logged by night so earlier nights keep their place. The Crossroads follow it too: the roads and their effects are pack content; which crossroads a night met and which road was taken is the ledger's (`src/data/curfew/CROSSROADS.md`).
 
 ## Where things are
 
-- `src/curfew/engine.ts` pure Night engine (seeded, deterministic; `Location`, `locationForNight`, `errandAt`, `tokensFor` say what a place offers). `ledger.ts` pure ledger ops on `WarbandState`. `cryer.ts` turns a night into Town Cryer dispatches, worded where the night happened. All three have tests beside them.
+- `src/curfew/engine.ts` pure Night engine (seeded, deterministic; `Location`, `locationForNight`, `errandAt`, `tokensFor` say what a place offers; `takeRoad` resolves a road at a crossroads). `ledger.ts` pure ledger ops on `WarbandState` (`decide` takes a road; `reconcile` defaults a waiting crossroads before the next night). `cryer.ts` turns a night into Town Cryer dispatches, worded where the night happened, and waits for a crossroads to be decided. All three have tests beside them.
 - `src/server/` is server-only: `env.ts` config, `db/` schema and client, `auth.ts` Better Auth, `curfew/service.ts` load-reconcile-change-save with optimistic locking and the nightly `reconcileAll`.
 - `src/pages/api/curfew/[action].ts` JSON API (same-origin, zod-validated, always answers with the whole ledger view). `src/pages/api/cron/midnight.ts` nightly cron.
 - `src/server/account/service.ts` reset words: issued only by the game master in the Watch House (hashed with Better Auth's scrypt, two-day expiry), traded for a new password at `POST /api/account/reset`, spent on use. Not self-service by design. There is no email anywhere in the system.

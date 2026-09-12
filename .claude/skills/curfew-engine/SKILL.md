@@ -17,7 +17,7 @@ Read `docs/agents/architecture.md` ("Resolution: pure in the middle, storage at 
 4. **The location of a night is `locationForNight(night, moves)`**, never the current place. Every engine function that depends on a place takes `location: Location = DEFAULT_LOCATION`.
 5. **Refuse with `LedgerError(message, status)`.** The message is shown to the player as written, in the campaign's voice ("Only 2 go out a night.").
 6. **The API always answers the whole `LedgerView`.** Pages re-render from it and never update optimistically.
-7. **State shape belongs to `WarbandState`.** Add a field as optional with a default in `freshState`, and let `coerceState`'s spread fill it for old rows. Do not write a migration for ledger JSON. Bump the literal `version: 1` only when an old state cannot be read at all.
+7. **State shape belongs to `WarbandState`.** Add a field with a default in `freshState`, and let `coerceState`'s spread fill it for old rows. Do not write a migration for ledger JSON. The literal is `version: 2` and `coerceState` accepts 1 and 2; bump it, and teach `coerceState` the old number, only when an old state cannot be read at all. A dry run (`dry.ts`) goes through the same `withLedger` with a sandbox base and never saves: a new action needs no extra work for it beyond the optional `dry` argument.
 
 ## Recipes
 

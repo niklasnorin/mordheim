@@ -7,18 +7,26 @@
  * on any machine, which is what makes the shared Omen and the Eve ticket honest.
  */
 import {
-  CAMPAIGN, DEFAULT_LOCATION, HAND_SIZE, applyNight, availability, cityProvides, defaultErrand, epithetFor, errandAt, eveTicket, handHas, isErrandAt, locationForNight, nightForDate, omenForNight,
-  quietNight, resolveNight, returnNight, titleFor, tokenById, unavailableReason,
-  type Errand, type HandState, type HeldToken, type Location, type Move, type NightResult, type Order, type TokenOffer, type WarbandLike,
+  CAMPAIGN, DEFAULT_LOCATION, HAND_SIZE, applyNight, availability, cityProvides, defaultErrand, defaultRoad, crossroadById, epithetFor, errandAt, eveTicket, handHas, isErrandAt, locationById, locationForNight, nightForDate, omenForNight,
+  quietNight, resolveNight, returnNight, roadLedger, takeRoad, titleFor, tokenById, unavailableReason,
+  type Errand, type HandState, type HeldToken, type Location, type Move, type NightResult, type Order, type RoadTaken, type TokenOffer, type WarbandLike,
 } from './engine.ts';
 
 export interface Flourish { kind: 'field' | 'headline' | 'weather' | 'dedication'; text: string }
 export interface EveSession { night: number; tokens: string[]; flourish?: Flourish; ticket: string; provided?: string }
 export interface EveRecord { night: number; tokens: string[]; flourish?: Flourish }
 export interface Headline { night: number; text: string }
+/** A permanent mark on a warrior, from a road taken at a crossroads. Named in the pack's words. */
+export interface Mark { id: string; name: string; night: number }
+/** A curse standing on a warrior for a run of nights. */
+export interface Affliction { memberId: string; curseId: string; fromNight: number; nights: number }
+/** A member kept home for a run of nights by a road taken or a curse. */
+export interface Kept { memberId: string; fromNight: number; nights: number; reason: string }
+/** A road taken at dawn reaching into tonight's odds. Consumed by the night it names. */
+export interface Carry { night: number; memberId: string; tilt: number }
 
 export interface WarbandState extends HandState {
-  version: 1;
+  version: 2;
   warbandId: string;
   /** The night the ledger was opened. Nothing before it is resolved. */
   firstSeen: number;
@@ -39,6 +47,13 @@ export interface WarbandState extends HandState {
   /** The charm the City Provided for an Eve not yet laid, so the table can say so. */
   provided?: { night: number; tokenId: string };
   fights: EveRecord[];
+  /** What each warrior is known for, from the roads they took. */
+  marks: Record<string, Mark[]>;
+  afflictions: Affliction[];
+  kept: Kept[];
+  carry?: Carry;
+  /** Crossroads already met this season; none is met twice. */
+  seenCrossroads: string[];
 }
 
 /** A player-facing refusal. The message is safe to show as written. */
@@ -53,17 +68,22 @@ export function nightForOverride(date: string | null | undefined): number | null
 
 export function freshState(warband: WarbandLike, today: number): WarbandState {
   return {
-    version: 1, warbandId: warband.id, favour: 0, shards: 0, renown: 0, hand: [],
+    version: 2, warbandId: warband.id, favour: 0, shards: 0, renown: 0, hand: [],
     firstSeen: today, lastResolved: Math.max(0, today - 1), orders: {}, nights: [],
     healed: [], rumours: [], epithets: {}, headlines: [], offers: [], fights: [],
+    marks: {}, afflictions: [], kept: [], seenCrossroads: [],
   };
 }
 
-/** Accept a stored ledger if it is one; otherwise start afresh. */
+/**
+ * Accept a stored ledger if it is one; otherwise start afresh. A version 1 ledger (before the Crossroads) is kept whole:
+ * it only lacks the fields the fresh state supplies.
+ */
 export function coerceState(raw: unknown, warband: WarbandLike, today: number): WarbandState {
   const s = raw as Partial<WarbandState> | null;
-  if (!s || s.version !== 1 || s.warbandId !== warband.id || !Array.isArray(s.nights)) return freshState(warband, today);
-  return { ...freshState(warband, today), ...s } as WarbandState;
+  const version = s?.version as number | undefined;
+  if (!s || (version !== 1 && version !== 2) || s.warbandId !== warband.id || !Array.isArray(s.nights)) return freshState(warband, today);
+  return { ...freshState(warband, today), ...s, version: 2 } as WarbandState;
 }
 
 /** Members who came out of the last recorded battle injured stay home until the player says otherwise. */
@@ -75,12 +95,24 @@ export function recoveringMembers(state: WarbandState, injuredInLastBattle: stri
 export function restingMembers(state: WarbandState, night: number): string[] {
   return state.nights.find((n) => n.night === night - 1)?.results.map((r) => r.memberId) ?? [];
 }
+/** Members a road taken, or a curse, keeps home on a night. */
+export function keptMembers(state: WarbandState, night: number): string[] {
+  return state.kept.filter((k) => night >= k.fromNight && night < k.fromNight + k.nights).map((k) => k.memberId);
+}
+/** Why a member is kept home tonight, in the words of the road or the curse that did it. */
+export function keptReason(state: WarbandState, night: number, memberId: string): string | undefined {
+  return state.kept.find((k) => k.memberId === memberId && night >= k.fromNight && night < k.fromNight + k.nights)?.reason;
+}
+/** Curses standing on the warband's members on a night. */
+export function afflictionsAt(state: WarbandState, night: number): Affliction[] {
+  return state.afflictions.filter((a) => night >= a.fromNight && night < a.fromNight + a.nights);
+}
 
 /** Record tonight's orders. Refuses members who cannot go out, errands the place does not offer, and more than the night allows. */
 export function giveOrders(state: WarbandState, warband: WarbandLike, night: number, orders: Order[], recovering: string[] = [], location: Location = DEFAULT_LOCATION): void {
   if (night < 1) throw new LedgerError('The city sleeps until the first night.');
   const clean: Order[] = [];
-  const avail = availability(warband, recovering, restingMembers(state, night));
+  const avail = availability(warband, recovering, restingMembers(state, night), keptMembers(state, night));
   for (const o of orders) {
     if (clean.some((c) => c.memberId === o.memberId)) continue;
     const a = avail.find((x) => x.memberId === o.memberId);
@@ -111,7 +143,7 @@ export function lastGivenOrders(state: WarbandState, before: number): { night: n
  * An errand the place does not offer (the Pit, after a move to the village) goes where the place sends it.
  */
 export function standingOrders(state: WarbandState, warband: WarbandLike, recovering: string[], night = Number.MAX_SAFE_INTEGER, location: Location = DEFAULT_LOCATION): Order[] {
-  const avail = new Set(availability(warband, recovering, restingMembers(state, night)).filter((a) => a.available).map((a) => a.memberId));
+  const avail = new Set(availability(warband, recovering, restingMembers(state, night), keptMembers(state, night)).filter((a) => a.available).map((a) => a.memberId));
   const last = lastGivenOrders(state, night);
   const source: Order[] = last
     ? last.orders
@@ -147,6 +179,7 @@ export function reconcile(state: WarbandState, warband: WarbandLike, today: numb
   const missed = Array.from({ length: pending }, (_, i) => first + i).filter((n) => !state.orders[n]).length;
 
   if (missed > CAMPAIGN.returnAfterNights && pending === missed) {
+    settleWaiting(state, warband, last, rival);
     const result = returnNight(last, warband.id, locationForNight(last, moves));
     state.nights.push(result); written.push(result);
     state.favour = Math.max(state.favour, 20);
@@ -156,12 +189,19 @@ export function reconcile(state: WarbandState, warband: WarbandLike, today: numb
 
   for (let night = first; night <= last; night++) {
     const location = locationForNight(night, moves);
-    const resting = restingMembers(state, night);
+    // a crossroads nobody decided is decided by the character before the next night is written, so what it carries still counts
+    settleWaiting(state, warband, night, rival);
+    const resting = restingMembers(state, night), kept = keptMembers(state, night);
     // orders given before a move for an errand the new place lacks go where the place sends them
-    const given = state.orders[night]?.filter((o) => !resting.includes(o.memberId)).map((o) => ({ ...o, errand: errandAt(o.errand, location) }));
+    const given = state.orders[night]?.filter((o) => !resting.includes(o.memberId) && !kept.includes(o.memberId)).map((o) => ({ ...o, errand: errandAt(o.errand, location) }));
     const orders = given && given.length ? given : standingOrders(state, warband, recovering, night, location);
     const arrived = lastLocationId(state);
-    const result = orders.length ? resolveNight({ warband, rival, night, orders, state, location, avoid: recentLines(state, night) }) : quietNight(night, location);
+    const carry = state.carry && state.carry.night === night ? { memberId: state.carry.memberId, tilt: state.carry.tilt } : undefined;
+    const previous = state.nights.at(-1);
+    const crossroads = { seen: state.seenCrossroads, marks: state.marks, recent: !!previous?.crossroads && previous.night === night - 1 };
+    const result = orders.length ? resolveNight({ warband, rival, night, orders, state, location, avoid: recentLines(state, night), carry, crossroads }) : quietNight(night, location);
+    if (state.carry && state.carry.night <= night) delete state.carry;
+    if (result.crossroads) state.seenCrossroads.push(result.crossroads.id);
     const before = titleFor(state.renown);
     const applied = applyNight(state, result);
     Object.assign(state, applied.state);
@@ -176,9 +216,65 @@ export function reconcile(state: WarbandState, warband: WarbandLike, today: numb
     if (after !== before) state.headlines.push({ night, text: `${warband.name} are spoken of in the taverns as ${after}.` });
     state.lastResolved = night;
   }
-  // rumours go cold
+  // rumours go cold; curses fade; a night kept home passes
   state.rumours = state.rumours.filter((r) => today - r.night <= CAMPAIGN.rumourWarmNights);
+  state.afflictions = state.afflictions.filter((a) => a.fromNight + a.nights > today);
+  state.kept = state.kept.filter((k) => k.fromNight + k.nights > today);
   return written;
+}
+
+// ───────────────────────── the Crossroads ─────────────────────────
+
+/** The night whose crossroads still waits on a decision, if any. At most one ever does. */
+export function waitingCrossroads(state: WarbandState): NightResult | undefined {
+  return state.nights.find((n) => n.crossroads && !n.crossroads.decided);
+}
+
+/**
+ * Take a road at the crossroads a night met. `on` is the night the decision is made (today, at dawn; or the night
+ * the character decided for themselves). Refuses if nothing waits, or if it was already decided. The road's effects
+ * land on the ledger; what reaches into tonight is set aside for the night that consumes it.
+ */
+export function decide(state: WarbandState, warband: WarbandLike, night: number, roadId: string, opts: { on: number; defaulted?: boolean; rival?: WarbandLike | WarbandLike[] }): RoadTaken {
+  const result = state.nights.find((n) => n.night === night);
+  if (!result?.crossroads) throw new LedgerError('No crossroads waited that night.');
+  const met = result.crossroads;
+  if (met.decided) throw new LedgerError('That was decided.');
+  if (!met.options.some((o) => o.id === roadId)) throw new LedgerError('That road leads nowhere.');
+  const location = locationById(result.locationId);
+  const taken = takeRoad({ warband, night: result, roadId, location, defaulted: opts.defaulted, rival: opts.rival });
+  const member = warband.members.find((m) => m.id === met.memberId) ?? { id: met.memberId, name: 'Somebody', role: '' };
+  state.favour = Math.max(0, Math.min(100, state.favour + taken.favour));
+  state.shards = Math.max(0, state.shards + taken.shards);
+  state.renown = Math.max(0, state.renown + taken.renown);
+  if (taken.tokenId) {
+    const type = tokenById(taken.tokenId).type;
+    const held = handHas(state.hand, type) ?? (state.hand.length >= HAND_SIZE ? state.hand.slice().sort((a, b) => a.earnedNight - b.earnedNight)[0] : undefined);
+    if (held) state.offers.push({ night, incoming: taken.tokenId, held: held.id }); else state.hand.push({ id: taken.tokenId, earnedNight: night });
+    normalizeOffers(state);
+  }
+  if (taken.rumour) state.rumours.push({ night: opts.on, text: taken.rumour });
+  if (taken.mark) {
+    const list = (state.marks[member.id] ??= []);
+    if (!list.some((m) => m.id === taken.mark!.id)) list.push({ id: taken.mark.id, name: taken.mark.name, night });
+  }
+  if (taken.carryTilt) state.carry = { night: opts.on, memberId: member.id, tilt: taken.carryTilt };
+  if (taken.staysHome) state.kept.push({ memberId: member.id, fromNight: opts.on, nights: taken.staysHome, reason: taken.curse?.name ?? taken.label });
+  if (taken.curse) state.afflictions.push({ memberId: member.id, curseId: taken.curse.id, fromNight: opts.on, nights: taken.curse.nights });
+  if (taken.headline) state.headlines.push({ night, text: taken.headline });
+  met.decided = { roadId, label: taken.label, outcome: taken.outcome, ledger: roadLedger(taken, member), defaulted: !!opts.defaulted, on: opts.on };
+  return taken;
+}
+
+/** Every crossroads still waiting from before `night` is decided by the character, along the default road. */
+export function settleWaiting(state: WarbandState, warband: WarbandLike, night: number, rival?: WarbandLike | WarbandLike[]): void {
+  for (const n of state.nights) {
+    if (!n.crossroads || n.crossroads.decided || n.night >= night) continue;
+    const location = locationById(n.locationId);
+    const c = crossroadById(location, n.crossroads.id) ?? crossroadById(DEFAULT_LOCATION, n.crossroads.id);
+    if (!c) { n.crossroads.decided = { roadId: '', label: '', outcome: '', ledger: [], defaulted: true, on: night }; continue; }
+    decide(state, warband, n.night, defaultRoad(c, warband.id, n.night).id, { on: night, defaulted: true, rival });
+  }
 }
 
 function awardEpithets(state: WarbandState, warband: WarbandLike, night: number, location: Location): void {

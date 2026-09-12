@@ -8,6 +8,7 @@ import { hasDatabase } from '../../server/db/client';
 import { DEV_LOGIN_PASSWORD, env, isAdminEmail } from '../../server/env';
 import { getViewer } from '../../server/session';
 import { currentLocation, listClaims, loadOwnLedger, todayFor, type Claim, type LedgerView } from '../../server/curfew/service';
+import { isDryRun } from '../../server/curfew/dry';
 import { DEFAULT_LOCATION, type Location } from '../../curfew/engine';
 
 // The Ledger is personal: rendered on request, never cached.
@@ -25,11 +26,13 @@ let location: Location = DEFAULT_LOCATION;
 if (ready) {
   try { location = await currentLocation(today); } catch (e) { console.error('[curfew] location unavailable', e); }
 }
+// With the Debug strip on, a game master's visit is a dry run: nothing this request computes is saved.
+const dry = !!viewer && isDryRun(Astro.request, viewer);
 if (viewer) {
-  try { [view, claims] = await Promise.all([loadOwnLedger(viewer.id, today), listClaims()]); } catch (e) { console.error('[curfew] ledger unavailable', e); trouble = true; }
+  try { [view, claims] = await Promise.all([loadOwnLedger(viewer.id, today, dry ? {} : undefined), listClaims()]); } catch (e) { console.error('[curfew] ledger unavailable', e); trouble = true; }
 }
 const boot = {
-  today, debug: env.CURFEW_DEBUG, viewer: viewer ? { name: viewer.name } : null, view, locationId: location.id,
+  today, debug: env.CURFEW_DEBUG, dry, viewer: viewer ? { name: viewer.name, admin: isAdminEmail(viewer.email) } : null, view, locationId: location.id,
   claims: claims.map((c) => ({ warbandId: c.warbandId, ownerName: c.ownerName })),
 };
 ---
@@ -198,13 +201,13 @@ const boot = {
     blurbFor, isErrandAt, locationById, moonBoostAt, unavailableReason,
     type Errand, type MemberLike, type NightResult, type Order, type TokenOffer,
   } from '../../curfew/engine';
-  import { lastGivenOrders, restingMembers, standingOrders, type WarbandState } from '../../curfew/ledger';
+  import { keptMembers, keptReason, lastGivenOrders, restingMembers, standingOrders, type WarbandState } from '../../curfew/ledger';
   import { sealSvg } from '../../curfew/glyphs';
-  import { carryDate, debugEnabled, renderDebugBar, setDebug } from '../../curfew/debug';
+  import { carryDate, clearSandbox, debugEnabled, loadSandbox, renderDebugBar, saveSandbox, setDebug } from '../../curfew/debug';
   import { formatImperial, imperialForDate } from '../../lib/calendar';
 
-  interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean; locationId: string }
-  interface Boot { today: number; debug: boolean; viewer: { name: string } | null; view: View | null; locationId: string; claims: { warbandId: string; ownerName: string }[] }
+  interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean; locationId: string; dry?: boolean; wouldPrint?: { headline: string }[] }
+  interface Boot { today: number; debug: boolean; dry: boolean; viewer: { name: string; admin: boolean } | null; view: View | null; locationId: string; claims: { warbandId: string; ownerName: string }[] }
 
   document.body.classList.add('curfew-body');
   const root = document.getElementById('main-content')!;
@@ -230,15 +233,21 @@ const boot = {
   }
 
   // ── the server ──
+  // A dry run (the Debug strip on, for a game master): the server saves nothing, and the sandbox it answers with is sent back with the next request.
+  const dryRun = boot.dry && debugEnabled();
+  const realLastResolved = boot.view?.state.lastResolved ?? 0;
   /** One errand to the API. Every answer is the whole ledger again, so the page re-renders from it. */
   async function api(action: string, body: Record<string, unknown> = {}): Promise<View | null> {
     const url = new URL(`${base}/api/curfew/${action}`, location.href);
     const date = new URLSearchParams(location.search).get('date');
     if (date) url.searchParams.set('date', date);
+    if (dryRun && warband) body = { ...body, dry: { base: loadSandbox(warband.id)?.state } };
     const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), credentials: 'same-origin' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error ?? 'The city did not answer. Try again.');
-    return data.view ?? null;
+    const next: View | null = data.view ?? null;
+    if (dryRun && next?.dry) saveSandbox(next.warbandId, next.state, realLastResolved);
+    return next;
   }
   function applyView(next: View | null) {
     view = next;
@@ -247,6 +256,7 @@ const boot = {
     if (next) place = locationById(next.locationId);
     if (view && warband) { showPicker(false); $('ledger').hidden = false; renderAll(view.fresh); }
     else { $('ledger').hidden = true; showPicker(true); }
+    renderDebug();
   }
   /** Run an errand and re-render; a refusal becomes a toast and the page stays as the server has it. */
   async function act(action: string, body: Record<string, unknown>, done?: (v: View) => void): Promise<boolean> {
@@ -264,6 +274,7 @@ const boot = {
 
   function recovering(): string[] { return view?.recovering ?? []; }
   function resting(): string[] { return state ? restingMembers(state, today) : []; }
+  function kept(): string[] { return state ? keptMembers(state, today) : []; }
   function memberName(id: string) { return warband?.members.find((m) => m.id === id)?.name ?? id; }
   function firstName(id: string) { return memberName(id).split(' ')[0]; }
   function prettyDate(night: number) {
@@ -386,13 +397,21 @@ const boot = {
 
   // 1. Last night
   function nightParts(n: NightResult, ink: boolean, headingTag: 'h3' | 'h4' = 'h3') {
+    const c = n.crossroads, waiting = !!c && !c.decided;
     const lines: string[] = [];
-    lines.push(...n.results.map((r) => r.prose));
-    lines.push(n.detail);
-    if (n.closer) lines.push(n.closer);
-    const paras = lines.map((l, i) => `<p class="${ink ? 'cf-ink' : ''}" style="animation-delay:${0.15 + i * 0.45}s">${esc(l)}</p>`).join('');
-    const ledger = n.ledger.length ? `<div class="cf-ledger">Ledger: ${n.ledger.map((l) => `<strong>${esc(l)}</strong>`).join('<span class="cf-sep"> · </span>')}</div>` : '';
-    return { head: `<${headingTag} class="cf-dawn-head">${esc(n.header)}</${headingTag}><span class="cf-dawn-date">${esc(imperialDate(n.night))}</span>`, paras, ledger };
+    for (const r of n.results) {
+      lines.push(r.prose);
+      // the report stops at the crossroads until the player, or midnight, decides
+      if (c?.memberId === r.memberId) { lines.push(c.setup); if (c.decided) lines.push(c.decided.outcome); }
+    }
+    if (!waiting) { lines.push(n.detail); if (n.closer) lines.push(n.closer); }
+    let paras = lines.map((l, i) => `<p class="${ink ? 'cf-ink' : ''}" style="animation-delay:${0.15 + i * 0.45}s">${esc(l)}</p>`).join('');
+    if (c?.decided) paras += `<p class="cf-chose"><span class="cf-chose-label">What ${esc(firstName(c.memberId))} did</span>${esc(c.decided.label)}${c.decided.defaulted ? '<small>Nobody was asked. The character decided.</small>' : ''}</p>`;
+    const items = [...n.ledger, ...(c?.decided?.ledger ?? [])];
+    const ledger = waiting
+      ? `<div class="cf-ledger cf-ledger-waiting">The ledger waits on ${esc(firstName(c!.memberId))}.</div>`
+      : items.length ? `<div class="cf-ledger">Ledger: ${items.map((l) => `<strong>${esc(l)}</strong>`).join('<span class="cf-sep"> · </span>')}</div>` : '';
+    return { head: `<${headingTag} class="cf-dawn-head">${esc(n.header)}</${headingTag}><span class="cf-dawn-date">${esc(imperialDate(n.night))}</span>`, paras, ledger, waiting };
   }
   function nightHtml(n: NightResult, ink: boolean, headingTag: 'h3' | 'h4' = 'h3') {
     const part = nightParts(n, ink, headingTag);
@@ -407,8 +426,8 @@ const boot = {
     }
     // The prose leads; the ledger line, what came home, and any decision follow. On a wide screen they sit beside it.
     const part = nightParts(last, fresh && !reduced);
-    const side = part.ledger + gainsHtml(last) || '<p class="cf-dawn-nothing">Nothing to enter in the ledger.</p>';
-    const decisions = state!.offers.map((offer) => offerHtml(offer, last)).join('');
+    const side = part.ledger + (part.waiting ? '' : gainsHtml(last)) || '<p class="cf-dawn-nothing">Nothing to enter in the ledger.</p>';
+    const decisions = (part.waiting ? crossroadsHtml(last) : '') + state!.offers.map((offer) => offerHtml(offer, last)).join('');
     el.innerHTML = `<div class="cf-dawn-main">${part.head}${part.paras}</div><div class="cf-dawn-side">${side}</div>${decisions ? `<div class="cf-dawn-foot">${decisions}</div>` : ''}`;
   }
   /** What the night brought home, beyond the ledger line: charms, rumours, and names earned. */
@@ -425,6 +444,50 @@ const boot = {
     for (const h of names) html += `<p class="cf-gain-name">${esc(h.text)}</p>`;
     return html + '</div>';
   }
+  // ── the Crossroads: what one member did last night is decided here, at dawn ──
+  // The road the player has marked, per night, before confirming. Never saved: a reload clears it.
+  const roadPicks = new Map<number, string>();
+  function crossroadsHtml(n: NightResult) {
+    const c = n.crossroads!, first = firstName(c.memberId);
+    const pick = roadPicks.get(n.night);
+    const road = c.options.find((o) => o.id === pick);
+    const footer = road
+      ? `<div class="cf-offer-confirm" role="group" aria-label="Confirm the road">
+          <p><b>${esc(road.label)}</b> That is what ${esc(first)} did. Nothing else was.</p>
+          <div class="cf-offer-actions"><button type="button" class="cf-btn cf-btn-blood" data-road-confirm="${esc(road.id)}">So it was</button><button type="button" class="cf-btn cf-btn-ghost" data-road-unpick>Not yet</button></div>
+        </div>`
+      : `<p class="cf-note cf-offer-hint">Choose for ${esc(first)}. Nothing is decided until you confirm. Left until midnight, ${esc(first)} decides alone.</p>`;
+    return `<div class="cf-offer cf-crossroads" data-night="${n.night}">
+      <h4 class="cf-offer-title">What ${esc(first)} did</h4>
+      <div class="cf-roads" role="group" aria-label="The roads">${c.options.map((o) => `<button type="button" class="cf-road" data-road="${esc(o.id)}" aria-pressed="${pick === o.id}">${esc(o.label)}</button>`).join('')}</div>
+      ${footer}
+    </div>`;
+  }
+  $('dawn-report').addEventListener('click', async (e) => {
+    const target = e.target as HTMLElement;
+    const box = target.closest<HTMLElement>('.cf-crossroads'); if (!box || !state) return;
+    const night = Number(box.dataset.night);
+    const n = state.nights.find((x) => x.night === night);
+    if (!n?.crossroads || n.crossroads.decided) return;
+    const pickBtn = target.closest<HTMLElement>('[data-road]');
+    const confirmBtn = target.closest<HTMLElement>('[data-road-confirm]');
+    const unpick = target.closest<HTMLElement>('[data-road-unpick]');
+    if (pickBtn) {
+      const id = pickBtn.dataset.road!;
+      if (roadPicks.get(night) === id) roadPicks.delete(night); else roadPicks.set(night, id);
+      box.outerHTML = crossroadsHtml(n);
+      const fresh = $('dawn-report').querySelector<HTMLElement>('.cf-crossroads');
+      (fresh?.querySelector<HTMLElement>('[data-road-confirm]') ?? fresh?.querySelector<HTMLElement>(`[data-road="${id}"]`))?.focus();
+    } else if (unpick) {
+      roadPicks.delete(night);
+      box.outerHTML = crossroadsHtml(n);
+    } else if (confirmBtn) {
+      const roadId = confirmBtn.dataset.roadConfirm!;
+      roadPicks.delete(night);
+      await act('decide', { night, roadId }, () => toast('So it was. The ledger is written.'));
+    }
+  });
+
   // Which charm the player has marked to keep, per offer, before confirming. Never saved: a reload clears it.
   const offerPicks = new Map<string, 'incoming' | 'held'>();
   const offerKey = (o: TokenOffer) => `${o.night}:${o.incoming}:${o.held}`;
@@ -530,7 +593,7 @@ const boot = {
   function renderWatch() {
     const w = warband!, s = state!;
     const rec = recovering();
-    const av = availability(w, rec, resting());
+    const av = availability(w, rec, resting(), kept());
     const given = s.orders[today] ?? [];
     const standing = given.length ? [] : standingOrders(s, w, rec, today, place);
     const shown = given.length ? given : standing;
@@ -551,6 +614,8 @@ const boot = {
           ? '<span class="cf-status dead">Dead</span>'
           : a.reason === 'resting'
           ? '<span class="cf-status resting" title="Went out last night. Nobody is sent two nights running.">Resting</span>'
+          : a.reason === 'kept'
+          ? `<span class="cf-status kept" title="${esc(keptReason(s, today, m.id) ?? 'Kept home by what happened last night.')}">Kept home<small>${esc(keptReason(s, today, m.id) ?? '')}</small></span>`
           : `<span class="cf-status-wrap"><span class="cf-status">Recovering</span><button type="button" class="cf-btn cf-btn-ghost cf-heal" data-heal="${esc(m.id)}">Back on their feet</button></span>`;
         return `<div class="cf-member is-out">${who}${status}</div>`;
       }
@@ -677,18 +742,26 @@ const boot = {
     }
   });
 
-  // ── debug: step through nights (only where the server allows a date override) ──
+  // ── debug: step through nights (only where the server allows a date override, and only for the Watch) ──
   function renderDebug() {
-    if (!boot.debug) { setDebug(false); return; }
+    if (!boot.debug || !boot.viewer?.admin) { setDebug(false); return; }
     $('debug-toggle').hidden = false;
     const on = debugEnabled();
     $('debug-toggle').setAttribute('aria-pressed', String(on));
-    $('debug-toggle').textContent = on ? 'Debug on' : 'Debug';
-    renderDebugBar($('debug-bar'), today);
+    $('debug-toggle').textContent = on ? 'Debug on · dry run' : 'Debug';
+    const dry = on && boot.dry && warband
+      ? { sandbox: loadSandbox(warband.id), wouldPrint: (view?.wouldPrint ?? []).map((d) => d.headline), onReset: () => { clearSandbox(); location.reload(); } }
+      : undefined;
+    renderDebugBar($('debug-bar'), today, dry);
     if (on) carryDate($<HTMLAnchorElement>('eve-link'));
   }
-  $('debug-toggle').addEventListener('click', () => { setDebug(!debugEnabled()); renderDebug(); if (!debugEnabled() && new URLSearchParams(location.search).has('date')) location.href = location.pathname; });
-  renderDebug();
+  $('debug-toggle').addEventListener('click', () => {
+    // turning the strip on or off changes what the server does with the next request, so the page starts over
+    setDebug(!debugEnabled());
+    location.href = debugEnabled() ? location.href : location.pathname;
+  });
 
   applyView(view);
+  // A dry run with a sandbox from an earlier step: the page was rendered from the real ledger, so ask again with the sandbox as the base.
+  if (dryRun && warband && loadSandbox(warband.id)) act('look', {});
 </script>

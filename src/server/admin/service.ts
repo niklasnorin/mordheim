@@ -8,7 +8,7 @@ import { cryerDispatches, curfewLedgers, curfewRuns, session, user } from '../db
 import { pendingResets } from '../account/service.ts';
 import { env } from '../env.ts';
 import { LOCATIONS, locationForNight, moonForNight, omenForNight, titleFor, dateForNight, type Location, type Omen, type Moon } from '../../curfew/engine.ts';
-import { coerceState, freshState, type WarbandState } from '../../curfew/ledger.ts';
+import { coerceState, freshState, waitingCrossroads, type WarbandState } from '../../curfew/ledger.ts';
 import { warbands } from '../../data/warbands.ts';
 import { LedgerError, THE_WATCH, campaignMoves, dispatchSource, moveCampaign, reconcileAll, recentDispatches, type CampaignMove, type PrintedDispatch, type RunResult } from '../curfew/service.ts';
 
@@ -23,6 +23,8 @@ export interface LedgerRow {
   /** Nights whose dawn is still unwritten as of today, not counting tonight. Zero when the ledger is current. */
   behind: number;
   tonight: 'given' | 'barred' | 'standing' | 'nothing';
+  /** A crossroads from last night still waits on the player. */
+  waiting: boolean;
   title: string;
   updatedAt?: Date;
 }
@@ -65,13 +67,13 @@ export async function overview(today: number): Promise<Overview> {
 
   const ledgers: LedgerRow[] = warbands.map((w) => {
     const row = ledgerRows.find((r) => r.ledger.warbandId === w.id);
-    if (!row) return { warbandId: w.id, name: w.name, sigil: w.sigil, type: w.type, behind: 0, tonight: 'nothing', title: titleFor(0) };
+    if (!row) return { warbandId: w.id, name: w.name, sigil: w.sigil, type: w.type, behind: 0, tonight: 'nothing', waiting: false, title: titleFor(0) };
     const state = coerceState(row.ledger.state, w, today);
     const given = state.orders[today];
     const tonight: LedgerRow['tonight'] = today < 1 ? 'nothing' : given ? (given.length ? 'given' : 'barred') : 'standing';
     return {
       warbandId: w.id, name: w.name, sigil: w.sigil, type: w.type, keeper: row.keeper, state,
-      behind: Math.max(0, today - 1 - state.lastResolved), tonight, title: titleFor(state.renown), updatedAt: row.ledger.updatedAt,
+      behind: Math.max(0, today - 1 - state.lastResolved), tonight, waiting: !!waitingCrossroads(state), title: titleFor(state.renown), updatedAt: row.ledger.updatedAt,
     };
   });
 
