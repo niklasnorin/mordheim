@@ -407,7 +407,7 @@ test('a Mordheim night is unchanged in kind: no village words, and the rival cro
 
 const ctx = { seen: [] as string[], marks: {} as Record<string, { id: string }[]>, recent: false };
 
-test('a crossroads is met about one night in five, on real orders only, never twice running, never the same one twice', async () => {
+test('a crossroads is met about one night in three, on real orders only, never twice running, unmet ones first', async () => {
   const { crossroadsFor, locationById } = await import('./engine.ts');
   let met = 0; const ids = new Set<string>();
   for (let n = 1; n <= 300; n++) {
@@ -420,7 +420,7 @@ test('a crossroads is met about one night in five, on real orders only, never tw
     for (const o of res.crossroads.options) assert.doesNotMatch(o.label, /\{\w+\}/);
     assert.equal(res.crossroads.decided, undefined);
   }
-  assert.ok(met > 35 && met < 95, `met ${met} of 300 nights: about one in five`);
+  assert.ok(met > 120 && met < 180, `met ${met} of 300 nights: the raw draw is about one in two, which the night's rest after brings to one in three`);
   assert.ok(ids.size > 5, 'more than a handful of different crossroads');
   for (let n = 1; n <= 60; n++) {
     assert.equal(resolveNight({ warband, night: n, orders: [{ memberId: 'torgrim', errand: 'scavenge', standing: true }], state: fresh, crossroads: ctx }).crossroads, undefined, 'never on standing orders');
@@ -429,7 +429,14 @@ test('a crossroads is met about one night in five, on real orders only, never tw
   }
   const city = locationById('mordheim');
   const all = city.crossroads!.map((c) => c.id);
-  for (let n = 1; n <= 60; n++) assert.equal(resolveNight({ warband, night: n, orders: [{ memberId: 'torgrim', errand: 'scavenge' }], state: fresh, crossroads: { ...ctx, seen: all } }).crossroads, undefined, 'never the same one twice');
+  // every crossroads met: rather than fall silent, the least recently met come round again
+  const again = Array.from({ length: 60 }, (_, i) => resolveNight({ warband, night: i + 1, orders: [{ memberId: 'torgrim', errand: 'scavenge' }], state: fresh, crossroads: { ...ctx, seen: all } }).crossroads).filter(Boolean);
+  assert.ok(again.length > 10, `${again.length} met again once the pool was exhausted`);
+  const scavengeIds = city.crossroads!.filter((c) => c.errands.includes('scavenge')).map((c) => c.id);
+  const mostRecent = all.filter((id) => scavengeIds.includes(id)).slice(-Math.floor(scavengeIds.length / 2));
+  assert.ok(again.every((c) => !mostRecent.includes(c!.id)), 'and never the most recently met half');
+  const some = scavengeIds.slice(0, 1);
+  for (let n = 1; n <= 60; n++) { const c = resolveNight({ warband, night: n, orders: [{ memberId: 'torgrim', errand: 'scavenge' }], state: fresh, crossroads: { ...ctx, seen: some } }).crossroads; if (c) assert.ok(!some.includes(c.id), 'an unmet crossroads is always preferred'); }
   assert.ok(crossroadsFor(city, 'scavenge', 'fair', 3, [], []).length >= 2);
   assert.equal(crossroadsFor(city, 'spy', 'fair', 3, [{ id: 'looked-in-the-sisters-crate' }], []).some((c) => c.id === 'the-sisters-crates'), false, 'a mark already carried closes that crossroads');
 });

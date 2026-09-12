@@ -164,6 +164,7 @@ body.curfew-body #theme-toggle { display: none; }
 .cf-offer-confirm p { margin-bottom: 0.7rem; }
 .cf-offer-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 /* the Crossroads: the roads one member could take, decided at dawn */
+.cf-dawn-main .cf-crossroads { margin: 0.4rem 0 1.2rem; }
 .cf-crossroads .cf-roads { display: grid; gap: 0.5rem; margin-top: 0.8rem; max-width: 34rem; }
 .cf-road { position: relative; text-align: left; font: inherit; font-size: 1.05rem; line-height: 1.45; color: var(--bone); min-height: 2.75rem; padding: 0.75rem 1rem; border: 1px solid var(--rule); background: #100e0c; cursor: pointer; transition: border-color 0.2s, background 0.2s, opacity 0.2s; }
 .cf-road:hover { border-color: var(--candle-dim); background: #1b1813; }

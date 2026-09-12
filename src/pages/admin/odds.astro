@@ -1,0 +1,224 @@
+---
+import Base from '../../layouts/Base.astro';
+import '../../styles/curfew.css';
+import '../../styles/admin.css';
+import { base } from '../../lib/site';
+import { hasDatabase } from '../../server/db/client';
+import { admission } from '../../server/admin/guard';
+import { CAMPAIGN, ERRANDS, ERRAND_LABEL, LOCATIONS, TOKEN_CHANCE, FAVOUR, YIELDS, locationById, outcomeOdds } from '../../curfew/engine';
+import { PRINT_CHANCE } from '../../curfew/cryer';
+import { TILTS, TILT_SOURCES, KINDS, charmOdds, crossroadsOdds, errandExpectation, happeningOdds, simulateNights, standingExpectation } from '../../curfew/odds';
+import { warbands } from '../../data/warbands';
+
+// The game master's odds table. Pure arithmetic on the engine's constants, plus a simulation of real nights; nothing here reads or writes a ledger.
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const { viewer, admin } = ready ? await admission(Astro.request) : { viewer: null, admin: false };
+if (ready && !admin) Astro.response.status = viewer ? 403 : 401;
+
+const q = Astro.url.searchParams;
+const place = locationById(q.get('place'));
+const warband = warbands.find((w) => w.id === q.get('warband')) ?? warbands[0];
+const seasons = Math.min(20, Math.max(1, Number(q.get('seasons')) || 5));
+const seasonNights = CAMPAIGN.nightsPerMoon * CAMPAIGN.seasonMoons;
+const sim = admin ? simulateNights(place, warband, seasons * seasonNights) : null;
+const cross = crossroadsOdds(place);
+
+const pct = (x: number, digits = 0) => `${(x * 100).toFixed(digits)}%`;
+const num = (x: number, digits = 1) => x.toFixed(digits);
+const tiltLabel = (t: number) => (t === 0 ? '0' : t > 0 ? `+${t}` : `−${-t}`);
+const TILT_NAMES: Record<number, string> = { [-3]: 'Damned', [-2]: 'Cursed', [-1]: 'Ill-starred', 0: 'A regular night', 1: 'Favoured', 2: 'Blessed', 3: 'Charmed' };
+const ledgerHref = `${base}/curfew/`;
+---
+
+<Base title="The Odds — The Watch House" description="The Curfew's odds laid out for the game master: outcomes, charms, crossroads and what the Cryer prints, by tilt.">
+  <Fragment slot="head">
+    <link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Barlow+Condensed:wght@600&display=swap" rel="stylesheet" />
+    <meta name="theme-color" content="#0e0d0c" />
+    <meta name="robots" content="noindex" />
+  </Fragment>
+
+  <main class="curfew wh" id="main-content" data-base={base}>
+    <header class="wh-top">
+      <a class="cf-back" href={`${base}/admin/`}>← The Watch House</a>
+      <a class="wh-wordmark" href={`${base}/admin/odds/`}>The Odds</a>
+      <div class="wh-top-right">
+        <span class="cf-nightline">Every number here is read from the dice themselves</span>
+      </div>
+    </header>
+
+    {!ready && <div class="wh-gate"><h1>The ledgers are not open</h1><p>This deployment has no database yet. See the README for the Vercel setup.</p></div>}
+    {ready && !viewer && <div class="wh-gate"><h1>Who goes there?</h1><p>The Odds are for the game master. <a href={ledgerHref}>Sign in at the Ledger</a>, then come back.</p></div>}
+    {ready && viewer && !admin && <div class="wh-gate"><h1>No admittance</h1><p>You are signed in as {viewer.name}, and that name is not on the Watch's list.</p></div>}
+
+    {admin && (
+      <>
+        <nav class="wh-nav" aria-label="Sections">
+          <a href="#night">A night, by tilt</a>
+          <a href="#errands">Errands</a>
+          <a href="#crossroads">Crossroads</a>
+          <a href="#cryer">Town Cryer</a>
+          <a href="#simulation">Simulation</a>
+          <a href="#dials">The dials</a>
+        </nav>
+
+        <section class="wh-section" id="night" aria-labelledby="night-title">
+          <h1 class="wh-h1" id="night-title">A night, by tilt</h1>
+          <p class="wh-muted">One member out on given orders. Tilt is the Omen's tilt on the errand, plus one for the Moon, plus the edge, plus a road carried in; a regular night is <b>0</b>, a special one <b>+1</b> or <b>+2</b>. Charm odds are for a member; the per-night column is a night with <b>{CAMPAIGN.membersPerNight}</b> out at the same tilt. A crossroads is drawn once a night, whatever the tilt: <b>{pct(cross.raw)}</b> raw, <b>{pct(cross.effective)}</b> in the long run given the night's rest after one.</p>
+          <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Outcome and charm odds by tilt">
+            <table class="wh-table wh-odds">
+              <thead><tr><th scope="col">Tilt</th><th scope="col">Reads as</th><th scope="col" class="num">Boon</th><th scope="col" class="num">Fair</th><th scope="col" class="num">Poor</th><th scope="col" class="num">Charm if boon</th><th scope="col" class="num">Charm if fair</th><th scope="col" class="num">Charm, member</th><th scope="col" class="num">Charm, night</th><th scope="col" class="num">Nights per charm</th><th scope="col" class="num">Favour, member</th><th scope="col" class="num">Cryer prints, night</th></tr></thead>
+              <tbody>
+                {TILTS.map((t) => { const o = outcomeOdds(t), c = charmOdds(t), h = happeningOdds(t); const favour = o.boon * FAVOUR.boon + o.fair * FAVOUR.fair + o.poor * FAVOUR.poor; return (
+                  <tr class:list={['wh-row', { 'is-regular': t === 0, 'is-far': Math.abs(t) === 3 }]}>
+                    <th scope="row"><span class="wh-num">{tiltLabel(t)}</span></th>
+                    <td class="dim">{TILT_NAMES[t]}</td>
+                    <td class="num">{pct(o.boon)}</td><td class="num">{pct(o.fair)}</td><td class="num">{pct(o.poor)}</td>
+                    <td class="num">{pct(c.byOutcome.boon)}</td><td class="num">{pct(c.byOutcome.fair)}</td>
+                    <td class="num">{pct(c.perMember)}</td><td class="num"><b>{pct(c.perNight)}</b></td><td class="num">{num(c.nightsPerCharm)}</td>
+                    <td class="num">{num(favour)}</td>
+                    <td class="num">{pct(h.perNight)}</td>
+                  </tr>
+                ); })}
+              </tbody>
+            </table>
+          </div>
+          <div class="wh-detail-grid" style="margin-top:1.2rem">
+            <div>
+              <h2 class="wh-h2">Where the tilt comes from</h2>
+              <dl class="wh-dl">{TILT_SOURCES.map((s) => <><dt>{s.source}</dt><dd><b>{s.range}</b> · {s.note}</dd></>)}</dl>
+            </div>
+            <div>
+              <h2 class="wh-h2">Standing orders</h2>
+              <p class="wh-muted">On a night the player does not look in, the last selection goes out again: one poor night in <b>{Math.round(1 / YIELDS.standing.poor)}</b>, else fair; half Favour (<b>{Math.ceil(FAVOUR.fair / 2)}</b> on a fair night, <b>{Math.ceil(FAVOUR.poor / 2)}</b> on a poor one); a shard <b>{pct(YIELDS.standing.shardOnFair)}</b> of fair nights at a shard errand; never a charm, never a crossroads, never a Cryer happening; and whoever went out rests the night after, so a standing selection runs every other night.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="wh-section" id="errands" aria-labelledby="errands-title">
+          <h1 class="wh-h1" id="errands-title">What each errand brings</h1>
+          <p class="wh-muted">Expected yield for one member out on given orders, per night, by tilt, below the Favour soft cap of <b>{CAMPAIGN.favourSoftCap}</b> (past it the night's Favour halves and the rest becomes Renown). Trade's conversion of five shards to a Market charm is not counted here; it needs five shards in the purse. The last column is the same member on standing orders.</p>
+          <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Expected yield by errand and tilt">
+            <table class="wh-table wh-odds">
+              <thead><tr><th scope="col">Errand</th><th scope="col">Brings</th>{TILTS.filter((t) => Math.abs(t) <= 2).map((t) => <th scope="col" class="num">{tiltLabel(t)}</th>)}<th scope="col" class="num">Standing</th></tr></thead>
+              <tbody>
+                {ERRANDS.flatMap((e) => {
+                  const rows: { label: string; key: 'favour' | 'shards' | 'renown' | 'charm' | 'rumour'; fmt: (x: number) => string }[] = [{ label: 'Favour', key: 'favour', fmt: (x) => num(x) }];
+                  const zero = errandExpectation(e, 0);
+                  if (zero.shards) rows.push({ label: 'Shards', key: 'shards', fmt: (x) => num(x, 2) });
+                  if (zero.renown) rows.push({ label: 'Renown', key: 'renown', fmt: (x) => num(x, 2) });
+                  if (zero.charm) rows.push({ label: 'Charm', key: 'charm', fmt: (x) => pct(x) });
+                  if (zero.rumour) rows.push({ label: 'Rumour', key: 'rumour', fmt: (x) => pct(x) });
+                  const standing = standingExpectation(e);
+                  return rows.map((row, i) => (
+                    <tr class="wh-row">
+                      {i === 0 ? <th scope="row" rowspan={rows.length}>{ERRAND_LABEL[e]}<small class="dim">{LOCATIONS.filter((l) => l.errands.includes(e)).map((l) => l.name).join(', ')}</small></th> : null}
+                      <td class="dim">{row.label}</td>
+                      {TILTS.filter((t) => Math.abs(t) <= 2).map((t) => <td class:list={['num', { 'is-regular': t === 0 }]}>{row.fmt(errandExpectation(e, t)[row.key])}</td>)}
+                      <td class="num dim">{row.fmt(standing[row.key])}</td>
+                    </tr>
+                  ));
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="wh-section" id="crossroads" aria-labelledby="crossroads-title">
+          <h1 class="wh-h1" id="crossroads-title">Crossroads</h1>
+          <form class="wh-form-inline" method="get" action={`${base}/admin/odds/`}>
+            <label>Place <select name="place">{LOCATIONS.map((l) => <option value={l.id} selected={l.id === place.id}>{l.name}</option>)}</select></label>
+            <input type="hidden" name="warband" value={warband.id} /><input type="hidden" name="seasons" value={seasons} />
+            <button type="submit" class="cf-btn cf-btn-ghost sm">Show</button>
+          </form>
+          <div class="wh-detail-grid">
+            <div>
+              <h2 class="wh-h2">How often</h2>
+              <dl class="wh-dl">
+                <dt>Raw draw</dt><dd><b>{pct(cross.raw)}</b> of nights with someone out on given orders (<code>crossroadsChance</code>)</dd>
+                <dt>Long run</dt><dd><b>{pct(cross.effective)}</b>, one night in <b>{num(1 / cross.effective, 2)}</b>, because nobody meets one two nights running</dd>
+                <dt>Per Moon</dt><dd><b>{num(cross.perMoon)}</b> in {CAMPAIGN.nightsPerMoon} nights, if someone is out every night</dd>
+                <dt>Per season</dt><dd><b>{num(cross.perSeason, 0)}</b> in {seasonNights} nights</dd>
+                <dt>Pool in {place.name}</dt><dd><b>{cross.pool}</b> crossroads; all met after about <b>{num(cross.nightsToExhaust, 0)}</b> nights out, then the least recently met come round again</dd>
+                <dt>By kind</dt><dd>{KINDS.map((k) => `${k} ${cross.byKind[k]}`).join(' · ')}</dd>
+                <dt>By errand</dt><dd>{Object.entries(cross.byErrand).map(([e, n]) => `${ERRAND_LABEL[e as keyof typeof ERRAND_LABEL]} ${n}`).join(' · ')}</dd>
+              </dl>
+            </div>
+            <div>
+              <h2 class="wh-h2">Risk roads in {place.name}</h2>
+              <p class="wh-muted">The player chooses the risk; the dice choose the branch. The bad branch is the only way a curse reaches a warrior.</p>
+              <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Risk roads">
+                <table class="wh-table wh-odds wh-narrow">
+                  <thead><tr><th scope="col">Crossroads</th><th scope="col">Road</th><th scope="col" class="num">Good</th><th scope="col">Curse if bad</th></tr></thead>
+                  <tbody>{cross.riskRoads.map((r) => <tr class="wh-row"><td class="dim">{r.crossroads}</td><td>{r.road}</td><td class="num">{pct(r.chance)}</td><td class="dim">{r.curse ?? '—'}</td></tr>)}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="wh-section" id="cryer" aria-labelledby="cryer-title">
+          <h1 class="wh-h1" id="cryer-title">What the Town Cryer prints</h1>
+          <p class="wh-muted">Every headline the ledger writes is printed: a title change, an epithet, a planted flourish, an arrival, a road's own headline. Beyond that the broadsheet picks up at most one member's night per warband as a happening: <b>{pct(PRINT_CHANCE.boon)}</b> of boons, <b>{pct(PRINT_CHANCE.fair)}</b> of fair nights, <b>{pct(PRINT_CHANCE.poor)}</b> of poor ones, never a night on standing orders, and never a night whose crossroads still waits. The last column of the first table gives the per-night odds by tilt: about <b>{pct(happeningOdds(0).perNight)}</b> on a regular night.</p>
+        </section>
+
+        <section class="wh-section" id="simulation" aria-labelledby="simulation-title">
+          <h1 class="wh-h1" id="simulation-title">Simulation</h1>
+          <p class="wh-muted">The real engine and ledger, played for <b>{seasons}</b> {seasons === 1 ? 'season' : 'seasons'} of {seasonNights} nights each: orders given every night for the first two members free, errands rotating through the place's, every crossroads decided by a coin so both branches of a risk are seen. Deterministic for the warband and the place. Tilt here is whatever the Omens, Moons and the roster's edges happen to give, so it is the honest mix rather than a fixed column above.</p>
+          <form class="wh-form-inline" method="get" action={`${base}/admin/odds/`}>
+            <label>Place <select name="place">{LOCATIONS.map((l) => <option value={l.id} selected={l.id === place.id}>{l.name}</option>)}</select></label>
+            <label>Warband <select name="warband">{warbands.map((w) => <option value={w.id} selected={w.id === warband.id}>{w.name}</option>)}</select></label>
+            <label>Seasons <input type="number" name="seasons" min="1" max="20" value={seasons} /></label>
+            <button type="submit" class="cf-btn cf-btn-ghost sm">Play</button>
+          </form>
+          {sim && (
+            <div class="wh-detail-grid">
+              <div>
+                <h2 class="wh-h2">Per night with someone out</h2>
+                <dl class="wh-dl">
+                  <dt>Nights out</dt><dd><b>{sim.nightsOut}</b> of {sim.nights}, <b>{sim.membersOut}</b> members out</dd>
+                  <dt>Outcomes</dt><dd>boon <b>{pct(sim.outcomes.boon / sim.membersOut)}</b> · fair <b>{pct(sim.outcomes.fair / sim.membersOut)}</b> · poor <b>{pct(sim.outcomes.poor / sim.membersOut)}</b></dd>
+                  <dt>Charms</dt><dd><b>{num(sim.perNight.charms, 2)}</b> a night, one every <b>{num(sim.perNight.charms ? 1 / sim.perNight.charms : 0, 1)}</b> nights</dd>
+                  <dt>Favour</dt><dd><b>{num(sim.perNight.favour)}</b> a night, before the soft cap halves it</dd>
+                  <dt>Shards</dt><dd><b>{num(sim.perNight.shards, 2)}</b> a night</dd>
+                  <dt>Renown</dt><dd><b>{num(sim.perNight.renown, 2)}</b> a night</dd>
+                  <dt>Rumours</dt><dd><b>{num(sim.perNight.rumours, 2)}</b> a night</dd>
+                  <dt>Crossroads</dt><dd><b>{pct(sim.perNight.crossroads)}</b> of nights, one every <b>{num(sim.perNight.crossroads ? 1 / sim.perNight.crossroads : 0, 1)}</b>; <b>{sim.repeats}</b> {sim.repeats === 1 ? 'repeat' : 'repeats'} of a crossroads already met</dd>
+                  <dt>Risk roads</dt><dd><b>{sim.risks.good}</b> good, <b>{sim.risks.bad}</b> bad; <b>{sim.curses}</b> {sim.curses === 1 ? 'curse' : 'curses'} in all</dd>
+                  <dt>Cryer happenings</dt><dd><b>{pct(sim.perNight.happenings)}</b> of nights</dd>
+                </dl>
+              </div>
+              <div>
+                <h2 class="wh-h2">Reading it</h2>
+                <p class="wh-muted">A regular night should feel like a line in a ledger: a few Favour, now and then a shard, a charm about one night in five at a flat tilt and one in three once the Moon and the edge do their bit, which is what the mix here shows. A special night is a boon at +1 or +2 with a charm and a headline, or a crossroads. If charms come faster than one in three here, lower <code>TOKEN_CHANCE</code>; if the crossroads column drifts from a third, <code>crossroadsChance</code> is the raw draw and the long run is raw ÷ (1 + raw). Repeats above zero mean the pack needs more crossroads for a season this long.</p>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section class="wh-section" id="dials" aria-labelledby="dials-title">
+          <h1 class="wh-h1" id="dials-title">The dials</h1>
+          <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Where each number is set">
+            <table class="wh-table wh-odds">
+              <thead><tr><th scope="col">Dial</th><th scope="col">Today</th><th scope="col">Where</th></tr></thead>
+              <tbody>
+                <tr class="wh-row"><th scope="row">Outcome odds</th><td>boon 25% + 8 points per tilt, poor 30% − 8 per tilt, each between 5% and 60%</td><td><code>outcomeOdds</code> in <code>src/curfew/engine.ts</code></td></tr>
+                <tr class="wh-row"><th scope="row">Charm on a boon</th><td>{pct(TOKEN_CHANCE.boon(0))} at 0, +5 points per tilt, between {pct(TOKEN_CHANCE.boon(-9))} and {pct(TOKEN_CHANCE.boon(9))}</td><td><code>TOKEN_CHANCE.boon</code></td></tr>
+                <tr class="wh-row"><th scope="row">Charm on a fair night</th><td>{pct(TOKEN_CHANCE.fair(0))} at 0, +2 points per tilt, between {pct(TOKEN_CHANCE.fair(-9))} and {pct(TOKEN_CHANCE.fair(9))}</td><td><code>TOKEN_CHANCE.fair</code></td></tr>
+                <tr class="wh-row"><th scope="row">Favour by outcome</th><td>{FAVOUR.boon} · {FAVOUR.fair} · {FAVOUR.poor}; soft cap {CAMPAIGN.favourSoftCap}</td><td><code>FAVOUR</code>; <code>favourSoftCap</code> in <code>campaign.json</code></td></tr>
+                <tr class="wh-row"><th scope="row">Shards, Renown</th><td>shards {YIELDS.shards.boon} · {YIELDS.shards.fair} · {YIELDS.shards.poor} at Scavenge and Dredge; Renown {YIELDS.trainRenown.boon} · {YIELDS.trainRenown.fair} · {YIELDS.trainRenown.poor} at Train, +{YIELDS.carouseBoonRenown} on a Carouse boon</td><td><code>YIELDS</code></td></tr>
+                <tr class="wh-row"><th scope="row">Crossroads</th><td>raw {pct(cross.raw)}, long run {pct(cross.effective)}</td><td><code>crossroadsChance</code> in <code>campaign.json</code></td></tr>
+                <tr class="wh-row"><th scope="row">Cryer happenings</th><td>boon {pct(PRINT_CHANCE.boon)} · fair {pct(PRINT_CHANCE.fair)} · poor {pct(PRINT_CHANCE.poor)}</td><td><code>PRINT_CHANCE</code> in <code>src/curfew/cryer.ts</code></td></tr>
+                <tr class="wh-row"><th scope="row">Standing orders</th><td>poor {pct(YIELDS.standing.poor)}, half Favour, a shard {pct(YIELDS.standing.shardOnFair)} of fair nights, no charms</td><td><code>YIELDS.standing</code></td></tr>
+                <tr class="wh-row"><th scope="row">Who goes out</th><td>{CAMPAIGN.membersPerNight} a night, nobody two nights running; epithet after {CAMPAIGN.epithetAfterEntries} entries; rumours warm {CAMPAIGN.rumourWarmNights} nights; the Return after {CAMPAIGN.returnAfterNights}</td><td><code>campaign.json</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="wh-muted" style="margin-top:1rem">These are code, not console settings, on purpose: a change to the odds is a commit with its test, and this page reads the result.</p>
+        </section>
+      </>
+    )}
+  </main>
+</Base>
