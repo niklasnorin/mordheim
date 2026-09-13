@@ -1,19 +1,19 @@
 ---
 name: town-cryer
-description: Write a Town Cryer article or notice in src/data/news.ts, in the broadsheet's deadpan voice, tagged for the place the campaign is in. Use when asked to "put it in the Town Cryer", "write an article about", "announce", "post a notice of reward", or to report a campaign event on the front page.
+description: Write a Town Cryer article or notice in the Watch House's Articles panel, in the broadsheet's deadpan voice, for the place the campaign is in. Use when asked to "put it in the Town Cryer", "write an article about", "announce", "post a notice of reward", or to report a campaign event on the front page. Also covers the seed fixture in src/data/news.ts.
 user-invocable: true
 argument-hint: "[what happened, and where]"
 ---
 
 # Write for the Town Cryer
 
-Articles are source: entries in `news` in `src/data/news.ts`, printed by `src/components/TownCryer.astro` for the place the campaign is currently in. What the nights produce (title changes, epithets, happenings) arrives as dispatches from the database and never goes in `news.ts`; a notice the game master wants to post tonight and forget goes through the Watch House, not the source.
+Articles live in the database and are written by game masters at `/admin/#articles` (service `src/server/campaign/news.ts`, API `article-create`, `article-update`, `article-delete` in `src/pages/api/admin/[action].ts`). The broadsheet on `/` prints the published articles for the place the campaign is currently in, lowest order first. What the nights produce (title changes, epithets, happenings) arrives as dispatches and is never an article; a notice the game master wants to post tonight and forget is **Post a notice** in the same section, printed under its own heading.
 
 ## The voice
 
-`docs/agents/writing.md` §2 in full. In short: an Imperial broadsheet whose correspondent would like to survive the week. Headline in Title Case with a semicolon turn; a byline with a self-preserving aside or a named citizen with a title; one paragraph of 80 to 150 words that reports rumour as rumour, attributes every claim, quotes the official denial, and ends on a dry turn. Nothing is explained, nothing is resolved, no exclamation marks. A notice is `notice: true`, headline in capitals, empty byline, imperative body, sting last.
+`docs/agents/writing.md` §2 in full. In short: an Imperial broadsheet whose correspondent would like to survive the week. Headline in Title Case with a semicolon turn; a byline with a self-preserving aside or a named citizen with a title; one paragraph of 80 to 150 words that reports rumour as rumour, attributes every claim, quotes the official denial, and ends on a dry turn. Nothing is explained, nothing is resolved, no exclamation marks. A notice is ticked **A notice**: headline in capitals, empty byline, imperative body, sting last.
 
-Two from the file, for calibration:
+Two from the seed, for calibration:
 
 > **Teal-Bannered Dwarfs Enter Mordheim; Purpose Filed Under “Old Business”** — By our correspondent at the eastern gate, from a respectful distance
 
@@ -21,22 +21,16 @@ Two from the file, for calibration:
 
 ## Steps
 
-1. Decide the place. `location: 'fussenbach'` for the village; omit it for Mordheim. An article for a place the campaign is not in simply waits until the game master moves there. An arrival that could happen in either place gets one article per place, reworded for each.
-2. Write it. Use typographic apostrophes (’) inside single-quoted strings to avoid escaping; British spelling.
-3. Place it. The array prints in order, and the file keeps Mordheim's articles first and Fussenbach's in a block below the `// ── Fussenbach ──` comment. Put a new lead story at the top of its place's block and notices at the end of it.
-4. If the article introduces a new place, add its edition name to `editions` in the same file (`fussenbach: 'Fussenbach Edition'`) and see the `curfew-pack` skill for the pack itself.
+1. Decide the place: Mordheim, Fussenbach, or any place since added in `/admin/content/`. An article for a place the campaign is not in simply waits until the game master moves there. An arrival that could happen in either place gets one article per place, reworded for each.
+2. Write it in the form: headline, byline, body, place; tick **A notice** if it is one. Typographic apostrophes (’), British spelling. Leave **Published** unticked to hold it back.
+3. Read it once more against the voice, then **Set in type**. Correct it later from its own drawer in the list; **Pull** removes it for good.
 
-## Verify
+## Seeding an empty database instead
 
-```sh
-npm run check
-```
-
-In `npm run dev`, open `/`. If the campaign is in another place locally, move it from `/admin/` to preview, then move it back. The broadsheet prints the article with its byline, or the notice boxed, and the masthead still names the current place.
+`src/data/news.ts` is imported once into an empty database. Add there only for a fresh deployment; editing it changes nothing on a seeded database.
 
 ## Pitfalls
 
-- Narrating the battle: that is the archive's job (`record-battle`). The Cryer announces, hints and misreports.
-- Naming what a rumour means. Somebody says what they saw; the paper prints that they said it.
-- Using "days", "weeks", "months" in the Curfew's own copy: allowed in the Cryer, which is a newspaper, but keep the Curfew's prose to nights and Moons.
-- An article with `location` set to an id that has no pack: it never prints anywhere.
+- Narrating a battle: articles announce; the battle is the scenario page's job.
+- Resolving a plot or stating what the reader should conclude: the Cryer reports and withdraws.
+- An article for a place that is not on the map: refused; add the place's document first.

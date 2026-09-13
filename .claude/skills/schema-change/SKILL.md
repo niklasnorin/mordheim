@@ -11,7 +11,7 @@ The schema is `src/server/db/schema.ts` (Drizzle, Postgres, `casing: 'snake_case
 
 ## Before you add a table
 
-Ask which half the data belongs to (`CLAUDE.md`, "Content model"). Anything a game master authors is source, not a table. A new field on a ledger goes in `WarbandState` with a default in `coerceState`, not in the schema; the ledger is one JSON column on purpose. The four `user`, `session`, `account`, `verification` tables belong to Better Auth; change them only as its upgrade notes say.
+Ask what kind of thing the data is (`docs/agents/architecture.md`, "The record, the nights and the rules"). The record (warbands, members, scenarios, articles, content documents) has its tables and services under `src/server/campaign/` and `src/server/content/`; a new field on it is a column plus the model in `src/campaign/model.ts`, the service, the seed and the form. A new field on a ledger goes in `WarbandState` with a default in `coerceState`, not in the schema; the ledger is one JSON column on purpose. A rule of the game is code, not a table. The four `user`, `session`, `account`, `verification` tables belong to Better Auth; change them only as its upgrade notes say.
 
 ## Steps
 

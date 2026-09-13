@@ -4,7 +4,7 @@
 
 1. Read `CLAUDE.md`. If the task touches Curfew, read `docs/agents/glossary.md` for the words and `docs/agents/architecture.md` for the layers. If it is prose, read `docs/agents/writing.md`.
 2. Check for a matching skill under `.claude/skills/`: `record-battle`, `add-warband`, `town-cryer`, `curfew-pack`, `curfew-engine`, `schema-change`, `preflight`. Each is a checklist that has been run against this repository.
-3. Decide which half the change belongs to, source or database (see the architecture note). If it is something a game master would author, it is source and the answer is a commit, not a console feature.
+3. Decide what kind of thing the change is (see the architecture note): the record (a form on the site, a service taking the `Actor`), the nights (engine, ledger, Curfew service), or the rules and code (a commit). Content a game master or a player authors is entered on the site, not committed; the files under `src/data/` are only the seed.
 4. Do not relitigate the decisions in `src/data/curfew/PLAN.md` §11 or the "Conventions" in `CLAUDE.md`. If a request conflicts with one, say so in a sentence and then do what was asked.
 
 ## The local stack
@@ -23,10 +23,10 @@ Everything below is what `.github/workflows/ci.yml` runs on every push and pull 
 
 | Check | Command | Expect |
 | --- | --- | --- |
-| Tests | `npm test` | all pass, about 20 seconds, 70 tests today |
+| Tests | `npm test` | all pass, about 30 seconds, 95 tests today |
 | Types | `npm run check` | 0 errors; hints are fine |
 | Build | `npm run build` | completes offline; `scripts/migrate.mjs` prints that it is not on Vercel and skips |
-| Content | `node .claude/skills/record-battle/scripts/check-history.mjs` after touching the archives or rosters; `node .claude/skills/curfew-pack/scripts/lint-pack.mjs` after touching a pack | 0 errors |
+| Content | `node .claude/skills/record-battle/scripts/check-history.mjs` after touching the seed archives or rosters; `node .claude/skills/curfew-pack/scripts/lint-pack.mjs` after touching a built-in pack | 0 errors |
 | Schema | `git status drizzle/` after any change to `schema.ts` | a generated migration and snapshot are staged |
 
 Also, before pushing: no `.env`, `.pglite/`, `dist/` or `.vercel/` in the diff; no `import.meta.env` in a client script; no new dependency without a reason in the commit body; a prose change read once more against the voice it belongs to.
@@ -40,7 +40,7 @@ The `preflight` skill runs the whole table.
 - Flat `test('a sentence that reads as a claim', ...)` from `node:test`; `assert` from `node:assert/strict`. No `describe`, no other runner.
 - Relative imports in tests and in `src/curfew`, `src/server` carry the `.ts` extension. Astro pages and API routes import without it.
 - Pure tests build their warband as an inline object literal and pass night numbers; probabilistic behaviour is asserted as a count over a loop of nights with a tolerant range, never an exact value.
-- Service tests spin up `new PGlite()` in memory, apply the SQL under `drizzle/` split on `--> statement-breakpoint`, and call `useDb()`. They are stateful within a file and run in order; add to the end.
+- Service tests call `testDatabase()` from `src/server/testdb.ts`: a `new PGlite()` in memory with the SQL under `drizzle/` applied and `useDb()` pointed at it; the first roster read seeds the fixtures. They are stateful within a file and run in order; add to the end. `actorOf(id, name, role)` makes an `Actor`.
 - The clock is never mocked. `today` is a parameter.
 
 A test file sits beside the module it tests. A new engine or ledger rule ships with a test in the same commit.

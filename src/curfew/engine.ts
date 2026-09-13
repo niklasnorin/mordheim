@@ -168,19 +168,60 @@ export interface NightResult {
 export interface TokenOffer { night: number; incoming: string; held: string }
 
 export const CAMPAIGN = campaign;
-export const OMENS = omensData.omens as Omen[];
-export const MOONS = moonsData.moons as Moon[];
-export const TOKENS = tokensData.tokens as TokenDef[];
-export const CURSES = tokensData.curses as CurseDef[];
-export function curseById(id: string): CurseDef | undefined { return CURSES.find((c) => c.id === id); }
-export const TOKEN_TYPES = tokensData.types as Record<TokenType, { name: string; seal: string; flavour: string }>;
 export const TITLES = campaign.titles as { renown: number; title: string }[];
+
+// ───────────────────────── the content ─────────────────────────
+// The Omens, Moons, charms, curses and places are content. The files under src/data/curfew/ are the built-in set,
+// the seed and the tests' fixture; the server hands the engine whatever the database holds through `useContent`,
+// and the bindings below are live, so every reader sees the swap. Resolution stays a pure function of its inputs
+// and the content in force.
+
+export type TokenTypeDef = { name: string; seal: string; flavour: string };
+/** The documents as they are stored: one per deck, one per place. */
+export interface CurfewDocuments {
+  omens: { omens: Omen[] } & Record<string, unknown>;
+  moons: { moons: Moon[] } & Record<string, unknown>;
+  tokens: { types: Record<TokenType, TokenTypeDef>; tokens: TokenDef[]; curses: CurseDef[] } & Record<string, unknown>;
+  locations: Location[];
+}
+export const BUILT_IN_DOCUMENTS: CurfewDocuments = {
+  omens: omensData as unknown as CurfewDocuments['omens'],
+  moons: moonsData as unknown as CurfewDocuments['moons'],
+  tokens: tokensData as unknown as CurfewDocuments['tokens'],
+  locations: [mordheim, fussenbach] as unknown as Location[],
+};
+export const DEFAULT_LOCATION_ID = 'mordheim';
+
+export let OMENS: Omen[] = BUILT_IN_DOCUMENTS.omens.omens;
+export let MOONS: Moon[] = BUILT_IN_DOCUMENTS.moons.moons;
+export let TOKENS: TokenDef[] = BUILT_IN_DOCUMENTS.tokens.tokens;
+export let CURSES: CurseDef[] = BUILT_IN_DOCUMENTS.tokens.curses;
+export let TOKEN_TYPES: Record<TokenType, TokenTypeDef> = BUILT_IN_DOCUMENTS.tokens.types;
+export let LOCATIONS: Location[] = BUILT_IN_DOCUMENTS.locations;
+export let DEFAULT_LOCATION: Location = LOCATIONS.find((l) => l.id === DEFAULT_LOCATION_ID)!;
+
+/**
+ * Put content in force for every reader of the bindings above. The server calls this with what the database holds
+ * before any night is resolved or any page rendered; a missing document keeps its built-in. Mordheim must exist:
+ * an old ledger, an unknown place and every fallback read as Mordheim.
+ */
+export function useContent(docs: Partial<CurfewDocuments>): void {
+  OMENS = (docs.omens ?? BUILT_IN_DOCUMENTS.omens).omens;
+  MOONS = (docs.moons ?? BUILT_IN_DOCUMENTS.moons).moons;
+  const t = docs.tokens ?? BUILT_IN_DOCUMENTS.tokens;
+  TOKENS = t.tokens; CURSES = t.curses; TOKEN_TYPES = t.types;
+  const locs = docs.locations && docs.locations.length ? docs.locations : BUILT_IN_DOCUMENTS.locations;
+  LOCATIONS = locs.some((l) => l.id === DEFAULT_LOCATION_ID) ? locs : [BUILT_IN_DOCUMENTS.locations.find((l) => l.id === DEFAULT_LOCATION_ID)!, ...locs];
+  DEFAULT_LOCATION = LOCATIONS.find((l) => l.id === DEFAULT_LOCATION_ID)!;
+}
+/** The content in force, as documents. */
+export function currentDocuments(): CurfewDocuments {
+  return { omens: { ...BUILT_IN_DOCUMENTS.omens, omens: OMENS }, moons: { ...BUILT_IN_DOCUMENTS.moons, moons: MOONS }, tokens: { ...BUILT_IN_DOCUMENTS.tokens, types: TOKEN_TYPES, tokens: TOKENS, curses: CURSES }, locations: LOCATIONS };
+}
+export function curseById(id: string): CurseDef | undefined { return CURSES.find((c) => c.id === id); }
 
 // ───────────────────────── where the campaign is ─────────────────────────
 
-export const LOCATIONS = [mordheim, fussenbach] as unknown as Location[];
-export const DEFAULT_LOCATION_ID = 'mordheim';
-export const DEFAULT_LOCATION: Location = LOCATIONS.find((l) => l.id === DEFAULT_LOCATION_ID)!;
 /** The location with this id; Mordheim for anything unknown, so an old ledger always reads. */
 export function locationById(id?: string | null): Location { return LOCATIONS.find((l) => l.id === id) ?? DEFAULT_LOCATION; }
 /** Where the campaign was on a night: the latest move on or before it, else Mordheim. Later moves on the same night win. */

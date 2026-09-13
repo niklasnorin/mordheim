@@ -1,67 +1,60 @@
 ---
 name: record-battle
-description: Record a real Mordheim game in the campaign archives - write the scenario JSON under src/data/history/, register it, add the Chronicle entry, and carry the consequences into the rosters (stats, injuries, deaths, treasury). Use when asked to "record the battle", "write the battle report", "add scenario 02", or "update the warbands after the game".
+description: Record a real Mordheim game on the site - mark the scenario played with each warband's result, write the battle, the epilogue and the campaign notes, help the players tell their part (their prologue and epilogue, who they brought and how each fared, who put whom out of action), and carry the consequences into the rosters (stats, injuries, deaths, treasury). Use when asked to "record the battle", "write the battle report", "mark scenario 02 played", or "update the warbands after the game". Also covers writing a seed fixture under src/data/history/ for an empty database.
 user-invocable: true
-argument-hint: "[scenario slug or a description of the game]"
+argument-hint: "[scenario title or a description of the game]"
 ---
 
 # Record a battle
 
-A real game becomes one JSON file in `src/data/history/`, one line in the Chronicle, and edits to the rosters. The types in `src/data/history.ts` are the contract; `scenario-01-the-merchants-debt.json` is the worked example; the archive voice is in `docs/agents/writing.md` §3. Everything here is source: no database, no console.
+The record lives in the database and is written on the site: a game master at `/scenarios/<id>/` under **The pen**, each player under their warband's own drawer there, and the rosters at `/warbands/<id>/`. The archive voice is in `docs/agents/writing.md` §3; the shapes are `Scenario`, `ScenarioWarband`, `ScenarioMember` and `OutOfAction` in `src/campaign/model.ts`. Nothing about a played game is a commit any more, unless you are writing the seed for an empty database (§7).
 
 ## 1. Gather what was recorded, and only that
 
-From the players' accounts, app exports, photos or notes: the warbands that fought, the real date, the rulebook scenario and its win condition, who won and by what positions, confirmed out-of-action results, serious injuries and deaths, experience and advances, treasury totals afterwards, loot and exploration, and anything left unresolved. Where a fact was not recorded, the record says so (`null` for rulebook fields, "was not recorded" in prose). Never infer a takedown from a hit, a bow notch or a fall. Never guess a rule from the narrative.
+From the players' accounts, app exports, photos or notes: the warbands that fought, the real date, the rulebook scenario and its win condition, who won and by what positions, confirmed out-of-action results, serious injuries and deaths, experience and advances, treasury totals afterwards, loot and exploration, and anything left unresolved. Where a fact was not recorded, the record says so ("was not recorded"; the rulebook field left as custom). Never infer a takedown from a hit, a bow notch or a fall. Never guess a rule from the narrative.
 
-## 2. Date it in the Imperial Calendar
+## 2. The scenario itself (game master)
 
-```sh
-node .claude/skills/record-battle/scripts/imperial-date.mjs 2026-09-05
-# Marktag, 5th of Pflugzeit, 2007 IC   (night -4)
-```
+If it was announced beforehand it is already at `/scenarios/` as **Upcoming**; otherwise set it up there first (title, played on, rulebook scenario or custom rules, who fights, prologue). Then on its page:
 
-The output is the record's `date`; the argument is its `playedOn`. Both go in the file. `playedOn` is what lets a warrior's profile lay the battle among their Curfew nights.
+1. **Mark it played**: every attending warband gets `victory`, `defeat` or `draw`. The scenario joins the Chronicle in play order; its Imperial date follows from the real one.
+2. **The scenario** drawer: the win condition in the rulebook's words, how the outcome was decided (who won by what positions, and what was not recorded), the epilogue, the Chronicle entry (one present-tense paragraph for the home page: scenario type, who did what, who won, what it cost), loot and costs one per line (say when a figure is a total and not a reward), lasting consequences and unresolved records one per line.
+3. **The battle, told**: one paragraph per beat, a blank line between, naming who did what to whom. Tick **Open the battle narrative** if the players may retell it; every telling before is kept and readable under the drawer.
 
-## 3. Write the record
+The API behind the forms is `src/pages/api/scenarios/[action].ts` (`update`, `played`, `battle`); a script or an agent with a session may post the same JSON.
 
-- File `src/data/history/scenario-NN-<slug>.json`; `id` equals the file name without `.json`; `sequence` is NN as a number, unique, in play order. Copy the key order of scenario 01.
-- `scenario` is the campaign chapter title; `report.rulebookScenario` the rulebook's name or `null`.
-- `warbands[]`: one `WarbandSnapshot` per participant with `warbandId` from `warbands.ts`, the `result`, and the standings **as they stood after the battle** (rating, battles, victories, wyrdstone, gold are totals, not rewards). `highlights` and `lowlights` are short lists.
-- `members[]`: every member who took part, `memberId` exactly as in the roster, `rank`, `status` (`active`, `injured` or `dead`), the full statline **after** advances, `experience`, `equipment`, `skills`, one-sentence `highlight` and `lowlight` that are true of this game.
-- `report`: `outcome`, `prologue`, `battle[]` (one paragraph per beat), `epilogue`, one `perspectives[]` entry per warband, `loot[]`, `campaignNotes[]`, `outOfAction[]` with `attackerId` and optional `targetId` as participant member ids. `puzzle` only if the game master wrote one.
-- Prose: typographic apostrophes, British spelling, no exclamation marks, past tense.
+## 3. Each warband's telling (the player who keeps it, or a game master)
 
-## 4. Register it
+Under **The pen**, one drawer per warband the viewer speaks for:
 
-- `src/data/history.ts`: import the JSON `with { type: 'json' }` and append it to `history` (oldest first).
-- `src/data/chronicle.ts`: add an entry at the **top** (newest first) with the same `scenarioId` and the same `date` string, and a one-paragraph present-tense summary that names the scenario type, who did what, who won, and what it cost.
+- Prologue, epilogue, accomplishments (a factual sentence or two), finest and darkest moments one per line, and the standings as they stood after the battle if kept (totals, not rewards).
+- **Who fought, and how it went**: tick the warriors brought; for each, how they came out (`Active`, `Injured`, `Fell in this battle`) and one true sentence each for the finest and the darkest moment. A warrior who did nothing notable gets an honest small moment, not an invented one.
+- **Out of action**: who struck, who fell (a warrior on the roll, or a name), how. The one who struck or the one who fell may record it; a game master may record any.
 
-## 5. Carry the consequences into the roster (`src/data/warbands.ts`)
+## 4. Carry the consequences into the roster (`/warbands/<id>/`)
 
-- Warband: `rating`, `battles`, `victories`, `wyrdstone`, `gold` to the post-battle totals. Standings are hand-kept; nothing computes them.
-- Members: statlines, `experience`, `equipment`, `skills`, `injuries[]` for lasting wounds, `prayers[]` if learned. Update `lore` only where the game changed the story, and say in `campaignNotes` when a report supersedes an earlier roster story.
-- The fallen: keep them in the roster, set `dead: true` and `death: { date, order, epitaph }` with the Imperial date, an `order` higher than every existing grave, and an epitaph as carved. The Graveyard and the engine both read `dead`.
-- Do not rename or remove member ids. They key the archives, the ledgers and the dispatches.
+- Warband: rating, shards, gold to the post-battle totals. Battles and victories are counted from the played scenarios.
+- Warriors: statlines, experience, skills (prayers and spells go there too), old wounds for lasting injuries. Change the tale only where the game changed the story; say in the campaign notes when a report supersedes an earlier roster story. Weapons and gear are not tracked.
+- The fallen: tick **Fallen**, give the Imperial date and the epitaph as carved; the warrior stays on the roll, the Graveyard and the engine read it.
+- Never rename a warrior. Ids are chosen once, by the roster service, and key the scenario records, the ledgers and the dispatches.
 
-## 6. What Curfew does with it, so you can tell the player
+## 5. What Curfew does with it, so you can tell the player
 
-- Members with `status: 'injured'` in the **most recent** record (by `sequence`) stay home in the Ledger until the player marks them fit. Members with `dead: true` stay home for good.
-- Charms brought to the Eve are consumed when the player presses "the fight is done" in the Ledger. That is theirs to do; nothing in the archive touches a ledger.
+- Warriors marked `Injured` in the **most recent played** scenario stay home in the Ledger until the player marks them fit. Warriors marked fallen stay home for good.
+- Charms brought to the Eve are consumed when the player presses "the fight is done" in the Ledger. That is theirs to do.
 - A Town Cryer article about the aftermath is optional and separate: use the `town-cryer` skill.
 
-## 7. Verify
+## 6. Verify
 
-```sh
-node .claude/skills/record-battle/scripts/check-history.mjs   # ids resolve, dates agree, Chronicle links, roster battle counts
-npm test && npm run check && npm run build
-```
+Open the scenario page signed in as a player who fought and as a game master: the muster shows every participant with the right status, the Chronicle on `/` has the new chapter, the warrior's profile from the warband card carries the battle in their story.
 
-Then in `npm run dev`: open `/scenarios/<id>/`, the Chronicle on `/`, and a participating member's profile from their warband card. Check the muster shows every participant and the statuses read right.
+## 7. Seeding an empty database instead
+
+A fresh database with no warbands is filled once from `src/data/` (`src/server/campaign/seed.ts`). Only then does a fixture matter: one JSON file per scenario under `src/data/history/` in the shape of `scenario-01-the-merchants-debt.json`, registered in `src/data/history.ts`, with a Chronicle paragraph in `src/data/chronicle.ts`, and the rosters in `src/data/warbands.ts` as they stood afterwards. `node .claude/skills/record-battle/scripts/imperial-date.mjs 2026-09-05` prints the Imperial date; `node .claude/skills/record-battle/scripts/check-history.mjs` checks ids, dates and links; then `npm test && npm run check && npm run build`. Editing a fixture changes nothing on a database that has been seeded.
 
 ## Pitfalls
 
-- `date` written by hand with the wrong weekday: the checker compares it against `playedOn`. Use the script.
-- `id` not equal to the file name, or a file not imported in `history.ts`: the checker fails; the page route would be wrong or missing.
-- Rewards written as treasury totals or the reverse: say which in `loot`.
-- Marking somebody `injured` when they were merely knocked down: it keeps them home in Curfew for real days until healed.
-- Trailing commas or straight quotes escaping in JSON; run `npm run check`, which parses the imports.
+- Marking somebody `Injured` when they were merely knocked down: it keeps them home in Curfew for real days until healed.
+- Marking a scenario played before every attending warband is on the list: the results form refuses; set the participants first.
+- Writing rewards as treasury totals or the reverse: say which in the loot lines.
+- Retelling the battle when the game master has not opened it: the form refuses with a 403; ask them to tick the box.

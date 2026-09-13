@@ -1,13 +1,13 @@
 ---
 name: curfew-pack
-description: Extend a Curfew content pack (templates, rumours, districts, epithets, Cryer headlines, Moon tie-ins, encounters) or create a whole new place under src/data/curfew/locations/, plus new charms, Moons and Omens. Use when asked for "more vignettes", "a new location", "write the pack for", "add a charm", or when Dawn Reports repeat themselves.
+description: Extend a Curfew content pack (templates, rumours, districts, epithets, Cryer headlines, Moon tie-ins, encounters) or create a whole new place, plus new charms, Moons and Omens - as a document in the Watch House at /admin/content/ on a live campaign, or in src/data/curfew/ for the built-in set. Use when asked for "more vignettes", "a new location", "write the pack for", "add a charm", or when Dawn Reports repeat themselves.
 user-invocable: true
 argument-hint: "[place id, and what to add]"
 ---
 
 # Curfew content packs
 
-A place is a JSON file in `src/data/curfew/locations/<id>.json`, typed by `Location` in `src/curfew/engine.ts` and read by `resolveNight`, the Ledger, the Watch House and the Town Cryer. Adding lines is a text edit. The prose rules are `src/data/curfew/STYLE.md`, binding; the sizing that keeps a month of nights fresh is `PLAN.md` §2a.
+A place is a JSON document typed by `Location` in `src/curfew/engine.ts` and read by `resolveNight`, the Ledger, the Watch House and the Town Cryer. On a live campaign the documents are in the database, edited by a game master at `/admin/content/`: the three decks (`omens`, `moons`, `tokens`) and one `location:<id>` per place, checked by `validateDocument` (`src/curfew/packs.ts`) before saving, every earlier version kept, and read by the engine at once. The files under `src/data/curfew/` are the built-in set: the seed for an empty database, the tests' fixture and what `lint-pack.mjs` reads. Change the document on the site for the campaign; change the files for the built-in set (and run the linter). A new place also needs its band and mark under `public/curfew/places/` (cut by `scripts/curfew/render-places.py`), committed. The prose rules are `src/data/curfew/STYLE.md`, binding; the sizing that keeps a month of nights fresh is `PLAN.md` §2a.
 
 ## What a pack holds
 

@@ -4,26 +4,17 @@
  */
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
-import { PGlite } from '@electric-sql/pglite';
-import { drizzle } from 'drizzle-orm/pglite';
-import { useDb } from '../db/client.ts';
 import * as schema from '../db/schema.ts';
+import { testDatabase } from '../testdb.ts';
 import { actions, campaignMoves, claimWarband, currentLocation, listClaims, loadOwnLedger, moveCampaign, recentDispatches, reconcileAll, releaseWarband, LedgerError } from './service.ts';
 import { dispatchesForNight } from '../../curfew/cryer.ts';
-import { warbands } from '../../data/warbands.ts';
+import { listWarbands } from '../campaign/roster.ts';
 import { restingMembers } from '../../curfew/ledger.ts';
 
-const pg = new PGlite();
-const db = drizzle(pg, { schema });
 const NIKLAS = 'user-niklas', RIVAL = 'user-rival';
 
 before(async () => {
-  const dir = new URL('../../../drizzle/', import.meta.url);
-  for (const file of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
-    for (const statement of readFileSync(new URL(file, dir), 'utf8').split('--> statement-breakpoint')) if (statement.trim()) await pg.exec(statement);
-  }
-  useDb(db as never);
+  const { db } = await testDatabase();
   await db.insert(schema.user).values([
     { id: NIKLAS, name: 'Niklas', email: 'niklas@example.com', emailVerified: true },
     { id: RIVAL, name: 'Rival', email: 'rival@example.com', emailVerified: true },
@@ -38,7 +29,8 @@ test('a player claims one warband, and a warband has one keeper', async () => {
   await assert.rejects(claimWarband(NIKLAS, 'bitterbrow-expedition', 5), (e: unknown) => e instanceof LedgerError && e.status === 409);
   await assert.rejects(claimWarband(RIVAL, 'nordost', 5), (e: unknown) => e instanceof LedgerError && e.status === 409);
   await assert.rejects(claimWarband(RIVAL, 'nobody', 5), (e: unknown) => e instanceof LedgerError && e.status === 404);
-  assert.deepEqual(await listClaims(), [{ warbandId: 'nordost', ownerId: NIKLAS, ownerName: 'Niklas' }]);
+  assert.deepEqual(await listClaims(), [{ warbandId: 'nordost', ownerId: NIKLAS, ownerName: 'Niklas', ledger: true }]);
+  assert.equal((await listWarbands()).find((w) => w.id === 'nordost')!.ownerId, NIKLAS, 'claiming the ledger claims the warband');
 });
 
 test('orders are saved, the next visit writes the dawn, and the Town Cryer gets its dispatches', async () => {
@@ -54,7 +46,7 @@ test('orders are saved, the next visit writes the dawn, and the Town Cryer gets 
   const again = await loadOwnLedger(NIKLAS, 6);
   assert.equal(again!.fresh, false, 'a second look writes nothing new');
 
-  const nordost = warbands.find((w) => w.id === 'nordost')!;
+  const nordost = (await listWarbands()).find((w) => w.id === 'nordost')!;
   const expected = dispatchesForNight(nordost, dawn.state.nights[0], dawn.state.headlines);
   const printed = await recentDispatches(6);
   assert.deepEqual(printed.map((d) => d.key).sort(), expected.map((d) => d.key).sort(), 'exactly what the dice chose, once');
@@ -78,7 +70,7 @@ test('the midnight cron writes every ledger and is harmless to run twice', async
 test('two writes racing on the same ledger both land', async () => {
   const before = (await loadOwnLedger(NIKLAS, 9))!;
   const resting = restingMembers(before.state, 9);
-  const nordost = warbands.find((w) => w.id === 'nordost')!;
+  const nordost = (await listWarbands()).find((w) => w.id === 'nordost')!;
   const free = nordost.members.find((m) => !m.dead && !resting.includes(m.id) && !before.recovering.includes(m.id))!;
   await Promise.all([
     actions.orders(NIKLAS, 9, [{ memberId: free.id, errand: 'pray' }]),
@@ -113,7 +105,7 @@ test('the game master moves the campaign; nights resolve where the campaign was,
   await assert.rejects(moveCampaign('atlantis', 9), (e: unknown) => e instanceof LedgerError && e.status === 404);
   // orders for tonight given in the city, for an errand the village lacks
   const before = await loadOwnLedger(NIKLAS, 9);
-  const free = warbands.find((w) => w.id === 'nordost')!.members.find((m) => !m.dead && !restingMembers(before!.state, 9).includes(m.id) && !before!.recovering.includes(m.id))!;
+  const free = (await listWarbands()).find((w) => w.id === 'nordost')!.members.find((m) => !m.dead && !restingMembers(before!.state, 9).includes(m.id) && !before!.recovering.includes(m.id))!;
   await actions.orders(NIKLAS, 9, [{ memberId: free.id, errand: 'train' }]);
   const moved = await moveCampaign('fussenbach', 9);
   assert.equal(moved.id, 'fussenbach');
@@ -157,7 +149,7 @@ test('burning starts afresh; giving up frees the warband', async () => {
 
 test('a road is taken through the service, once, and the Cryer prints the night only then', async () => {
   const { waitingCrossroads, keptMembers } = await import('../../curfew/ledger.ts');
-  const nordost = warbands.find((w) => w.id === 'nordost')!;
+  const nordost = (await listWarbands()).find((w) => w.id === 'nordost')!;
   let today = 12, waiting: Awaited<ReturnType<typeof loadOwnLedger>> = null;
   for (; today < 400; today++) {
     const view = (await loadOwnLedger(NIKLAS, today))!;
@@ -187,7 +179,7 @@ test('a dry run computes the night and saves nothing; the sandbox it answers wit
   const realNights = real.state.nights.length, realState = JSON.parse(JSON.stringify(real.state));
   const printedBefore = (await recentDispatches(500, 500)).length;
   // step one: orders for tonight, dry, on the real ledger as the base
-  const nordost = warbands.find((w) => w.id === 'nordost')!;
+  const nordost = (await listWarbands()).find((w) => w.id === 'nordost')!;
   const free = nordost.members.filter((m) => !m.dead && !restingMembers(real.state, 400).includes(m.id) && !real.recovering.includes(m.id)).slice(0, 2);
   let dry = await actions.orders(NIKLAS, 400, free.map((m) => ({ memberId: m.id, errand: 'pray' })), {});
   assert.equal(dry.dry, true);

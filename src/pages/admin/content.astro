@@ -1,0 +1,127 @@
+---
+/**
+ * The Curfew's content, edited as documents: the three decks and one pack per place. A game master pastes or
+ * corrects JSON here; it is checked against the pack rules before it is saved, the version before it is kept,
+ * and the engine reads the new words at once. Built for a wide screen; this is the desk, not the pocket.
+ */
+import Base from '../../layouts/Base.astro';
+import '../../styles/curfew.css';
+import '../../styles/admin.css';
+import { base } from '../../lib/site';
+import { hasDatabase } from '../../server/db/client';
+import { admission } from '../../server/admin/guard';
+import { documentRevisions, listDocuments, primeContent, type ContentDocument } from '../../server/content/curfew';
+import { currentLocation, todayFor } from '../../server/curfew/service';
+import { CAMPAIGN } from '../../curfew/engine';
+import { isLocationDoc } from '../../curfew/packs';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const { viewer, gm } = ready ? await admission(Astro.request) : { viewer: null, gm: false };
+if (ready && !gm) Astro.response.status = viewer ? 403 : 401;
+let docs: ContentDocument[] = [], current: ContentDocument | undefined, revisions: Awaited<ReturnType<typeof documentRevisions>> = [], here = 'mordheim';
+if (gm) {
+  try {
+    await primeContent();
+    docs = await listDocuments();
+    here = (await currentLocation(todayFor(null))).id;
+    const wanted = Astro.url.searchParams.get('doc') ?? 'location:' + here;
+    current = docs.find((d) => d.id === wanted) ?? docs[0];
+    if (current) revisions = await documentRevisions(current.id, 8);
+  } catch (e) { console.error('[content] unavailable', e); }
+}
+const label = (id: string) => (id === 'omens' ? 'The Omens' : id === 'moons' ? 'The Moons' : id === 'tokens' ? 'Charms and curses' : `Place: ${(docs.find((d) => d.id === id)?.document as { name?: string } | undefined)?.name ?? id.slice('location:'.length)}`);
+const kb = (n: number) => `${(n / 1024).toFixed(n > 10240 ? 0 : 1)} kB`;
+const when = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: CAMPAIGN.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
+const ledgerHref = `${base}/curfew/`;
+---
+
+<Base title="Content — The Watch House" description="The Curfew's content packs, edited by the game master.">
+  <Fragment slot="head">
+    <link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Barlow+Condensed:wght@600&display=swap" rel="stylesheet" />
+    <meta name="theme-color" content="#0e0d0c" />
+    <meta name="robots" content="noindex" />
+  </Fragment>
+
+  <main class="curfew wh" id="main-content" data-base={base}>
+    <header class="wh-top">
+      <a class="cf-back" href={`${base}/admin/`}>← The Watch House</a>
+      <a class="wh-wordmark" href={`${base}/admin/content/`}>Content</a>
+      <div class="wh-top-right"><span class="cf-nightline">What the nights are written from</span></div>
+    </header>
+
+    {!ready && <div class="wh-gate"><h1>The ledgers are not open</h1><p>This deployment has no database yet.</p></div>}
+    {ready && !viewer && <div class="wh-gate"><h1>Who goes there?</h1><p>The content is for the game master. <a href={ledgerHref}>Sign in at the Ledger</a>, then come back.</p></div>}
+    {ready && viewer && !gm && <div class="wh-gate"><h1>No admittance</h1><p>You are signed in as {viewer.name}, and that name is neither a game master's nor an admin's.</p></div>}
+
+    {gm && (
+      <section class="wh-section">
+        <h1 class="wh-h1">The Curfew’s content</h1>
+        <p class="wh-muted">Three decks and one pack per place, as JSON. The shape of each is in <code>src/curfew/engine.ts</code> (<code>Omen</code>, <code>Moon</code>, <code>TokenDef</code>, <code>CurseDef</code>, <code>Location</code>) and the writing rules in <code>src/data/curfew/STYLE.md</code>. A saved document is checked first: a slot the engine does not fill, an errand the place lacks, a missing bank, and it is refused with the reasons. The version before is kept below. <b>Ids are forever</b>: a charm, an Omen or a place already in a ledger keeps its id.</p>
+        <div class="wh-docs">
+          <div>
+            <h2 class="wh-h3">Documents</h2>
+            <ul class="wh-doclist">
+              {docs.map((d) => <li><a href={`${base}/admin/content/?doc=${encodeURIComponent(d.id)}`} aria-current={current?.id === d.id ? 'page' : undefined}>{label(d.id)}<small>v{d.version} · {kb(d.bytes)}{isLocationDoc(d.id) && d.id.slice('location:'.length) === here ? ' · the campaign is here' : ''}</small></a></li>)}
+            </ul>
+            <form class="wh-newplace" data-api="admin/content-save" id="new-place">
+              <span class="wh-h3">Add a place</span>
+              <label class="wh-field">Its id<input name="placeId" pattern="[a-z0-9-]{2,40}" required placeholder="kleinfeld" /></label>
+              <p class="wh-muted" style="margin:0;font-size:.85rem">Paste a whole pack below, its <code>id</code> the same, and save. Copy a place's document from the list to start from, then change every line of prose; a new place needs its band and mark under <code>public/curfew/places/</code> too, committed to the repository.</p>
+              <input type="hidden" name="id" value="" /><input type="hidden" name="version" value="" data-nullable />
+              <label class="wh-field">The pack<textarea name="text" class="wh-json" style="min-height:14rem" required placeholder='{ "id": "kleinfeld", "name": "Kleinfeld", … }'></textarea></label>
+              <div class="wh-doc-foot"><span></span><button type="submit" class="cf-btn">Put the place on the map</button></div>
+            </form>
+          </div>
+          {current && (
+            <div>
+              <div class="wh-doc-head"><h2 class="wh-h2">{label(current.id)}</h2><span class="wh-json-status">version {current.version} · {kb(current.bytes)} · saved {when(current.updatedAt)}{current.updatedBy ? ` by ${current.updatedBy}` : ''}</span></div>
+              <form data-api="admin/content-save" data-json={JSON.stringify({ id: current.id, version: current.version })} id="doc-form">
+                <textarea name="text" class="wh-json" id="doc-text" spellcheck="false" aria-label={`The ${label(current.id)} document`}>{JSON.stringify(current.document, null, 2)}</textarea>
+                <div class="wh-doc-foot">
+                  <span class="wh-json-status" id="doc-status">Valid JSON</span>
+                  <div class="wh-actions">
+                    {isLocationDoc(current.id) && current.id !== 'location:mordheim' && <button type="button" class="cf-btn cf-btn-blood sm" data-act="admin/content-delete" data-body={JSON.stringify({ id: current.id })} data-confirm="Take this place off the map? Its last version is kept below, and the campaign cannot be there.">Take off the map</button>}
+                    <button type="button" class="cf-btn cf-btn-ghost sm" id="doc-format">Tidy the JSON</button>
+                    <button type="submit" class="cf-btn">Save version {current.version + 1}</button>
+                  </div>
+                </div>
+              </form>
+              <h3 class="wh-h3" style="margin-top:1.5rem">Earlier versions</h3>
+              {revisions.length ? (
+                <ul class="wh-revisions">{revisions.map((r) => <li><details><summary>Version {r.version} · {when(r.savedAt)}{r.savedBy ? ` by ${r.savedBy}` : ''}</summary><pre>{JSON.stringify(r.document, null, 2)}</pre></details></li>)}</ul>
+              ) : <p class="wh-empty">As it came from the files; never edited.</p>}
+            </div>
+          )}
+        </div>
+      </section>
+    )}
+  </main>
+  <div class="cf-toast" id="toast" hidden role="status"></div>
+</Base>
+
+<script>
+  import { wireManage } from '../../lib/manage';
+  document.body.classList.add('curfew-body');
+  const root = document.getElementById('main-content')!;
+  wireManage(root, root.dataset.base ?? '');
+
+  const text = document.getElementById('doc-text') as HTMLTextAreaElement | null;
+  const status = document.getElementById('doc-status');
+  if (text && status) {
+    const check = () => { try { JSON.parse(text.value); status.textContent = 'Valid JSON'; status.classList.remove('bad'); } catch (e) { status.textContent = (e as Error).message; status.classList.add('bad'); } };
+    text.addEventListener('input', check);
+    document.getElementById('doc-format')?.addEventListener('click', () => { try { text.value = JSON.stringify(JSON.parse(text.value), null, 2); check(); } catch { check(); } });
+    // a tab indents rather than leaving the editor
+    text.addEventListener('keydown', (e) => { if (e.key === 'Tab') { e.preventDefault(); const s = text.selectionStart; text.setRangeText('  ', s, text.selectionEnd, 'end'); } });
+  }
+  // the new place: its id names the document
+  const newPlace = document.getElementById('new-place') as HTMLFormElement | null;
+  newPlace?.addEventListener('submit', () => {
+    const id = (newPlace.elements.namedItem('placeId') as HTMLInputElement).value.trim().toLowerCase();
+    (newPlace.elements.namedItem('id') as HTMLInputElement).value = `location:${id}`;
+    newPlace.dataset.goto = `${root.dataset.base ?? ''}/admin/content/?doc=${encodeURIComponent(`location:${id}`)}`;
+  }, true);
+</script>

@@ -1,0 +1,86 @@
+---
+/** "My warband": the signed-in player's own roster, or the way to found or take one up. */
+import Base from '../../layouts/Base.astro';
+import ManageTop from '../../components/ManageTop.astro';
+import '../../styles/manage.css';
+import { base } from '../../lib/site';
+import { hasDatabase } from '../../server/db/client';
+import { getActor, isGm } from '../../server/roles';
+import { listWarbands } from '../../server/campaign/roster';
+import type { Warband } from '../../campaign/model';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const viewer = ready ? await getActor(Astro.request) : null;
+let warbands: Warband[] = [];
+if (ready) { try { warbands = await listWarbands(); } catch (e) { console.error('[warbands] unavailable', e); } }
+const mine = viewer ? warbands.find((w) => w.ownerId === viewer.id) : undefined;
+if (mine) return Astro.redirect(`${base}/warbands/${mine.id}/`);
+const free = warbands.filter((w) => !w.ownerId);
+---
+
+<Base title="Your warband — Mordheim" description="Take up a warband, or found one.">
+  <main class="mg mg-page" id="main-content" data-base={base}>
+    <ManageTop crumbs={[{ label: 'Warbands' }]} viewer={viewer} />
+    <div class="mg-hero">
+      <p class="mg-kicker">The muster</p>
+      <h1 class="mg-h1">Whose company is this?</h1>
+      <p class="mg-lede">A player keeps one warband: its roster, its story, its ledger in the Curfew. Take up one that waits at the gates, or found your own.</p>
+    </div>
+
+    {!ready && <p class="mg-empty">The campaign's record is not open on this deployment.</p>}
+    {ready && !viewer && <p class="mg-empty"><a href={`${base}/curfew/`}>Sign in at the Curfew</a> first; the same name keeps the ledger and the roster.</p>}
+
+    {viewer && (
+      <>
+        <section class="mg-section">
+          <div class="mg-section-head"><h2 class="mg-h2">Waiting at the gates</h2></div>
+          {free.length ? (
+            <div class="mg-cards">
+              {free.map((w) => (
+                <div class="mg-card">
+                  <span class="mg-sub">{w.type}</span>
+                  <h3>{w.name}</h3>
+                  <p>{w.members.length} {w.members.length === 1 ? 'soul' : 'souls'} · rating {w.rating}{w.player ? ` · ${w.player}'s, by the record` : ''}</p>
+                  <div class="mg-actions">
+                    <button type="button" class="mg-btn" data-act="warbands/claim" data-body={JSON.stringify({ warbandId: w.id })} data-goto={`${base}/warbands/${w.id}/`} data-confirm={`Take up ${w.name}? They are yours to keep from here on.`}>Take them up</button>
+                    <a class="mg-btn ghost" href={`${base}/warbands/${w.id}/`}>Read the roll</a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : <p class="mg-empty">Every warband in the city has a keeper.</p>}
+        </section>
+
+        <section class="mg-section">
+          <div class="mg-section-head"><h2 class="mg-h2">Found a warband</h2></div>
+          <form class="mg-panel mg-form" data-api="warbands/create">
+            <label class="mg-field">Name<input name="name" required maxlength="80" placeholder="The Grey Hand" /></label>
+            <label class="mg-field">Kind<input name="type" required maxlength="60" placeholder="Skaven, Reiklanders, Witch Hunters…" /></label>
+            <label class="mg-field">Their story<textarea name="lore" maxlength="4000" placeholder="Where they are from, what drove them to the city, what they want."></textarea><small>One paragraph, in the warband's own temperament. It can wait.</small></label>
+            <div class="mg-two">
+              <label class="mg-field">Rating<input name="rating" type="number" min="0" max="99999" value="0" /></label>
+              <label class="mg-field">Gold crowns<input name="gold" type="number" min="0" max="99999" value="0" /></label>
+            </div>
+            <div class="mg-actions"><button type="submit" class="mg-btn">Register the company</button><span class="mg-note">{isGm(viewer) ? 'A game master founds it unowned and hands it out from its page.' : 'It is yours the moment it is registered; add the warriors on its page.'}</span></div>
+          </form>
+        </section>
+
+        {isGm(viewer) && warbands.length > 0 && (
+          <section class="mg-section">
+            <div class="mg-section-head"><h2 class="mg-h2">Every warband</h2><span class="mg-muted">A game master tends them all.</span></div>
+            <ul class="mg-list">{warbands.map((w) => <li><a href={`${base}/warbands/${w.id}/`}>{w.name}</a> <span class="mg-muted">— {w.type}{w.player ? `, kept by ${w.player}` : ', nobody’s'}</span></li>)}</ul>
+          </section>
+        )}
+      </>
+    )}
+  </main>
+</Base>
+
+<script>
+  import { wireManage } from '../../lib/manage';
+  const root = document.getElementById('main-content')!;
+  wireManage(root, root.dataset.base ?? '');
+</script>

@@ -1,3 +1,7 @@
+/**
+ * Seed: the Chronicle's paragraphs, imported once as each scenario's `chronicle` field. Written on the scenario's
+ * page since.
+ */
 export interface ChronicleEntry {
   scenarioId: string;
   date: string;

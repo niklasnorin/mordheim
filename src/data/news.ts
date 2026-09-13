@@ -1,3 +1,7 @@
+/**
+ * Seed: the Town Cryer's articles as they stood when the record moved into the database. Imported once into an
+ * empty database; after that articles are written in the Watch House and this file changes nothing.
+ */
 export interface NewsArticle {
   headline: string;
   byline: string;

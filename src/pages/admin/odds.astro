@@ -8,22 +8,26 @@ import { admission } from '../../server/admin/guard';
 import { CAMPAIGN, ERRANDS, ERRAND_LABEL, LOCATIONS, TOKEN_CHANCE, FAVOUR, YIELDS, locationById, outcomeOdds } from '../../curfew/engine';
 import { PRINT_CHANCE } from '../../curfew/cryer';
 import { TILTS, TILT_SOURCES, KINDS, charmOdds, crossroadsOdds, errandExpectation, happeningOdds, simulateNights, standingExpectation } from '../../curfew/odds';
-import { warbands } from '../../data/warbands';
+import { listWarbands } from '../../server/campaign/roster';
+import { primeContent } from '../../server/content/curfew';
+import type { Warband } from '../../campaign/model';
 
 // The game master's odds table. Pure arithmetic on the engine's constants, plus a simulation of real nights; nothing here reads or writes a ledger.
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 
 const ready = hasDatabase();
-const { viewer, admin } = ready ? await admission(Astro.request) : { viewer: null, admin: false };
+const { viewer, gm: admin } = ready ? await admission(Astro.request) : { viewer: null, gm: false };
 if (ready && !admin) Astro.response.status = viewer ? 403 : 401;
+let warbands: Warband[] = [];
+if (admin) { try { await primeContent(); warbands = await listWarbands(); } catch (e) { console.error('[odds] roster unavailable', e); } }
 
 const q = Astro.url.searchParams;
 const place = locationById(q.get('place'));
-const warband = warbands.find((w) => w.id === q.get('warband')) ?? warbands[0];
+const warband = warbands.find((w) => w.id === q.get('warband')) ?? warbands[0] ?? { id: 'nobody', name: 'Nobody', members: [] };
 const seasons = Math.min(20, Math.max(1, Number(q.get('seasons')) || 5));
 const seasonNights = CAMPAIGN.nightsPerMoon * CAMPAIGN.seasonMoons;
-const sim = admin ? simulateNights(place, warband, seasons * seasonNights) : null;
+const sim = admin && warband.members.length ? simulateNights(place, warband, seasons * seasonNights) : null;
 const cross = crossroadsOdds(place);
 
 const pct = (x: number, digits = 0) => `${(x * 100).toFixed(digits)}%`;
@@ -51,7 +55,7 @@ const ledgerHref = `${base}/curfew/`;
 
     {!ready && <div class="wh-gate"><h1>The ledgers are not open</h1><p>This deployment has no database yet. See the README for the Vercel setup.</p></div>}
     {ready && !viewer && <div class="wh-gate"><h1>Who goes there?</h1><p>The Odds are for the game master. <a href={ledgerHref}>Sign in at the Ledger</a>, then come back.</p></div>}
-    {ready && viewer && !admin && <div class="wh-gate"><h1>No admittance</h1><p>You are signed in as {viewer.name}, and that name is not on the Watch's list.</p></div>}
+    {ready && viewer && !admin && <div class="wh-gate"><h1>No admittance</h1><p>You are signed in as {viewer.name}, and that name is neither an admin's nor a game master's.</p></div>}
 
     {admin && (
       <>

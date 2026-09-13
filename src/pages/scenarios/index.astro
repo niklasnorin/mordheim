@@ -1,0 +1,104 @@
+---
+/** The scenarios: what is coming, what was fought. A game master sets up the next one here. */
+import Base from '../../layouts/Base.astro';
+import ManageTop from '../../components/ManageTop.astro';
+import '../../styles/manage.css';
+import { base } from '../../lib/site';
+import { formatImperial, imperialForDate } from '../../lib/calendar';
+import { hasDatabase } from '../../server/db/client';
+import { getActor, isGm } from '../../server/roles';
+import { listScenarios } from '../../server/campaign/scenarios';
+import { listWarbands } from '../../server/campaign/roster';
+import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook';
+import type { Scenario, Warband } from '../../campaign/model';
+import { localDate } from '../../curfew/engine';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const viewer = ready ? await getActor(Astro.request) : null;
+let scenarios: Scenario[] = [], warbands: Warband[] = [];
+if (ready) { try { [scenarios, warbands] = await Promise.all([listScenarios(), listWarbands()]); } catch (e) { console.error('[scenarios] unavailable', e); } }
+const gm = isGm(viewer);
+const upcoming = scenarios.filter((s) => s.status === 'upcoming');
+const played = scenarios.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence);
+const imperialOf = (day: string) => formatImperial(imperialForDate(day));
+const realOf = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(day + 'T12:00:00Z'));
+const nameOf = (id: string) => warbands.find((w) => w.id === id)?.name ?? id;
+const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
+const today = localDate();
+---
+
+<Base title="Scenarios — Mordheim" description="The battles to come and the battles fought in the City of the Damned.">
+  <main class="mg mg-page" id="main-content" data-base={base}>
+    <ManageTop crumbs={[{ label: 'Scenarios' }]} viewer={viewer} />
+    <div class="mg-hero">
+      <p class="mg-kicker">The archives</p>
+      <h1 class="mg-h1">Scenarios</h1>
+      <p class="mg-lede">Every game the campaign will play or has played. An upcoming scenario says when, who and by what rules; a played one becomes a chapter of the Chronicle, told by the game master and by everyone who was there.</p>
+    </div>
+    {!ready && <p class="mg-empty">The campaign's record is not open on this deployment.</p>}
+
+    <section class="mg-section" id="upcoming">
+      <div class="mg-section-head"><h2 class="mg-h2">Upcoming</h2>{upcoming.length > 0 && <span class="mg-muted">{upcoming.length} {upcoming.length === 1 ? 'game' : 'games'} ahead</span>}</div>
+      {upcoming.length ? (
+        <div class="mg-cards">
+          {upcoming.map((s) => (
+            <a class="mg-card upcoming" href={`${base}/scenarios/${s.id}/`}>
+              <span><span class="mg-chip upcoming">Upcoming</span> {s.rulebookScenario ? <span class="mg-chip">{s.rulebookScenario}</span> : <span class="mg-chip">Custom scenario</span>}</span>
+              <h3>{s.title}</h3>
+              <span class="mg-date">{imperialOf(s.playedOn)}</span>
+              <span class="mg-real">{realOf(s.playedOn)}{s.playedOn < today ? ' · not yet marked played' : ''}</span>
+              {s.warbands.length > 0 ? <span class="mg-who">{s.warbands.map((w) => <span>{nameOf(w.warbandId)}</span>)}</span> : <p>No warbands named yet.</p>}
+              {s.prologue && <p>{s.prologue.slice(0, 180)}{s.prologue.length > 180 ? '…' : ''}</p>}
+            </a>
+          ))}
+        </div>
+      ) : <p class="mg-empty">Nothing is set up yet. {gm ? 'The next game starts below.' : 'The game master will announce the next game here.'}</p>}
+    </section>
+
+    {gm && (
+      <section class="mg-section" id="new">
+        <div class="mg-section-head"><h2 class="mg-h2">Set up the next game</h2></div>
+        <form class="mg-panel mg-form" data-api="scenarios/create">
+          <label class="mg-field">Title<input name="title" required maxlength="120" placeholder="The Drowned Bell" /><small>The campaign chapter's name, not the rulebook's.</small></label>
+          <div class="mg-two">
+            <label class="mg-field">Played on<input name="playedOn" type="date" required value={today} /><small>The Imperial date follows from it.</small></label>
+            <label class="mg-field">Rulebook scenario<select name="rulebookScenario" data-nullable><option value="">Custom scenario</option>{RULEBOOK_SCENARIOS.map((r) => <option value={r}>{r}</option>)}</select></label>
+          </div>
+          <fieldset class="mg-fieldset"><legend>Who fights</legend>
+            <div class="mg-checks">{warbands.map((w) => <label class="mg-field check"><input type="checkbox" name="warbandIds" value={w.id} data-array /> {w.name} <span class="mg-muted">({w.type})</span></label>)}</div>
+            {warbands.length === 0 && <p class="mg-note">No warbands are registered yet.</p>}
+          </fieldset>
+          <label class="mg-field">Custom and special rules<textarea name="customRules" maxlength="8000" placeholder="House rules, the special-rule roll, what the objective buildings are, how long it lasts."></textarea></label>
+          <label class="mg-field">Prologue<textarea name="prologue" maxlength="8000" class="tall" placeholder="Where the fight is, what brought the warbands there, what is at stake. Neutral, past tense, as the archivist writes."></textarea></label>
+          <div class="mg-actions end"><button type="submit" class="mg-btn">Announce the scenario</button></div>
+        </form>
+      </section>
+    )}
+
+    <section class="mg-section" id="played">
+      <div class="mg-section-head"><h2 class="mg-h2">The Chronicle</h2>{played.length > 0 && <span class="mg-muted">{played.length} {played.length === 1 ? 'battle' : 'battles'} recorded, newest first</span>}</div>
+      {played.length ? (
+        <div class="mg-cards">
+          {played.map((s) => (
+            <a class="mg-card" href={`${base}/scenarios/${s.id}/`}>
+              <span><span class="mg-chip gold">Scenario {String(s.sequence).padStart(2, '0')}</span> {s.rulebookScenario && <span class="mg-chip">{s.rulebookScenario}</span>}</span>
+              <h3>{s.title}</h3>
+              <span class="mg-date">{imperialOf(s.playedOn)}</span>
+              <span class="mg-who">{s.warbands.map((w) => <span>{nameOf(w.warbandId)}{w.result ? ` — ${resultLabel[w.result].toLowerCase()}` : ''}</span>)}</span>
+              {(s.chronicle || s.summary) && <p>{(s.chronicle || s.summary).slice(0, 220)}{(s.chronicle || s.summary).length > 220 ? '…' : ''}</p>}
+            </a>
+          ))}
+        </div>
+      ) : <p class="mg-empty">No battle has been recorded. The first page of the Chronicle is still blank.</p>}
+    </section>
+  </main>
+</Base>
+
+<script>
+  import { wireManage } from '../../lib/manage';
+  const root = document.getElementById('main-content')!;
+  wireManage(root, root.dataset.base ?? '');
+</script>

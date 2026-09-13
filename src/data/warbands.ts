@@ -1,3 +1,9 @@
+/**
+ * Seed: the warbands as they stood when the record moved into the database. Imported once into an empty database
+ * (src/server/campaign/seed.ts) and used by the engine's tests; after that the roster is kept on the site at
+ * /warbands/<id>/ and this file changes nothing. `Warband` and `Member` here are the fixture's shape; the record's
+ * is `src/campaign/model.ts` (no equipment or prayers: prayers fold into skills, gear is not tracked).
+ */
 export interface Statline {
   M: number; WS: number; BS: number; S: number; T: number; W: number; I: number; A: number; Ld: number;
 }
