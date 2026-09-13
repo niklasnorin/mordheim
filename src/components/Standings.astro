@@ -1,7 +1,9 @@
 ---
-import { warbands } from '../data/warbands';
+import type { Warband } from '../campaign/model';
 import Icon from './Icon.astro';
 
+interface Props { warbands: Warband[] }
+const { warbands } = Astro.props;
 const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
 ---
 

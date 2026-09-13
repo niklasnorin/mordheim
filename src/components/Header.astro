@@ -1,10 +1,14 @@
 ---
-import { warbands } from '../data/warbands';
-import { history } from '../data/history';
 import Icon from './Icon.astro';
 import { asset, base } from '../lib/site';
 
-const fallen = warbands.reduce((total, warband) => total + warband.members.filter((member) => member.dead).length, 0);
+interface Props {
+  /** The campaign's counts, read from the database by the page. */
+  warbands: number;
+  scenarios: number;
+  fallen: number;
+}
+const { warbands, scenarios, fallen } = Astro.props;
 ---
 
   <div class="header-bar" id="campaign-navigation">
@@ -15,14 +19,17 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
       <a href="#standings">Standings</a>
       <a class="secondary-section" href="#chronicle">Chronicle</a>
       <a class="secondary-section" href="#graveyard">Graveyard</a>
+      <a class="secondary-section" href={`${base}/scenarios/`}>Scenarios</a>
+      <a class="nav-account" href={`${base}/warbands/`} hidden data-when="warband">My warband</a>
       <a class="nav-account" href={`${base}/curfew/`} hidden data-when="signed-in">Curfew</a>
-      <a class="nav-account" href={`${base}/admin/`} hidden data-when="admin">Watch House</a>
+      <a class="nav-account" href={`${base}/admin/`} hidden data-when="gm">Watch House</a>
       <details class="section-menu">
         <summary>Sections <Icon name="arrow-down" size={14} /></summary>
         <div class="section-menu-links">
           <a href="#town-cryer">Town Cryer</a>
           <a href="#chronicle">Chronicle</a>
           <a href="#graveyard">Graveyard</a>
+          <a href={`${base}/scenarios/`}>Scenarios</a>
         </div>
       </details>
     </nav>
@@ -44,10 +51,10 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
     <div class="hero-caption" aria-hidden="true"><span>Reikland · The ruined city</span><span>A chronicle of fortune & ruin</span></div>
   </div>
   <div class="campaign-bar" aria-label="Campaign overview">
-    <div class="campaign-label"><span class="status-light" aria-hidden="true"></span> {history.length === 0 ? 'The campaign begins' : 'The campaign continues'}</div>
+    <div class="campaign-label"><span class="status-light" aria-hidden="true"></span> {scenarios === 0 ? 'The campaign begins' : 'The campaign continues'}</div>
     <dl>
-      <div><dt>Warbands</dt><dd>{warbands.length.toString().padStart(2, '0')}</dd></div>
-      <div><dt>Scenarios recorded</dt><dd>{history.length.toString().padStart(2, '0')}</dd></div>
+      <div><dt>Warbands</dt><dd>{warbands.toString().padStart(2, '0')}</dd></div>
+      <div><dt>Scenarios recorded</dt><dd>{scenarios.toString().padStart(2, '0')}</dd></div>
       <div><dt>Fallen souls</dt><dd>{fallen.toString().padStart(2, '0')}</dd></div>
     </dl>
   </div>
@@ -174,11 +181,15 @@ const fallen = warbands.reduce((total, warband) => total + warband.members.filte
   // The page is cached for everyone; the links for signed-in players and the game master appear once the browser has asked who is looking.
   const accountLinks = [...navigation.querySelectorAll<HTMLAnchorElement>('.nav-account')];
   if (accountLinks.length) {
-    fetch(new URL(accountLinks[0].pathname.replace(/\/(curfew|admin)\/$/, '/api/account/me'), location.href), { credentials: 'same-origin', cache: 'no-store' })
+    fetch(new URL(accountLinks[0].pathname.replace(/\/(curfew|admin|warbands)\/$/, '/api/account/me'), location.href), { credentials: 'same-origin', cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((me: { signedIn?: boolean; admin?: boolean } | null) => {
+      .then((me: { signedIn?: boolean; admin?: boolean; gm?: boolean; warbandId?: string | null } | null) => {
         if (!me) return;
-        for (const a of accountLinks) a.hidden = !(a.dataset.when === 'admin' ? me.admin : me.signedIn);
+        for (const a of accountLinks) {
+          const when = a.dataset.when;
+          if (when === 'warband') { a.hidden = !me.signedIn; if (me.warbandId) a.href = a.href.replace(/\/warbands\/$/, `/warbands/${me.warbandId}/`); }
+          else a.hidden = !(when === 'gm' ? me.gm : when === 'admin' ? me.admin : me.signedIn);
+        }
       })
       .catch(() => {});
   }

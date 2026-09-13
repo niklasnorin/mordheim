@@ -198,7 +198,7 @@ On a phone this is one column. From 1100px the night is laid out side by side: i
 **The Odds** (`/admin/odds/`, shipped 12 September) is the game designer's page: outcome, charm, crossroads and Cryer odds by tilt from −3 to +3 with a regular night at 0 and special ones at ±1 and ±2, expected yield per errand and on standing orders, the crossroads pool per place with its risk roads, a simulation of real nights for any warband and place, and a table of where every dial lives. It reads the engine's own constants (`outcomeOdds`, `TOKEN_CHANCE`, `FAVOUR`, `YIELDS`, `PRINT_CHANCE`, `crossroadsChance`), so it cannot drift from the dice, and the dials stay code on purpose.
 
 ### What the server does not do yet
-Warband rosters, standings and battle reports are still content in the repository. Rival glimpses at the Eve still go by ticket, though the server could now answer with the count. PvP and the mini-games are unchanged in scope.
+Warband rosters, standings, scenarios and the Cryer’s articles are kept in the database now, managed on the site by the players and the game masters; the repository seeds an empty database and keeps the rules. Rival glimpses at the Eve still go by ticket, though the server could now answer with the count. PvP and the mini-games are unchanged in scope.
 
 ## 10. Build phases
 

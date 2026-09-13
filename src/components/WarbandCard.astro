@@ -1,5 +1,5 @@
 ---
-import type { Warband } from '../data/warbands';
+import type { Warband } from '../campaign/model';
 import type { WarbandStanding } from '../curfew/story';
 import Icon from './Icon.astro';
 import { asset, base } from '../lib/site';
@@ -22,6 +22,7 @@ const { warband, standing } = Astro.props;
       <span class="warband-register">Registered company · {warband.members.length} souls</span>
       <h3>{warband.name}</h3>
       <span class="warband-type">{warband.type}{warband.player && ` — led by ${warband.player}`}</span>
+      <a class="warband-open" href={`${base}/warbands/${warband.id}/`}>The muster roll in full <Icon name="arrow-up-right" size={14} /></a>
       {standing && standing.nights > 0 && (
         <span class="warband-curfew">Spoken of in the taverns as <b>{standing.title}</b> after {standing.nights} {standing.nights === 1 ? 'night' : 'nights'} in the city. <a href={`${base}/curfew/`}>Their ledger</a></span>
       )}
@@ -118,6 +119,8 @@ const { warband, standing } = Astro.props;
     color: var(--gold);
   }
 
+  .warband-open { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; margin-top: .3rem; color: var(--gold); font: var(--text-ui)/1.5 var(--font-utility); text-underline-offset: .2em; }
+  .warband-open:hover { color: var(--parchment); }
   .warband-curfew { display: block; margin-top: .55rem; font-size: var(--text-ui); font-style: italic; color: var(--ink-dim); }
   .warband-curfew b { color: var(--parchment); font-weight: 600; }
   .warband-curfew a { color: var(--gold); text-underline-offset: .2em; }

@@ -7,6 +7,8 @@ import { hasDatabase } from '../../server/db/client';
 import { admission } from '../../server/admin/guard';
 import { overview, type Overview } from '../../server/admin/service';
 import { todayFor } from '../../server/curfew/service';
+import { listArticles } from '../../server/campaign/news';
+import type { NewsArticle } from '../../campaign/model';
 import { CAMPAIGN, ERRAND_LABEL, HAND_SIZE, TOKEN_TYPES, dateForNight, moonForNight, tokenById } from '../../curfew/engine';
 import { sealSvg } from '../../curfew/glyphs';
 import { formatImperial, imperialForDate } from '../../lib/calendar';
@@ -18,13 +20,15 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 const ready = hasDatabase();
 // The console reads and acts on every ledger, so its clock is never steered: a debug date here would write other players' nights.
 const today = todayFor(null);
-const { viewer, admin } = ready ? await admission(Astro.request) : { viewer: null, admin: false };
+const { viewer, gm, admin } = ready ? await admission(Astro.request) : { viewer: null, gm: false, admin: false };
 let data: Overview | null = null;
+let articles: NewsArticle[] = [];
 let trouble = false;
-if (admin) {
-  try { data = await overview(today); } catch (e) { console.error('[watch-house] overview unavailable', e); trouble = true; }
+if (gm) {
+  try { [data, articles] = await Promise.all([overview(today), listArticles()]); } catch (e) { console.error('[watch-house] overview unavailable', e); trouble = true; }
 }
-if (ready && !admin) Astro.response.status = viewer ? 403 : 401;
+if (ready && !gm) Astro.response.status = viewer ? 403 : 401;
+const ROLE: Record<string, string> = { admin: 'Admin', gm: 'Game Master', player: 'Player' };
 
 const ledgerHref = `${base}/curfew/`;
 const tz = CAMPAIGN.timezone;
@@ -57,7 +61,7 @@ const lastRun = data?.runs[0];
 
     {!ready && <div class="wh-gate"><h1>The ledgers are not open</h1><p>This deployment has no database yet. See the README for the Vercel setup.</p></div>}
     {ready && !viewer && <div class="wh-gate"><h1>Who goes there?</h1><p>The Watch House is for the game master. <a href={ledgerHref}>Sign in at the Ledger</a>, then come back.</p></div>}
-    {ready && viewer && !admin && <div class="wh-gate"><h1>No admittance</h1><p>You are signed in as {viewer.name}, and that name is not on the Watch's list.</p><p>A game master adds it to <code>ADMIN_EMAILS</code>. <a href={ledgerHref}>Back to the Ledger</a>.</p></div>}
+    {ready && viewer && !gm && <div class="wh-gate"><h1>No admittance</h1><p>You are signed in as {viewer.name}, and that name is neither a game master's nor an admin's.</p><p>An admin grants the game master's role here; admins are named in <code>ADMIN_EMAILS</code>. <a href={ledgerHref}>Back to the Ledger</a>.</p></div>}
     {trouble && <div class="wh-gate"><h1>The city did not answer</h1><p>The overview could not be read just now. Try again in a moment.</p></div>}
 
     {data && (
@@ -66,8 +70,11 @@ const lastRun = data?.runs[0];
           <a href="#night">Tonight</a>
           <a href="#ledgers">Ledgers</a>
           <a href="#cryer">Town Cryer</a>
-          <a href="#players">Players</a>
-          <a href="#midnight">Midnight</a>
+          <a href="#articles">Articles</a>
+          {admin && <a href="#players">Players</a>}
+          {admin && <a href="#midnight">Midnight</a>}
+          <a class="wh-nav-page" href={`${base}/scenarios/`}>Scenarios →</a>
+          <a class="wh-nav-page" href={`${base}/admin/content/`}>Content →</a>
           <a class="wh-nav-page" href={`${base}/admin/odds/`}>The Odds →</a>
         </nav>
 
@@ -95,21 +102,21 @@ const lastRun = data?.runs[0];
                 <p>The warbands are in <b>{data.location.name}</b>{data.moves[0] ? <>, since night {data.moves[0].fromNight}</> : null}. {data.location.kind === 'village' ? `A ${data.location.kind}: the Curfew offers ${data.location.errands.map((e) => ERRAND_LABEL[e]).join(', ')}, and the Cryer prints from the docks.` : `The city: every errand is open, and the Cryer prints from the ruins.`}</p>
                 <div class="wh-actions">
                   {data.locations.filter((l) => l.id !== data!.location.id).map((l) => (
-                    <button type="button" class="cf-btn cf-btn-ghost sm" data-act="move-campaign" data-body={JSON.stringify({ locationId: l.id })} data-confirm={`Move the campaign to ${l.name} from tonight, night ${Math.max(1, today)}? Nights already written stay where they were. From tonight the Curfew offers ${l.name}'s errands (${l.errands.map((e) => ERRAND_LABEL[e]).join(', ')}) and the Town Cryer prints from there.`}>Move to {l.name}</button>
+                    <button type="button" class="cf-btn cf-btn-ghost sm" data-act="admin/move-campaign" data-body={JSON.stringify({ locationId: l.id })} data-confirm={`Move the campaign to ${l.name} from tonight, night ${Math.max(1, today)}? Nights already written stay where they were. From tonight the Curfew offers ${l.name}'s errands (${l.errands.map((e) => ERRAND_LABEL[e]).join(', ')}) and the Town Cryer prints from there.`}>Move to {l.name}</button>
                   ))}
                 </div>
                 {data.moves.length > 0 && <p class="wh-moves">{data.moves.slice(0, 4).map((m, i) => <span>{i > 0 ? ' · ' : ''}{data!.locations.find((l) => l.id === m.locationId)?.name ?? m.locationId} from night {m.fromNight}</span>)}{data.moves.length > 4 ? ' · …' : ''}</p>}
               </div>
             </div>
-            <ul class="wh-health" aria-label="Health">
+            {admin && <ul class="wh-health" aria-label="Health">
               {data.health.map((h) => <li class:list={[h.ok === true ? 'ok' : h.ok === false ? 'bad' : 'note']}><span class="wh-dot" aria-hidden="true"></span><b>{h.label}</b><span>{h.detail}</span></li>)}
-            </ul>
+            </ul>}
           </div>
         </section>
 
         <section class="wh-section" id="ledgers" aria-labelledby="ledgers-title">
           <h2 class="wh-h2" id="ledgers-title">Ledgers</h2>
-          <p class="wh-muted">One keeper per warband. <b>Burn</b> starts a ledger afresh tonight and the keeper keeps the warband. <b>Release</b> takes the warband from its keeper, ledger and all, so anyone may take it up.</p>
+          <p class="wh-muted">One keeper per warband; the ledger follows the warband's owner. {admin ? <><b>Burn</b> starts a ledger afresh tonight and the keeper keeps the warband. <b>Release</b> takes the warband from its keeper, ledger and all, so anyone may take it up.</> : <>Warbands are handed out and tended from <a href={`${base}/warbands/`}>their own pages</a>.</>}</p>
           <p class="wh-table-hint" aria-hidden="true">Scroll sideways for the rest of the table</p>
           <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Ledgers">
             <table class="wh-table">
@@ -133,12 +140,13 @@ const lastRun = data?.runs[0];
                             <td class:list={{ dim: l.tonight === 'standing' || l.tonight === 'nothing' }}>{TONIGHT[l.tonight]}{s.eve ? <> <span class="wh-chip on">Eve laid</span></> : null}{s.offers.length ? <> <span class="wh-chip">{plural(s.offers.length, 'offer')} pending</span></> : null}{l.waiting ? <> <span class="wh-chip on">Crossroads waiting</span></> : null}</td>
                             <td><div class="wh-actions">
                               <button type="button" class="cf-btn cf-btn-ghost sm" data-inspect={l.warbandId} aria-expanded="false" aria-controls={`detail-${l.warbandId}`}>Inspect</button>
-                              <button type="button" class="cf-btn cf-btn-ghost sm" data-act="burn" data-body={JSON.stringify({ warbandId: l.warbandId })} data-confirm={`Burn ${l.name}'s ledger? Every night, charm and rumour goes with it. ${l.keeper.name} keeps the warband.`}>Burn</button>
-                              <button type="button" class="cf-btn cf-btn-blood sm" data-act="release" data-body={JSON.stringify({ warbandId: l.warbandId })} data-confirm={`Take ${l.name} from ${l.keeper.name}? The ledger is destroyed and anyone may take the warband up.`}>Release</button>
+                              <a class="cf-btn cf-btn-ghost sm" href={`${base}/warbands/${l.warbandId}/`}>Roster</a>
+                              {admin && <button type="button" class="cf-btn cf-btn-ghost sm" data-act="admin/burn" data-body={JSON.stringify({ warbandId: l.warbandId })} data-confirm={`Burn ${l.name}'s ledger? Every night, charm and rumour goes with it. ${l.keeper.name} keeps the warband.`}>Burn</button>}
+                              {admin && <button type="button" class="cf-btn cf-btn-blood sm" data-act="admin/release" data-body={JSON.stringify({ warbandId: l.warbandId })} data-confirm={`Take ${l.name} from ${l.keeper.name}? The ledger is destroyed and anyone may take the warband up.`}>Release</button>}
                             </div></td>
                           </>
                         ) : (
-                          <td class="dim" colspan="8">No keeper yet. The warband is waiting at the Ledger for a player to take it up.</td>
+                          <td class="dim" colspan="8">No ledger yet. The warband waits at the Ledger for its keeper to take it up. <a href={`${base}/warbands/${l.warbandId}/`}>Its page</a>.</td>
                         )}
                       </tr>
                       {s && (
@@ -192,7 +200,7 @@ const lastRun = data?.runs[0];
           <h2 class="wh-h2" id="cryer-title">Town Cryer</h2>
           <p class="wh-muted">What the broadsheet will print. A pulled dispatch is gone for good; a notice from the Watch prints tonight under its own heading.</p>
           <div class="wh-cryer">
-            <form class="wh-notice" id="notice-form">
+            <form class="wh-notice" id="notice-form" data-api="admin/post-notice">
               <label class="wh-h3" for="notice-text">Post a notice</label>
               <textarea id="notice-text" name="text" maxlength="200" required placeholder="Curfew falls an hour earlier tonight. The Watch will not say why."></textarea>
               <div class="wh-notice-foot"><span class="wh-count" id="notice-count">0 / 200</span><button type="submit" class="cf-btn">Print in the Cryer</button></div>
@@ -205,7 +213,7 @@ const lastRun = data?.runs[0];
                     <li class="wh-dispatch">
                       <span class="wh-meta"><span>Night <b>{d.night}</b></span><span>{d.warbandName}</span></span>
                       <span class="wh-text"><p>{d.headline}<span class:list={['wh-chip', { on: d.kind === 'notice' }]}>{KIND[d.kind]}</span></p>{d.body && <small>{d.body}</small>}</span>
-                      <button type="button" class="cf-btn cf-btn-ghost sm" data-act="delete-dispatch" data-body={JSON.stringify({ id: d.id })} data-confirm="Pull this dispatch from the broadsheet? It does not come back.">Pull</button>
+                      <button type="button" class="cf-btn cf-btn-ghost sm" data-act="admin/delete-dispatch" data-body={JSON.stringify({ id: d.id })} data-confirm="Pull this dispatch from the broadsheet? It does not come back.">Pull</button>
                     </li>
                   ))}
                 </ul>
@@ -214,41 +222,90 @@ const lastRun = data?.runs[0];
           </div>
         </section>
 
-        <section class="wh-section" id="players" aria-labelledby="players-title">
+        <section class="wh-section" id="articles" aria-labelledby="articles-title">
+          <h2 class="wh-h2" id="articles-title">Articles</h2>
+          <p class="wh-muted">The broadsheet's own articles and notices, printed for the place they carry. Deadpan, exact, one paragraph; the voice is in <code>docs/agents/writing.md</code>. An unpublished article is kept but not printed.</p>
+          <div class="wh-articles">
+            <form class="wh-notice wh-article-form" data-api="admin/article-create">
+              <span class="wh-h3">Set a new article in type</span>
+              <label class="wh-field">Headline<input name="headline" required maxlength="200" placeholder="Bell Heard Beneath the Ash; Nobody Claims It" /></label>
+              <label class="wh-field">Byline<input name="byline" maxlength="200" placeholder="By our correspondent at the ferry stair, who was counting too" /></label>
+              <label class="wh-field">Body<textarea name="body" required maxlength="4000" placeholder="One paragraph, eighty to a hundred and fifty words."></textarea></label>
+              <div class="wh-field-row">
+                <label class="wh-field">Place<select name="locationId">{data.locations.map((l) => <option value={l.id} selected={l.id === data!.location.id}>{l.name}</option>)}</select></label>
+                <label class="wh-check"><input type="checkbox" name="notice" /> A notice (capitals, no byline)</label>
+                <label class="wh-check"><input type="checkbox" name="published" checked /> Published</label>
+              </div>
+              <div class="wh-notice-foot"><span></span><button type="submit" class="cf-btn">Set in type</button></div>
+            </form>
+            <div>
+              <h3 class="wh-h3">In the Cryer</h3>
+              {articles.length ? (
+                <ul class="wh-dispatches">
+                  {articles.map((a) => (
+                    <li class="wh-dispatch wh-article">
+                      <span class="wh-meta"><span>{data!.locations.find((l) => l.id === a.locationId)?.name ?? a.locationId}</span>{a.notice && <span class="wh-chip on">Notice</span>}{!a.published && <span class="wh-chip warn">Unpublished</span>}</span>
+                      <details class="wh-text wh-article-edit">
+                        <summary><p>{a.headline}</p>{a.byline && <small>{a.byline}</small>}</summary>
+                        <form class="wh-article-form" data-api="admin/article-update" data-json={JSON.stringify({ id: a.id })}>
+                          <label class="wh-field">Headline<input name="patch.headline" required maxlength="200" value={a.headline} /></label>
+                          <label class="wh-field">Byline<input name="patch.byline" maxlength="200" value={a.byline} /></label>
+                          <label class="wh-field">Body<textarea name="patch.body" required maxlength="4000">{a.body}</textarea></label>
+                          <div class="wh-field-row">
+                            <label class="wh-field">Place<select name="patch.locationId">{data!.locations.map((l) => <option value={l.id} selected={l.id === a.locationId}>{l.name}</option>)}</select></label>
+                            <label class="wh-field">Order<input name="patch.sort" type="number" min="0" max="9999" value={a.sort} /></label>
+                            <label class="wh-check"><input type="checkbox" name="patch.notice" checked={a.notice} /> Notice</label>
+                            <label class="wh-check"><input type="checkbox" name="patch.published" checked={a.published} /> Published</label>
+                          </div>
+                          <div class="wh-actions"><button type="button" class="cf-btn cf-btn-blood sm" data-act="admin/article-delete" data-body={JSON.stringify({ id: a.id })} data-confirm="Pull this article from the Cryer for good?">Pull</button><button type="submit" class="cf-btn sm">Correct it</button></div>
+                        </form>
+                      </details>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p class="wh-empty">The Cryer has no articles of its own yet.</p>}
+            </div>
+          </div>
+        </section>
+
+        {admin && <section class="wh-section" id="players" aria-labelledby="players-title">
           <h2 class="wh-h2" id="players-title">Players</h2>
           <p class="wh-muted">Everyone who has signed in. A player who forgets their password asks you for a <b>reset word</b>: issue it here, pass it on, and they trade it for a new password under "Forgotten your password?" at the Ledger. It is good for two days and spent on use. Signing a player out everywhere ends their sessions; they sign in again as before.</p>
           <p class="wh-table-hint" aria-hidden="true">Scroll sideways for the rest of the table</p>
           <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Players">
             <table class="wh-table">
-              <thead><tr><th scope="col">Player</th><th scope="col">Warband</th><th scope="col" class="num">Sessions</th><th scope="col">Last seen</th><th scope="col">Joined</th><th scope="col">Reset word</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+              <thead><tr><th scope="col">Player</th><th scope="col">Role</th><th scope="col">Warband</th><th scope="col" class="num">Sessions</th><th scope="col">Last seen</th><th scope="col">Joined</th><th scope="col">Reset word</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
               <tbody>
                 {data.players.map((p) => (
                   <tr class="wh-row">
-                    <th scope="row" class="wh-keeper">{p.name}{p.admin && <> <span class="wh-chip on">Watch</span></>}<small>{p.email}</small></th>
-                    <td class:list={{ dim: !p.warband }}>{p.warband?.name ?? 'none'}</td>
+                    <th scope="row" class="wh-keeper">{p.name}<small>{p.email}</small></th>
+                    <td><span class:list={['wh-chip', { on: p.role !== 'player' }]}>{ROLE[p.role]}</span></td>
+                    <td class:list={{ dim: !p.warband }}>{p.warband ? <a href={`${base}/warbands/${p.warband.id}/`}>{p.warband.name}</a> : 'none'}</td>
                     <td class="num">{p.sessions}</td>
                     <td class:list={{ dim: !p.lastSeen }}>{p.lastSeen ? when(p.lastSeen) : 'never'}</td>
                     <td class="dim">{day(p.createdAt)}</td>
                     <td class:list={{ dim: !p.resetUntil }} data-reset-cell={p.id}>{p.resetUntil ? `Issued, unspent, good until ${when(p.resetUntil)}` : '—'}</td>
                     <td><div class="wh-actions">
                       <button type="button" class="cf-btn cf-btn-ghost sm" data-issue={p.id} data-name={p.name} data-confirm={`Issue ${p.name} a reset word? Any earlier word stops working. You will see it once, to pass on.`}>Issue reset word</button>
-                      <button type="button" class="cf-btn cf-btn-ghost sm" data-act="revoke-sessions" data-body={JSON.stringify({ userId: p.id })} data-confirm={`Sign ${p.name} out everywhere?`} disabled={p.sessions === 0}>Sign out everywhere</button>
+                      <button type="button" class="cf-btn cf-btn-ghost sm" data-act="admin/revoke-sessions" data-body={JSON.stringify({ userId: p.id })} data-confirm={`Sign ${p.name} out everywhere?`} disabled={p.sessions === 0}>Sign out everywhere</button>
+                      {p.role === 'player' && <button type="button" class="cf-btn cf-btn-ghost sm" data-act="admin/set-role" data-body={JSON.stringify({ userId: p.id, role: 'gm' })} data-confirm={`Make ${p.name} a game master? They may set up scenarios, tend every warband, edit the Curfew's content and write for the Cryer.`}>Make game master</button>}
+                      {p.role === 'gm' && <button type="button" class="cf-btn cf-btn-ghost sm" data-act="admin/set-role" data-body={JSON.stringify({ userId: p.id, role: 'player' })} data-confirm={`Take the game master's role from ${p.name}?`}>Make player</button>}
                     </div></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </section>
+        </section>}
 
-        <section class="wh-section" id="midnight" aria-labelledby="midnight-title">
+        {admin && <section class="wh-section" id="midnight" aria-labelledby="midnight-title">
           <h2 class="wh-h2" id="midnight-title">Midnight</h2>
           <p class="wh-muted">The cron writes every ledger's dawn once a night; a visit to a ledger writes what is still due. Running it by hand is harmless: a current ledger has nothing to write.</p>
           <div class="wh-midnight">
             <div class="wh-run">
               <h3 class="wh-h3">By hand</h3>
               <p>Writes every dawn due before night {today} and sends the Town Cryer its dispatches. The same dawns the cron would write.</p>
-              <button type="button" class="cf-btn" data-act="run-midnight" data-body="{}">Run midnight now</button>
+              <button type="button" class="cf-btn" data-act="admin/run-midnight" data-body="{}">Run midnight now</button>
             </div>
             <div>
               <h3 class="wh-h3">Runs</h3>
@@ -262,7 +319,7 @@ const lastRun = data?.runs[0];
               ) : <p class="wh-empty">Midnight has not run yet. The cron runs at 23:15 UTC; a ledger visit writes its own dawns meanwhile.</p>}
             </div>
           </div>
-        </section>
+        </section>}
       </>
     )}
   </main>
@@ -271,42 +328,26 @@ const lastRun = data?.runs[0];
 
 <script>
   import { createAuthClient } from 'better-auth/client';
+  import { wireManage } from '../../lib/manage';
 
   document.body.classList.add('curfew-body');
   const root = document.getElementById('main-content')!;
   const base = root.dataset.base ?? '';
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-  const FLASH = 'watch-house:flash';
+  // buttons with data-act and forms with data-api post and reload; refusals are shown as written
+  wireManage(root, base);
 
   function toast(text: string) {
     const el = $('toast'); el.textContent = text; el.hidden = false;
     clearTimeout((el as any)._t); (el as any)._t = setTimeout(() => (el.hidden = true), 4200);
   }
-  // a message left for the page we reload into
-  try { const f = sessionStorage.getItem(FLASH); if (f) { sessionStorage.removeItem(FLASH); toast(f); } } catch {}
 
   async function order(action: string, body: unknown): Promise<{ message?: string }> {
     const url = new URL(`${base}/api/admin/${action}`, location.href);
-    const date = new URLSearchParams(location.search).get('date');
-    if (date) url.searchParams.set('date', date);
     const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), credentials: 'same-origin' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error ?? 'The city did not answer. Try again.');
     return data;
-  }
-  async function act(button: HTMLButtonElement) {
-    const { act, body, confirm: ask } = button.dataset;
-    if (!act) return;
-    if (ask && !confirm(ask)) return;
-    button.setAttribute('aria-busy', 'true'); button.disabled = true;
-    try {
-      const data = await order(act, JSON.parse(body ?? '{}'));
-      try { sessionStorage.setItem(FLASH, data.message ?? 'Done.'); } catch {}
-      location.reload();
-    } catch (e) {
-      button.removeAttribute('aria-busy'); button.disabled = false;
-      toast((e as Error).message);
-    }
   }
   // a reset word for a player: shown once, in their row, to pass on
   async function issueReset(button: HTMLButtonElement) {
@@ -326,8 +367,6 @@ const lastRun = data?.runs[0];
   }
   root.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
-    const actBtn = target.closest<HTMLButtonElement>('button[data-act]');
-    if (actBtn) { void act(actBtn); return; }
     const issue = target.closest<HTMLButtonElement>('button[data-issue]');
     if (issue) { void issueReset(issue); return; }
     const inspect = target.closest<HTMLButtonElement>('button[data-inspect]');
@@ -341,24 +380,12 @@ const lastRun = data?.runs[0];
     }
   });
 
-  // the notice
+  // the notice's counter; the form itself posts through data-api
   const form = document.getElementById('notice-form') as HTMLFormElement | null;
   if (form) {
     const text = form.querySelector('textarea')!, count = $('notice-count');
     const update = () => { count.textContent = `${text.value.trim().length} / 200`; count.classList.toggle('over', text.value.trim().length > 200); };
     text.addEventListener('input', update); update();
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const value = text.value.trim();
-      if (!value) { toast('The notice needs words.'); text.focus(); return; }
-      const button = form.querySelector('button')!;
-      button.disabled = true; button.setAttribute('aria-busy', 'true');
-      try {
-        const data = await order('post-notice', { text: value });
-        try { sessionStorage.setItem(FLASH, data.message ?? 'Posted.'); } catch {}
-        location.reload();
-      } catch (err) { button.disabled = false; button.removeAttribute('aria-busy'); toast((err as Error).message); }
-    });
   }
 
   // which section is in view

@@ -1,6 +1,6 @@
 ---
-import { warbands } from '../data/warbands';
-import { getMemberStory, getScenarioUrl, type MemberStoryEntry } from '../data/history';
+import type { Warband } from '../campaign/model';
+import type { MemberChapter } from '../server/campaign/scenarios';
 import type { MemberNights, NightEntry } from '../curfew/story';
 import { dateForNight, locationById } from '../curfew/engine';
 import { formatImperial, imperialForDate } from '../lib/calendar';
@@ -8,10 +8,17 @@ import Icon from './Icon.astro';
 import { asset, base } from '../lib/site';
 
 interface Props {
-  /** What the Curfew nights have written about each member, by member id. Empty without a database. */
+  warbands: Warband[];
+  /** Every warrior's chapters in the played scenarios, by member id. */
+  stories: Record<string, MemberChapter[]>;
+  /** What the Curfew nights have written about each member, by member id. */
   nights?: Record<string, MemberNights>;
 }
-const { nights = {} } = Astro.props;
+const { warbands, stories, nights = {} } = Astro.props;
+type MemberStoryEntry = MemberChapter;
+const getMemberStory = (id: string) => stories[id] ?? [];
+const getScenarioUrl = (id: string) => `${base}/scenarios/${id}/`;
+const imperialOf = (day: string) => formatImperial(imperialForDate(day));
 const outcomeLabel = { boon: 'a good night', fair: 'a fair night', poor: 'a poor night' } as const;
 /** A night's date as the Empire writes it, counted on from the first game. */
 const imperialDay = (night: number) => formatImperial(imperialForDate(dateForNight(night)), 'day');
@@ -24,7 +31,7 @@ const imperialDay = (night: number) => formatImperial(imperialForDate(dateForNig
 type Row = { kind: 'battle'; entry: MemberStoryEntry } | { kind: 'nights'; nights: NightEntry[] };
 function timelineFor(story: MemberStoryEntry[], curfew?: MemberNights): Row[] {
   const items = [
-    ...story.map((entry) => ({ key: entry.scenario.playedOn ?? `0000-${String(entry.scenario.sequence).padStart(3, '0')}`, row: { kind: 'battle', entry } as Row })),
+    ...story.map((entry) => ({ key: entry.scenario.playedOn, row: { kind: 'battle', entry } as Row })),
     ...(curfew?.entries ?? []).map((e) => ({ key: dateForNight(e.night), row: { kind: 'night', e } as { kind: 'night'; e: NightEntry } })),
   ].sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
   const rows: Row[] = [];
@@ -98,21 +105,13 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
           </details>
           <div class="profile-section">
             {m.experience !== undefined && <p><strong>Experience:</strong> {m.experience}</p>}
-            <h4>Equipment</h4>
-            <ul>{m.equipment.map((e) => <li>{e}</li>)}</ul>
             {m.skills.length > 0 && (
               <>
                 <h4>Skills & Special Rules</h4>
                 <ul>{m.skills.map((s) => <li>{s}</li>)}</ul>
               </>
             )}
-            {m.prayers && m.prayers.length > 0 && (
-              <>
-                <h4>Prayers of Taal</h4>
-                <ul>{m.prayers.map((p) => <li>{p}</li>)}</ul>
-              </>
-            )}
-            {m.injuries && m.injuries.length > 0 && (
+            {m.injuries.length > 0 && (
               <>
                 <h4>Old Wounds</h4>
                 <ul class="injury-list">{m.injuries.map((i) => <li>{i}</li>)}</ul>
@@ -124,6 +123,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
                 <p class="profile-lore">{m.lore}</p>
               </>
             )}
+            <p class="profile-manage"><a href={`${base}/warbands/${wb.id}/#${m.id}`}>The full record, and the keeper's pen</a></p>
             {curfew && (curfew.nightsOut > 0 || curfew.epithet || curfew.marks.length > 0) && (
               <div class="nights">
                 <h4>Nights in the City</h4>
@@ -156,11 +156,11 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
                     <span class="story-marker" aria-hidden="true">
                       {row.entry.snapshot.status === 'dead' ? <Icon name="cross" size={14} /> : <Icon name="swords" size={14} />}
                     </span>
-                    <h5><a href={getScenarioUrl(row.entry.scenario.id)}>{row.entry.scenario.scenario}</a></h5>
+                    <h5><a href={getScenarioUrl(row.entry.scenario.id)}>{row.entry.scenario.title}</a></h5>
                     <span class="story-meta">
-                      {row.entry.scenario.date} —{' '}
-                      <span class:list={['story-result', row.entry.warband.result]}>
-                        {resultLabel[row.entry.warband.result]}
+                      {imperialOf(row.entry.scenario.playedOn)} —{' '}
+                      <span class:list={['story-result', row.entry.warband.result ?? 'draw']}>
+                        {row.entry.warband.result ? resultLabel[row.entry.warband.result] : 'Fought'}
                       </span>
                       {row.entry.snapshot.status === 'dead' && (
                         <span class="dead-marker"> <Icon name="cross" size={12} /> Fell in battle</span>
@@ -356,6 +356,8 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
   }
   .injury-list li { color: var(--ink-dim); }
   .injury-list li::before { border-color: var(--blood-bright); }
+  .profile-manage { margin-top: 1rem; font-size: var(--text-ui); }
+  .profile-manage a { color: var(--gold); text-underline-offset: .2em; }
   .profile-lore {
     font-style: italic;
     color: var(--ink-dim);

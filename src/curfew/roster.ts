@@ -1,14 +1,15 @@
-/** What the campaign's own records say about a warband, for the Night engine. Pure. */
-import { warbands, type Warband } from '../data/warbands.ts';
-import { history } from '../data/history.ts';
+/** What the campaign's record says about a warband, for the Night engine. Pure over a roster the server has loaded. */
+import type { Warband } from '../campaign/model.ts';
 
-export function warbandById(id: string): Warband | undefined { return warbands.find((w) => w.id === id); }
+/** The warbands as they stand, and who came out of the most recent played scenario injured, by warband. */
+export interface Roster { warbands: Warband[]; injured: Record<string, string[]> }
+
+export const EMPTY_ROSTER: Roster = { warbands: [], injured: {} };
+
+export function warbandById(roster: Roster, id: string): Warband | undefined { return roster.warbands.find((w) => w.id === id); }
 
 /** The other warbands, for the rumours and the encounters. The engine picks one a night. */
-export function rivalsOf(id: string): Warband[] { return warbands.filter((w) => w.id !== id); }
+export function rivalsOf(roster: Roster, id: string): Warband[] { return roster.warbands.filter((w) => w.id !== id); }
 
-/** Members who came out of the most recent recorded battle injured. */
-export function injuredInLastBattle(warbandId: string): string[] {
-  const record = history.slice().sort((a, b) => a.sequence - b.sequence).at(-1);
-  return record?.warbands.find((w) => w.warbandId === warbandId)?.members.filter((m) => m.status === 'injured').map((m) => m.memberId) ?? [];
-}
+/** Members who came out of the most recent played scenario injured. */
+export function injuredInLastBattle(roster: Roster, warbandId: string): string[] { return roster.injured[warbandId] ?? []; }

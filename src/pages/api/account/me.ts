@@ -4,14 +4,15 @@
  */
 import type { APIRoute } from 'astro';
 import { hasDatabase } from '../../../server/db/client';
-import { isAdminEmail } from '../../../server/env';
 import { json } from '../../../server/http';
-import { getViewer } from '../../../server/session';
+import { getActor, isAdmin, isGm } from '../../../server/roles';
+import { ownWarband } from '../../../server/campaign/roster';
 
 export const prerender = false;
 
 export const GET: APIRoute = async ({ request }) => {
-  if (!hasDatabase()) return json({ signedIn: false, admin: false });
-  const viewer = await getViewer(request);
-  return json({ signedIn: Boolean(viewer), admin: Boolean(viewer && isAdminEmail(viewer.email)), name: viewer?.name ?? null });
+  if (!hasDatabase()) return json({ signedIn: false, admin: false, gm: false, role: null, warbandId: null, name: null });
+  const actor = await getActor(request);
+  const warband = actor ? await ownWarband(actor.id).catch(() => undefined) : undefined;
+  return json({ signedIn: Boolean(actor), admin: isAdmin(actor), gm: isGm(actor), role: actor?.role ?? null, name: actor?.name ?? null, warbandId: warband?.id ?? null });
 };

@@ -1,3 +1,8 @@
+/**
+ * Seed: the battle reports as they stood when the record moved into the database, and the fixture's types. Imported
+ * once into an empty database; scenarios are set up and written on the site since (/scenarios/). The checker under
+ * .claude/skills/record-battle/scripts/ still reads these files, so a new fixture is kept consistent.
+ */
 import type { Statline } from './warbands';
 import merchantsDebt from './history/scenario-01-the-merchants-debt.json' with { type: 'json' };
 

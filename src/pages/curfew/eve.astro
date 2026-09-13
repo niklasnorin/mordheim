@@ -8,8 +8,11 @@ import { env } from '../../server/env';
 import { getViewer } from '../../server/session';
 import PlaceBand from '../../components/PlaceBand.astro';
 import { LedgerError, actions, currentLocation, todayFor, type LedgerView } from '../../server/curfew/service';
-import { DEFAULT_LOCATION, locationById, type Location } from '../../curfew/engine';
+import { DEFAULT_LOCATION, currentDocuments, locationById, type Location } from '../../curfew/engine';
+import { clientDocuments } from '../../curfew/packs';
 import { isDryRun } from '../../server/curfew/dry';
+import { listWarbands } from '../../server/campaign/roster';
+import { primeContent } from '../../server/content/curfew';
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -22,15 +25,16 @@ let trouble = false;
 const dry = !!viewer && isDryRun(Astro.request, viewer);
 // Where the campaign is tonight, so the band is the same letterhead the Ledger carries, database or no.
 let place: Location = DEFAULT_LOCATION;
+let warbands: { id: string; name: string; members: { id: string; name: string; role: string; dead: boolean }[] }[] = [];
 if (ready) {
-  try { place = await currentLocation(today); } catch (e) { console.error('[curfew] location unavailable', e); }
+  try { await primeContent(); place = await currentLocation(today); warbands = (await listWarbands()).map((w) => ({ id: w.id, name: w.name, members: w.members.map((m) => ({ id: m.id, name: m.name, role: m.role, dead: m.dead })) })); } catch (e) { console.error('[curfew] location unavailable', e); }
 }
 if (viewer) {
   // Arriving at the Eve with an empty Hand, the City Provides one charm. Nothing else changes on a visit. In a dry run, nothing at all does.
   try { view = await actions.eveOpen(viewer.id, today, dry ? {} : undefined); } catch (e) { if (!(e instanceof LedgerError && e.status === 404)) { console.error('[curfew] eve unavailable', e); trouble = true; } }
 }
 if (view) place = locationById(view.locationId);
-const boot = { today, debug: env.CURFEW_DEBUG, dry, view };
+const boot = { today, debug: env.CURFEW_DEBUG, dry, view, warbands, content: clientDocuments(currentDocuments()) };
 const ledgerHref = `${base}/curfew/`;
 ---
 
@@ -67,8 +71,8 @@ const ledgerHref = `${base}/curfew/`;
 </Base>
 
 <script>
-  import { warbands } from '../../data/warbands';
-  import { CAMPAIGN, HAND_SIZE, TOKEN_TYPES, cityProvidesLine, curseById, dateForNight, locationById, readTicket, tokenById, omenForNight } from '../../curfew/engine';
+  import { CAMPAIGN, HAND_SIZE, cityProvidesLine, curseById, dateForNight, locationById, readTicket, tokenById, omenForNight, useContent, type CurfewDocuments } from '../../curfew/engine';
+  import * as engine from '../../curfew/engine';
   import { afflictionsAt } from '../../curfew/ledger';
   import { formatImperial, imperialForDate } from '../../lib/calendar';
   import type { Flourish, WarbandState } from '../../curfew/ledger';
@@ -76,12 +80,14 @@ const ledgerHref = `${base}/curfew/`;
   import { carryDate, debugEnabled, loadSandbox, renderDebugBar, saveSandbox } from '../../curfew/debug';
 
   interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean; locationId: string; dry?: boolean }
-  interface Boot { today: number; debug: boolean; dry: boolean; view: View | null }
+  interface Boot { today: number; debug: boolean; dry: boolean; view: View | null; warbands: { id: string; name: string; members: { id: string; name: string; role: string; dead: boolean }[] }[]; content: CurfewDocuments }
 
   document.body.classList.add('curfew-body');
   const root = document.getElementById('main-content')!;
   const base = root.dataset.base ?? '';
   const boot: Boot = JSON.parse(document.getElementById('boot')!.textContent || '{}');
+  useContent(boot.content);
+  const warbands = boot.warbands;
   const cost = CAMPAIGN.flourishCost;
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
   const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -118,7 +124,7 @@ const ledgerHref = `${base}/curfew/`;
     const dead = warband.members.filter((m) => m.dead);
 
     function tokenHtml(id: string, pick = false) {
-      const t = tokenById(id); const type = TOKEN_TYPES[t.type];
+      const t = tokenById(id); const type = engine.TOKEN_TYPES[t.type];
       const inner = `<span class="cf-cord" aria-hidden="true"></span><span class="cf-seal" style="--seal:${type.seal}">${sealSvg(t.type)}</span><span class="cf-type">${esc(type.name)}</span><span class="cf-token-name">${esc(t.name)}</span><span class="cf-effect">${esc(t.effect)}</span>`;
       return pick
         ? `<label class="cf-token cf-token-pick"><input type="checkbox" class="visually-hidden" checked data-bring="${esc(id)}" />${inner}<span class="cf-token-state" aria-hidden="true"></span></label>`

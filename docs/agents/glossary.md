@@ -62,12 +62,27 @@ The repository names technical things in the fiction's words. This maps each wor
 | **The City Provides** | An empty Hand at the Eve is dealt one token from the place's pool. | `cityProvides`, `cityProvidesLine`, `provideIfEmpty` |
 | **The fight is done** | Consumes the charms and writes a line; "put the charms back" reopens the table, spent Favour does not return. | `fightDone`, `putBack` |
 
+## The record
+
+| Word | Meaning | Code |
+| --- | --- | --- |
+| **The record** | The campaign as it is kept in the database: warbands, members, scenarios, articles, the Curfew's content documents. Seeded once from `src/data/`, managed on the site since. | `src/campaign/model.ts`, `src/server/campaign/`, `src/server/content/` |
+| **Player, game master, admin** | The three roles. A player keeps one warband; a game master (`user.role`) runs the campaign; an admin (`ADMIN_EMAILS`) keeps the accounts too. | `Role`, `Actor`, `getActor`, `isGm`, `isAdmin`, `setRole` in `src/server/roles.ts` |
+| **Owner, keeper** | The player a warband belongs to. The ledger follows. | `warbands.owner_id`, `claimWarband`, `releaseWarband`, `assignWarband` in `campaign/roster.ts` |
+| **Upcoming, played** | A scenario's status. Upcoming: set up by a game master, dated in both calendars, attended by named warbands, with a rulebook scenario or custom rules and a prologue. Played: results given, in the Chronicle, in play order. | `Scenario.status`, `createScenario`, `markPlayed`, `reopenScenario` |
+| **Telling, perspective** | A warband's own prologue, epilogue, accomplishments and moments in a scenario, written by its owner or a game master. | `ScenarioWarband`, `writePerspective` |
+| **Brought, the muster** | Which warriors a warband brought to a scenario and how each came out (`active`, `injured`, `dead`), with a finest and a darkest moment. The last played scenario's `injured` are the Curfew's recovering. | `ScenarioMember`, `setBrought`, `loadRoster().injured` |
+| **Out of action** | A confirmed takedown, recorded by the one who struck or the one who fell. | `OutOfAction`, `addOutOfAction`, `removeOutOfAction` |
+| **Revision** | An earlier telling of the battle, kept whole whenever the narrative is rewritten; also an earlier version of a content document. | `scenario_revisions`, `writeBattle`; `curfew_content_revisions`, `saveDocument` |
+| **Document** | One of the Curfew's content JSON documents: `omens`, `moons`, `tokens`, `location:<id>`. Checked by `validateDocument` before it is saved; put in force by `useContent`. | `src/curfew/packs.ts`, `src/server/content/curfew.ts` |
+| **Seed** | The first fill of an empty database from the files under `src/data/`. Once. | `ensureSeeded`, `seedCampaign`; `primeContent` for content |
+
 ## Ledgers and the server
 
 | Word | Meaning | Code |
 | --- | --- | --- |
 | **Ledger** | A warband's whole Curfew state, stored as one JSON row with a `version` for optimistic locking. Also the page at `/curfew/`. | `WarbandState` in `ledger.ts`; `curfew_ledgers` in `schema.ts` |
-| **Keeper** | The player who claimed a warband's ledger. One player, one warband; one warband, one keeper. | `claimWarband`, `releaseWarband`, `listClaims`, `Claim` |
+| **Keeper** | The player who owns a warband and so keeps its ledger. One player, one warband; one warband, one keeper. Claiming the ledger claims the warband. | `claimWarband`, `releaseWarband`, `listClaims`, `Claim`; `warbands.owner_id` |
 | **Burn** | Reset a ledger to fresh. From the Ledger's footer by the keeper, or from the Watch House. | `actions.reset`, `burnLedger` |
 | **Reconcile** | Write every dawn still due up to today. Every read reconciles first; every write is load, reconcile, change, save under a version check, then publish dispatches. | `reconcile` in `ledger.ts`; `withLedger`, `reconcileAll` in the service |
 | **Midnight, the cron** | The nightly run over every ledger, `/api/cron/midnight`, guarded by `CRON_SECRET`, scheduled in `vercel.json` at 23:15 UTC. Also run by hand from the Watch House. Every run is logged. | `reconcileAll`, `runMidnight`, `curfew_runs` |

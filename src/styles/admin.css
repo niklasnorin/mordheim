@@ -171,3 +171,44 @@
 .wh-form-inline label { display: flex; flex-direction: column; gap: 0.3rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.7rem; color: var(--bone-dim); }
 .wh-form-inline select, .wh-form-inline input { font-family: var(--body); font-size: 0.95rem; background: var(--ash-deep); color: var(--bone); border: 1px solid var(--rule); padding: 0.4rem 0.6rem; min-height: 2.5rem; color-scheme: dark; }
 .wh-form-inline input[type=number] { width: 5.5rem; }
+
+/* ── forms in the Watch House: articles, content documents ── */
+.wh-articles { display: grid; gap: 1.5rem 2.5rem; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 900px) { .wh-articles { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); } }
+.wh-article-form { display: grid; gap: 0.6rem; }
+.wh-field { display: grid; gap: 0.3rem; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.7rem; color: var(--bone-dim); min-width: 0; }
+.wh-field input, .wh-field textarea, .wh-field select { width: 100%; font-family: var(--body); font-size: 1rem; line-height: 1.5; background: var(--ash-deep); color: var(--bone); border: 1px solid var(--rule); padding: 0.5rem 0.7rem; min-height: 2.6rem; text-transform: none; letter-spacing: 0; color-scheme: dark; }
+.wh-field textarea { min-height: 7rem; resize: vertical; }
+.wh-field input:focus-visible, .wh-field textarea:focus-visible, .wh-field select:focus-visible { border-color: var(--candle-dim); outline: none; }
+.wh-field-row { display: flex; gap: 0.8rem 1.2rem; flex-wrap: wrap; align-items: end; }
+.wh-field-row .wh-field { flex: 1 1 10rem; }
+.wh-check { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.6rem; font-size: 0.95rem; color: var(--bone-dim); }
+.wh-check input { width: 1.1rem; height: 1.1rem; }
+.wh-article { grid-template-columns: 7rem minmax(0, 1fr); }
+.wh-article-edit summary { list-style: none; cursor: pointer; }
+.wh-article-edit summary::-webkit-details-marker { display: none; }
+.wh-article-edit summary:hover p { color: var(--candle); }
+.wh-article-edit[open] summary { margin-bottom: 0.6rem; }
+.wh-article-edit .wh-actions { justify-content: flex-end; max-width: none; }
+.wh-muted code, .wh-gate code { font: 0.85em ui-monospace, 'SF Mono', Menlo, Consolas, monospace; color: var(--bone); }
+
+/* the content editor: one document, wide */
+.wh-docs { display: grid; gap: 1.5rem 2rem; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 1000px) { .wh-docs { grid-template-columns: 16rem minmax(0, 1fr); } }
+.wh-doclist { list-style: none; border: 1px solid var(--rule); background: #100e0c; }
+.wh-doclist a { display: grid; gap: 0.15rem; padding: 0.7rem 0.9rem; text-decoration: none; color: var(--bone); border-bottom: 1px solid #221f1b; }
+.wh-doclist a:hover { background: #14120f; }
+.wh-doclist a[aria-current='page'] { color: var(--candle); border-left: 2px solid var(--candle); }
+.wh-doclist small { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.66rem; color: var(--bone-dim); }
+.wh-json { width: 100%; min-height: 60vh; font: 0.82rem/1.5 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; background: #080706; color: var(--bone); border: 1px solid var(--rule); padding: 0.8rem 1rem; resize: vertical; tab-size: 2; white-space: pre; overflow: auto; }
+.wh-json:focus-visible { border-color: var(--candle-dim); outline: none; }
+.wh-doc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6rem 1.5rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+.wh-doc-head .wh-h2 { margin-bottom: 0; }
+.wh-doc-foot { display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin-top: 0.6rem; }
+.wh-doc-foot .wh-actions { max-width: none; }
+.wh-json-status { font-family: var(--label); letter-spacing: 0.08em; font-size: 0.72rem; color: var(--bone-dim); }
+.wh-json-status.bad { color: var(--blood-bright); }
+.wh-revisions { list-style: none; display: grid; gap: 0.4rem; margin-top: 0.6rem; font-size: 0.9rem; }
+.wh-revisions details summary { cursor: pointer; color: var(--bone-dim); }
+.wh-revisions pre { margin-top: 0.4rem; padding: 0.6rem 0.8rem; background: #080706; border: 1px solid var(--rule); font: 0.72rem/1.45 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; color: var(--bone-dim); max-height: 18rem; overflow: auto; }
+.wh-newplace { display: grid; gap: 0.6rem; padding: 1rem 1.1rem 1.1rem; border: 1px solid var(--rule); background: #14120f; margin-top: 1.5rem; }

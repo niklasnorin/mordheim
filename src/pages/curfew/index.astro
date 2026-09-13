@@ -1,7 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
 import '../../styles/curfew.css';
-import { warbands } from '../../data/warbands';
 import campaign from '../../data/curfew/campaign.json';
 import { base } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
@@ -10,7 +9,11 @@ import { getViewer } from '../../server/session';
 import PlaceBand from '../../components/PlaceBand.astro';
 import { currentLocation, listClaims, loadOwnLedger, todayFor, type Claim, type LedgerView } from '../../server/curfew/service';
 import { isDryRun } from '../../server/curfew/dry';
-import { DEFAULT_LOCATION, type Location } from '../../curfew/engine';
+import { listWarbands } from '../../server/campaign/roster';
+import { primeContent } from '../../server/content/curfew';
+import { DEFAULT_LOCATION, currentDocuments, type Location } from '../../curfew/engine';
+import { clientDocuments } from '../../curfew/packs';
+import type { Warband } from '../../campaign/model';
 
 // The Ledger is personal: rendered on request, never cached.
 export const prerender = false;
@@ -25,17 +28,21 @@ let claims: Claim[] = [];
 let trouble = false;
 // Where the campaign is colours the page before anyone signs in; without a database it is Mordheim.
 let location: Location = DEFAULT_LOCATION;
+let warbands: Warband[] = [];
 if (ready) {
-  try { location = await currentLocation(today); } catch (e) { console.error('[curfew] location unavailable', e); }
+  try { await primeContent(); [location, warbands] = await Promise.all([currentLocation(today), listWarbands()]); } catch (e) { console.error('[curfew] location unavailable', e); }
 }
 // With the Debug strip on, a game master's visit is a dry run: nothing this request computes is saved.
 const dry = !!viewer && isDryRun(Astro.request, viewer);
 if (viewer) {
   try { [view, claims] = await Promise.all([loadOwnLedger(viewer.id, today, dry ? {} : undefined), listClaims()]); } catch (e) { console.error('[curfew] ledger unavailable', e); trouble = true; }
 }
+// The roster and the content the page's script needs, as the database has them: the engine in the browser reads the same words as the server.
 const boot = {
-  today, debug: env.CURFEW_DEBUG, dry, viewer: viewer ? { name: viewer.name, admin: isAdminEmail(viewer.email) } : null, view, locationId: location.id,
-  claims: claims.map((c) => ({ warbandId: c.warbandId, ownerName: c.ownerName })),
+  today, debug: env.CURFEW_DEBUG, dry, viewer: viewer ? { id: viewer.id, name: viewer.name, admin: isAdminEmail(viewer.email) } : null, view, locationId: location.id,
+  claims: claims.map((c) => ({ warbandId: c.warbandId, ownerId: c.ownerId, ownerName: c.ownerName })),
+  warbands: warbands.map((w) => ({ id: w.id, name: w.name, type: w.type, sigil: w.sigil, player: w.player, ownerId: w.ownerId ?? null, members: w.members.map((m) => ({ id: m.id, name: m.name, role: m.role, dead: m.dead, stats: m.stats })) })),
+  content: clientDocuments(currentDocuments()),
 };
 ---
 
@@ -109,12 +116,12 @@ const boot = {
 
     <section class="cf-section cf-section-first" id="warband-section" hidden>
       <h1 class="cf-h2">Whose ledger is this?</h1>
-      <p class="cf-muted">Take up your warband. One player keeps each ledger; a warband already kept is greyed out.</p>
+      <p class="cf-muted">Take up your warband. One player keeps each warband and its ledger; a warband already kept is greyed out. A company not yet on the roll is <a href={`${base}/warbands/`}>founded on the warbands page</a>.</p>
       <div class="cf-pick" id="warband-pick">
         {warbands.map((wb) => (
           <button type="button" data-warband={wb.id} aria-pressed="false">
             <span class="cf-sigil" aria-hidden="true">{wb.sigil}</span>
-            <span>{wb.name}<small>{wb.type}{wb.player ? ` · ${wb.player}` : ''}</small><small class="cf-kept" data-kept></small></span>
+            <span>{wb.name}<small>{wb.type}</small><small class="cf-kept" data-kept></small></span>
           </button>
         ))}
       </div>
@@ -199,24 +206,29 @@ const boot = {
 
 <script>
   import { createAuthClient } from 'better-auth/client';
-  import { warbands } from '../../data/warbands';
   import {
-    CAMPAIGN, ERRANDS, ERRAND_LABEL, TOKEN_TYPES, HAND_SIZE, availability, moonForNight, omenForNight, tiltFor, titleFor, nextTitle, tokenById, dateForNight, statEdge, ERRAND_STATS, STAT_LABEL,
-    blurbFor, isErrandAt, locationById, moonBoostAt, unavailableReason,
-    type Errand, type MemberLike, type NightResult, type Order, type TokenOffer,
+    CAMPAIGN, ERRANDS, ERRAND_LABEL, HAND_SIZE, availability, moonForNight, omenForNight, tiltFor, titleFor, nextTitle, tokenById, dateForNight, statEdge, ERRAND_STATS, STAT_LABEL,
+    blurbFor, isErrandAt, locationById, moonBoostAt, unavailableReason, useContent,
+    type CurfewDocuments, type Errand, type MemberLike, type NightResult, type Order, type TokenOffer,
   } from '../../curfew/engine';
+  import * as engine from '../../curfew/engine';
   import { keptMembers, keptReason, lastGivenOrders, restingMembers, standingOrders, type WarbandState } from '../../curfew/ledger';
   import { sealSvg } from '../../curfew/glyphs';
   import { carryDate, clearSandbox, debugEnabled, loadSandbox, renderDebugBar, saveSandbox, setDebug } from '../../curfew/debug';
   import { formatImperial, imperialForDate } from '../../lib/calendar';
 
   interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean; locationId: string; dry?: boolean; wouldPrint?: { headline: string }[] }
-  interface Boot { today: number; debug: boolean; dry: boolean; viewer: { name: string; admin: boolean } | null; view: View | null; locationId: string; claims: { warbandId: string; ownerName: string }[] }
+  interface BootWarband { id: string; name: string; type: string; sigil: string; player: string; ownerId: string | null; members: (MemberLike & { dead: boolean })[] }
+  interface Boot { today: number; debug: boolean; dry: boolean; viewer: { id: string; name: string; admin: boolean } | null; view: View | null; locationId: string; claims: { warbandId: string; ownerId: string; ownerName: string }[]; warbands: BootWarband[]; content: CurfewDocuments }
 
   document.body.classList.add('curfew-body');
   const root = document.getElementById('main-content')!;
   const base = root.dataset.base ?? '';
   const boot: Boot = JSON.parse(document.getElementById('boot')!.textContent || '{}');
+  // the same content the server resolved with, so the page's words and odds agree with the ledger's
+  useContent(boot.content);
+  const TOKEN_TYPES = () => engine.TOKEN_TYPES;
+  const warbands = boot.warbands;
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
   const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -374,8 +386,9 @@ const boot = {
     if (show) {
       for (const b of root.querySelectorAll<HTMLButtonElement>('#warband-pick button')) {
         const claim = boot.claims.find((c) => c.warbandId === b.dataset.warband);
-        b.disabled = !!claim;
-        b.querySelector<HTMLElement>('[data-kept]')!.textContent = claim ? `Kept by ${claim.ownerName}` : '';
+        const mine = !!claim && claim.ownerId === boot.viewer?.id;
+        b.disabled = !!claim && !mine;
+        b.querySelector<HTMLElement>('[data-kept]')!.textContent = mine ? 'Yours: open the ledger' : claim ? `Kept by ${claim.ownerName}` : '';
       }
     }
   }
@@ -383,7 +396,7 @@ const boot = {
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-warband]');
     if (!b || b.disabled) return;
     b.setAttribute('aria-pressed', 'true');
-    const ok = await act('claim', { warbandId: b.dataset.warband }, (v) => { boot.claims.push({ warbandId: v.warbandId, ownerName: boot.viewer?.name ?? 'you' }); });
+    const ok = await act('claim', { warbandId: b.dataset.warband }, (v) => { boot.claims.push({ warbandId: v.warbandId, ownerId: boot.viewer?.id ?? '', ownerName: boot.viewer?.name ?? 'you' }); });
     if (!ok) b.setAttribute('aria-pressed', 'false');
   });
 
@@ -537,7 +550,7 @@ const boot = {
     </div>`;
   }
   function tokenHtml(id: string, tag: 'div' | 'button' = 'div', attrs = '') {
-    const t = tokenById(id); const type = TOKEN_TYPES[t.type];
+    const t = tokenById(id); const type = TOKEN_TYPES()[t.type];
     const typeAttr = tag === 'button' ? ' type="button"' : '';
     return `<${tag}${typeAttr} class="cf-token" ${attrs}><span class="cf-cord" aria-hidden="true"></span><span class="cf-seal" style="--seal:${type.seal}">${sealSvg(t.type)}</span><span class="cf-type">${esc(type.name)}</span><span class="cf-token-name">${esc(t.name)}</span><span class="cf-effect">${esc(t.effect)}</span></${tag}>`;
   }

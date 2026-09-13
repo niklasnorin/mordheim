@@ -10,7 +10,7 @@ web
 
 A Mordheim tabletop game group. Each player owns one warband and, between real games, checks the CURFEW ledger for a couple of minutes a day, usually on a phone. Three warbands are registered today (the Nordost Kin, the Bitterbrow Expedition and the Order of the Welling Rune); the group expects more players and warbands to join this season, so ledgers, standings and the Town Cryer must read well with several warbands. The same players also read the main campaign site (Town Cryer, rosters, standings, Chronicle, battle reports) at the table and between sessions.
 
-One of them is the game master, who keeps the Watch House at `/admin/`: they move the campaign from place to place, watch the ledgers and the nightly run, moderate the broadsheet, and issue a reset word when a player forgets their password. Admission is by a list of sign-in addresses (`ADMIN_EMAILS`).
+One or more of them are game masters, who set up and write up the scenarios, tend any warband, write the Cryer's articles, edit the Curfew's content and keep the Watch House at `/admin/`: moving the campaign from place to place, watching the ledgers and the nightly run, moderating the broadsheet. One is the admin (`ADMIN_EMAILS`), who grants the game master's role, burns and releases ledgers, runs midnight by hand and issues a reset word when a player forgets their password.
 
 ## Product Purpose
 
@@ -34,7 +34,7 @@ The city takes nothing from the absent. Missing a night, a week or a month costs
 - Nights turn at local midnight. Night 1 is 2026-09-10. A Moon is seven nights; a season is about twelve Moons.
 - Every date shown to a player is an Imperial one. The Empire's calendar (a 400-day year of twelve long months, six holy days outside them all, an eight-day week running on across them) is anchored on the first game, 5 September 2026, which was Marktag, 5th of Pflugzeit, 2007 IC. The broadsheet, the nights and the battle reports are all dated by it.
 - The Ledger is at `/curfew/` and the Eve at `/curfew/eve/`. A signed-in player sees a Curfew link in the site header, and the game master a Watch House link; a visitor who is not signed in sees neither. Warband cards and warrior profiles link to the ledger where one is kept.
-- The product is deliberately hybrid. Warband rosters, standings, battle reports, the Chronicle and the Town Cryer's articles are content in the repository, authored by the group and by a coding agent working on the source; the database holds only what the Curfew nights generate. Pages merge both: the Town Cryer prints the articles and the nights' dispatches, a warrior's profile shows the roster entry, the battle reports and their nights in the city. This is the intended shape, not a stopgap.
+- The campaign is managed on the site. Each player keeps one warband and tends its roster and story; a game master sets up the scenarios ahead of a game (when, in both calendars; who; which rulebook scenario or what custom rules; a prologue), writes the battle afterwards and may open it to the players to retell (earlier tellings kept), and everyone who fought adds their own prologue and epilogue, who they brought and how each fared, and who put whom out of action. Game masters also write the Town Cryer's articles and edit the Curfew's content documents; an admin grants the role and keeps the accounts. The repository holds the rules, the code and the seed for an empty database.
 
 ## Capabilities and Constraints
 

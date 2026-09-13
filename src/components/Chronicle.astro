@@ -1,12 +1,37 @@
 ---
-import { chronicle } from '../data/chronicle';
-import { getScenarioUrl } from '../data/history';
+import type { Scenario, Warband } from '../campaign/model';
 import Icon from './Icon.astro';
+import { base } from '../lib/site';
+import { formatImperial, imperialForDate } from '../lib/calendar';
+
+interface Props { scenarios: Scenario[]; warbands: Warband[] }
+const { scenarios, warbands } = Astro.props;
+const getScenarioUrl = (id: string) => `${base}/scenarios/${id}/`;
+const imperial = (day: string) => formatImperial(imperialForDate(day));
+/** Newest battle first, as the Chronicle reads; the upcoming games stand above it. */
+const chronicle = scenarios.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence).map((s) => ({ scenarioId: s.id, date: imperial(s.playedOn), title: s.title, body: s.chronicle || s.summary }));
+const upcoming = scenarios.filter((s) => s.status === 'upcoming');
+const nameOf = (id: string) => warbands.find((w) => w.id === id)?.name ?? id;
+const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(day + 'T12:00:00Z'));
 ---
 
 <section id="chronicle" class="chronicle reveal">
   <p class="chronicle-label">An account of blood &amp; wyrdstone</p>
   <h2 class="section-title"><span class="ornament" aria-hidden="true"><Icon name="cross" /></span> The Chronicle <span class="ornament" aria-hidden="true"><Icon name="cross" /></span></h2>
+  {upcoming.length > 0 && (
+    <div class="upcoming">
+      <p class="upcoming-label">Upcoming</p>
+      <ul>
+        {upcoming.map((s) => (
+          <li>
+            <a href={getScenarioUrl(s.id)}>{s.title}</a>
+            <span class="upcoming-when">{imperial(s.playedOn)} <small>({realDay(s.playedOn)})</small></span>
+            {s.warbands.length > 0 && <span class="upcoming-who">{s.warbands.map((w) => nameOf(w.warbandId)).join(' against ')}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )}
   {chronicle.length === 0 ? (
     <div class="chronicle-empty empty-state">
     <p>
@@ -35,6 +60,15 @@ import Icon from './Icon.astro';
 </section>
 
 <style>
+  .upcoming { max-width: 860px; margin: 0 auto 2rem; padding: 1rem 1.25rem 1.1rem; border: 1px dashed #7f8e6a99; background: #141c16cc; }
+  .upcoming-label { color: #b7c9a1; font: var(--text-meta)/1.6 var(--font-utility); text-transform: uppercase; letter-spacing: .18em; margin-bottom: .5rem; }
+  .upcoming ul { list-style: none; display: grid; gap: .6rem; }
+  .upcoming li { display: grid; gap: .1rem .8rem; }
+  .upcoming li a { color: var(--parchment); font: 1.15rem/1.3 Georgia, 'Times New Roman', serif; text-decoration: none; min-height: 2rem; display: inline-flex; align-items: center; }
+  .upcoming li a:hover { color: var(--gold); text-decoration: underline; }
+  .upcoming-when { color: var(--gold); font-size: var(--text-ui); font-variant: small-caps; letter-spacing: .08em; }
+  .upcoming-when small { color: var(--ink-dim); font-variant: normal; letter-spacing: 0; font-size: var(--text-meta); }
+  .upcoming-who { color: var(--ink-dim); font-size: var(--text-ui); font-style: italic; }
   h3 a { color: inherit; text-decoration: none; }
   h3 a:hover { color: var(--gold); text-decoration: underline; }
   .report-link { display: inline-flex; align-items: center; min-height: var(--control-size); gap: .4rem; margin-top: 1rem; color: var(--gold); text-underline-offset: .25em; }

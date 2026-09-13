@@ -37,7 +37,7 @@ git status --short | grep -E '\.env|\.pglite|^\?\? dist|\.vercel'               
 
 Then, by eye:
 
-- Every change belongs to the half it should (source versus database) and to the layer it should (engine or ledger for rules, service for storage, route for validation).
+- Every change belongs to the kind it should (the record, the nights, the rules) and to the layer it should (engine or ledger for rules, service for storage and permission, route for validation, page for the form).
 - A rule change has a test in the same commit. A schema change has its generated files under `drizzle/`.
 - Prose reads in its voice (`docs/agents/writing.md`): no exclamation marks, British spelling, typographic apostrophes, nights and Moons in Curfew copy.
 - Player-facing messages are in the campaign's voice and come from `LedgerError` where they are refusals.

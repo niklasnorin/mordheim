@@ -7,28 +7,45 @@ import MemberModal from '../components/MemberModal.astro';
 import Standings from '../components/Standings.astro';
 import Chronicle from '../components/Chronicle.astro';
 import Graveyard from '../components/Graveyard.astro';
-import { warbands } from '../data/warbands';
 import Icon from '../components/Icon.astro';
 import { hasDatabase } from '../server/db/client';
-import { curfewStory, todayFor, type CurfewStory } from '../server/curfew/service';
+import { campaignMoves, curfewStory, recentDispatches, todayFor, type CurfewStory, type PrintedDispatch } from '../server/curfew/service';
+import { listWarbands } from '../server/campaign/roster';
+import { listScenarios, memberStories, type MemberChapter } from '../server/campaign/scenarios';
+import { articlesFor } from '../server/campaign/news';
+import { primeContent } from '../server/content/curfew';
+import { locationForNight, type Move } from '../curfew/engine';
+import type { NewsArticle, Scenario, Warband } from '../campaign/model';
 
-// Rendered on request so the Town Cryer can carry the Night Watch's dispatches, and cached at the edge for a
-// few minutes: nothing on this page is personal.
+// Rendered on request: the whole campaign's record lives in the database now. Cached at the edge for a few
+// minutes, since nothing on this page is personal; the header's signed-in links are revealed by the browser.
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
 
-// The roster is source; what the nights have added to it comes from the ledgers. Without a database the roster stands alone.
+const today = todayFor(null);
+let warbands: Warband[] = [], scenarios: Scenario[] = [], articles: NewsArticle[] = [], dispatches: PrintedDispatch[] = [], moves: Move[] = [];
+let stories: Record<string, MemberChapter[]> = {};
 let story: CurfewStory = { members: {}, warbands: {} };
+let trouble = !hasDatabase();
 if (hasDatabase()) {
-  try { story = await curfewStory(todayFor(null)); } catch (e) { console.error('[curfew] story unavailable', e); }
+  try {
+    await primeContent();
+    [warbands, scenarios, moves, dispatches] = await Promise.all([listWarbands(), listScenarios(), campaignMoves(), recentDispatches(today, 8)]);
+    stories = memberStories(scenarios);
+    articles = await articlesFor(locationForNight(today, moves).id);
+    story = await curfewStory(today);
+  } catch (e) { console.error('[campaign] the record could not be read', e); trouble = true; }
 }
+const fallen = warbands.reduce((n, w) => n + w.members.filter((m) => m.dead).length, 0);
+const played = scenarios.filter((s) => s.status === 'played').length;
 ---
 
 <Base title="Mordheim — City of the Damned | Campaign Chronicle">
-  <Header />
+  <Header warbands={warbands.length} scenarios={played} fallen={fallen} />
 
   <main id="main-content">
-    <TownCryer />
+    {trouble && <div class="empty-state"><p>The campaign's record could not be read just now. Try again in a moment.</p></div>}
+    <TownCryer today={today} articles={articles} dispatches={dispatches} moves={moves} />
 
     <section id="warbands" class="warbands">
       <p class="section-kicker">I · Those who enter the gates</p>
@@ -42,9 +59,9 @@ if (hasDatabase()) {
       </div>
     </section>
 
-    <Standings />
-    <Chronicle />
-    <Graveyard />
+    <Standings warbands={warbands} />
+    <Chronicle scenarios={scenarios} warbands={warbands} />
+    <Graveyard warbands={warbands} />
   </main>
 
   <footer class="site-footer">
@@ -56,7 +73,7 @@ if (hasDatabase()) {
     </p>
   </footer>
 
-  <MemberModal nights={story.members} />
+  <MemberModal warbands={warbands} stories={stories} nights={story.members} />
 </Base>
 
 <style>

@@ -1,25 +1,16 @@
 /** The Watch House against a real Postgres (PGlite), the checked-in migrations applied. */
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
-import { PGlite } from '@electric-sql/pglite';
-import { drizzle } from 'drizzle-orm/pglite';
-import { useDb } from '../db/client.ts';
 import * as schema from '../db/schema.ts';
+import { testDatabase } from '../testdb.ts';
 import { actions, claimWarband, recentDispatches } from '../curfew/service.ts';
 import { burnLedger, deleteDispatch, ledgerDetail, listPlayers, moveCampaign, overview, postNotice, releaseLedger, revokeSessions, runMidnight, LedgerError } from './service.ts';
 import { warbands } from '../../data/warbands.ts';
 
-const pg = new PGlite();
-const db = drizzle(pg, { schema });
 const GM = 'user-gm', PLAYER = 'user-player';
 
 before(async () => {
-  const dir = new URL('../../../drizzle/', import.meta.url);
-  for (const file of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
-    for (const statement of readFileSync(new URL(file, dir), 'utf8').split('--> statement-breakpoint')) if (statement.trim()) await pg.exec(statement);
-  }
-  useDb(db as never);
+  const { db } = await testDatabase();
   await db.insert(schema.user).values([
     { id: GM, name: 'Game Master', email: 'gm@example.com', emailVerified: true },
     { id: PLAYER, name: 'Player', email: 'player@example.com', emailVerified: true },

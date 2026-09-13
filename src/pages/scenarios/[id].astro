@@ -1,124 +1,192 @@
 ---
-import type { GetStaticPaths } from 'astro';
+/**
+ * One scenario: upcoming, it says when, who and by what rules, and carries the game master's prologue and each
+ * warband's own; played, it is the battle report the archives keep. Under either, the pen: the game master edits
+ * the record, and everyone who fought tells their part.
+ */
 import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
-import { history, getScenarioUrl, type ScenarioRecord } from '../../data/history';
+import '../../styles/manage.css';
+import { base } from '../../lib/site';
+import { formatImperial, imperialForDate } from '../../lib/calendar';
+import { hasDatabase } from '../../server/db/client';
+import { getActor, isGm } from '../../server/roles';
+import { listScenarios, revisionsOf } from '../../server/campaign/scenarios';
+import { listWarbands } from '../../server/campaign/roster';
+import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook';
+import { MEMBER_STATUSES, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
+import { CAMPAIGN } from '../../curfew/engine';
 
-export const getStaticPaths = (() =>
-  history.map((scenario) => ({
-    params: { id: scenario.id },
-    props: { scenario },
-  }))) satisfies GetStaticPaths;
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
 
-interface Props {
-  scenario: ScenarioRecord;
+const ready = hasDatabase();
+const viewer = ready ? await getActor(Astro.request) : null;
+let scenarios: Scenario[] = [], warbands: Warband[] = [], revisions: NarrativeRevision[] = [];
+let scenario: Scenario | undefined;
+if (ready) {
+  try {
+    [scenarios, warbands] = await Promise.all([listScenarios(), listWarbands()]);
+    scenario = scenarios.find((s) => s.id === Astro.params.id);
+    if (scenario) revisions = await revisionsOf(scenario.id);
+  } catch (e) { console.error('[scenarios] unavailable', e); }
 }
+if (!scenario) return Astro.redirect(`${base}/scenarios/`);
 
-const { scenario } = Astro.props;
-const { report } = scenario;
-const home = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/`;
-const chapters = [...history].sort((a, b) => a.sequence - b.sequence);
-const chapterIndex = chapters.findIndex((chapter) => chapter.id === scenario.id);
+const home = `${base}/`;
+const gm = isGm(viewer);
+const upcoming = scenario.status === 'upcoming';
+const chapters = scenarios.filter((s) => s.status === 'played').sort((a, b) => a.sequence - b.sequence);
+const chapterIndex = chapters.findIndex((c) => c.id === scenario!.id);
 const previous = chapters[chapterIndex - 1];
 const next = chapters[chapterIndex + 1];
-const winners = scenario.warbands.filter((warband) => warband.result === 'victory');
+const imperial = formatImperial(imperialForDate(scenario.playedOn));
+const realDay = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(scenario.playedOn + 'T12:00:00Z'));
+const warbandOf = (id: string) => warbands.find((w) => w.id === id);
+const nameOf = (id: string) => warbandOf(id)?.name ?? id;
+const memberOf = (id: string) => warbands.flatMap((w) => w.members).find((m) => m.id === id);
+const memberName = (id: string) => memberOf(id)?.name ?? id;
 const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
 const statusLabel = { active: 'Active', injured: 'Injured', dead: 'Fell in this battle' } as const;
-const perspectives = scenario.warbands.map((warband) => ({
-  warband,
-  perspective: report.perspectives.find((entry) => entry.warbandId === warband.warbandId),
-}));
-const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', Anchor: 'anchor', Crown: 'crown', Moon: 'moon' } as const;
+/** The warbands the viewer speaks for here: their own, or every attending one for a game master. */
+const speaksFor = scenario.warbands.filter((p) => gm || (viewer && warbandOf(p.warbandId)?.ownerId === viewer.id));
+const mayRetell = gm || (scenario.battleOpen && speaksFor.length > 0);
+const winners = scenario.warbands.filter((w) => w.result === 'victory');
+const attendingMembers = scenario.warbands.flatMap((p) => (warbandOf(p.warbandId)?.members ?? []).map((m) => ({ ...m, warbandName: nameOf(p.warbandId) })));
+const when = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: CAMPAIGN.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
+const puzzle = upcoming ? null : scenario.puzzle;
+const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', Anchor: 'anchor', Crown: 'crown', Moon: 'moon' };
 ---
 
-<Base title={`${scenario.scenario} — Mordheim`} description={scenario.summary}>
-  <main id="main-content" class="battle-report">
+<Base title={`${scenario.title} — Mordheim`} description={scenario.summary || scenario.prologue.slice(0, 160)}>
+  <main id="main-content" class="battle-report mg" data-base={base}>
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a href={home}>Mordheim</a><span aria-hidden="true">/</span>
-      <a href={`${home}#chronicle`}>The Chronicle</a><span aria-hidden="true">/</span>
-      <span aria-current="page">Scenario {String(scenario.sequence).padStart(2, '0')}</span>
+      <a href={`${base}/scenarios/`}>Scenarios</a><span aria-hidden="true">/</span>
+      <span aria-current="page">{upcoming ? 'Upcoming' : `Scenario ${String(scenario.sequence).padStart(2, '0')}`}</span>
     </nav>
 
     <header class="report-header">
-      <p class="section-kicker">From the campaign archives · {scenario.date}</p>
-      <h1>{scenario.scenario}</h1>
-      <p class="summary">{scenario.summary}</p>
-      <div class="participants" aria-label="Participating warbands">
-        {scenario.warbands.map((warband) => (
-          <a href={`#${warband.warbandId}`} class:list={['participant', warband.result]}>
-            {warband.name}<span>{resultLabel[warband.result]}</span>
+      {upcoming ? (
+        <p class="section-kicker"><span class="mg-chip upcoming">Upcoming</span> {imperial} · {realDay}</p>
+      ) : (
+        <p class="section-kicker">From the campaign archives · {imperial}</p>
+      )}
+      <h1>{scenario.title}</h1>
+      {scenario.summary ? <p class="summary">{scenario.summary}</p> : upcoming && scenario.prologue ? <p class="summary">{scenario.prologue}</p> : null}
+      <div class="participants" aria-label={upcoming ? 'Attending warbands' : 'Participating warbands'}>
+        {scenario.warbands.map((w) => (
+          <a href={`#${w.warbandId}`} class:list={['participant', w.result ?? 'attending']}>
+            {nameOf(w.warbandId)}<span>{w.result ? resultLabel[w.result] : upcoming ? 'Attending' : 'Fought'}</span>
           </a>
         ))}
+        {scenario.warbands.length === 0 && <span class="archive-note">No warbands named yet.</span>}
       </div>
     </header>
 
-    <nav class="report-nav" aria-label="Battle report sections">
-      <a href="#outcome">Outcome</a>
-      <a href="#prologue">Prologue</a>
-      <a href="#battle">The battle</a>
-      <a href="#epilogue">Epilogue</a>
-      {report.puzzle && <a href="#merchant-puzzle">The sealed clue</a>}
-      <a href="#muster">Warbands &amp; warriors</a>
-      <a href="#campaign">Campaign consequences</a>
+    <nav class="report-nav" aria-label="Scenario sections">
+      {upcoming ? (
+        <>
+          <a href="#rules">When &amp; how</a>
+          <a href="#prologue">Prologue</a>
+          <a href="#muster">Warbands</a>
+        </>
+      ) : (
+        <>
+          <a href="#outcome">Outcome</a>
+          <a href="#prologue">Prologue</a>
+          <a href="#battle">The battle</a>
+          <a href="#epilogue">Epilogue</a>
+          {scenario.puzzle && <a href="#merchant-puzzle">The sealed clue</a>}
+          <a href="#muster">Warbands &amp; warriors</a>
+          <a href="#campaign">Campaign consequences</a>
+        </>
+      )}
+      {(gm || speaksFor.length > 0) && <a href="#pen" class="pen-link">The pen</a>}
     </nav>
 
-    <section id="outcome" class="panel">
-      <h2>Scenario &amp; outcome</h2>
-      <dl class="outcome-facts">
-        <div><dt>Rulebook scenario</dt><dd>{report.rulebookScenario ?? 'Not recorded'}</dd></div>
-        <div><dt>Win condition</dt><dd>{report.winCondition ?? 'Not recorded'}</dd></div>
-        <div><dt>Winner</dt><dd>{winners.length ? winners.map((warband) => warband.name).join(' & ') : 'No winner — draw'}</dd></div>
-      </dl>
-      <h3>How the outcome was decided</h3>
-      <p>{report.outcome}</p>
-      {(!report.rulebookScenario || !report.winCondition) && (
-        <p class="archive-note">The chapter title is not a rulebook scenario name. Missing rules information is left unconfirmed rather than inferred from the story.</p>
-      )}
-    </section>
+    {upcoming && (
+      <section id="rules" class="panel">
+        <h2>When &amp; how</h2>
+        <dl class="outcome-facts">
+          <div><dt>Played on</dt><dd>{imperial}<br /><small class="archive-note">{realDay}</small></dd></div>
+          <div><dt>Rulebook scenario</dt><dd>{scenario.rulebookScenario ?? 'A custom scenario'}</dd></div>
+          <div><dt>Warbands</dt><dd>{scenario.warbands.length ? scenario.warbands.map((w) => nameOf(w.warbandId)).join(' against ') : 'To be named'}</dd></div>
+        </dl>
+        {scenario.customRules ? (<><h3>Rules in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>) : <p class="archive-note">{scenario.rulebookScenario ? 'Played as the rulebook has it.' : 'The rules are still being written.'}</p>}
+        {scenario.winCondition && (<><h3>Win condition</h3><p>{scenario.winCondition}</p></>)}
+      </section>
+    )}
+
+    {!upcoming && (
+      <section id="outcome" class="panel">
+        <h2>Scenario &amp; outcome</h2>
+        <dl class="outcome-facts">
+          <div><dt>Rulebook scenario</dt><dd>{scenario.rulebookScenario ?? 'Custom scenario'}</dd></div>
+          <div><dt>Win condition</dt><dd>{scenario.winCondition || 'Not recorded'}</dd></div>
+          <div><dt>Winner</dt><dd>{winners.length ? winners.map((w) => nameOf(w.warbandId)).join(' & ') : 'No winner — draw'}</dd></div>
+        </dl>
+        {scenario.customRules && (<><h3>Rules in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>)}
+        <h3>How the outcome was decided</h3>
+        <p>{scenario.outcome || 'Not recorded.'}</p>
+        {(!scenario.rulebookScenario || !scenario.winCondition) && (
+          <p class="archive-note">The chapter title is not a rulebook scenario name. Missing rules information is left unconfirmed rather than inferred from the story.</p>
+        )}
+      </section>
+    )}
 
     <section id="prologue">
       <p class="section-kicker">Before the first blow</p>
       <h2 class="section-title">Prologue</h2>
-      <p class="neutral">{report.prologue}</p>
-      <div class="perspectives">
-        {perspectives.map(({ warband, perspective }) => (
-          <article class="panel perspective">
-            <p class="voice-label">From their perspective</p>
-            <h3>{warband.name}</h3>
-            <p>{perspective?.prologue ?? 'This perspective has not yet been recorded.'}</p>
-          </article>
-        ))}
-      </div>
+      <p class="neutral">{scenario.prologue || (upcoming ? 'The game master has not yet set the scene.' : 'Not recorded.')}</p>
+      {scenario.warbands.length > 0 && (
+        <div class="perspectives">
+          {scenario.warbands.map((w) => (
+            <article class="panel perspective">
+              <p class="voice-label">From their perspective</p>
+              <h3>{nameOf(w.warbandId)}</h3>
+              <p>{w.prologue || (speaksFor.some((s) => s.warbandId === w.warbandId) ? 'Your prologue is not yet written; the pen is below.' : 'This perspective has not yet been recorded.')}</p>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
 
-    <section id="battle" class="battle-narrative">
-      <p class="section-kicker">An account of blood &amp; wyrdstone</p>
-      <h2 class="section-title">The battle</h2>
-      {report.battle.map((paragraph) => <p>{paragraph}</p>)}
-    </section>
+    {!upcoming && (
+      <>
+        <section id="battle" class="battle-narrative">
+          <p class="section-kicker">An account of blood &amp; wyrdstone</p>
+          <h2 class="section-title">The battle</h2>
+          {scenario.battle.length ? scenario.battle.map((paragraph) => <p>{paragraph}</p>) : <p class="neutral archive-note">The battle has not been told yet.</p>}
+          {scenario.battleOpen && <p class="neutral archive-note">The game master has opened this account to those who fought. Earlier tellings are kept.</p>}
+        </section>
 
-    <section id="epilogue">
-      <p class="section-kicker">When the fighting ends</p>
-      <h2 class="section-title">Epilogue</h2>
-      <p class="neutral">{report.epilogue}</p>
-      <div class="perspectives">
-        {perspectives.map(({ warband, perspective }) => (
-          <article class="panel perspective">
-            <p class="voice-label">From their perspective</p>
-            <h3>{warband.name}</h3>
-            <p>{perspective?.epilogue ?? 'This perspective has not yet been recorded.'}</p>
-          </article>
-        ))}
-      </div>
-    </section>
+        <section id="epilogue">
+          <p class="section-kicker">When the fighting ends</p>
+          <h2 class="section-title">Epilogue</h2>
+          <p class="neutral">{scenario.epilogue || 'Not recorded.'}</p>
+          {scenario.warbands.length > 0 && (
+            <div class="perspectives">
+              {scenario.warbands.map((w) => (
+                <article class="panel perspective">
+                  <p class="voice-label">From their perspective</p>
+                  <h3>{nameOf(w.warbandId)}</h3>
+                  <p>{w.epilogue || 'This perspective has not yet been recorded.'}</p>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </>
+    )}
 
-    {report.puzzle && (
+    {puzzle && (
       <section id="merchant-puzzle" class="panel seal-puzzle" aria-labelledby="puzzle-title">
         <p class="section-kicker">An unfinished account</p>
-        <h2 id="puzzle-title">{report.puzzle.title}</h2>
-        <p id="puzzle-instructions">{report.puzzle.introduction}</p>
+        <h2 id="puzzle-title">{puzzle.title}</h2>
+        <p id="puzzle-instructions">{puzzle.introduction}</p>
         <div class="perspectives puzzle-evidence">
-          {report.puzzle.clues.map((clue) => (
+          {puzzle.clues.map((clue) => (
             <article class="evidence">
               <h3>{clue.source}</h3>
               <p>{clue.text}</p>
@@ -130,7 +198,7 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
             <legend>The routing plate · follow socket numbers</legend>
             <p id="seal-help">Select a seal from the tray, then tap a numbered socket to place it. Placing a used seal moves it; occupied sockets swap. Tap a filled socket with no seal selected to return it to the tray. Keyboard: Tab to a control, then Enter or Space.</p>
             <div class="seal-controls" role="group" aria-label="Routing sockets, in reading order">
-              {report.puzzle.solution.map((answer, index) => (
+              {puzzle.solution.map((answer, index) => (
                 <button type="button" class="seal-socket" data-answer={answer} data-socket aria-label={`Socket ${index + 1}, empty`}>
                   <span class="socket-number" aria-hidden="true">{index + 1}</span>
                   <span data-socket-symbol aria-hidden="true"><Icon name="diamond" size={32} /></span>
@@ -140,9 +208,9 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
             </div>
             <p class="tray-label">Seal tray · select one to place</p>
             <div class="seal-tray" role="group" aria-label="Available seals">
-              {report.puzzle.seals.map((seal) => (
+              {puzzle.seals.map((seal) => (
                 <button type="button" data-seal={seal} aria-pressed="false">
-                  <span data-seal-symbol><Icon name={sealIcons[seal as keyof typeof sealIcons] ?? 'diamond'} size={32} /></span>
+                  <span data-seal-symbol><Icon name={(sealIcons[seal] ?? 'diamond') as 'diamond'} size={32} /></span>
                   <span>{seal}</span>
                   <small data-seal-location>In tray</small>
                 </button>
@@ -157,15 +225,7 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
         <noscript><p>The clues can be solved on paper using the numbered sockets and labelled seals. Enable JavaScript to arrange the seals and reveal the hidden dispatch.</p></noscript>
         <p data-puzzle-feedback role="status" aria-live="polite" aria-atomic="true"></p>
         <div class="margin-note">
-          <button
-            type="button"
-            class="thumbprint"
-            data-hint-trigger
-            data-hint-key={scenario.id}
-            aria-expanded="false"
-            aria-controls="clerks-margin"
-            aria-label="A greasy thumbprint in the margin — press to read the clerk&rsquo;s workings on this puzzle"
-          >
+          <button type="button" class="thumbprint" data-hint-trigger data-hint-key={scenario.id} aria-expanded="false" aria-controls="clerks-margin" aria-label="A greasy thumbprint in the margin — press to read the clerk&rsquo;s workings on this puzzle">
             <Icon name="thumbprint" size={22} />
             <span class="thumbprint-label" aria-hidden="true">A greasy thumbprint in the margin</span>
           </button>
@@ -174,7 +234,7 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
           <h3 tabindex="-1">The clerk&rsquo;s margin</h3>
           <p class="archive-note">Someone worked the puzzle before you and left their reasoning in soot along the edge of the plate. Rub the lines back one at a time; each gives away a little more.</p>
           <ol class="margin-workings">
-            {report.puzzle.hints.map((hint, index) => (
+            {puzzle.hints.map((hint, index) => (
               <li data-hint hidden><span class="working-index">Working {index + 1}</span><p>{hint}</p></li>
             ))}
           </ol>
@@ -186,60 +246,62 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
         </div>
         <div data-puzzle-revelation class="dispatch" hidden>
           <h3 tabindex="-1">The hidden dispatch</h3>
-          {report.puzzle.revelation.map((paragraph) => <p>{paragraph}</p>)}
+          {puzzle.revelation.map((paragraph) => <p>{paragraph}</p>)}
         </div>
       </section>
     )}
 
     <section id="muster">
-      <p class="section-kicker">The final reckoning</p>
-      <h2 class="section-title">Warbands &amp; warriors</h2>
-      <p class="neutral archive-note">Treasury and ratings are post-battle totals, not loot earned in this battle. Only explicitly recorded out-of-action results are credited; a hit, a fall, or a bow notch alone is not confirmation. “Not recorded” does not mean none occurred.</p>
+      <p class="section-kicker">{upcoming ? 'Who takes the field' : 'The final reckoning'}</p>
+      <h2 class="section-title">{upcoming ? 'Warbands' : 'Warbands & warriors'}</h2>
+      {!upcoming && <p class="neutral archive-note">Treasury and ratings are post-battle totals, not loot earned in this battle. Only explicitly recorded out-of-action results are credited; a hit, a fall, or a bow notch alone is not confirmation. “Not recorded” does not mean none occurred.</p>}
       <div class="warband-summaries">
-        {perspectives.map(({ warband, perspective }) => {
-          const takedowns = report.outOfAction.filter((event) => warband.members.some((member) => member.memberId === event.attackerId));
+        {scenario.warbands.map((w) => {
+          const band = warbandOf(w.warbandId);
+          const takedowns = scenario!.outOfAction.filter((e) => band?.members.some((m) => m.id === e.attackerId));
           return (
-            <article id={warband.warbandId} class="panel warband-summary">
-              <p class:list={['voice-label', warband.result]}>{resultLabel[warband.result]}</p>
-              <h3>{warband.name}</h3>
-              <h4>Accomplishments</h4>
-              <p>{perspective?.accomplishments ?? warband.highlights.join(' ')}</p>
-              <dl class="snapshot-stats">
-                <div><dt>Rating</dt><dd>{warband.rating}</dd></div>
-                <div><dt>Battles</dt><dd>{warband.battles}</dd></div>
-                <div><dt>Victories</dt><dd>{warband.victories}</dd></div>
-                <div><dt>Wyrdstone</dt><dd>{warband.wyrdstone} shards</dd></div>
-                <div><dt>Treasury</dt><dd>{warband.gold} crowns</dd></div>
-              </dl>
-              <h4 class="finest">Finest moments</h4>
-              <ul>{warband.highlights.map((highlight) => <li>{highlight}</li>)}</ul>
-              <h4 class="darkest">Darkest moments</h4>
-              <ul>{warband.lowlights.map((lowlight) => <li>{lowlight}</li>)}</ul>
-              <h4>Opponents put out of action</h4>
-              {takedowns.length ? (
-                <ul>{takedowns.map((event) => (
-                  <li><a href={`#member-${event.attackerId}`}>{warband.members.find((member) => member.memberId === event.attackerId)?.name}</a> defeated {event.target}</li>
-                ))}</ul>
-              ) : <p class="archive-note">Not recorded.</p>}
-
-              <h4 class="roster-title">Every warrior's battle record</h4>
-              {warband.members.map((member) => {
-                const events = report.outOfAction.filter((event) => event.attackerId === member.memberId);
+            <article id={w.warbandId} class="panel warband-summary">
+              <p class:list={['voice-label', w.result ?? '']}>{w.result ? resultLabel[w.result] : upcoming ? 'Attending' : 'Fought'}</p>
+              <h3><a href={`${base}/warbands/${w.warbandId}/`}>{nameOf(w.warbandId)}</a></h3>
+              {band && <p class="archive-note">{band.type}{band.player ? `, kept by ${band.player}` : ''}{upcoming ? ` · rating ${band.rating} · ${band.members.filter((m) => !m.dead).length} living souls` : ''}</p>}
+              {!upcoming && (
+                <>
+                  <h4>Accomplishments</h4>
+                  <p>{w.accomplishments || (w.highlights.length ? w.highlights.join(' ') : 'Not recorded.')}</p>
+                  {(w.rating != null || w.wyrdstone != null || w.gold != null) && (
+                    <dl class="snapshot-stats">
+                      {w.rating != null && <div><dt>Rating</dt><dd>{w.rating}</dd></div>}
+                      {w.wyrdstone != null && <div><dt>Wyrdstone</dt><dd>{w.wyrdstone} shards</dd></div>}
+                      {w.gold != null && <div><dt>Treasury</dt><dd>{w.gold} crowns</dd></div>}
+                    </dl>
+                  )}
+                  {w.highlights.length > 0 && (<><h4 class="finest">Finest moments</h4><ul>{w.highlights.map((h) => <li>{h}</li>)}</ul></>)}
+                  {w.lowlights.length > 0 && (<><h4 class="darkest">Darkest moments</h4><ul>{w.lowlights.map((l) => <li>{l}</li>)}</ul></>)}
+                  <h4>Opponents put out of action</h4>
+                  {takedowns.length ? (
+                    <ul>{takedowns.map((e) => (<li><a href={`#member-${e.attackerId}`}>{memberName(e.attackerId)}</a> defeated {e.targetId ? <a href={`#member-${e.targetId}`}>{e.target}</a> : e.target}</li>))}</ul>
+                  ) : <p class="archive-note">Not recorded.</p>}
+                </>
+              )}
+              <h4 class="roster-title">{upcoming ? (w.members.length ? 'Warriors brought' : 'Warriors') : 'Every warrior\'s battle record'}</h4>
+              {upcoming && w.members.length === 0 && <p class="archive-note">Not yet named. {band ? `${band.members.filter((m) => !m.dead).length} could take the field.` : ''}</p>}
+              {w.members.map((member) => {
+                const m = memberOf(member.memberId);
+                const events = scenario!.outOfAction.filter((e) => e.attackerId === member.memberId);
+                const fell = scenario!.outOfAction.filter((e) => e.targetId === member.memberId);
                 return (
                   <article id={`member-${member.memberId}`} class="member-record">
-                    <h5>{member.name}</h5>
-                    <p class="member-meta">{member.rank} · {member.role} · <span class:list={{ darkest: member.status !== 'active' }}>{statusLabel[member.status]}</span></p>
-                    {member.experience !== undefined && <p><strong>Experience:</strong> {member.experience}</p>}
-                    <p><strong class="finest">Accomplishment &amp; finest moment:</strong> {member.highlight}</p>
-                    <p><strong class="darkest">Darkest moment:</strong> {member.lowlight}</p>
-                    <p><strong>Put out of action:</strong> {events.length === 0 && 'Not recorded.'}</p>
-                    {events.length > 0 && (
-                      <ul>{events.map((event) => (
-                        <li>
-                          {event.targetId ? <a href={`#member-${event.targetId}`}>{event.target}</a> : event.target}
-                          {' — '}{event.detail}
-                        </li>
-                      ))}</ul>
+                    <h5>{m?.name ?? member.memberId}</h5>
+                    <p class="member-meta">{m?.rank} · {m?.role}{!upcoming && <> · <span class:list={{ darkest: member.status !== 'active' }}>{statusLabel[member.status]}</span></>}</p>
+                    {member.experience != null && <p><strong>Experience:</strong> {member.experience}</p>}
+                    {(member.highlight || !upcoming) && <p><strong class="finest">Finest moment:</strong> {member.highlight || 'Not recorded.'}</p>}
+                    {(member.lowlight || !upcoming) && <p><strong class="darkest">Darkest moment:</strong> {member.lowlight || 'Not recorded.'}</p>}
+                    {!upcoming && (
+                      <>
+                        <p><strong>Put out of action:</strong> {events.length === 0 && 'Not recorded.'}</p>
+                        {events.length > 0 && (<ul>{events.map((e) => (<li>{e.targetId ? <a href={`#member-${e.targetId}`}>{e.target}</a> : e.target}{e.detail ? <> — {e.detail}</> : null}</li>))}</ul>)}
+                        {fell.length > 0 && <p><strong class="darkest">Taken out by:</strong> {fell.map((e) => memberName(e.attackerId)).join(', ')}</p>}
+                      </>
                     )}
                   </article>
                 );
@@ -250,26 +312,208 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
       </div>
     </section>
 
-    <details id="campaign" class="panel campaign-ledger">
-      <summary>
-        <h2>What the campaign carries forward</h2>
-        <span class="summary-note">Loot, costs &amp; unresolved records <Icon name="arrow-down" size={14} /></span>
-      </summary>
-      <div class="campaign-body">
-        <h3>Noteworthy loot &amp; costs</h3>
-        {report.loot.length ? <ul>{report.loot.map((item) => <li>{item}</li>)}</ul> : <p>No noteworthy loot recorded.</p>}
-        <h3>Lasting consequences &amp; unresolved records</h3>
-        {report.campaignNotes.length ? <ul>{report.campaignNotes.map((note) => <li>{note}</li>)}</ul> : <p>No lasting consequences recorded.</p>}
-      </div>
-    </details>
+    {!upcoming && (
+      <details id="campaign" class="panel campaign-ledger">
+        <summary>
+          <h2>What the campaign carries forward</h2>
+          <span class="summary-note">Loot, costs &amp; unresolved records <Icon name="arrow-down" size={14} /></span>
+        </summary>
+        <div class="campaign-body">
+          <h3>Noteworthy loot &amp; costs</h3>
+          {scenario.loot.length ? <ul>{scenario.loot.map((item) => <li>{item}</li>)}</ul> : <p>No noteworthy loot recorded.</p>}
+          <h3>Lasting consequences &amp; unresolved records</h3>
+          {scenario.campaignNotes.length ? <ul>{scenario.campaignNotes.map((note) => <li>{note}</li>)}</ul> : <p>No lasting consequences recorded.</p>}
+        </div>
+      </details>
+    )}
+
+    {(gm || speaksFor.length > 0) && (
+      <section id="pen" class="pen">
+        <p class="section-kicker">The pen</p>
+        <h2 class="section-title">{gm ? 'Keep the record' : 'Tell your part'}</h2>
+        <p class="neutral archive-note">{gm ? 'Everything here is saved as it is written and shown to everyone at once.' : `You speak for ${speaksFor.map((p) => nameOf(p.warbandId)).join(' and ')} here. The game master keeps the rest.`}</p>
+
+        {gm && (
+          <details class="mg-editor" open={upcoming}>
+            <summary>The scenario</summary>
+            <form class="mg-form" data-api="scenarios/update" data-json={JSON.stringify({ scenarioId: scenario.id })}>
+              <label class="mg-field">Title<input name="patch.title" required maxlength="120" value={scenario.title} /></label>
+              <div class="mg-two">
+                <label class="mg-field">Played on<input name="patch.playedOn" type="date" required value={scenario.playedOn} /><small>{imperial}</small></label>
+                <label class="mg-field">Rulebook scenario<select name="patch.rulebookScenario" data-nullable><option value="" selected={!scenario.rulebookScenario}>Custom scenario</option>{RULEBOOK_SCENARIOS.map((r) => <option value={r} selected={r === scenario!.rulebookScenario}>{r}</option>)}{scenario.rulebookScenario && !(RULEBOOK_SCENARIOS as readonly string[]).includes(scenario.rulebookScenario) && <option value={scenario.rulebookScenario} selected>{scenario.rulebookScenario}</option>}</select></label>
+              </div>
+              <fieldset class="mg-fieldset"><legend>Who fights</legend>
+                <div class="mg-checks">{warbands.map((w) => <label class="mg-field check"><input type="checkbox" name="patch.warbandIds" value={w.id} data-array checked={scenario!.warbands.some((p) => p.warbandId === w.id)} /> {w.name} <span class="mg-muted">({w.type})</span></label>)}</div>
+                <p class="mg-note">A warband taken off the list takes its warriors' records for this scenario with it.</p>
+              </fieldset>
+              <label class="mg-field">Custom and special rules<textarea name="patch.customRules" maxlength="8000">{scenario.customRules}</textarea></label>
+              <label class="mg-field">Win condition<textarea name="patch.winCondition" maxlength="4000">{scenario.winCondition}</textarea><small>The rulebook's words, or none.</small></label>
+              <label class="mg-field">Prologue<textarea name="patch.prologue" maxlength="8000" class="tall">{scenario.prologue}</textarea></label>
+              <label class="mg-field">Summary<textarea name="patch.summary" maxlength="1000">{scenario.summary}</textarea><small>Two or three sentences under the title.</small></label>
+              {!upcoming && (
+                <>
+                  <label class="mg-field">How the outcome was decided<textarea name="patch.outcome" maxlength="4000">{scenario.outcome}</textarea></label>
+                  <label class="mg-field">Epilogue<textarea name="patch.epilogue" maxlength="8000" class="tall">{scenario.epilogue}</textarea></label>
+                  <label class="mg-field">Chronicle entry<textarea name="patch.chronicle" maxlength="4000">{scenario.chronicle}</textarea><small>One present-tense paragraph for the home page: the scenario type, who did what, who won, what it cost. The summary stands in when empty.</small></label>
+                  <label class="mg-field">Noteworthy loot &amp; costs<textarea name="patch.loot" data-list>{scenario.loot.join('\n')}</textarea><small>One per line.</small></label>
+                  <label class="mg-field">Lasting consequences &amp; unresolved records<textarea name="patch.campaignNotes" data-list>{scenario.campaignNotes.join('\n')}</textarea><small>One per line.</small></label>
+                  <label class="mg-field check"><input type="checkbox" name="patch.battleOpen" checked={scenario.battleOpen} /> Open the battle narrative to those who fought</label>
+                </>
+              )}
+              <div class="mg-actions end"><button type="submit" class="mg-btn">Save the scenario</button></div>
+            </form>
+          </details>
+        )}
+
+        {gm && (
+          <details class="mg-editor">
+            <summary>{upcoming ? 'Mark it played' : 'Results'}</summary>
+            <form class="mg-form" data-api="scenarios/played" data-json={JSON.stringify({ scenarioId: scenario.id })}>
+              {scenario.warbands.length === 0 && <p class="mg-note">Name the warbands that fight first.</p>}
+              <div class="mg-grid">{scenario.warbands.map((w, i) => (
+                <div class="mg-fieldset"><input type="hidden" name={`results.${i}.warbandId`} value={w.warbandId} />
+                  <label class="mg-field">{nameOf(w.warbandId)}<select name={`results.${i}.result`}>{(['victory', 'defeat', 'draw'] as const).map((r) => <option value={r} selected={w.result === r}>{resultLabel[r]}</option>)}</select></label>
+                </div>
+              ))}</div>
+              <div class="mg-actions end">
+                {!upcoming && <button type="button" class="mg-btn ghost" data-act="scenarios/reopen" data-body={JSON.stringify({ scenarioId: scenario.id })} data-confirm="Lift this scenario out of the Chronicle and make it upcoming again? Everything written stays.">Reopen as upcoming</button>}
+                {upcoming && <button type="button" class="mg-btn blood" data-act="scenarios/delete" data-body={JSON.stringify({ scenarioId: scenario.id })} data-goto={`${base}/scenarios/`} data-confirm="Strike this scenario? Every prologue written for it goes too.">Strike it</button>}
+                <button type="submit" class="mg-btn" disabled={scenario.warbands.length === 0}>{upcoming ? 'The game is played' : 'Save the results'}</button>
+              </div>
+            </form>
+          </details>
+        )}
+
+        {!upcoming && mayRetell && (
+          <details class="mg-editor">
+            <summary>The battle, told</summary>
+            <form class="mg-form" data-api="scenarios/battle" data-json={JSON.stringify({ scenarioId: scenario.id })}>
+              <label class="mg-field">The account<textarea name="battle" data-paragraphs class="tall" style="min-height: 22rem">{scenario.battle.join('\n\n')}</textarea><small>One paragraph per beat of the fight, a blank line between them. Who did what to whom, in the archivist's neutral past tense. The telling as it stands now is kept before yours replaces it.</small></label>
+              <div class="mg-actions end"><button type="submit" class="mg-btn">Set down this telling</button></div>
+            </form>
+            {revisions.length > 0 && (
+              <div>
+                <h4 class="mg-h3">Earlier tellings</h4>
+                <ul class="mg-revisions">{revisions.slice(0, 8).map((r) => (
+                  <li><span class="mg-muted">{r.authorName || 'unknown'} · {when(r.savedAt)} · {r.battle.length} {r.battle.length === 1 ? 'paragraph' : 'paragraphs'}</span>
+                    <details><summary class="mg-link">Read it</summary>{r.battle.map((p) => <p>{p}</p>)}</details></li>
+                ))}</ul>
+              </div>
+            )}
+          </details>
+        )}
+
+        {speaksFor.map((p) => {
+          const band = warbandOf(p.warbandId);
+          const first = (id: string) => memberName(id).split(' ')[0];
+          return (
+            <details class="mg-editor" id={`pen-${p.warbandId}`} open={!gm && speaksFor.length === 1}>
+              <summary>{nameOf(p.warbandId)}: their telling</summary>
+              <form class="mg-form" data-api="scenarios/perspective" data-json={JSON.stringify({ scenarioId: scenario!.id, warbandId: p.warbandId })}>
+                <label class="mg-field">Prologue<textarea name="patch.prologue" maxlength="8000">{p.prologue}</textarea><small>Why they came, from their own side of the street.</small></label>
+                {!upcoming && (
+                  <>
+                    <label class="mg-field">Epilogue<textarea name="patch.epilogue" maxlength="8000">{p.epilogue}</textarea></label>
+                    <label class="mg-field">Accomplishments<textarea name="patch.accomplishments" maxlength="2000">{p.accomplishments}</textarea><small>A factual sentence or two.</small></label>
+                    <label class="mg-field">Finest moments<textarea name="patch.highlights" data-list>{p.highlights.join('\n')}</textarea><small>One per line.</small></label>
+                    <label class="mg-field">Darkest moments<textarea name="patch.lowlights" data-list>{p.lowlights.join('\n')}</textarea><small>One per line.</small></label>
+                    <div class="mg-stats wb-standing">
+                      <label>Rating after<input name="patch.rating" type="number" min="0" max="99999" value={p.rating ?? ''} data-nullable /></label>
+                      <label>Shards after<input name="patch.wyrdstone" type="number" min="0" max="99999" value={p.wyrdstone ?? ''} data-nullable /></label>
+                      <label>Gold after<input name="patch.gold" type="number" min="0" max="99999" value={p.gold ?? ''} data-nullable /></label>
+                    </div>
+                    <p class="mg-note">Totals as they stood after the battle, if you keep them; the roster itself is changed on the warband's page.</p>
+                  </>
+                )}
+                <div class="mg-actions end"><button type="submit" class="mg-btn">Save their telling</button></div>
+              </form>
+
+              {band && (
+                <form class="mg-form brought-form" data-scenario={scenario!.id} data-warband={p.warbandId}>
+                  <fieldset class="mg-fieldset"><legend>{upcoming ? 'Who they bring' : 'Who fought, and how it went'}</legend>
+                    <div class="brought-rows">
+                      {band.members.filter((m) => !m.dead || p.members.some((x) => x.memberId === m.id)).map((m) => {
+                        const rec = p.members.find((x) => x.memberId === m.id);
+                        return (
+                          <div class="brought-row" data-member={m.id}>
+                            <label class="mg-field check"><input type="checkbox" data-brought checked={!!rec} /> <b>{m.name}</b> <span class="mg-muted">{m.role}</span></label>
+                            {!upcoming && (
+                              <div class="brought-fields" hidden={!rec}>
+                                <label class="mg-field">Came out<select data-status>{MEMBER_STATUSES.map((s) => <option value={s} selected={(rec?.status ?? 'active') === s}>{statusLabel[s]}</option>)}</select></label>
+                                <label class="mg-field">Finest moment<input data-highlight maxlength="1000" value={rec?.highlight ?? ''} placeholder={`What ${first(m.id)} did best`} /></label>
+                                <label class="mg-field">Darkest moment<input data-lowlight maxlength="1000" value={rec?.lowlight ?? ''} placeholder={`What went wrong for ${first(m.id)}`} /></label>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+                  <div class="mg-actions end"><button type="submit" class="mg-btn">Save the muster</button></div>
+                </form>
+              )}
+
+              {!upcoming && (
+                <div class="ooa">
+                  <h4 class="mg-h3">Out of action</h4>
+                  {scenario!.outOfAction.filter((e) => band?.members.some((m) => m.id === e.attackerId || m.id === e.targetId)).map((e) => (
+                    <p class="ooa-row"><span><b>{memberName(e.attackerId)}</b> put <b>{e.target}</b> out of action{e.detail ? <>: {e.detail}</> : null}</span><button type="button" class="mg-btn ghost sm" data-act="scenarios/remove-out-of-action" data-body={JSON.stringify({ scenarioId: scenario!.id, id: e.id })} data-confirm="Strike this record?">Strike</button></p>
+                  ))}
+                  <form class="mg-form inline" data-api="scenarios/out-of-action" data-json={JSON.stringify({ scenarioId: scenario!.id })}>
+                    <label class="mg-field">Who struck<select name="attackerId" required>{attendingMembers.map((m) => <option value={m.id}>{m.name} ({m.warbandName})</option>)}</select></label>
+                    <label class="mg-field">Who fell<select name="targetId" data-nullable><option value="">someone not on the roll</option>{attendingMembers.map((m) => <option value={m.id}>{m.name} ({m.warbandName})</option>)}</select></label>
+                    <label class="mg-field">Or by name<input name="target" maxlength="120" placeholder="A hired sword, a beast" /></label>
+                    <label class="mg-field">How<input name="detail" maxlength="1000" placeholder="In the watchtower; the wound cost a hand." /></label>
+                    <button type="submit" class="mg-btn">Record it</button>
+                  </form>
+                  <p class="mg-note">You may record what your own warriors did, and what was done to them.</p>
+                </div>
+              )}
+            </details>
+          );
+        })}
+      </section>
+    )}
 
     <nav class="chapter-nav" aria-label="Scenario navigation">
-      {previous && <a href={getScenarioUrl(previous.id)}><Icon name="arrow-left" size={14} /> Previous: {previous.scenario}</a>}
+      {previous && <a href={`${base}/scenarios/${previous.id}/`}><Icon name="arrow-left" size={14} /> Previous: {previous.title}</a>}
+      <a href={`${base}/scenarios/`}>Every scenario</a>
       <a href={`${home}#chronicle`}>Back to the Chronicle</a>
-      {next && <a href={getScenarioUrl(next.id)}>Next: {next.scenario} <Icon name="arrow-right" size={14} /></a>}
+      {next && <a href={`${base}/scenarios/${next.id}/`}>Next: {next.title} <Icon name="arrow-right" size={14} /></a>}
     </nav>
   </main>
 </Base>
+
+<script>
+  import { wireManage } from '../../lib/manage';
+  const root = document.getElementById('main-content')!;
+  const base = root.dataset.base ?? '';
+  wireManage(root, base);
+  // the muster: rows of warriors, each with whether they came and how they fared
+  for (const form of root.querySelectorAll<HTMLFormElement>('.brought-form')) {
+    form.addEventListener('change', (e) => {
+      const box = e.target as HTMLInputElement;
+      if (!box.matches('[data-brought]')) return;
+      const fields = box.closest('.brought-row')?.querySelector<HTMLElement>('.brought-fields');
+      if (fields) fields.hidden = !box.checked;
+    });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const brought = [...form.querySelectorAll<HTMLElement>('.brought-row')].filter((r) => r.querySelector<HTMLInputElement>('[data-brought]')!.checked).map((r) => ({
+        memberId: r.dataset.member!,
+        status: r.querySelector<HTMLSelectElement>('[data-status]')?.value ?? 'active',
+        highlight: r.querySelector<HTMLInputElement>('[data-highlight]')?.value ?? '',
+        lowlight: r.querySelector<HTMLInputElement>('[data-lowlight]')?.value ?? '',
+      }));
+      const button = form.querySelector('button[type=submit]') as HTMLButtonElement;
+      button.disabled = true;
+      const res = await fetch(new URL(`${base}/api/scenarios/brought`, location.href), { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ scenarioId: form.dataset.scenario, warbandId: form.dataset.warband, brought }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { button.disabled = false; const t = document.getElementById('mg-toast'); if (t) { t.textContent = data.error ?? 'The city did not answer.'; t.hidden = false; setTimeout(() => (t.hidden = true), 5000); } return; }
+      location.reload();
+    });
+  }
+</script>
 
 <script>
   const puzzle = document.querySelector<HTMLElement>('.seal-puzzle');
@@ -430,7 +674,6 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
     });
   }
 </script>
-
 <style>
   .puzzle-evidence { margin: 1.5rem 0; }
   .evidence { border-left: 2px solid var(--gold-dim); padding-left: 1rem; }
@@ -564,4 +807,24 @@ const sealIcons = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', An
     .seal-puzzle.panel { padding-inline: .5rem; }
     .seal-controls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
+</style>
+
+<style>
+  .participant.attending span { color: #b7c9a1; }
+  .pen-link { color: var(--gold); }
+  .pen { margin: 3rem 0; }
+  .pen .mg-editor { max-width: 900px; margin-inline: auto; margin-top: 1rem; }
+  .pen .mg-editor > .mg-form, .pen .mg-editor > div, .pen .mg-editor > form { padding: .3rem .9rem 1rem; }
+  .wb-standing { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; max-width: 24rem; }
+  .brought-rows { display: grid; gap: .5rem; }
+  .brought-row { border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
+  .brought-row .mg-field.check b { color: var(--parchment); font-weight: normal; }
+  .brought-fields { display: grid; gap: .6rem; grid-template-columns: 10rem minmax(0, 1fr) minmax(0, 1fr); margin: .3rem 0 .3rem 2rem; }
+  @media (max-width: 720px) { .brought-fields { grid-template-columns: 1fr; margin-left: 0; } }
+  .ooa { padding-top: .5rem; }
+  .ooa-row { display: flex; justify-content: space-between; gap: .8rem; align-items: center; padding: .4rem 0; border-bottom: 1px solid var(--border); font-size: var(--text-ui); }
+  .ooa-row b { color: var(--parchment); font-weight: normal; }
+  .mg-revisions details summary { list-style: none; cursor: pointer; }
+  .mg-revisions details p { margin-top: .4rem; }
+  .report-header h1 { font: normal clamp(2.4rem, 7vw, 4rem)/1.05 'Pirata One', Georgia, serif; color: var(--parchment); margin: .5rem 0 1rem; }
 </style>
