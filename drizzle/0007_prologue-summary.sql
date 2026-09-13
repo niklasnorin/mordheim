@@ -1,0 +1,1 @@
+ALTER TABLE "scenarios" ADD COLUMN "prologue_as_summary" boolean DEFAULT true NOT NULL;

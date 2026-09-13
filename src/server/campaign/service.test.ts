@@ -107,6 +107,9 @@ test('a game master sets up an upcoming scenario and the players tell their side
   assert.equal(s.id, 'scenario-02-the-drowned-bell');
   assert.equal(s.status, 'upcoming');
   assert.equal(s.rulebookScenario, 'Hidden Treasure', 'rulebook names are spelled as the book does');
+  assert.equal(s.prologueAsSummary, true, 'the prologue stands under the title until the game is played');
+  assert.equal((await updateScenario(gm, s.id, { prologueAsSummary: false })).prologueAsSummary, false);
+  await updateScenario(gm, s.id, { prologueAsSummary: true });
   assert.deepEqual(s.warbands.map((w) => w.warbandId).sort(), ['bitterbrow-expedition', 'nordost']);
   const list = await listScenarios();
   assert.deepEqual(list.map((x) => x.status), ['played', 'upcoming']);

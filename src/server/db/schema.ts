@@ -221,6 +221,8 @@ export const scenarios = pgTable('scenarios', {
   chronicle: text('chronicle').notNull().default(''),
   outcome: text('outcome').notNull().default(''),
   prologue: text('prologue').notNull().default(''),
+  /** Until the game is played, the prologue stands in for the summary under the title. */
+  prologueAsSummary: boolean('prologue_as_summary').notNull().default(true),
   battle: jsonb('battle').notNull().default([]),
   epilogue: text('epilogue').notNull().default(''),
   battleOpen: boolean('battle_open').notNull().default(false),
