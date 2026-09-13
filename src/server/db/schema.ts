@@ -335,4 +335,14 @@ export const curfewContentRevisions = pgTable(
   (t) => [index('curfew_content_revisions_content_idx').on(t.contentId)],
 );
 
+/**
+ * The campaign's switches, one row each, set by the admin in the Watch House: `standingsVisible` says whether the
+ * home page prints the standings table and the cards their ratings (hidden until the admin says otherwise).
+ */
+export const campaignSettings = pgTable('campaign_settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const authSchema = { user, session, account, verification };

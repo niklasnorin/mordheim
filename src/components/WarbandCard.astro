@@ -8,9 +8,11 @@ interface Props {
   warband: Warband;
   /** What the Curfew nights say of this warband, when a ledger is kept for it. */
   standing?: WarbandStanding;
+  /** The rating is a standing; it is shown only when the admin has the standings on. */
+  showRating?: boolean;
 }
 
-const { warband, standing } = Astro.props;
+const { warband, standing, showRating = true } = Astro.props;
 ---
 
 <article class="warband-card reveal" class:list={{ 'warband-ostland': warband.type === 'Ostlanders' }}>
@@ -27,10 +29,12 @@ const { warband, standing } = Astro.props;
         <span class="warband-curfew">Spoken of in the taverns as <b>{standing.title}</b> after {standing.nights} {standing.nights === 1 ? 'night' : 'nights'} in the city. <a href={`${base}/curfew/`}>Their ledger</a></span>
       )}
     </div>
-    <div class="warband-stats">
-      <span class="rating">{warband.rating}</span>
-      Warband Rating
-    </div>
+    {showRating && (
+      <div class="warband-stats">
+        <span class="rating">{warband.rating}</span>
+        Warband Rating
+      </div>
+    )}
   </div>
   {warband.lore.trim() && <div class="warband-lore"><p>{warband.lore}</p></div>}
   <div class="roster-heading"><span>The muster roll</span><span>Select a warrior to uncover their tale</span></div>

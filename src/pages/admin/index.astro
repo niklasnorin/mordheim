@@ -108,6 +108,15 @@ const lastRun = data?.runs[0];
                 {data.moves.length > 0 && <p class="wh-moves">{data.moves.slice(0, 4).map((m, i) => <span>{i > 0 ? ' · ' : ''}{data!.locations.find((l) => l.id === m.locationId)?.name ?? m.locationId} from night {m.fromNight}</span>)}{data.moves.length > 4 ? ' · …' : ''}</p>}
               </div>
             </div>
+              {admin && (
+                <div class="wh-place" id="standings-switch">
+                  <h3 class="wh-h3">The standings</h3>
+                  <p>{data.settings.standingsVisible ? <>The front page prints the <b>standings table</b> and every card its rating.</> : <>The standings are <b>hidden</b>: no table on the front page, no rating on the cards. A warband's own page still shows its keeper their numbers.</>}</p>
+                  <div class="wh-actions">
+                    <button type="button" class="cf-btn cf-btn-ghost sm" data-act="admin/set-standings" data-body={JSON.stringify({ visible: !data.settings.standingsVisible })}>{data.settings.standingsVisible ? 'Hide the standings' : 'Show the standings'}</button>
+                  </div>
+                </div>
+              )}
             {admin && <ul class="wh-health" aria-label="Health">
               {data.health.map((h) => <li class:list={[h.ok === true ? 'ok' : h.ok === false ? 'bad' : 'note']}><span class="wh-dot" aria-hidden="true"></span><b>{h.label}</b><span>{h.detail}</span></li>)}
             </ul>}

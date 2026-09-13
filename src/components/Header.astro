@@ -7,8 +7,10 @@ interface Props {
   warbands: number;
   scenarios: number;
   fallen: number;
+  /** Whether the standings section is on the page, so the nav offers it. */
+  standings?: boolean;
 }
-const { warbands, scenarios, fallen } = Astro.props;
+const { warbands, scenarios, fallen, standings = true } = Astro.props;
 ---
 
   <div class="header-bar" id="campaign-navigation">
@@ -16,7 +18,7 @@ const { warbands, scenarios, fallen } = Astro.props;
     <nav class="site-nav" aria-label="Campaign sections">
       <a class="secondary-section" href="#town-cryer">Town Cryer</a>
       <a href="#warbands">Warbands</a>
-      <a href="#standings">Standings</a>
+      {standings && <a href="#standings">Standings</a>}
       <a class="secondary-section" href="#chronicle">Chronicle</a>
       <a class="secondary-section" href="#graveyard">Graveyard</a>
       <a class="secondary-section" href={`${base}/scenarios/`}>Scenarios</a>
