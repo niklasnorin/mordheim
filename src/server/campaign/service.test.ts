@@ -12,6 +12,7 @@ import { LOCATIONS, OMENS, locationById } from '../../curfew/engine.ts';
 import { warbands as fixtures } from '../../data/warbands.ts';
 import { history } from '../../data/history.ts';
 import { setRole } from '../roles.ts';
+import { getSettings, setSetting } from './settings.ts';
 
 const gm = actorOf('user-gm', 'Game Master', 'gm');
 const niklas = actorOf('user-niklas', 'Niklas');
@@ -106,6 +107,9 @@ test('a game master sets up an upcoming scenario and the players tell their side
   assert.equal(s.id, 'scenario-02-the-drowned-bell');
   assert.equal(s.status, 'upcoming');
   assert.equal(s.rulebookScenario, 'Hidden Treasure', 'rulebook names are spelled as the book does');
+  assert.equal(s.prologueAsSummary, true, 'the prologue stands under the title until the game is played');
+  assert.equal((await updateScenario(gm, s.id, { prologueAsSummary: false })).prologueAsSummary, false);
+  await updateScenario(gm, s.id, { prologueAsSummary: true });
   assert.deepEqual(s.warbands.map((w) => w.warbandId).sort(), ['bitterbrow-expedition', 'nordost']);
   const list = await listScenarios();
   assert.deepEqual(list.map((x) => x.status), ['played', 'upcoming']);
@@ -204,4 +208,12 @@ test('the Curfew’s content lives in the database: seeded from the files, check
   // roles
   await setRole(niklas.id, 'gm');
   await assert.rejects(setRole('nobody', 'gm'));
+});
+
+test('the standings are hidden until the admin shows them', async () => {
+  const admin = actorOf('user-gm', 'Game Master', 'admin');
+  assert.equal((await getSettings()).standingsVisible, false, 'hidden by default');
+  await assert.rejects(setSetting(gm, 'standingsVisible', true), (e: unknown) => e instanceof LedgerError && e.status === 403, 'a game master may not');
+  assert.equal((await setSetting(admin, 'standingsVisible', true)).standingsVisible, true);
+  assert.equal((await setSetting(admin, 'standingsVisible', false)).standingsVisible, false);
 });

@@ -136,3 +136,6 @@
 .mg-revisions p { font-size: var(--text-ui); color: var(--ink-dim); }
 .mg-empty { padding: 1.4rem; text-align: center; font-style: italic; color: var(--ink-dim); border: 1px dashed var(--border); }
 .mg-note { font-size: var(--text-meta); color: var(--ink-dim); font-style: italic; }
+
+.mg-rules-link { text-transform: none; letter-spacing: 0; font-size: var(--text-meta); color: var(--gold); margin-left: .4rem; text-underline-offset: .2em; }
+.mg-rules-link:hover { color: var(--parchment); }

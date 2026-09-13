@@ -10,7 +10,7 @@ import { getActor, isGm } from '../../server/roles';
 import { listScenarios } from '../../server/campaign/scenarios';
 import { listWarbands } from '../../server/campaign/roster';
 import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook';
-import type { Scenario, Warband } from '../../campaign/model';
+import { summaryOf, type Scenario, type Warband } from '../../campaign/model';
 import { localDate } from '../../curfew/engine';
 
 export const prerender = false;
@@ -51,7 +51,7 @@ const today = localDate();
               <span class="mg-date">{imperialOf(s.playedOn)}</span>
               <span class="mg-real">{realOf(s.playedOn)}{s.playedOn < today ? ' · not yet marked played' : ''}</span>
               {s.warbands.length > 0 ? <span class="mg-who">{s.warbands.map((w) => <span>{nameOf(w.warbandId)}</span>)}</span> : <p>No warbands named yet.</p>}
-              {s.prologue && <p>{s.prologue.slice(0, 180)}{s.prologue.length > 180 ? '…' : ''}</p>}
+              {summaryOf(s) && <p>{summaryOf(s).slice(0, 180)}{summaryOf(s).length > 180 ? '…' : ''}</p>}
             </a>
           ))}
         </div>
@@ -73,6 +73,7 @@ const today = localDate();
           </fieldset>
           <label class="mg-field">Custom and special rules<textarea name="customRules" maxlength="8000" placeholder="House rules, the special-rule roll, what the objective buildings are, how long it lasts."></textarea></label>
           <label class="mg-field">Prologue<textarea name="prologue" maxlength="8000" class="tall" placeholder="Where the fight is, what brought the warbands there, what is at stake. Neutral, past tense, as the archivist writes."></textarea></label>
+          <label class="mg-field check"><input type="checkbox" name="prologueAsSummary" checked /> Print the prologue under the title until the game is played</label>
           <div class="mg-actions end"><button type="submit" class="mg-btn">Announce the scenario</button></div>
         </form>
       </section>
@@ -88,7 +89,7 @@ const today = localDate();
               <h3>{s.title}</h3>
               <span class="mg-date">{imperialOf(s.playedOn)}</span>
               <span class="mg-who">{s.warbands.map((w) => <span>{nameOf(w.warbandId)}{w.result ? ` — ${resultLabel[w.result].toLowerCase()}` : ''}</span>)}</span>
-              {(s.chronicle || s.summary) && <p>{(s.chronicle || s.summary).slice(0, 220)}{(s.chronicle || s.summary).length > 220 ? '…' : ''}</p>}
+              {(s.chronicle || summaryOf(s)) && <p>{(s.chronicle || summaryOf(s)).slice(0, 220)}{(s.chronicle || summaryOf(s)).length > 220 ? '…' : ''}</p>}
             </a>
           ))}
         </div>

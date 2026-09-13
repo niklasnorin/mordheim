@@ -11,6 +11,7 @@ import { issueResetWord } from '../../../server/account/service';
 import { setRole } from '../../../server/roles';
 import { createArticle, deleteArticle, updateArticle } from '../../../server/campaign/news';
 import { deleteDocument, saveDocument } from '../../../server/content/curfew';
+import { setSetting } from '../../../server/campaign/settings';
 import { currentLocation } from '../../../server/curfew/service';
 
 export const prerender = false;
@@ -26,6 +27,7 @@ const routes = {
   'revoke-sessions': route(z.object({ userId: z.string().min(1).max(128) }), async (i) => { const n = await revokeSessions(i.userId); return { ok: true, message: n ? `Signed out of ${n} ${n === 1 ? 'device' : 'devices'}.` : 'They were not signed in anywhere.' }; }, 'admin'),
   'issue-reset': route(z.object({ userId: z.string().min(1).max(128) }), async (i) => { const r = await issueResetWord(i.userId); return { ok: true, message: 'A reset word, good for two days. Pass it on; it is not shown again.', word: r.word, expiresAt: r.expiresAt }; }, 'admin'),
   'set-role': route(z.object({ userId: z.string().min(1).max(128), role: z.enum(['player', 'gm']) }), async (i) => { await setRole(i.userId, i.role); return { ok: true, message: i.role === 'gm' ? 'They are a game master now.' : 'They are a player again.' }; }, 'admin'),
+  'set-standings': route(z.object({ visible: z.boolean() }), async (i, a) => { const s = await setSetting(a, 'standingsVisible', i.visible); return { ok: true, message: s.standingsVisible ? 'The standings are on the front page.' : 'The standings are the Watch’s alone now.' }; }, 'admin'),
   'run-midnight': route(z.object({}), async () => { const r = await runMidnight(today()); return { ok: true, message: r.nights ? `Midnight ran: ${r.nights} ${r.nights === 1 ? 'night' : 'nights'} written across ${r.ledgers} ${r.ledgers === 1 ? 'ledger' : 'ledgers'}, ${r.dispatches} for the Cryer.` : 'Midnight ran: every ledger was already current.', run: r }; }, 'admin'),
   // the game master's: the campaign
   'delete-dispatch': route(z.object({ id: z.number().int().positive() }), async (i) => { await deleteDispatch(i.id); return { ok: true, message: 'Pulled from the broadsheet.' }; }, 'gm'),

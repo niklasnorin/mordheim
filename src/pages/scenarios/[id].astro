@@ -13,8 +13,8 @@ import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm } from '../../server/roles';
 import { listScenarios, revisionsOf } from '../../server/campaign/scenarios';
 import { listWarbands } from '../../server/campaign/roster';
-import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook';
-import { MEMBER_STATUSES, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
+import { RULEBOOK_SCENARIOS, rulebookUrl } from '../../campaign/rulebook';
+import { MEMBER_STATUSES, summaryOf, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
 import { CAMPAIGN } from '../../curfew/engine';
 
 export const prerender = false;
@@ -55,10 +55,17 @@ const winners = scenario.warbands.filter((w) => w.result === 'victory');
 const attendingMembers = scenario.warbands.flatMap((p) => (warbandOf(p.warbandId)?.members ?? []).map((m) => ({ ...m, warbandName: nameOf(p.warbandId) })));
 const when = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: CAMPAIGN.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
 const puzzle = upcoming ? null : scenario.puzzle;
+// What stands under the title: the summary, or the prologue while the game is still to be played.
+const summary = summaryOf(scenario);
+// A rulebook scenario carries its own rules and its own win condition; a custom one is written out here.
+const rulesUrl = rulebookUrl(scenario.rulebookScenario);
+// A telling nobody has written is not printed at all.
+const prologues = scenario.warbands.filter((w) => w.prologue.trim());
+const epilogues = scenario.warbands.filter((w) => w.epilogue.trim());
 const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', Anchor: 'anchor', Crown: 'crown', Moon: 'moon' };
 ---
 
-<Base title={`${scenario.title} — Mordheim`} description={scenario.summary || scenario.prologue.slice(0, 160)}>
+<Base title={`${scenario.title} — Mordheim`} description={summary.slice(0, 160)}>
   <main id="main-content" class="battle-report mg" data-base={base}>
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a href={home}>Mordheim</a><span aria-hidden="true">/</span>
@@ -73,7 +80,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         <p class="section-kicker">From the campaign archives · {imperial}</p>
       )}
       <h1>{scenario.title}</h1>
-      {scenario.summary ? <p class="summary">{scenario.summary}</p> : upcoming && scenario.prologue ? <p class="summary">{scenario.prologue}</p> : null}
+      {summary && <p class="summary">{summary}</p>}
       <div class="participants" aria-label={upcoming ? 'Attending warbands' : 'Participating warbands'}>
         {scenario.warbands.map((w) => (
           <a href={`#${w.warbandId}`} class:list={['participant', w.result ?? 'attending']}>
@@ -110,11 +117,11 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         <h2>When &amp; how</h2>
         <dl class="outcome-facts">
           <div><dt>Played on</dt><dd>{imperial}<br /><small class="archive-note">{realDay}</small></dd></div>
-          <div><dt>Rulebook scenario</dt><dd>{scenario.rulebookScenario ?? 'A custom scenario'}</dd></div>
+          <div><dt>Rulebook scenario</dt><dd>{scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'A custom scenario'}</dd></div>
           <div><dt>Warbands</dt><dd>{scenario.warbands.length ? scenario.warbands.map((w) => nameOf(w.warbandId)).join(' against ') : 'To be named'}</dd></div>
         </dl>
-        {scenario.customRules ? (<><h3>Rules in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>) : <p class="archive-note">{scenario.rulebookScenario ? 'Played as the rulebook has it.' : 'The rules are still being written.'}</p>}
-        {scenario.winCondition && (<><h3>Win condition</h3><p>{scenario.winCondition}</p></>)}
+        {scenario.customRules ? (<><h3>Rules in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>) : <p class="archive-note">{scenario.rulebookScenario ? <>Played as the rulebook has it{rulesUrl ? <>; <a href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules in full</a></> : null}.</> : 'The rules are still being written.'}</p>}
+        {scenario.winCondition && !scenario.rulebookScenario && (<><h3>Win condition</h3><p>{scenario.winCondition}</p></>)}
       </section>
     )}
 
@@ -122,14 +129,14 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
       <section id="outcome" class="panel">
         <h2>Scenario &amp; outcome</h2>
         <dl class="outcome-facts">
-          <div><dt>Rulebook scenario</dt><dd>{scenario.rulebookScenario ?? 'Custom scenario'}</dd></div>
-          <div><dt>Win condition</dt><dd>{scenario.winCondition || 'Not recorded'}</dd></div>
+          <div><dt>Rulebook scenario</dt><dd>{scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'Custom scenario'}</dd></div>
+          {(scenario.winCondition || !scenario.rulebookScenario) && <div><dt>Win condition</dt><dd>{scenario.winCondition || 'Not recorded'}</dd></div>}
           <div><dt>Winner</dt><dd>{winners.length ? winners.map((w) => nameOf(w.warbandId)).join(' & ') : 'No winner — draw'}</dd></div>
         </dl>
         {scenario.customRules && (<><h3>Rules in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>)}
         <h3>How the outcome was decided</h3>
         <p>{scenario.outcome || 'Not recorded.'}</p>
-        {(!scenario.rulebookScenario || !scenario.winCondition) && (
+        {!scenario.rulebookScenario && !scenario.winCondition && (
           <p class="archive-note">The chapter title is not a rulebook scenario name. Missing rules information is left unconfirmed rather than inferred from the story.</p>
         )}
       </section>
@@ -139,13 +146,13 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
       <p class="section-kicker">Before the first blow</p>
       <h2 class="section-title">Prologue</h2>
       <p class="neutral">{scenario.prologue || (upcoming ? 'The game master has not yet set the scene.' : 'Not recorded.')}</p>
-      {scenario.warbands.length > 0 && (
+      {prologues.length > 0 && (
         <div class="perspectives">
-          {scenario.warbands.map((w) => (
+          {prologues.map((w) => (
             <article class="panel perspective">
               <p class="voice-label">From their perspective</p>
               <h3>{nameOf(w.warbandId)}</h3>
-              <p>{w.prologue || (speaksFor.some((s) => s.warbandId === w.warbandId) ? 'Your prologue is not yet written; the pen is below.' : 'This perspective has not yet been recorded.')}</p>
+              <p>{w.prologue}</p>
             </article>
           ))}
         </div>
@@ -165,13 +172,13 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           <p class="section-kicker">When the fighting ends</p>
           <h2 class="section-title">Epilogue</h2>
           <p class="neutral">{scenario.epilogue || 'Not recorded.'}</p>
-          {scenario.warbands.length > 0 && (
+          {epilogues.length > 0 && (
             <div class="perspectives">
-              {scenario.warbands.map((w) => (
+              {epilogues.map((w) => (
                 <article class="panel perspective">
                   <p class="voice-label">From their perspective</p>
                   <h3>{nameOf(w.warbandId)}</h3>
-                  <p>{w.epilogue || 'This perspective has not yet been recorded.'}</p>
+                  <p>{w.epilogue}</p>
                 </article>
               ))}
             </div>
@@ -340,15 +347,16 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
               <label class="mg-field">Title<input name="patch.title" required maxlength="120" value={scenario.title} /></label>
               <div class="mg-two">
                 <label class="mg-field">Played on<input name="patch.playedOn" type="date" required value={scenario.playedOn} /><small>{imperial}</small></label>
-                <label class="mg-field">Rulebook scenario<select name="patch.rulebookScenario" data-nullable><option value="" selected={!scenario.rulebookScenario}>Custom scenario</option>{RULEBOOK_SCENARIOS.map((r) => <option value={r} selected={r === scenario!.rulebookScenario}>{r}</option>)}{scenario.rulebookScenario && !(RULEBOOK_SCENARIOS as readonly string[]).includes(scenario.rulebookScenario) && <option value={scenario.rulebookScenario} selected>{scenario.rulebookScenario}</option>}</select></label>
+                <label class="mg-field">Rulebook scenario{rulesUrl && <> <a class="mg-rules-link" href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules <Icon name="arrow-up-right" size={12} /></a></>}<select name="patch.rulebookScenario" data-nullable><option value="" selected={!scenario.rulebookScenario}>Custom scenario</option>{RULEBOOK_SCENARIOS.map((r) => <option value={r} selected={r === scenario!.rulebookScenario}>{r}</option>)}{scenario.rulebookScenario && !(RULEBOOK_SCENARIOS as readonly string[]).includes(scenario.rulebookScenario) && <option value={scenario.rulebookScenario} selected>{scenario.rulebookScenario}</option>}</select></label>
               </div>
               <fieldset class="mg-fieldset"><legend>Who fights</legend>
                 <div class="mg-checks">{warbands.map((w) => <label class="mg-field check"><input type="checkbox" name="patch.warbandIds" value={w.id} data-array checked={scenario!.warbands.some((p) => p.warbandId === w.id)} /> {w.name} <span class="mg-muted">({w.type})</span></label>)}</div>
                 <p class="mg-note">A warband taken off the list takes its warriors' records for this scenario with it.</p>
               </fieldset>
               <label class="mg-field">Custom and special rules<textarea name="patch.customRules" maxlength="8000">{scenario.customRules}</textarea></label>
-              <label class="mg-field">Win condition<textarea name="patch.winCondition" maxlength="4000">{scenario.winCondition}</textarea><small>The rulebook's words, or none.</small></label>
+              <label class="mg-field" data-when-custom hidden={!!scenario.rulebookScenario}>Win condition<textarea name="patch.winCondition" maxlength="4000">{scenario.winCondition}</textarea><small>How a custom scenario is won. A rulebook scenario sets its own.</small></label>
               <label class="mg-field">Prologue<textarea name="patch.prologue" maxlength="8000" class="tall">{scenario.prologue}</textarea></label>
+              <label class="mg-field check"><input type="checkbox" name="patch.prologueAsSummary" checked={scenario.prologueAsSummary} /> Print the prologue under the title until the game is played</label>
               <label class="mg-field">Summary<textarea name="patch.summary" maxlength="1000">{scenario.summary}</textarea><small>Two or three sentences under the title.</small></label>
               {!upcoming && (
                 <>
@@ -489,6 +497,19 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   const root = document.getElementById('main-content')!;
   const base = root.dataset.base ?? '';
   wireManage(root, base);
+  // a rulebook scenario sets its own win condition, so the field is only for a custom one
+  for (const select of root.querySelectorAll<HTMLSelectElement>('select[name="patch.rulebookScenario"]')) {
+    const form = select.closest('form');
+    const field = form?.querySelector<HTMLElement>('[data-when-custom]');
+    const link = form?.querySelector<HTMLAnchorElement>('.mg-rules-link');
+    const follow = () => {
+      if (field) field.hidden = !!select.value;
+      if (link) { const slug = select.value.toLowerCase().replace(/[^a-z0-9]+/g, '-'); link.hidden = !select.value; if (select.value) link.href = `https://mordheimer.net/docs/campaigns/scenarios/mordheim-rulebook/${slug}`; }
+    };
+    select.addEventListener('change', follow);
+    follow();
+  }
+
   // the muster: rows of warriors, each with whether they came and how they fared
   for (const form of root.querySelectorAll<HTMLFormElement>('.brought-form')) {
     form.addEventListener('change', (e) => {

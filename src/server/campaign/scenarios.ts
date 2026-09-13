@@ -30,7 +30,7 @@ type Row = typeof scenarios.$inferSelect;
 function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mems: (typeof scenarioMembers.$inferSelect)[], ooa: (typeof scenarioOutOfAction.$inferSelect)[]): Scenario {
   return {
     id: r.id, sequence: r.sequence, status: r.status, title: r.title, playedOn: r.playedOn, rulebookScenario: r.rulebookScenario, customRules: r.customRules,
-    winCondition: r.winCondition, summary: r.summary, chronicle: r.chronicle, outcome: r.outcome, prologue: r.prologue, battle: (r.battle as string[]) ?? [], epilogue: r.epilogue,
+    winCondition: r.winCondition, summary: r.summary, chronicle: r.chronicle, outcome: r.outcome, prologue: r.prologue, prologueAsSummary: r.prologueAsSummary, battle: (r.battle as string[]) ?? [], epilogue: r.epilogue,
     battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null,
     warbands: parts.filter((p) => p.scenarioId === r.id).map((p): ScenarioWarband => ({
       scenarioId: p.scenarioId, warbandId: p.warbandId, result: p.result, prologue: p.prologue, epilogue: p.epilogue, accomplishments: p.accomplishments,
@@ -97,7 +97,7 @@ async function speaksFor(actor: Actor, scenarioId: string, warbandId: string): P
 // ───────────────────────── the game master's part ─────────────────────────
 
 export interface ScenarioInput {
-  title: string; playedOn: string; rulebookScenario?: string | null; customRules?: string; prologue?: string; summary?: string; warbandIds?: string[];
+  title: string; playedOn: string; rulebookScenario?: string | null; customRules?: string; prologue?: string; prologueAsSummary?: boolean; summary?: string; warbandIds?: string[];
 }
 export type ScenarioPatch = Partial<ScenarioInput & {
   winCondition: string; chronicle: string; outcome: string; epilogue: string; loot: string[]; campaignNotes: string[]; battleOpen: boolean; puzzle: Puzzle | null;
@@ -123,7 +123,7 @@ export async function createScenario(actor: Actor, input: ScenarioInput): Promis
   while (taken.has(id)) id = `scenario-${String(seq).padStart(2, '0')}-${slugify(title)}-${k++}`;
   await d.insert(scenarios).values({
     id, sequence: seq, status: 'upcoming', title, playedOn: input.playedOn, rulebookScenario: rulebookOf(input.rulebookScenario), customRules: clean(input.customRules, 8000),
-    prologue: clean(input.prologue, 8000), summary: clean(input.summary, 1000), createdBy: actor.id,
+    prologue: clean(input.prologue, 8000), prologueAsSummary: input.prologueAsSummary ?? true, summary: clean(input.summary, 1000), createdBy: actor.id,
   });
   if (input.warbandIds?.length) await setParticipants(actor, id, input.warbandIds);
   return (await getScenario(id))!;
@@ -142,6 +142,7 @@ export async function updateScenario(actor: Actor, id: string, patch: ScenarioPa
   if (patch.chronicle !== undefined) set.chronicle = clean(patch.chronicle, 4000);
   if (patch.outcome !== undefined) set.outcome = clean(patch.outcome, 4000);
   if (patch.prologue !== undefined) set.prologue = clean(patch.prologue, 8000);
+  if (patch.prologueAsSummary !== undefined) set.prologueAsSummary = !!patch.prologueAsSummary;
   if (patch.epilogue !== undefined) set.epilogue = clean(patch.epilogue, 8000);
   if (patch.loot !== undefined) set.loot = paragraphs(patch.loot);
   if (patch.campaignNotes !== undefined) set.campaignNotes = paragraphs(patch.campaignNotes);

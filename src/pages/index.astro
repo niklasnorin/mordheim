@@ -13,6 +13,7 @@ import { campaignMoves, curfewStory, recentDispatches, todayFor, type CurfewStor
 import { listWarbands } from '../server/campaign/roster';
 import { listScenarios, memberStories, type MemberChapter } from '../server/campaign/scenarios';
 import { articlesFor } from '../server/campaign/news';
+import { DEFAULT_SETTINGS, getSettings, type CampaignSettings } from '../server/campaign/settings';
 import { primeContent } from '../server/content/curfew';
 import { locationForNight, type Move } from '../curfew/engine';
 import type { NewsArticle, Scenario, Warband } from '../campaign/model';
@@ -26,11 +27,13 @@ const today = todayFor(null);
 let warbands: Warband[] = [], scenarios: Scenario[] = [], articles: NewsArticle[] = [], dispatches: PrintedDispatch[] = [], moves: Move[] = [];
 let stories: Record<string, MemberChapter[]> = {};
 let story: CurfewStory = { members: {}, warbands: {} };
+// The standings stay the Watch's until the admin shows them: no table, no rating on the cards.
+let settings: CampaignSettings = DEFAULT_SETTINGS;
 let trouble = !hasDatabase();
 if (hasDatabase()) {
   try {
     await primeContent();
-    [warbands, scenarios, moves, dispatches] = await Promise.all([listWarbands(), listScenarios(), campaignMoves(), recentDispatches(today, 8)]);
+    [warbands, scenarios, moves, dispatches, settings] = await Promise.all([listWarbands(), listScenarios(), campaignMoves(), recentDispatches(today, 8), getSettings()]);
     stories = memberStories(scenarios);
     articles = await articlesFor(locationForNight(today, moves).id);
     story = await curfewStory(today);
@@ -41,7 +44,7 @@ const played = scenarios.filter((s) => s.status === 'played').length;
 ---
 
 <Base title="Mordheim — City of the Damned | Campaign Chronicle">
-  <Header warbands={warbands.length} scenarios={played} fallen={fallen} />
+  <Header warbands={warbands.length} scenarios={played} fallen={fallen} standings={settings.standingsVisible} />
 
   <main id="main-content">
     {trouble && <div class="empty-state"><p>The campaign's record could not be read just now. Try again in a moment.</p></div>}
@@ -55,11 +58,11 @@ const played = scenarios.filter((s) => s.status === 'played').length;
         wyrdstone, gold, and glory. Most will find only death. Click a warrior to read their tale.
       </p>
       <div class="warband-grid">
-        {warbands.map((wb) => <WarbandCard warband={wb} standing={story.warbands[wb.id]} />)}
+        {warbands.map((wb) => <WarbandCard warband={wb} standing={story.warbands[wb.id]} showRating={settings.standingsVisible} />)}
       </div>
     </section>
 
-    <Standings warbands={warbands} />
+    {settings.standingsVisible && <Standings warbands={warbands} />}
     <Chronicle scenarios={scenarios} warbands={warbands} />
     <Graveyard warbands={warbands} />
   </main>

@@ -58,15 +58,25 @@ export function wireManage(root: HTMLElement, base: string): void {
   });
 }
 
+/**
+ * Write one dotted field name into a nested body: `patch.stats.WS` nests objects, and a numbered segment makes a
+ * list, so `results.0.warbandId` and `results.1.result` come out as the array the server asks for.
+ */
+export function setPath(out: Record<string, unknown>, path: string, value: unknown): void {
+  const parts = path.split('.');
+  const index = (p: string) => /^\d+$/.test(p);
+  let at: Record<string, unknown> = out;
+  for (const [i, p] of parts.slice(0, -1).entries()) {
+    at[p] ??= index(parts[i + 1]) ? [] : {};
+    at = at[p] as Record<string, unknown>;
+  }
+  at[parts.at(-1)!] = value;
+}
+
 /** Fields to nested JSON. */
 export function readForm(form: HTMLFormElement): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  const set = (path: string, value: unknown) => {
-    const parts = path.split('.');
-    let at: Record<string, unknown> = out;
-    for (const p of parts.slice(0, -1)) at = (at[p] ??= {}) as Record<string, unknown>;
-    at[parts.at(-1)!] = value;
-  };
+  const set = (path: string, value: unknown) => setPath(out, path, value);
   const seen = new Set<string>();
   for (const el of [...form.elements] as (HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement)[]) {
     const name = el.name;

@@ -162,6 +162,8 @@ export interface Scenario {
   outcome: string;
   /** The game master's neutral account. */
   prologue: string;
+  /** Until the game is played, the prologue stands in for the summary under the title. */
+  prologueAsSummary: boolean;
   battle: string[];
   epilogue: string;
   /** Whether attending players may rewrite the battle narrative. */
@@ -186,6 +188,15 @@ export interface NewsArticle {
   locationId: string;
   published: boolean;
   sort: number;
+}
+
+/**
+ * What stands under a scenario's title. An upcoming game usually has no summary yet, so the game master's
+ * prologue stands in for one until the game is played, unless they have said otherwise.
+ */
+export function summaryOf(s: Pick<Scenario, 'status' | 'summary' | 'prologue' | 'prologueAsSummary'>): string {
+  if (s.summary.trim()) return s.summary;
+  return s.status === 'upcoming' && s.prologueAsSummary ? s.prologue : '';
 }
 
 /** A slug for an id: lower-case ASCII, hyphens between words. */

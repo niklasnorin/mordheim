@@ -13,7 +13,7 @@ const id = z.string().min(1).max(120);
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const paragraphs = z.array(z.string().max(4000)).max(60);
 const scenarioFields = {
-  title: z.string().max(120), playedOn: day, rulebookScenario: z.string().max(80).nullable(), customRules: z.string().max(8000), prologue: z.string().max(8000), summary: z.string().max(1000),
+  title: z.string().max(120), playedOn: day, rulebookScenario: z.string().max(80).nullable(), customRules: z.string().max(8000), prologue: z.string().max(8000), prologueAsSummary: z.boolean(), summary: z.string().max(1000),
   warbandIds: z.array(z.string().max(64)).max(20), winCondition: z.string().max(4000), chronicle: z.string().max(4000), outcome: z.string().max(4000), epilogue: z.string().max(8000),
   loot: paragraphs, campaignNotes: paragraphs, battleOpen: z.boolean(),
 };

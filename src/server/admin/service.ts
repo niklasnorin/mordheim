@@ -13,6 +13,7 @@ import { LedgerError, THE_WATCH, campaignMoves, dispatchSource, moveCampaign, re
 import { loadRoster } from '../campaign/roster.ts';
 import { primeContent } from '../content/curfew.ts';
 import { roleFor, type Role } from '../roles.ts';
+import { getSettings, type CampaignSettings } from '../campaign/settings.ts';
 
 export { moveCampaign };
 
@@ -52,6 +53,7 @@ export interface Overview {
   runs: (typeof curfewRuns.$inferSelect)[];
   counts: { players: number; ledgers: number; warbands: number; dispatches: number; sessions: number };
   health: HealthItem[];
+  settings: CampaignSettings;
 }
 
 export interface HealthItem { label: string; ok: boolean | null; detail: string }
@@ -60,7 +62,7 @@ export async function overview(today: number): Promise<Overview> {
   await primeContent();
   const d = db();
   const { warbands } = await loadRoster();
-  const [ledgerRows, players, dispatches, runs, dispatchCount, sessionCount, moves] = await Promise.all([
+  const [ledgerRows, players, dispatches, runs, dispatchCount, sessionCount, moves, settings] = await Promise.all([
     d.select({ ledger: curfewLedgers, keeper: { id: user.id, name: user.name, email: user.email } }).from(curfewLedgers).innerJoin(user, eq(user.id, curfewLedgers.ownerId)),
     listPlayers(),
     recentDispatches(today, 12),
@@ -68,6 +70,7 @@ export async function overview(today: number): Promise<Overview> {
     d.select({ n: sql<number>`count(*)::int` }).from(cryerDispatches),
     d.select({ n: sql<number>`count(*)::int` }).from(session).where(gt(session.expiresAt, new Date())),
     campaignMoves(),
+    getSettings(),
   ]);
 
   const ledgers: LedgerRow[] = warbands.map((w) => {
@@ -88,6 +91,7 @@ export async function overview(today: number): Promise<Overview> {
     ledgers, players, dispatches, runs,
     counts: { players: players.length, ledgers: ledgerRows.length, warbands: warbands.length, dispatches: dispatchCount[0]?.n ?? 0, sessions: sessionCount[0]?.n ?? 0 },
     health: health(runs[0]),
+    settings,
   };
 }
 

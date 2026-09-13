@@ -76,6 +76,7 @@ The repository names technical things in the fiction's words. This maps each wor
 | **Revision** | An earlier telling of the battle, kept whole whenever the narrative is rewritten; also an earlier version of a content document. | `scenario_revisions`, `writeBattle`; `curfew_content_revisions`, `saveDocument` |
 | **Document** | One of the Curfew's content JSON documents: `omens`, `moons`, `tokens`, `location:<id>`. Checked by `validateDocument` before it is saved; put in force by `useContent`. | `src/curfew/packs.ts`, `src/server/content/curfew.ts` |
 | **Seed** | The first fill of an empty database from the files under `src/data/`. Once. | `ensureSeeded`, `seedCampaign`; `primeContent` for content |
+| **Switch, setting** | One of the campaign's switches, set by the admin in the Watch House. `standingsVisible`: whether the home page prints the standings and the cards their ratings; off by default. | `campaign_settings`, `getSettings`, `setSetting` in `campaign/settings.ts` |
 
 ## Ledgers and the server
 

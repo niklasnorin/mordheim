@@ -15,6 +15,7 @@ import { getWarband, listWarbands } from '../../server/campaign/roster';
 import { listScenarios, memberStories, type MemberChapter } from '../../server/campaign/scenarios';
 import { curfewStory, todayFor } from '../../server/curfew/service';
 import { primeContent } from '../../server/content/curfew';
+import { getSettings } from '../../server/campaign/settings';
 import { STAT_KEYS, STAT_NAMES, type Warband } from '../../campaign/model';
 import type { WarbandStanding } from '../../curfew/story';
 
@@ -25,12 +26,14 @@ const ready = hasDatabase();
 const viewer = ready ? await getActor(Astro.request) : null;
 let warband: Warband | undefined, stories: Record<string, MemberChapter[]> = {}, standing: WarbandStanding | undefined, keeperless = 0;
 let players: { id: string; name: string; email: string }[] = [];
+let standingsVisible = false;
 if (ready) {
   try {
     await primeContent();
     warband = await getWarband(Astro.params.id!);
     if (warband) {
-      const [scenarios, story, all] = await Promise.all([listScenarios(), curfewStory(todayFor(null)), listWarbands()]);
+      const [scenarios, story, all, settings] = await Promise.all([listScenarios(), curfewStory(todayFor(null)), listWarbands(), getSettings()]);
+      standingsVisible = settings.standingsVisible;
       stories = memberStories(scenarios);
       standing = story.warbands[warband.id];
       keeperless = all.filter((w) => !w.ownerId).length;
@@ -47,6 +50,8 @@ const imperialOf = (day: string) => formatImperial(imperialForDate(day));
 const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
 const statusLabel = { active: 'stood', injured: 'was hurt', dead: 'fell' } as const;
 const living = warband?.members.filter((m) => !m.dead).length ?? 0;
+// the numbers are a standing: shown to everyone when the admin has the standings on, else to the keeper and the game masters
+const showNumbers = standingsVisible || canEdit;
 ---
 
 <Base title={warband ? `${warband.name} — Mordheim` : 'No such warband — Mordheim'} description={warband?.lore.slice(0, 160)}>
@@ -62,7 +67,7 @@ const living = warband?.members.filter((m) => !m.dead).length ?? 0;
           <div>
             <p class="mg-kicker">{warband.type}{warband.player ? <> · kept by {warband.player}</> : <> · <span class="mg-chip">nobody’s yet</span></>}{owner && <span class="mg-chip gold">Yours</span>}</p>
             <h1 class="mg-h1">{warband.name}</h1>
-            <p class="mg-muted">{living} living {living === 1 ? 'soul' : 'souls'} of {warband.members.length} · rating <b>{warband.rating}</b> · {warband.battles} {warband.battles === 1 ? 'battle' : 'battles'}, {warband.victories} won · <b>{warband.wyrdstone}</b> shards · <b>{warband.gold}</b> gc
+            <p class="mg-muted">{living} living {living === 1 ? 'soul' : 'souls'} of {warband.members.length} · {warband.battles} {warband.battles === 1 ? 'battle' : 'battles'}{showNumbers && <>, {warband.victories} won · rating <b>{warband.rating}</b> · <b>{warband.wyrdstone}</b> shards · <b>{warband.gold}</b> gc</>}
               {standing && standing.nights > 0 && <> · spoken of in the taverns as <b>{standing.title}</b> after {standing.nights} nights{owner && <>, <a href={`${base}/curfew/`}>their ledger</a></>}</>}</p>
           </div>
         </div>

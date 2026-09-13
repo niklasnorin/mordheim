@@ -221,6 +221,8 @@ export const scenarios = pgTable('scenarios', {
   chronicle: text('chronicle').notNull().default(''),
   outcome: text('outcome').notNull().default(''),
   prologue: text('prologue').notNull().default(''),
+  /** Until the game is played, the prologue stands in for the summary under the title. */
+  prologueAsSummary: boolean('prologue_as_summary').notNull().default(true),
   battle: jsonb('battle').notNull().default([]),
   epilogue: text('epilogue').notNull().default(''),
   battleOpen: boolean('battle_open').notNull().default(false),
@@ -334,5 +336,15 @@ export const curfewContentRevisions = pgTable(
   },
   (t) => [index('curfew_content_revisions_content_idx').on(t.contentId)],
 );
+
+/**
+ * The campaign's switches, one row each, set by the admin in the Watch House: `standingsVisible` says whether the
+ * home page prints the standings table and the cards their ratings (hidden until the admin says otherwise).
+ */
+export const campaignSettings = pgTable('campaign_settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const authSchema = { user, session, account, verification };
