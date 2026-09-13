@@ -81,14 +81,6 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
       )}
       <h1>{scenario.title}</h1>
       {summary && <p class="summary">{summary}</p>}
-      <div class="participants" aria-label={upcoming ? 'Attending warbands' : 'Participating warbands'}>
-        {scenario.warbands.map((w) => (
-          <a href={`#${w.warbandId}`} class:list={['participant', w.result ?? 'attending']}>
-            {nameOf(w.warbandId)}<span>{w.result ? resultLabel[w.result] : upcoming ? 'Attending' : 'Fought'}</span>
-          </a>
-        ))}
-        {scenario.warbands.length === 0 && <span class="archive-note">No warbands named yet.</span>}
-      </div>
     </header>
 
     <nav class="report-nav" aria-label="Scenario sections">
@@ -262,6 +254,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
       <p class="section-kicker">{upcoming ? 'Who takes the field' : 'The final reckoning'}</p>
       <h2 class="section-title">{upcoming ? 'Warbands' : 'Warbands & warriors'}</h2>
       {!upcoming && <p class="neutral archive-note">Treasury and ratings are post-battle totals, not loot earned in this battle. Only explicitly recorded out-of-action results are credited; a hit, a fall, or a bow notch alone is not confirmation. “Not recorded” does not mean none occurred.</p>}
+      {scenario.warbands.length === 0 && <p class="neutral archive-note">No warbands are named yet.{gm ? ' Name them under the pen below.' : ''}</p>}
       <div class="warband-summaries">
         {scenario.warbands.map((w) => {
           const band = warbandOf(w.warbandId);
@@ -773,9 +766,6 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   .report-header { text-align: center; margin: 4rem auto 2rem; max-width: 900px; }
   h1 { color: var(--parchment); font: clamp(2.5rem, 6vw, 4.5rem)/1.1 'Pirata One', Georgia, serif; margin: 1rem 0 1.5rem; }
   .summary { max-width: 740px; margin: auto; font-size: 1.15rem; color: var(--ink); }
-  .participants { display: flex; justify-content: center; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; }
-  .participant { border: 1px solid var(--gold-dim); padding: .75rem 1.25rem; background: var(--bg-panel); text-decoration: none; }
-  .participant span { display: block; font-size: .8rem; color: var(--ink-dim); }
   .report-nav, .chapter-nav { display: flex; justify-content: center; flex-wrap: wrap; gap: .8rem 1.5rem; padding: 1.25rem 0; border-block: 1px solid var(--border); }
   .report-nav { font-size: .9rem; }
   section { margin: 3.5rem 0; }
@@ -831,7 +821,6 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
 </style>
 
 <style>
-  .participant.attending span { color: #b7c9a1; }
   .pen-link { color: var(--gold); }
   .pen { margin: 3rem 0; }
   .pen .mg-editor { max-width: 900px; margin-inline: auto; margin-top: 1rem; }
