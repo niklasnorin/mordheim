@@ -267,17 +267,18 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
               {band && <p class="archive-note">{band.type}{band.player ? `, kept by ${band.player}` : ''}{upcoming ? ` · ${band.members.filter((m) => !m.dead).length} living souls` : ''}</p>}
               {!upcoming && (
                 <>
-                  <h4>Accomplishments</h4>
-                  <p>{w.accomplishments || (w.highlights.length ? w.highlights.join(' ') : 'Not recorded.')}</p>
+                  {w.accomplishments.trim() && (<><h4>Accomplishments</h4><p>{w.accomplishments}</p></>)}
                   {w.highlights.length > 0 && (<><h4 class="finest">Finest moments</h4><ul>{w.highlights.map((h) => <li>{h}</li>)}</ul></>)}
                   {w.lowlights.length > 0 && (<><h4 class="darkest">Darkest moments</h4><ul>{w.lowlights.map((l) => <li>{l}</li>)}</ul></>)}
-                  <h4>Opponents put out of action</h4>
-                  {takedowns.length ? (
-                    <ul>{takedowns.map((e) => (<li><a href={`#member-${e.attackerId}`}>{memberName(e.attackerId)}</a> defeated {e.targetId ? <a href={`#member-${e.targetId}`}>{e.target}</a> : e.target}</li>))}</ul>
-                  ) : <p class="archive-note">Not recorded.</p>}
+                  {takedowns.length > 0 && (
+                    <>
+                      <h4>Opponents put out of action</h4>
+                      <ul>{takedowns.map((e) => (<li><a href={`#member-${e.attackerId}`}>{memberName(e.attackerId)}</a> defeated {e.targetId ? <a href={`#member-${e.targetId}`}>{e.target}</a> : e.target}</li>))}</ul>
+                    </>
+                  )}
                 </>
               )}
-              <h4 class="roster-title">{upcoming ? (w.members.length ? 'Warriors brought' : 'Warriors') : 'Every warrior\'s battle record'}</h4>
+              {(upcoming || w.members.length > 0) && <h4 class="roster-title">{upcoming ? (w.members.length ? 'Warriors brought' : 'Warriors') : 'Every warrior\'s battle record'}</h4>}
               {upcoming && w.members.length === 0 && <p class="archive-note">Not yet named. {band ? `${band.members.filter((m) => !m.dead).length} could take the field.` : ''}</p>}
               {w.members.map((member) => {
                 const m = memberOf(member.memberId);
@@ -288,12 +289,16 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                     <h5>{m?.name ?? member.memberId}</h5>
                     <p class="member-meta">{m?.rank} · {m?.role}{!upcoming && <> · <span class:list={{ darkest: member.status !== 'active' }}>{statusLabel[member.status]}</span></>}</p>
                     {member.experience != null && <p><strong>Experience:</strong> {member.experience}</p>}
-                    {(member.highlight || !upcoming) && <p><strong class="finest">Finest moment:</strong> {member.highlight || 'Not recorded.'}</p>}
-                    {(member.lowlight || !upcoming) && <p><strong class="darkest">Darkest moment:</strong> {member.lowlight || 'Not recorded.'}</p>}
+                    {member.highlight.trim() && <p><strong class="finest">Finest moment:</strong> {member.highlight}</p>}
+                    {member.lowlight.trim() && <p><strong class="darkest">Darkest moment:</strong> {member.lowlight}</p>}
                     {!upcoming && (
                       <>
-                        <p><strong>Put out of action:</strong> {events.length === 0 && 'Not recorded.'}</p>
-                        {events.length > 0 && (<ul>{events.map((e) => (<li>{e.targetId ? <a href={`#member-${e.targetId}`}>{e.target}</a> : e.target}{e.detail ? <> — {e.detail}</> : null}</li>))}</ul>)}
+                        {events.length > 0 && (
+                          <>
+                            <p><strong>Put out of action:</strong></p>
+                            <ul>{events.map((e) => (<li>{e.targetId ? <a href={`#member-${e.targetId}`}>{e.target}</a> : e.target}{e.detail ? <> — {e.detail}</> : null}</li>))}</ul>
+                          </>
+                        )}
                         {fell.length > 0 && <p><strong class="darkest">Taken out by:</strong> {fell.map((e) => memberName(e.attackerId)).join(', ')}</p>}
                       </>
                     )}
