@@ -128,7 +128,6 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       const results = h('div', { class: 'tk-result' },
         h('div', { class: 'tk-turn-label' }, 'The game is played'),
         h('ul', { class: 'tk-result-list' }, ...s.warbands.map((w) => h('li', { 'data-result': w.result ?? '' }, h('span', {}, warbandName(w.warbandId)), h('b', {}, w.result ? RESULT_LABEL[w.result] : 'No result')))),
-        h('p', { class: 'tk-turn-note' }, s.turn > 0 ? `It ran ${s.turn} ${s.turn === 1 ? 'turn' : 'turns'} as the table counted them.` : 'It was not tracked turn by turn.'),
         h('div', { class: 'tk-result-actions' },
           h('a', { class: 'tk-btn', href: `${state.base}/scenarios/${s.id}/#pen` }, svg(ICON.quill), 'Write it up'),
           state.may ? h('button', { type: 'button', class: 'tk-btn ghost', 'data-open': 'wrap-up' }, 'Change how it ended') : null,
@@ -349,8 +348,10 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     if (kind === 'wrap-up') {
       const results = state.scenario.warbands.map((w) => ({ warbandId: w.warbandId, result: String(data.get(`result.${w.warbandId}`) ?? '') }));
       if (results.some((r) => !r.result)) { toast('Every warband that fought needs a result.'); button.disabled = false; button.removeAttribute('aria-busy'); return; }
+      const calling = state.scenario.status !== 'played';
       ok = await post('played', { results });
-      if (ok) window.scrollTo({ top: 0, behavior: 'smooth' });
+      // the game called, the table goes to the scenario's page to write it up; a changed result stays here
+      if (ok && calling) { location.href = `${state.base}/scenarios/${state.scenario.id}/`; return; }
     } else if (kind === 'out-of-action') {
       const targetId = String(data.get('targetId') ?? '');
       ok = await post('out-of-action', { attackerId: data.get('attackerId'), targetId: targetId && targetId !== '@other' ? targetId : null, target: targetId === '@other' ? data.get('target') : '', detail: data.get('detail') ?? '', turn });
