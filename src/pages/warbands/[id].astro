@@ -72,12 +72,13 @@ const living = warband?.members.filter((m) => !m.dead).length ?? 0;
         <div class="mg-actions">
           {mayClaim && !gm && <button type="button" class="mg-btn" data-act="warbands/claim" data-body={JSON.stringify({ warbandId: warband.id })} data-confirm={`Take up ${warband.name}? They are yours to keep from here on: roster, story and ledger.`}>Take them up</button>}
           {mayClaim && gm && <button type="button" class="mg-btn ghost" data-act="warbands/claim" data-body={JSON.stringify({ warbandId: warband.id })} data-confirm={`Keep ${warband.name} yourself?`}>Keep them yourself</button>}
+          {canEdit && !warband.lore.trim() && <a class="mg-btn" href="#record">Add their story</a>}
           {owner && <a class="mg-btn ghost" href={`${base}/curfew/`}>The Curfew ledger</a>}
           {!viewer && ready && <a class="mg-btn ghost" href={`${base}/curfew/`}>Sign in to keep a warband</a>}
         </div>
 
         {canEdit && (
-          <details class="mg-editor">
+          <details class="mg-editor" id="record">
             <summary>The warband’s record</summary>
             <form class="mg-form" data-api="warbands/update" data-json={JSON.stringify({ warbandId: warband.id })}>
               <div class="mg-two">
@@ -226,7 +227,14 @@ const living = warband?.members.filter((m) => !m.dead).length ?? 0;
   import { wireManage } from '../../lib/manage';
   const root = document.getElementById('main-content')!;
   wireManage(root, root.dataset.base ?? '');
-  // arriving with #member opens that warrior
-  const target = location.hash && document.getElementById(location.hash.slice(1));
-  if (target instanceof HTMLDetailsElement) { target.open = true; target.scrollIntoView({ block: 'start' }); }
+  // a hash opens what it names: #member for a warrior, #record for the warband's own drawer
+  const openFromHash = () => {
+    const target = location.hash && document.getElementById(location.hash.slice(1));
+    if (!(target instanceof HTMLDetailsElement)) return;
+    target.open = true;
+    target.scrollIntoView({ block: 'start' });
+    (target.querySelector('textarea, input, select') as HTMLElement | null)?.focus({ preventScroll: true });
+  };
+  openFromHash();
+  addEventListener('hashchange', openFromHash);
 </script>

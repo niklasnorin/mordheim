@@ -28,7 +28,9 @@ const { warband, standing } = Astro.props;
       )}
     </div>
   </div>
-  {warband.lore.trim() && <div class="warband-lore"><p>{warband.lore}</p></div>}
+  {warband.lore.trim()
+    ? <div class="warband-lore"><p>{warband.lore}</p></div>
+    : <div class="warband-lore warband-lore-empty"><p>Their story is not written yet. <a href={`${base}/warbands/${warband.id}/#record`}>Add their story <Icon name="arrow-up-right" size={14} /></a></p></div>}
   <div class="roster-heading"><span>The muster roll</span><span>Select a warrior to uncover their tale</span></div>
   <div class="member-grid">
     {
@@ -114,6 +116,9 @@ const { warband, standing } = Astro.props;
     font-size: var(--text-body);
   }
   .warband-lore p { max-width: 72ch; }
+  .warband-lore-empty p { display: flex; align-items: center; gap: .5rem 1rem; flex-wrap: wrap; }
+  .warband-lore-empty a { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; font-style: normal; color: var(--gold); font: var(--text-ui)/1.5 var(--font-utility); text-underline-offset: .2em; }
+  .warband-lore-empty a:hover { color: var(--parchment); }
   .roster-heading { padding: .75rem 2rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: .25rem 1rem; color: var(--gold); font: var(--text-ui)/1.5 var(--font-utility); border-bottom: 1px solid var(--border); }
   .roster-heading span:last-child { color: var(--ink-dim); }
 
