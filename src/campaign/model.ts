@@ -6,6 +6,7 @@
  * and the seed fixtures under `src/data/`. Ids are forever: a warband or member id keys the archives, the
  * ledgers and the dispatches, so it is chosen once and never renamed.
  */
+import { RULEBOOK_TALLIES, type RulebookScenario } from './rulebook.ts';
 
 export interface Statline {
   M: number; WS: number; BS: number; S: number; T: number; W: number; I: number; A: number; Ld: number;
@@ -114,6 +115,26 @@ export interface OutOfAction {
   targetId?: string | null;
   target: string;
   detail: string;
+  /** The game turn it happened in, when the table logged it as it happened; null when written up afterwards. */
+  turn?: number | null;
+}
+
+/** What the tracker logs besides takedowns: a note is anything worth remembering, a score counts towards the tally. */
+export type EventKind = 'note' | 'score';
+export const EVENT_KINDS: EventKind[] = ['note', 'score'];
+
+/** One line of the battle tracker's log, tied to a game turn and, for a score or a warband's note, to a warband. */
+export interface ScenarioEvent {
+  id: number;
+  scenarioId: string;
+  turn: number;
+  kind: EventKind;
+  warbandId?: string | null;
+  /** Towards the tally; zero for a note. */
+  points: number;
+  text: string;
+  authorName: string;
+  createdAt: Date;
 }
 
 export interface Puzzle {
@@ -166,8 +187,14 @@ export interface Scenario {
   /** What the campaign carries forward: loot, costs, lasting consequences, unresolved records. */
   campaignNotes: string[];
   puzzle?: Puzzle | null;
+  /** The battle tracker: the game turn the table is on, 0 before the first. */
+  turn: number;
+  /** What the scenario scores, as the game master named it; empty means the rulebook scenario's own tally, or none. See `tallyOf`. */
+  tally: string;
   warbands: ScenarioWarband[];
   outOfAction: OutOfAction[];
+  /** The tracker's log, oldest first. */
+  events: ScenarioEvent[];
   createdBy?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -206,4 +233,27 @@ export function slugify(text: string): string {
     .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
     .replace(/ø/gi, 'o').replace(/æ/gi, 'ae').replace(/ß/g, 'ss')
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+/**
+ * The name of what a scenario scores, for the battle tracker: what the game master wrote, or else what the rulebook
+ * scenario counts (shards on a Wyrdstone Hunt, warriors through on a Breakthrough). Empty when nothing is tallied
+ * beyond the fighting itself.
+ */
+export function tallyOf(s: Pick<Scenario, 'tally' | 'rulebookScenario'>): string {
+  const own = s.tally.trim();
+  if (own) return own;
+  if (!s.rulebookScenario) return '';
+  const key = (Object.keys(RULEBOOK_TALLIES) as RulebookScenario[]).find((k) => k.toLowerCase() === s.rulebookScenario!.trim().toLowerCase());
+  return key ? RULEBOOK_TALLIES[key] ?? '' : '';
+}
+
+/** Each attending warband's running total from the tracker's score events, in the order the warbands attend. */
+export function scoresOf(s: Pick<Scenario, 'warbands' | 'events'>): { warbandId: string; points: number }[] {
+  return s.warbands.map((w) => ({ warbandId: w.warbandId, points: s.events.filter((e) => e.kind === 'score' && e.warbandId === w.warbandId).reduce((a, e) => a + e.points, 0) }));
+}
+
+/** Whether the table tracked this game at all: a turn counted, a line logged, or a takedown with its turn. */
+export function hasTurnLog(s: Pick<Scenario, 'events' | 'outOfAction' | 'turn'>): boolean {
+  return s.turn > 0 || s.events.length > 0 || s.outOfAction.some((o) => o.turn != null);
 }

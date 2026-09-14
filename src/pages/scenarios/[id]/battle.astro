@@ -1,0 +1,67 @@
+---
+/**
+ * The battle tracker: the scenario as it is being played, on a phone at the table. The turn, the tally, and the
+ * log of who struck whom, who scored and what happened, turn by turn. Anyone may watch; those whose warbands
+ * fight here, and the game masters, write. Everything it writes is the record's own: the out-of-action rows
+ * and the tracker's log both read back on the scenario's page.
+ */
+import Base from '../../../layouts/Base.astro';
+import Icon from '../../../components/Icon.astro';
+import '../../../styles/tracker.css';
+import { base } from '../../../lib/site';
+import { hasDatabase } from '../../../server/db/client';
+import { getActor } from '../../../server/roles';
+import { getScenario, mayTrack } from '../../../server/campaign/scenarios';
+import { listWarbands } from '../../../server/campaign/roster';
+import { tallyOf, type Scenario, type Warband } from '../../../campaign/model';
+import type { TrackerState } from '../../../lib/tracker';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const viewer = ready ? await getActor(Astro.request) : null;
+let scenario: Scenario | undefined, warbands: Warband[] = [], may = false;
+if (ready) {
+  try {
+    [scenario, warbands] = await Promise.all([getScenario(Astro.params.id!), listWarbands()]);
+    if (scenario) may = await mayTrack(viewer, scenario.id);
+  } catch (e) { console.error('[tracker] unavailable', e); }
+}
+if (!scenario) return Astro.redirect(`${base}/scenarios/`);
+
+// the table: the attending warbands and their warriors, once; the log is what changes
+const roster = scenario.warbands.map((p) => warbands.find((w) => w.id === p.warbandId)).filter((w): w is Warband => !!w).map((w) => ({
+  id: w.id, name: w.name, members: w.members.map((m) => ({ id: m.id, name: m.name, role: m.role, dead: m.dead })),
+}));
+const state: TrackerState = { base, roster, may, scenario };
+const tally = tallyOf(scenario);
+const sub = [scenario.rulebookScenario ?? 'Custom scenario', roster.map((w) => w.name).join(' against ') || 'No warbands named', tally ? `counting ${tally.toLowerCase()}` : null].filter(Boolean).join(' · ');
+---
+
+<Base title={`${scenario.title}, at the table — Mordheim`} description={`The battle tracker for ${scenario.title}.`}>
+  <main id="main-content" class="tk" data-scenario={scenario.id}>
+    <header class="tk-top">
+      <a class="tk-back" href={`${base}/scenarios/${scenario.id}/`} aria-label="Back to the scenario"><Icon name="arrow-left" size={16} /> <span>Scenario</span></a>
+      <div class="tk-heading">
+        <h1 class="tk-title">{scenario.title}</h1>
+        <p class="tk-sub">{sub}</p>
+      </div>
+      <span class="tk-live" data-on="true" title="Following the table" aria-hidden="true"></span>
+    </header>
+    <noscript><p class="tk-empty">The tracker needs JavaScript. The log so far is on the scenario's page.</p></noscript>
+    <script type="application/json" id="tracker-state" set:html={JSON.stringify(state).replace(/</g, '\\u003c')} />
+  </main>
+</Base>
+
+<script>
+  import { mountTracker, type TrackerState } from '../../../lib/tracker';
+  const root = document.getElementById('main-content')!;
+  const state = JSON.parse(document.getElementById('tracker-state')!.textContent ?? '{}') as TrackerState;
+  mountTracker(root, state);
+</script>
+
+<style is:global>
+  /* the theme switch would sit under the bar; the tracker is a night thing anyway */
+  body:has(.tk) #theme-toggle { display: none; }
+</style>

@@ -7,12 +7,16 @@
  * telling is kept as a revision. Each attending player writes their own prologue and epilogue, says which warriors
  * they brought and how each came out of it, and records who put whom out of action. A game master may do any of
  * that for any warband.
+ *
+ * While the game is played, the battle tracker logs it turn by turn: anyone at the table (a player whose warband
+ * attends, or a game master) advances the turn, notes what happened, scores towards the scenario's tally and
+ * records who put whom out of action, tagged with the turn. The out-of-action results are the record's own rows.
  */
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { members, scenarioMembers, scenarioOutOfAction, scenarioRevisions, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
+import { members, scenarioEvents, scenarioMembers, scenarioOutOfAction, scenarioRevisions, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
 import { LedgerError } from '../../curfew/ledger.ts';
-import { MEMBER_STATUSES, SCENARIO_RESULTS, slugify, type MemberStatus, type NarrativeRevision, type OutOfAction, type Puzzle, type Scenario, type ScenarioMember, type ScenarioResult, type ScenarioWarband, type Statline } from '../../campaign/model.ts';
+import { EVENT_KINDS, MEMBER_STATUSES, SCENARIO_RESULTS, slugify, type EventKind, type MemberStatus, type NarrativeRevision, type OutOfAction, type Puzzle, type Scenario, type ScenarioEvent, type ScenarioMember, type ScenarioResult, type ScenarioWarband, type Statline } from '../../campaign/model.ts';
 import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { ensureSeeded } from './seed.ts';
@@ -27,11 +31,11 @@ const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Dat
 
 type Row = typeof scenarios.$inferSelect;
 
-function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mems: (typeof scenarioMembers.$inferSelect)[], ooa: (typeof scenarioOutOfAction.$inferSelect)[]): Scenario {
+function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mems: (typeof scenarioMembers.$inferSelect)[], ooa: (typeof scenarioOutOfAction.$inferSelect)[], events: (typeof scenarioEvents.$inferSelect)[]): Scenario {
   return {
     id: r.id, sequence: r.sequence, status: r.status, title: r.title, playedOn: r.playedOn, rulebookScenario: r.rulebookScenario, customRules: r.customRules,
     winCondition: r.winCondition, summary: r.summary, chronicle: r.chronicle, outcome: r.outcome, prologue: r.prologue, prologueAsSummary: r.prologueAsSummary, battle: (r.battle as string[]) ?? [], epilogue: r.epilogue,
-    battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null,
+    battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null, turn: r.turn, tally: r.tally,
     warbands: parts.filter((p) => p.scenarioId === r.id).map((p): ScenarioWarband => ({
       scenarioId: p.scenarioId, warbandId: p.warbandId, result: p.result, prologue: p.prologue, epilogue: p.epilogue, accomplishments: p.accomplishments,
       highlights: (p.highlights as string[]) ?? [], lowlights: (p.lowlights as string[]) ?? [],
@@ -39,7 +43,8 @@ function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mem
         scenarioId: m.scenarioId, warbandId: m.warbandId, memberId: m.memberId, status: m.status, highlight: m.highlight, lowlight: m.lowlight, stats: m.stats as Statline | null, experience: m.experience,
       })),
     })),
-    outOfAction: ooa.filter((o) => o.scenarioId === r.id).map((o): OutOfAction => ({ id: o.id, scenarioId: o.scenarioId, attackerId: o.attackerId, targetId: o.targetId, target: o.target, detail: o.detail })),
+    outOfAction: ooa.filter((o) => o.scenarioId === r.id).map((o): OutOfAction => ({ id: o.id, scenarioId: o.scenarioId, attackerId: o.attackerId, targetId: o.targetId, target: o.target, detail: o.detail, turn: o.turn })),
+    events: events.filter((e) => e.scenarioId === r.id).map((e): ScenarioEvent => ({ id: e.id, scenarioId: e.scenarioId, turn: e.turn, kind: e.kind, warbandId: e.warbandId, points: e.points, text: e.text, authorName: e.authorName, createdAt: e.createdAt })),
     createdBy: r.createdBy, createdAt: r.createdAt, updatedAt: r.updatedAt,
   };
 }
@@ -48,10 +53,11 @@ function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mem
 export async function listScenarios(): Promise<Scenario[]> {
   await ensureSeeded();
   const d = db();
-  const [rows, parts, mems, ooa] = await Promise.all([
+  const [rows, parts, mems, ooa, events] = await Promise.all([
     d.select().from(scenarios), d.select().from(scenarioWarbands), d.select().from(scenarioMembers), d.select().from(scenarioOutOfAction).orderBy(asc(scenarioOutOfAction.id)),
+    d.select().from(scenarioEvents).orderBy(asc(scenarioEvents.turn), asc(scenarioEvents.id)),
   ]);
-  const list = rows.map((r) => scenarioOf(r, parts, mems, ooa));
+  const list = rows.map((r) => scenarioOf(r, parts, mems, ooa, events));
   return list.sort((a, b) => {
     if (a.status !== b.status) return a.status === 'played' ? -1 : 1;
     if (a.status === 'played') return a.sequence - b.sequence;
@@ -60,6 +66,12 @@ export async function listScenarios(): Promise<Scenario[]> {
 }
 
 export async function getScenario(id: string): Promise<Scenario | undefined> { return (await listScenarios()).find((s) => s.id === id); }
+/** The scenario, or a refusal the route can pass on. */
+export async function requireScenario(id: string): Promise<Scenario> {
+  const s = await getScenario(id);
+  if (!s) throw new LedgerError('No such scenario is in the archives.', 404);
+  return s;
+}
 
 export const playedOnly = (list: Scenario[]) => list.filter((s) => s.status === 'played');
 export const upcomingOnly = (list: Scenario[]) => list.filter((s) => s.status === 'upcoming');
@@ -93,6 +105,15 @@ async function speaksFor(actor: Actor, scenarioId: string, warbandId: string): P
   if (isGm(actor) || part[0].ownerId === actor.id) return;
   throw new LedgerError('That warband is not yours to speak for.', 403);
 }
+/** Whether the actor sits at this scenario's table: a game master, or the keeper of a warband that attends. */
+async function atTable(actor: Actor, scenarioId: string): Promise<boolean> {
+  if (isGm(actor)) return true;
+  const mine = await db().select({ id: scenarioWarbands.warbandId }).from(scenarioWarbands).innerJoin(warbands, eq(warbands.id, scenarioWarbands.warbandId)).where(and(eq(scenarioWarbands.scenarioId, scenarioId), eq(warbands.ownerId, actor.id))).limit(1);
+  return mine.length > 0;
+}
+async function tableOnly(actor: Actor, scenarioId: string): Promise<void> {
+  if (!(await atTable(actor, scenarioId))) throw new LedgerError('Only those at the table write in the tracker.', 403);
+}
 
 // ───────────────────────── the game master's part ─────────────────────────
 
@@ -100,7 +121,7 @@ export interface ScenarioInput {
   title: string; playedOn: string; rulebookScenario?: string | null; customRules?: string; prologue?: string; prologueAsSummary?: boolean; summary?: string; warbandIds?: string[];
 }
 export type ScenarioPatch = Partial<ScenarioInput & {
-  winCondition: string; chronicle: string; outcome: string; epilogue: string; loot: string[]; campaignNotes: string[]; battleOpen: boolean; puzzle: Puzzle | null;
+  winCondition: string; chronicle: string; outcome: string; epilogue: string; loot: string[]; campaignNotes: string[]; battleOpen: boolean; puzzle: Puzzle | null; tally: string;
 }>;
 
 function rulebookOf(given: string | null | undefined): string | null {
@@ -150,6 +171,7 @@ export async function updateScenario(actor: Actor, id: string, patch: ScenarioPa
   else if (patch.loot !== undefined) set.loot = paragraphs(patch.loot);
   if (patch.battleOpen !== undefined) set.battleOpen = !!patch.battleOpen;
   if (patch.puzzle !== undefined) set.puzzle = patch.puzzle ?? null;
+  if (patch.tally !== undefined) set.tally = clean(patch.tally, 60);
   await db().update(scenarios).set(set).where(eq(scenarios.id, id));
   if (patch.warbandIds !== undefined) await setParticipants(actor, id, patch.warbandIds);
   return (await getScenario(id))!;
@@ -272,11 +294,20 @@ export async function setBrought(actor: Actor, id: string, warbandId: string, br
 
 // ───────────────────────── out of action ─────────────────────────
 
-export interface OutOfActionInput { attackerId: string; targetId?: string | null; target?: string; detail?: string }
+export interface OutOfActionInput { attackerId: string; targetId?: string | null; target?: string; detail?: string; /** The game turn, when logged at the table. */ turn?: number | null }
+
+/** A game turn as the tracker counts them: 1 upwards, and never past a game that has run absurdly long. */
+const MAX_TURN = 99;
+function turnOf(given: number | null | undefined, fallback: number | null): number | null {
+  if (given === undefined || given === null) return fallback;
+  if (!Number.isInteger(given) || given < 1 || given > MAX_TURN) throw new LedgerError('That is not a turn of this game.');
+  return given;
+}
 
 /** Record a takedown. The one who struck, or the one who fell, may record it for their own warband; a game master for any. */
 export async function addOutOfAction(actor: Actor, id: string, input: OutOfActionInput): Promise<Scenario> {
   await row(id);
+  const turn = turnOf(input.turn, null);
   const d = db();
   const attending = (await d.select({ warbandId: scenarioWarbands.warbandId, ownerId: warbands.ownerId }).from(scenarioWarbands).innerJoin(warbands, eq(warbands.id, scenarioWarbands.warbandId)).where(eq(scenarioWarbands.scenarioId, id)));
   const roster = await d.select({ id: members.id, name: members.name, warbandId: members.warbandId }).from(members).where(inArray(members.warbandId, attending.length ? attending.map((a) => a.warbandId) : ['']));
@@ -288,7 +319,7 @@ export async function addOutOfAction(actor: Actor, id: string, input: OutOfActio
   if (!targetName) throw new LedgerError('Say who was put out of action.');
   const owns = (warbandId: string) => attending.some((a) => a.warbandId === warbandId && a.ownerId === actor.id);
   if (!isGm(actor) && !owns(attacker.warbandId) && !(target && owns(target.warbandId))) throw new LedgerError('You may record only what your own warriors did or suffered.', 403);
-  await d.insert(scenarioOutOfAction).values({ scenarioId: id, attackerId: attacker.id, targetId: target?.id ?? null, target: targetName, detail: clean(input.detail, 1000) });
+  await d.insert(scenarioOutOfAction).values({ scenarioId: id, attackerId: attacker.id, targetId: target?.id ?? null, target: targetName, detail: clean(input.detail, 1000), turn });
   await d.update(scenarios).set({ updatedAt: new Date() }).where(eq(scenarios.id, id));
   return (await getScenario(id))!;
 }
@@ -306,3 +337,58 @@ export async function removeOutOfAction(actor: Actor, id: string, ooaId: number)
   await d.delete(scenarioOutOfAction).where(eq(scenarioOutOfAction.id, ooaId));
   return (await getScenario(id))!;
 }
+
+// ───────────────────────── the battle tracker ─────────────────────────
+
+/**
+ * The table moves to a turn: forward as the game goes, back if somebody pressed too soon, 0 to say the game has not
+ * begun. Anyone at the table may; a game master too. Nothing logged is touched.
+ */
+export async function setTurn(actor: Actor, id: string, turn: number): Promise<Scenario> {
+  await row(id);
+  await tableOnly(actor, id);
+  if (!Number.isInteger(turn) || turn < 0 || turn > MAX_TURN) throw new LedgerError('That is not a turn of this game.');
+  await db().update(scenarios).set({ turn, updatedAt: new Date() }).where(eq(scenarios.id, id));
+  return (await getScenario(id))!;
+}
+
+export interface EventInput { kind: EventKind; turn?: number | null; warbandId?: string | null; points?: number; text?: string }
+
+/**
+ * Log a line at the table. A note needs words and may name a warband; a score needs an attending warband and a count
+ * (which may be negative, when the shard is lost again) and may say how. The turn defaults to the one the table is on.
+ */
+export async function addEvent(actor: Actor, id: string, input: EventInput): Promise<Scenario> {
+  const r = await row(id);
+  await tableOnly(actor, id);
+  if (!EVENT_KINDS.includes(input.kind)) throw new LedgerError('The tracker does not log that.');
+  const turn = turnOf(input.turn, Math.max(1, r.turn))!;
+  const d = db();
+  const attending = (await d.select({ warbandId: scenarioWarbands.warbandId }).from(scenarioWarbands).where(eq(scenarioWarbands.scenarioId, id))).map((x) => x.warbandId);
+  const warbandId = input.warbandId ? input.warbandId : null;
+  if (warbandId && !attending.includes(warbandId)) throw new LedgerError('That warband is not at this scenario.', 404);
+  const text = clean(input.text, 500);
+  let points = 0;
+  if (input.kind === 'score') {
+    if (!warbandId) throw new LedgerError('Say which warband scored.');
+    if (!Number.isInteger(input.points) || input.points === 0 || Math.abs(input.points!) > 99) throw new LedgerError('Say how much was scored.');
+    points = input.points!;
+  } else if (!text) throw new LedgerError('Say what happened.');
+  await d.insert(scenarioEvents).values({ scenarioId: id, turn, kind: input.kind, warbandId, points, text, authorId: actor.id, authorName: actor.name });
+  await d.update(scenarios).set({ updatedAt: new Date() }).where(eq(scenarios.id, id));
+  return (await getScenario(id))!;
+}
+
+/** Strike a line from the log: the one who wrote it, or a game master. */
+export async function removeEvent(actor: Actor, id: string, eventId: number): Promise<Scenario> {
+  await row(id);
+  const d = db();
+  const rows = await d.select().from(scenarioEvents).where(and(eq(scenarioEvents.id, eventId), eq(scenarioEvents.scenarioId, id))).limit(1);
+  if (!rows.length) throw new LedgerError('That line is already gone.', 404);
+  if (!isGm(actor) && rows[0].authorId !== actor.id) throw new LedgerError('Only the one who wrote it, or a game master, strikes a line.', 403);
+  await d.delete(scenarioEvents).where(eq(scenarioEvents.id, eventId));
+  return (await getScenario(id))!;
+}
+
+/** Whether the actor may write in the tracker, for the page to know which controls to show. */
+export async function mayTrack(actor: Actor | null, id: string): Promise<boolean> { return !!actor && atTable(actor, id); }

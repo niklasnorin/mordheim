@@ -1,11 +1,11 @@
 /**
- * Scenarios: the game master sets them up and marks them played; everyone who fought tells their part. Every
- * answer carries the scenario as it now stands.
+ * Scenarios: the game master sets them up and marks them played; everyone who fought tells their part, and the
+ * battle tracker logs the game turn by turn while it is played. Every answer carries the scenario as it now stands.
  */
 import type { APIRoute } from 'astro';
 import { z } from 'zod';
 import { dispatch, route } from '../../../server/api';
-import { addOutOfAction, createScenario, deleteScenario, markPlayed, removeOutOfAction, reopenScenario, setBrought, setParticipants, updateScenario, writeBattle, writePerspective } from '../../../server/campaign/scenarios';
+import { addEvent, addOutOfAction, createScenario, deleteScenario, markPlayed, removeEvent, removeOutOfAction, reopenScenario, requireScenario, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writePerspective } from '../../../server/campaign/scenarios';
 
 export const prerender = false;
 
@@ -15,8 +15,9 @@ const paragraphs = z.array(z.string().max(4000)).max(60);
 const scenarioFields = {
   title: z.string().max(120), playedOn: day, rulebookScenario: z.string().max(80).nullable(), customRules: z.string().max(8000), prologue: z.string().max(8000), prologueAsSummary: z.boolean(), summary: z.string().max(1000),
   warbandIds: z.array(z.string().max(64)).max(20), winCondition: z.string().max(4000), chronicle: z.string().max(4000), outcome: z.string().max(4000), epilogue: z.string().max(8000),
-  loot: paragraphs, campaignNotes: paragraphs, battleOpen: z.boolean(),
+  loot: paragraphs, campaignNotes: paragraphs, battleOpen: z.boolean(), tally: z.string().max(60),
 };
+const turn = z.number().int().min(0).max(99);
 const wrap = (p: Promise<unknown>) => p.then((scenario) => ({ scenario }));
 
 const routes = {
@@ -35,8 +36,13 @@ const routes = {
     scenarioId: id, warbandId: z.string().max(64),
     brought: z.array(z.object({ memberId: z.string().max(64), status: z.enum(['active', 'injured', 'dead']).optional(), highlight: z.string().max(1000).optional(), lowlight: z.string().max(1000).optional() })).max(60),
   }), (i, a) => wrap(setBrought(a, i.scenarioId, i.warbandId, i.brought))),
-  'out-of-action': route(z.object({ scenarioId: id, attackerId: z.string().max(64), targetId: z.string().max(64).nullable().optional(), target: z.string().max(120).optional(), detail: z.string().max(1000).optional() }), (i, a) => wrap(addOutOfAction(a, i.scenarioId, i))),
+  'out-of-action': route(z.object({ scenarioId: id, attackerId: z.string().max(64), targetId: z.string().max(64).nullable().optional(), target: z.string().max(120).optional(), detail: z.string().max(1000).optional(), turn: turn.min(1).nullable().optional() }), (i, a) => wrap(addOutOfAction(a, i.scenarioId, i))),
   'remove-out-of-action': route(z.object({ scenarioId: id, id: z.number().int().positive() }), (i, a) => wrap(removeOutOfAction(a, i.scenarioId, i.id))),
+  // the battle tracker, at the table
+  tracker: route(z.object({ scenarioId: id }), (i) => wrap(requireScenario(i.scenarioId))),
+  turn: route(z.object({ scenarioId: id, turn }), (i, a) => wrap(setTurn(a, i.scenarioId, i.turn))),
+  event: route(z.object({ scenarioId: id, kind: z.enum(['note', 'score']), turn: turn.min(1).nullable().optional(), warbandId: z.string().max(64).nullable().optional(), points: z.number().int().min(-99).max(99).optional(), text: z.string().max(500).optional() }), (i, a) => wrap(addEvent(a, i.scenarioId, i))),
+  'remove-event': route(z.object({ scenarioId: id, id: z.number().int().positive() }), (i, a) => wrap(removeEvent(a, i.scenarioId, i.id))),
 };
 
 export const POST: APIRoute = ({ request, params }) => dispatch(routes, params.action, request, 'scenarios');
