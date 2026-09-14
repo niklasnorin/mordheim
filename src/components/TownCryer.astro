@@ -89,10 +89,12 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
       </div>
     </div>
   )}
-  <div class="cryer-crease" aria-hidden="true"></div>
   </div>
   <div class="cryer-unfold" id="cryer-unfold" hidden>
-    <button type="button" id="cryer-more" aria-expanded="false" aria-controls="cryer-sheet">Unfold the rest of the broadsheet</button>
+    <button type="button" id="cryer-more" aria-expanded="false" aria-controls="cryer-sheet">
+      <span class="cryer-roll" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span class="cryer-unfold-label">Unfold the rest of the broadsheet</span>
+    </button>
   </div>
   <div class="cryer-footer">
     <em>
@@ -112,7 +114,8 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
       repeating-linear-gradient(0deg, transparent 0 3px, rgba(65, 47, 26, 0.018) 3px 4px),
       linear-gradient(#e7dcc5, #d4c4a4);
     color: #292a23;
-    padding: 1.2rem 2.5rem 1.4rem;
+    --cryer-bleed: 2.5rem;
+    padding: 1.2rem var(--cryer-bleed) 1.4rem;
     border: 1px solid #b69a62;
     box-shadow:
       0 16px 50px rgba(0, 0, 0, 0.22),
@@ -242,32 +245,56 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
   .cryer-stamp { display: block; margin-top: 0.35rem; font-size: var(--text-meta); font-style: italic; color: #4a3a22; text-align: right; }
   @media (max-width: 700px) { .cryer-watch { columns: 1; } }
 
-  /* The sheet is folded to about a screen; the crease is where the paper doubles over. */
-  .cryer-sheet { position: relative; }
+  /* The sheet is folded to about a screen, and the rest of the paper is rolled under the last line. */
   .cryer-sheet[data-folded='true'] { max-height: min(72vh, 46rem); overflow: hidden; }
-  .cryer-crease { display: none; }
-  .cryer-sheet[data-folded='true'] .cryer-crease {
+
+  .cryer-unfold { display: block; padding-bottom: .4rem; }
+  .cryer-unfold button {
     display: block;
-    position: absolute;
-    left: -2.5rem;
-    right: -2.5rem;
-    bottom: 0;
-    height: 11rem;
-    pointer-events: none;
-    background: linear-gradient(rgba(216, 200, 167, 0), rgba(216, 200, 167, .82) 55%, #d3c2a0 82%, #c9b791);
+    width: 100%;
+    padding: 0;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    color: inherit;
   }
-  .cryer-crease::after {
+  .cryer-unfold button:focus-visible { outline: 2px solid #4a3a22; outline-offset: 4px; }
+
+  /* The roll: three turns of paper wound under the page, each one narrower and further from the light. */
+  .cryer-roll { display: block; position: relative; height: 4.6rem; margin: 0 calc(var(--cryer-bleed) * -1); }
+  .cryer-unfold button[aria-expanded='true'] .cryer-roll { display: none; }
+  /* the last lines curve away from the reader as the page turns into the roll. It hangs off the roll rather
+     than off the sheet, which is clipped to its own box and would cut the fade short of the margins. */
+  .cryer-roll::before {
     content: '';
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 0;
-    height: 1px;
-    background: linear-gradient(90deg, rgba(122, 104, 66, 0), #7a6842 8%, #7a6842 92%, rgba(122, 104, 66, 0));
-    box-shadow: 0 -7px 16px -8px rgba(60, 44, 20, .55), 0 1px 0 rgba(255, 250, 235, .55);
+    bottom: calc(100% - 2px);
+    height: 10rem;
+    pointer-events: none;
+    background: linear-gradient(rgba(219, 205, 175, 0), rgba(219, 205, 175, .5) 40%, rgba(211, 194, 160, .9) 70%, #cdbb96 88%, #bda882);
   }
-  .cryer-unfold { display: flex; justify-content: center; padding: 1rem 0 .2rem; }
-  .cryer-unfold button {
+  .cryer-roll > span {
+    position: absolute;
+    border-radius: 999px;
+    /* the ends of the roll turn away from the reader; the face of it catches the light */
+    background-image:
+      linear-gradient(90deg, rgba(74, 58, 30, .4), rgba(74, 58, 30, 0) 4%, rgba(74, 58, 30, 0) 96%, rgba(74, 58, 30, .4)),
+      linear-gradient(#b2a07a, #cdbb94 12%, #f2e9d6 33%, #e5d6b6 49%, #c4af89 70%, #a28d65 88%, #83714e);
+    transition: transform .25s ease;
+  }
+  .cryer-roll > span:nth-child(1) { left: 0; right: 0; top: 0; height: 2rem; box-shadow: 0 -9px 15px -9px rgba(48, 34, 12, .6); }
+  .cryer-roll > span:nth-child(2) { left: 1rem; right: 1rem; top: 1.65rem; height: 1.75rem; filter: brightness(.93); box-shadow: 0 -7px 12px -8px rgba(48, 34, 12, .55); }
+  .cryer-roll > span:nth-child(3) { left: 2.4rem; right: 2.4rem; top: 3.05rem; height: 1.5rem; filter: brightness(.86); box-shadow: 0 -6px 11px -8px rgba(48, 34, 12, .5), 0 7px 15px -8px rgba(45, 33, 12, .45); }
+  /* pressing the roll starts it turning */
+  .cryer-unfold button:hover .cryer-roll > span:nth-child(1) { transform: translateY(1px); }
+  .cryer-unfold button:hover .cryer-roll > span:nth-child(2) { transform: translateY(3px); }
+  .cryer-unfold button:hover .cryer-roll > span:nth-child(3) { transform: translateY(6px); }
+
+  .cryer-unfold-label {
+    display: inline-block;
+    margin-top: 1rem;
     font: var(--text-ui)/1.5 var(--font-utility);
     font-variant: small-caps;
     letter-spacing: .14em;
@@ -276,12 +303,14 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
     border: 1px solid #8d7a52;
     padding: .55rem 1.4rem;
     min-height: var(--control-size);
-    cursor: pointer;
     box-shadow: 0 2px 6px -3px rgba(45, 33, 12, .6), inset 0 1px 0 rgba(255, 250, 235, .6);
     transition: background .2s, border-color .2s;
   }
-  .cryer-unfold button:hover { background: linear-gradient(#ece0c4, #d9c8a4); border-color: #4a3a22; }
-  .cryer-unfold button:focus-visible { outline: 2px solid #4a3a22; outline-offset: 3px; }
+  .cryer-unfold button:hover .cryer-unfold-label { background: linear-gradient(#ece0c4, #d9c8a4); border-color: #4a3a22; }
+  @media (prefers-reduced-motion: reduce) {
+    .cryer-roll > span { transition: none; }
+    .cryer-unfold button:hover .cryer-roll > span { transform: none; }
+  }
 
   .cryer-footer {
     border-top: 4px double #241b10;
@@ -293,7 +322,7 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
 
   @media (max-width: 700px) {
     .cryer-columns { columns: 1; }
-    .town-cryer { padding: 1.4rem 1.2rem 1rem; }
+    .town-cryer { --cryer-bleed: 1.2rem; padding: 1.4rem var(--cryer-bleed) 1rem; }
     .cryer-masthead { flex-wrap: wrap; gap: 0.6rem; }
     .cryer-title { flex-basis: 100%; order: -1; }
     .cryer-price, .cryer-issue { flex: 1; }
@@ -306,16 +335,18 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
 </style>
 
 <script>
-  // The broadsheet is folded to about a screen. If it all fits, there is nothing to unfold and no crease.
+  // The broadsheet is folded to about a screen. If it all fits, there is nothing to unfold and no roll.
   const sheet = document.getElementById('cryer-sheet');
   const control = document.getElementById('cryer-unfold');
   const button = document.getElementById('cryer-more') as HTMLButtonElement | null;
-  if (sheet && control && button) {
+  const label = button?.querySelector('.cryer-unfold-label');
+  if (sheet && control && button && label) {
     const overflows = () => sheet.scrollHeight > sheet.clientHeight + 4;
     const fold = (folded: boolean) => {
       sheet.dataset.folded = String(folded);
       button.setAttribute('aria-expanded', String(!folded));
-      button.textContent = folded ? 'Unfold the rest of the broadsheet' : 'Fold the broadsheet';
+      // only the words change; the roll itself is markup and is hidden once the paper is open
+      label.textContent = folded ? 'Unfold the rest of the broadsheet' : 'Fold the broadsheet';
     };
     control.hidden = !overflows();
     button.addEventListener('click', () => {
