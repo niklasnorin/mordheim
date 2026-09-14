@@ -196,12 +196,13 @@ export async function setParticipants(actor: Actor, id: string, warbandIds: stri
 
 /**
  * The game is played: every attending warband gets its result and the scenario joins the Chronicle, taking the next
- * place in play order. Standings recorded here are totals after the battle. A game master may also reopen a scenario
- * as upcoming, which keeps everything written and only lifts it out of the Chronicle.
+ * place in play order. Anyone at the table may call it, from the tracker or the scenario page, since the table is
+ * where the game ends; only a game master may reopen a scenario as upcoming, which keeps everything written and only
+ * lifts it out of the Chronicle.
  */
 export async function markPlayed(actor: Actor, id: string, results: { warbandId: string; result: ScenarioResult }[]): Promise<Scenario> {
-  gmOnly(actor);
   const r = await row(id);
+  await tableOnly(actor, id);
   const d = db();
   const parts = (await d.select({ warbandId: scenarioWarbands.warbandId }).from(scenarioWarbands).where(eq(scenarioWarbands.scenarioId, id))).map((x) => x.warbandId);
   if (!parts.length) throw new LedgerError('Say which warbands fought before marking the scenario played.');
