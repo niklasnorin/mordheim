@@ -44,6 +44,7 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
   <div class="cryer-banner">
     <span><Icon name="cross" size={12} /> {place.cryer.banner} <Icon name="cross" size={12} /></span>
   </div>
+  <div class="cryer-sheet" id="cryer-sheet" data-folded="true">
   <div class="cryer-columns">
     {
       articles.map((article) =>
@@ -88,6 +89,11 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
       </div>
     </div>
   )}
+  <div class="cryer-crease" aria-hidden="true"></div>
+  </div>
+  <div class="cryer-unfold" id="cryer-unfold" hidden>
+    <button type="button" id="cryer-more" aria-expanded="false" aria-controls="cryer-sheet">Unfold the rest of the broadsheet</button>
+  </div>
   <div class="cryer-footer">
     <em>
       Printed under license of the Grand Theogonist — All heresies reported herein are for the
@@ -236,6 +242,47 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
   .cryer-stamp { display: block; margin-top: 0.35rem; font-size: var(--text-meta); font-style: italic; color: #4a3a22; text-align: right; }
   @media (max-width: 700px) { .cryer-watch { columns: 1; } }
 
+  /* The sheet is folded to about a screen; the crease is where the paper doubles over. */
+  .cryer-sheet { position: relative; }
+  .cryer-sheet[data-folded='true'] { max-height: min(72vh, 46rem); overflow: hidden; }
+  .cryer-crease { display: none; }
+  .cryer-sheet[data-folded='true'] .cryer-crease {
+    display: block;
+    position: absolute;
+    left: -2.5rem;
+    right: -2.5rem;
+    bottom: 0;
+    height: 11rem;
+    pointer-events: none;
+    background: linear-gradient(rgba(216, 200, 167, 0), rgba(216, 200, 167, .82) 55%, #d3c2a0 82%, #c9b791);
+  }
+  .cryer-crease::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(122, 104, 66, 0), #7a6842 8%, #7a6842 92%, rgba(122, 104, 66, 0));
+    box-shadow: 0 -7px 16px -8px rgba(60, 44, 20, .55), 0 1px 0 rgba(255, 250, 235, .55);
+  }
+  .cryer-unfold { display: flex; justify-content: center; padding: 1rem 0 .2rem; }
+  .cryer-unfold button {
+    font: var(--text-ui)/1.5 var(--font-utility);
+    font-variant: small-caps;
+    letter-spacing: .14em;
+    color: #3b2f1c;
+    background: linear-gradient(#e2d4b5, #d0bd97);
+    border: 1px solid #8d7a52;
+    padding: .55rem 1.4rem;
+    min-height: var(--control-size);
+    cursor: pointer;
+    box-shadow: 0 2px 6px -3px rgba(45, 33, 12, .6), inset 0 1px 0 rgba(255, 250, 235, .6);
+    transition: background .2s, border-color .2s;
+  }
+  .cryer-unfold button:hover { background: linear-gradient(#ece0c4, #d9c8a4); border-color: #4a3a22; }
+  .cryer-unfold button:focus-visible { outline: 2px solid #4a3a22; outline-offset: 3px; }
+
   .cryer-footer {
     border-top: 4px double #241b10;
     text-align: center;
@@ -257,3 +304,27 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
     .cryer-article p { text-align: left; }
   }
 </style>
+
+<script>
+  // The broadsheet is folded to about a screen. If it all fits, there is nothing to unfold and no crease.
+  const sheet = document.getElementById('cryer-sheet');
+  const control = document.getElementById('cryer-unfold');
+  const button = document.getElementById('cryer-more') as HTMLButtonElement | null;
+  if (sheet && control && button) {
+    const overflows = () => sheet.scrollHeight > sheet.clientHeight + 4;
+    const fold = (folded: boolean) => {
+      sheet.dataset.folded = String(folded);
+      button.setAttribute('aria-expanded', String(!folded));
+      button.textContent = folded ? 'Unfold the rest of the broadsheet' : 'Fold the broadsheet';
+    };
+    control.hidden = !overflows();
+    button.addEventListener('click', () => {
+      const folding = sheet.dataset.folded !== 'true';
+      fold(folding);
+      // folding it away again should leave the reader at the masthead, not somewhere in the middle of the fold
+      if (folding) sheet.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    });
+    // a window that grows may make the fold unnecessary, and one that shrinks may call for it
+    new ResizeObserver(() => { if (sheet.dataset.folded === 'true') control.hidden = !overflows(); }).observe(sheet);
+  }
+</script>
