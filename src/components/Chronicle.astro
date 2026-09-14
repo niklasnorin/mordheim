@@ -1,5 +1,5 @@
 ---
-import type { Scenario, Warband } from '../campaign/model';
+import { summaryOf, type Scenario, type Warband } from '../campaign/model';
 import Icon from './Icon.astro';
 import { base } from '../lib/site';
 import { formatImperial, imperialForDate } from '../lib/calendar';
@@ -9,7 +9,7 @@ const { scenarios, warbands } = Astro.props;
 const getScenarioUrl = (id: string) => `${base}/scenarios/${id}/`;
 const imperial = (day: string) => formatImperial(imperialForDate(day));
 /** Newest battle first, as the Chronicle reads; the upcoming games stand above it. */
-const chronicle = scenarios.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence).map((s) => ({ scenarioId: s.id, date: imperial(s.playedOn), title: s.title, body: s.chronicle || s.summary }));
+const chronicle = scenarios.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence).map((s) => ({ scenarioId: s.id, date: imperial(s.playedOn), title: s.title, body: summaryOf(s) }));
 const upcoming = scenarios.filter((s) => s.status === 'upcoming');
 const nameOf = (id: string) => warbands.find((w) => w.id === id)?.name ?? id;
 const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(day + 'T12:00:00Z'));

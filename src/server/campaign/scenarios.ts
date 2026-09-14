@@ -138,14 +138,16 @@ export async function updateScenario(actor: Actor, id: string, patch: ScenarioPa
   if (patch.rulebookScenario !== undefined) set.rulebookScenario = rulebookOf(patch.rulebookScenario);
   if (patch.customRules !== undefined) set.customRules = clean(patch.customRules, 8000);
   if (patch.winCondition !== undefined) set.winCondition = clean(patch.winCondition, 4000);
-  if (patch.summary !== undefined) set.summary = clean(patch.summary, 1000);
-  if (patch.chronicle !== undefined) set.chronicle = clean(patch.chronicle, 4000);
+  // the summary and the Chronicle's paragraph are one field now; saving it empties the older one
+  if (patch.summary !== undefined) { set.summary = clean(patch.summary, 1000); set.chronicle = ''; }
+  else if (patch.chronicle !== undefined) set.chronicle = clean(patch.chronicle, 4000);
   if (patch.outcome !== undefined) set.outcome = clean(patch.outcome, 4000);
   if (patch.prologue !== undefined) set.prologue = clean(patch.prologue, 8000);
   if (patch.prologueAsSummary !== undefined) set.prologueAsSummary = !!patch.prologueAsSummary;
   if (patch.epilogue !== undefined) set.epilogue = clean(patch.epilogue, 8000);
-  if (patch.loot !== undefined) set.loot = paragraphs(patch.loot);
-  if (patch.campaignNotes !== undefined) set.campaignNotes = paragraphs(patch.campaignNotes);
+  // the loot and the lasting records are one list now; saving it empties the older one
+  if (patch.campaignNotes !== undefined) { set.campaignNotes = paragraphs(patch.campaignNotes); set.loot = []; }
+  else if (patch.loot !== undefined) set.loot = paragraphs(patch.loot);
   if (patch.battleOpen !== undefined) set.battleOpen = !!patch.battleOpen;
   if (patch.puzzle !== undefined) set.puzzle = patch.puzzle ?? null;
   await db().update(scenarios).set(set).where(eq(scenarios.id, id));

@@ -7,6 +7,7 @@ import { addOutOfAction, createScenario, deleteScenario, getScenario, listScenar
 import { articlesFor, createArticle, deleteArticle, listArticles, updateArticle } from './news.ts';
 import { deleteDocument, getDocument, listDocuments, primeContent, saveDocument, documentRevisions } from '../content/curfew.ts';
 import { seedIfEmpty } from './seed.ts';
+import { carriedForward, summaryOf } from '../../campaign/model.ts';
 import { claimWarband as claimLedger, loadOwnLedger, releaseWarband as giveUp } from '../curfew/service.ts';
 import { LOCATIONS, OMENS, locationById } from '../../curfew/engine.ts';
 import { warbands as fixtures } from '../../data/warbands.ts';
@@ -162,6 +163,20 @@ test('a game master sets up an upcoming scenario and the players tell their side
   assert.equal((await getScenario(later.id))!.warbands.length, 1);
   await deleteScenario(gm, later.id);
   assert.equal(await getScenario(later.id), undefined);
+});
+
+test('the summary swallows the Chronicle entry, and the notes swallow the loot', async () => {
+  const played = (await listScenarios()).find((x) => x.id === 'scenario-01-the-merchants-debt')!;
+  assert.ok(played.chronicle.trim() && played.summary.trim(), 'the seeded record was written when they were two fields');
+  assert.ok(played.loot.length && played.campaignNotes.length);
+  assert.deepEqual(carriedForward(played), [...played.loot, ...played.campaignNotes], 'both lists read as one');
+  assert.equal(summaryOf(played), played.summary, 'the summary wins where there is one');
+
+  const after = await updateScenario(gm, played.id, { summary: 'Three buildings decide their first battle.', campaignNotes: ['Mjølnir lost a hand.', 'The cellar stays shut.'] });
+  assert.equal(after.chronicle, '', 'saving the summary empties the older field');
+  assert.deepEqual(after.loot, [], 'saving the notes empties the older list');
+  assert.deepEqual(carriedForward(after), ['Mjølnir lost a hand.', 'The cellar stays shut.']);
+  assert.equal(summaryOf(after), 'Three buildings decide their first battle.');
 });
 
 test('game masters write the Cryer; the broadsheet prints only the published articles for a place', async () => {

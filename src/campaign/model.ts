@@ -157,7 +157,7 @@ export interface Scenario {
   customRules: string;
   winCondition: string;
   summary: string;
-  /** The Chronicle's present-tense paragraph; the summary stands in when empty. */
+  /** Merged into `summary`. Kept so a record written before the merge still reads; cleared when the summary is saved. */
   chronicle: string;
   outcome: string;
   /** The game master's neutral account. */
@@ -168,7 +168,9 @@ export interface Scenario {
   epilogue: string;
   /** Whether attending players may rewrite the battle narrative. */
   battleOpen: boolean;
+  /** Merged into `campaignNotes`. Kept so a record written before the merge still reads; cleared when the notes are saved. */
   loot: string[];
+  /** What the campaign carries forward: loot, costs, lasting consequences, unresolved records. */
   campaignNotes: string[];
   puzzle?: Puzzle | null;
   warbands: ScenarioWarband[];
@@ -194,9 +196,15 @@ export interface NewsArticle {
  * What stands under a scenario's title. An upcoming game usually has no summary yet, so the game master's
  * prologue stands in for one until the game is played, unless they have said otherwise.
  */
-export function summaryOf(s: Pick<Scenario, 'status' | 'summary' | 'prologue' | 'prologueAsSummary'>): string {
+export function summaryOf(s: Pick<Scenario, 'status' | 'summary' | 'prologue' | 'prologueAsSummary'> & { chronicle?: string }): string {
   if (s.summary.trim()) return s.summary;
+  if (s.chronicle?.trim()) return s.chronicle;
   return s.status === 'upcoming' && s.prologueAsSummary ? s.prologue : '';
+}
+
+/** Everything a played scenario leaves the campaign, in one list: the loot and costs, then the lasting records. */
+export function carriedForward(s: Pick<Scenario, 'loot' | 'campaignNotes'>): string[] {
+  return [...s.loot, ...s.campaignNotes];
 }
 
 /** A slug for an id: lower-case ASCII, hyphens between words. */

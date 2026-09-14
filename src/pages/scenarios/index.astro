@@ -89,7 +89,7 @@ const today = localDate();
               <h3>{s.title}</h3>
               <span class="mg-date">{imperialOf(s.playedOn)}</span>
               <span class="mg-who">{s.warbands.map((w) => <span>{nameOf(w.warbandId)}{w.result ? ` — ${resultLabel[w.result].toLowerCase()}` : ''}</span>)}</span>
-              {(s.chronicle || summaryOf(s)) && <p>{(s.chronicle || summaryOf(s)).slice(0, 220)}{(s.chronicle || summaryOf(s)).length > 220 ? '…' : ''}</p>}
+              {summaryOf(s) && <p>{summaryOf(s).slice(0, 220)}{summaryOf(s).length > 220 ? '…' : ''}</p>}
             </a>
           ))}
         </div>
