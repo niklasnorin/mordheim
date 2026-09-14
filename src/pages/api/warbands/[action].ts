@@ -18,7 +18,7 @@ const memberFields = {
   name: z.string().max(80), role: z.string().max(60), rank: z.enum(['hero', 'henchman']), epithet: z.string().max(120), stats, experience: z.number().int().min(0).max(999).nullable(),
   skills: lines, injuries: lines, lore: z.string().max(4000), dead: z.boolean(), death,
 };
-const warbandFields = { name: z.string().max(80), type: z.string().max(60), sigil: z.string().max(3), lore: z.string().max(4000), rating: z.number().int(), wyrdstone: z.number().int(), gold: z.number().int(), player: z.string().max(40), crest: z.string().max(120) };
+const warbandFields = { name: z.string().max(80), type: z.string().max(60), sigil: z.string().max(3), lore: z.string().max(4000), player: z.string().max(40), crest: z.string().max(120) };
 
 const routes = {
   create: route(z.object({ ...warbandFields }).partial().required({ name: true, type: true }), (i, a) => createWarband(a, i).then((warband) => ({ warband }))),

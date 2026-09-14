@@ -29,7 +29,7 @@ const routes = {
   battle: route(z.object({ scenarioId: id, battle: paragraphs }), (i, a) => wrap(writeBattle(a, i.scenarioId, i.battle))),
   perspective: route(z.object({
     scenarioId: id, warbandId: z.string().max(64),
-    patch: z.object({ prologue: z.string().max(8000), epilogue: z.string().max(8000), accomplishments: z.string().max(2000), highlights: z.array(z.string().max(1000)).max(12), lowlights: z.array(z.string().max(1000)).max(12), rating: z.number().int().nullable(), wyrdstone: z.number().int().nullable(), gold: z.number().int().nullable() }).partial(),
+    patch: z.object({ prologue: z.string().max(8000), epilogue: z.string().max(8000), accomplishments: z.string().max(2000), highlights: z.array(z.string().max(1000)).max(12), lowlights: z.array(z.string().max(1000)).max(12) }).partial(),
   }), (i, a) => wrap(writePerspective(a, i.scenarioId, i.warbandId, i.patch))),
   brought: route(z.object({
     scenarioId: id, warbandId: z.string().max(64),

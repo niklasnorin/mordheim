@@ -27,13 +27,13 @@ The API behind the forms is `src/pages/api/scenarios/[action].ts` (`update`, `pl
 
 Under **The pen**, one drawer per warband the viewer speaks for:
 
-- Prologue, epilogue, accomplishments (a factual sentence or two), finest and darkest moments one per line, and the standings as they stood after the battle if kept (totals, not rewards).
+- Prologue, epilogue, accomplishments (a factual sentence or two), and finest and darkest moments one per line.
 - **Who fought, and how it went**: tick the warriors brought; for each, how they came out (`Active`, `Injured`, `Fell in this battle`) and one true sentence each for the finest and the darkest moment. A warrior who did nothing notable gets an honest small moment, not an invented one.
 - **Out of action**: who struck, who fell (a warrior on the roll, or a name), how. The one who struck or the one who fell may record it; a game master may record any.
 
 ## 4. Carry the consequences into the roster (`/warbands/<id>/`)
 
-- Warband: rating, shards, gold to the post-battle totals. Battles and victories are counted from the played scenarios.
+- Warband: nothing to keep by hand. Battles and victories are counted from the played scenarios, and rating, gold and wyrdstone are not tracked for now.
 - Warriors: statlines, experience, skills (prayers and spells go there too), old wounds for lasting injuries. Change the tale only where the game changed the story; say in the campaign notes when a report supersedes an earlier roster story. Weapons and gear are not tracked.
 - The fallen: tick **Fallen**, give the Imperial date and the epitaph as carved; the warrior stays on the roll, the Graveyard and the engine read it.
 - Never rename a warrior. Ids are chosen once, by the roster service, and key the scenario records, the ledgers and the dispatches.

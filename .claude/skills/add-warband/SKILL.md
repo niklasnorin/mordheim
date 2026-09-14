@@ -11,7 +11,7 @@ The roster lives in the database and is kept on the site. A player founds their 
 
 ## 1. Found it
 
-At `/warbands/`, **Found a warband**: name (may begin with "The"; the engine strips it where a vignette says "the {rival}"), kind (the rulebook warband type), the story (one paragraph in the roster voice, `docs/agents/writing.md` §4), rating and gold. The id is chosen once from the name (`the-grey-hand` becomes `grey-hand`) and never changes: it becomes the ledger's key, the dispatch key and the `warbandId` in every scenario record. The sigil is two letters from the name unless a game master sets one.
+At `/warbands/`, **Found a warband**: name (may begin with "The"; the engine strips it where a vignette says "the {rival}"), kind (the rulebook warband type), the story (one paragraph in the roster voice, `docs/agents/writing.md` §4). Rating, gold and wyrdstone are not tracked for now, so there is nothing else to fill in. The id is chosen once from the name (`the-grey-hand` becomes `grey-hand`) and never changes: it becomes the ledger's key, the dispatch key and the `warbandId` in every scenario record. The sigil is two letters from the name unless a game master sets one.
 
 ## 2. Enter the warriors (`/warbands/<id>/`, **Add a warrior**)
 
