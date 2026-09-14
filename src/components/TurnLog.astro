@@ -14,6 +14,11 @@ const members = warbands.flatMap((w) => w.members.map((m) => ({ ...m, warbandNam
 const memberOf = (id: string) => members.find((m) => m.id === id);
 const tally = tallyOf(scenario);
 const scores = scoresOf(scenario);
+const played = scenario.status === 'played';
+const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
+// how it ended, in one line: who won, or that nobody did
+const winners = scenario.warbands.filter((w) => w.result === 'victory').map((w) => nameOf(w.warbandId));
+const ending = winners.length ? `Victory to ${winners.join(' and ')}` : scenario.warbands.some((w) => w.result) ? 'A draw' : 'No result recorded';
 
 type Line = { turn: number | null; at: number; kind: 'out-of-action' | 'note' | 'score'; html: { lead: string; strong?: string; rest?: string }; who?: string; by?: string };
 const lines: Line[] = [
@@ -28,8 +33,8 @@ const turns = [...new Set(lines.map((l) => l.turn))].sort((a, b) => (a ?? 1e9) -
 
 {lines.length > 0 && (
   <div class="turn-log">
-    {tally && scores.length > 0 && (
-      <p class="turn-log-tally"><span class="voice-label">{tally}</span> {scores.map((s) => `${nameOf(s.warbandId)} ${s.points}`).join(' · ')}</p>
+    {!played && tally && scores.length > 0 && (
+      <p class="turn-log-tally"><span class="voice-label">{tally} so far</span> {scores.map((s) => `${nameOf(s.warbandId)} ${s.points}`).join(' · ')}</p>
     )}
     {turns.map((t) => (
       <section class="turn-log-turn" aria-label={t === null ? 'Written up afterwards' : `Turn ${t}`}>
@@ -44,7 +49,24 @@ const turns = [...new Set(lines.map((l) => l.turn))].sort((a, b) => (a ?? 1e9) -
         </ol>
       </section>
     ))}
-    {scenario.turn > 0 && scenario.status === 'played' && <p class="archive-note turn-log-end">The game ran {scenario.turn} {scenario.turn === 1 ? 'turn' : 'turns'} as the table counted them.</p>}
+    {played && scenario.warbands.length > 0 && (
+      <div class="turn-log-ending">
+        <p class="voice-label">How it ended{scenario.turn > 0 ? ` · after ${scenario.turn} ${scenario.turn === 1 ? 'turn' : 'turns'}` : ''}</p>
+        <p class="turn-log-winner">{ending}</p>
+        <ul class="turn-log-final">
+          {scenario.warbands.map((w) => {
+            const score = scores.find((s) => s.warbandId === w.warbandId);
+            return (
+              <li class:list={[w.result ?? '']}>
+                <span class="turn-log-final-name">{nameOf(w.warbandId)}</span>
+                {tally && score && <b class="turn-log-final-score">{score.points}<small>{tally.toLowerCase()}</small></b>}
+                <span class="turn-log-final-result">{w.result ? resultLabel[w.result] : 'No result'}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    )}
   </div>
 )}
 
@@ -63,5 +85,16 @@ const turns = [...new Set(lines.map((l) => l.turn))].sort((a, b) => (a ?? 1e9) -
   .turn-log-line.out-of-action .turn-log-mark { color: var(--blood-bright); }
   .turn-log-line.score .turn-log-mark { color: var(--gold); }
   .turn-log-meta { display: block; color: var(--ink-dim); font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; margin-top: .15rem; }
-  .turn-log-end { text-align: center; margin-top: 1.5rem; }
+  .turn-log-ending { margin-top: 2rem; padding: 1.5rem 1.25rem; text-align: center; border: 1px solid var(--gold-dim); background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); }
+  .turn-log-ending .voice-label { margin-bottom: .5rem; }
+  .turn-log-winner { font: normal clamp(1.8rem, 5vw, 2.4rem)/1.15 'Pirata One', Georgia, serif; color: var(--gold); letter-spacing: .02em; margin-bottom: 1.25rem; text-wrap: balance; }
+  .turn-log-final { list-style: none; padding: 0; display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
+  .turn-log-final li { display: grid; gap: .2rem; padding: .8rem .6rem; border: 1px solid var(--border); }
+  .turn-log-final li.victory { border-color: var(--gold-dim); }
+  .turn-log-final-name { color: var(--parchment); font: var(--text-ui)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; }
+  .turn-log-final-score { display: block; font: normal 2.4rem/1 'Pirata One', Georgia, serif; color: var(--parchment); }
+  .turn-log-final-score small { display: block; font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .12em; color: var(--ink-dim); margin-top: .2rem; }
+  .turn-log-final-result { font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .12em; color: var(--ink-dim); }
+  .turn-log-final li.victory .turn-log-final-result { color: var(--gold); }
+  .turn-log-final li.defeat .turn-log-final-result { color: var(--blood-bright); }
 </style>
