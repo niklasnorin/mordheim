@@ -264,18 +264,11 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
             <article id={w.warbandId} class="panel warband-summary">
               <p class:list={['voice-label', w.result ?? '']}>{w.result ? resultLabel[w.result] : upcoming ? 'Attending' : 'Fought'}</p>
               <h3><a href={`${base}/warbands/${w.warbandId}/`}>{nameOf(w.warbandId)}</a></h3>
-              {band && <p class="archive-note">{band.type}{band.player ? `, kept by ${band.player}` : ''}{upcoming ? ` · rating ${band.rating} · ${band.members.filter((m) => !m.dead).length} living souls` : ''}</p>}
+              {band && <p class="archive-note">{band.type}{band.player ? `, kept by ${band.player}` : ''}{upcoming ? ` · ${band.members.filter((m) => !m.dead).length} living souls` : ''}</p>}
               {!upcoming && (
                 <>
                   <h4>Accomplishments</h4>
                   <p>{w.accomplishments || (w.highlights.length ? w.highlights.join(' ') : 'Not recorded.')}</p>
-                  {(w.rating != null || w.wyrdstone != null || w.gold != null) && (
-                    <dl class="snapshot-stats">
-                      {w.rating != null && <div><dt>Rating</dt><dd>{w.rating}</dd></div>}
-                      {w.wyrdstone != null && <div><dt>Wyrdstone</dt><dd>{w.wyrdstone} shards</dd></div>}
-                      {w.gold != null && <div><dt>Treasury</dt><dd>{w.gold} crowns</dd></div>}
-                    </dl>
-                  )}
                   {w.highlights.length > 0 && (<><h4 class="finest">Finest moments</h4><ul>{w.highlights.map((h) => <li>{h}</li>)}</ul></>)}
                   {w.lowlights.length > 0 && (<><h4 class="darkest">Darkest moments</h4><ul>{w.lowlights.map((l) => <li>{l}</li>)}</ul></>)}
                   <h4>Opponents put out of action</h4>
@@ -413,12 +406,6 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                     <label class="mg-field">Accomplishments<textarea name="patch.accomplishments" maxlength="2000">{p.accomplishments}</textarea><small>A factual sentence or two.</small></label>
                     <label class="mg-field">Finest moments<textarea name="patch.highlights" data-list>{p.highlights.join('\n')}</textarea><small>One per line.</small></label>
                     <label class="mg-field">Darkest moments<textarea name="patch.lowlights" data-list>{p.lowlights.join('\n')}</textarea><small>One per line.</small></label>
-                    <div class="mg-stats wb-standing">
-                      <label>Rating after<input name="patch.rating" type="number" min="0" max="99999" value={p.rating ?? ''} data-nullable /></label>
-                      <label>Shards after<input name="patch.wyrdstone" type="number" min="0" max="99999" value={p.wyrdstone ?? ''} data-nullable /></label>
-                      <label>Gold after<input name="patch.gold" type="number" min="0" max="99999" value={p.gold ?? ''} data-nullable /></label>
-                    </div>
-                    <p class="mg-note">Totals as they stood after the battle, if you keep them; the roster itself is changed on the warband's page.</p>
                   </>
                 )}
                 <div class="mg-actions end"><button type="submit" class="mg-btn">Save their telling</button></div>
@@ -784,8 +771,6 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   .voice-label { text-transform: uppercase; letter-spacing: .12em; font-size: .65rem; color: var(--gold); margin-bottom: .65rem; }
   .battle-narrative { max-width: 760px; margin-inline: auto; }
   .battle-narrative > p:not(.section-kicker) { line-height: 1.9; }
-  .snapshot-stats { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; border-block: 1px solid var(--border); padding: 1rem 0; margin-top: 1.5rem; }
-  .snapshot-stats dd { color: var(--gold); }
   .finest, .victory { color: var(--gold); }
   .darkest, .defeat { color: var(--blood-bright); }
   .roster-title { border-top: 1px solid var(--gold-dim); padding-top: 1.5rem; }
@@ -820,7 +805,6 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   .pen { margin: 3rem 0; }
   .pen .mg-editor { max-width: 900px; margin-inline: auto; margin-top: 1rem; }
   .pen .mg-editor > .mg-form, .pen .mg-editor > div, .pen .mg-editor > form { padding: .3rem .9rem 1rem; }
-  .wb-standing { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; max-width: 24rem; }
   .brought-rows { display: grid; gap: .5rem; }
   .brought-row { border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
   .brought-row .mg-field.check b { color: var(--parchment); font-weight: normal; }

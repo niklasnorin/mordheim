@@ -4,7 +4,7 @@ import Icon from './Icon.astro';
 
 interface Props { warbands: Warband[] }
 const { warbands } = Astro.props;
-const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
+const sorted = [...warbands].sort((a, b) => b.victories - a.victories || b.battles - a.battles || a.name.localeCompare(b.name));
 ---
 
 <section id="standings" class="standings reveal">
@@ -15,7 +15,7 @@ const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
     <table class="standings-table">
       <thead>
         <tr>
-          <th scope="col">Warband</th><th scope="col">Rating</th><th scope="col">Battles</th><th scope="col">Victories</th><th scope="col">Wyrdstone</th><th scope="col">Gold Crowns</th>
+          <th scope="col">Warband</th><th scope="col">Battles</th><th scope="col">Victories</th>
         </tr>
       </thead>
       <tbody>
@@ -23,18 +23,15 @@ const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
           sorted.map((wb, index) => (
             <tr>
               <th scope="row"><span class="ledger-rank" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><span class="ledger-sigil">{wb.sigil}</span> {wb.name}</th>
-              <td class="ledger-rating">{wb.rating}</td>
               <td>{wb.battles}</td>
-              <td>{wb.victories}</td>
-              <td class="wyrd">{wb.wyrdstone} shards</td>
-              <td>{wb.gold} gc</td>
+              <td class="ledger-rating">{wb.victories}</td>
             </tr>
           ))
         }
       </tbody>
     </table>
   </div>
-  <div class="ledger-footer"><span>Ranked by warband rating</span><span>Fortune favours the living</span></div>
+  <div class="ledger-footer"><span>Ranked by victories</span><span>Fortune favours the living</span></div>
 </section>
 
 <style>
@@ -60,7 +57,7 @@ const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
   .standings-table-wrap:focus-visible { outline: 2px solid #b69a62; outline-offset: 5px; }
   .standings-table {
     width: 100%;
-    min-width: 660px;
+    min-width: 420px;
     border-collapse: separate;
     border-spacing: 0;
     background: #141b18;
@@ -107,7 +104,6 @@ const sorted = [...warbands].sort((a, b) => b.rating - a.rating);
   .ledger-rank { color: #b69a62; font-size: var(--text-meta); margin-right: .5rem; }
   .ledger-sigil { display: inline-block; margin-right: 0.45rem; color: #b69a62; font-size: var(--text-meta); letter-spacing: .04em; }
   .standings-table .ledger-rating { color: #e7dcc5; font-size: 1.15rem; }
-  .standings-table .wyrd { color: #a8b69b; }
   @media (max-width: 700px) {
     .ledger-heading, .ledger-footer { flex-wrap: wrap; gap: .35rem 1rem; letter-spacing: .04em; }
     .standings-table th, .standings-table td { padding: 1rem 0.8rem; }

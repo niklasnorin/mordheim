@@ -59,12 +59,9 @@ export interface Warband {
   /** The player who keeps this warband, if anyone does. Their display name, for the cards. */
   ownerId?: string | null;
   player: string;
-  rating: number;
   /** Counted from the played scenarios, never edited. */
   battles: number;
   victories: number;
-  wyrdstone: number;
-  gold: number;
   lore: string;
   members: Member[];
   /** Order on the home page. */
@@ -105,10 +102,6 @@ export interface ScenarioWarband {
   accomplishments: string;
   highlights: string[];
   lowlights: string[];
-  /** Standings as they stood after the battle, when recorded. Totals, not rewards. */
-  rating?: number | null;
-  wyrdstone?: number | null;
-  gold?: number | null;
   members: ScenarioMember[];
 }
 

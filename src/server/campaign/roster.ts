@@ -46,7 +46,7 @@ export async function listWarbands(): Promise<Warband[]> {
 function warbandOf(w: WarbandRow, ownerName: string | null, memberRows: MemberRow[], battles: number, victories: number): Warband {
   return {
     id: w.id, name: w.name, type: w.type, sigil: w.sigil, crest: w.crest ?? undefined, ownerId: w.ownerId, player: ownerName ?? w.player,
-    rating: w.rating, battles, victories, wyrdstone: w.wyrdstone, gold: w.gold, lore: w.lore, sort: w.sort, version: w.version,
+    battles, victories, lore: w.lore, sort: w.sort, version: w.version,
     members: memberRows.map(memberOf),
   };
 }
@@ -87,7 +87,7 @@ function mayEdit(actor: Actor, w: WarbandRow): void {
 
 // ───────────────────────── the warband ─────────────────────────
 
-export interface WarbandInput { name: string; type: string; sigil?: string; lore?: string; rating?: number; wyrdstone?: number; gold?: number; player?: string }
+export interface WarbandInput { name: string; type: string; sigil?: string; lore?: string; player?: string }
 
 const clean = (s: string | undefined, max: number) => (s ?? '').trim().slice(0, max);
 function sigilFor(name: string, given?: string): string {
@@ -115,7 +115,7 @@ export async function createWarband(actor: Actor, input: WarbandInput): Promise<
   const [{ n }] = await d.select({ n: sql<number>`coalesce(max(${warbands.sort}), 0)::int` }).from(warbands);
   await d.insert(warbands).values({
     id, name, type, sigil: sigilFor(name, input.sigil), ownerId: isGm(actor) ? null : actor.id, player: isGm(actor) ? clean(input.player, 40) : actor.name,
-    lore: clean(input.lore, 4000), rating: input.rating ?? 0, wyrdstone: input.wyrdstone ?? 0, gold: input.gold ?? 0, sort: n + 1,
+    lore: clean(input.lore, 4000), sort: n + 1,
   });
   return (await getWarband(id))!;
 }
@@ -132,7 +132,6 @@ export async function updateWarband(actor: Actor, id: string, patch: WarbandPatc
   if (patch.lore !== undefined) set.lore = clean(patch.lore, 4000);
   if (patch.player !== undefined && isGm(actor)) set.player = clean(patch.player, 40);
   if (patch.crest !== undefined && isGm(actor)) set.crest = clean(patch.crest, 120) || null;
-  for (const k of ['rating', 'wyrdstone', 'gold'] as const) if (patch[k] !== undefined) set[k] = bounded(patch[k]!, 0, 99999, k);
   await db().update(warbands).set(set).where(eq(warbands.id, id));
   return (await getWarband(id))!;
 }

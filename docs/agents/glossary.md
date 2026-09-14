@@ -76,7 +76,7 @@ The repository names technical things in the fiction's words. This maps each wor
 | **Revision** | An earlier telling of the battle, kept whole whenever the narrative is rewritten; also an earlier version of a content document. | `scenario_revisions`, `writeBattle`; `curfew_content_revisions`, `saveDocument` |
 | **Document** | One of the Curfew's content JSON documents: `omens`, `moons`, `tokens`, `location:<id>`. Checked by `validateDocument` before it is saved; put in force by `useContent`. | `src/curfew/packs.ts`, `src/server/content/curfew.ts` |
 | **Seed** | The first fill of an empty database from the files under `src/data/`. Once. | `ensureSeeded`, `seedCampaign`; `primeContent` for content |
-| **Switch, setting** | One of the campaign's switches, set by the admin in the Watch House. `standingsVisible`: whether the home page prints the standings and the cards their ratings; off by default. | `campaign_settings`, `getSettings`, `setSetting` in `campaign/settings.ts` |
+| **Switch, setting** | One of the campaign's switches, set by the admin in the Watch House. `standingsVisible`: whether the home page prints the standings; off by default. | `campaign_settings`, `getSettings`, `setSetting` in `campaign/settings.ts` |
 
 ## Ledgers and the server
 
@@ -121,7 +121,7 @@ The repository names technical things in the fiction's words. This maps each wor
 | **Chronicle** | Two things. On the main site, the timeline of battles (`chronicle.ts`, `Chronicle.astro`), one entry per scenario. In the Ledger, the warband's scroll of nights. | `ChronicleEntry`; `WarbandState.nights` |
 | **Battle report, scenario record, the archives** | One JSON file per real game in `src/data/history/`, rendered at `/scenarios/<id>/`. Carries a snapshot of every participating warband and member. | `ScenarioRecord`, `history` in `src/data/history.ts` |
 | **Muster, roster** | A warband's members as listed in `warbands.ts`; the "muster roll" is the member list on the card, the "muster" section on a scenario page is the snapshot. | `Warband.members`, `WarbandCard.astro` |
-| **Standings** | The table of rating, battles, wyrdstone and gold. Hand-kept numbers in `warbands.ts`, not computed. | `Standings.astro` |
+| **Standings** | The table of battles and victories, counted from the played scenarios and shown when the admin turns it on. Rating, gold and wyrdstone are not tracked for now; their columns remain, unread. | `Standings.astro`, `standingsVisible` |
 | **Graveyard** | Tombstones for members with `dead: true`, ordered by `death.order`, plus procedurally generated nameless graves. | `Graveyard.astro`, `Member.death` |
 | **Portrait, sigil, crest** | `portrait` and `sigil` are two-letter monograms; `crest` is an optional image file in `public/` drawn where there is room. | `Member.portrait`, `Warband.sigil`, `Warband.crest` |
 | **Profile, member dialog** | One `<dialog>` holds every member's profile: statline, gear, lore, the battles from the archives and the nights from the ledger on one line by date. | `MemberModal.astro`, `getMemberStory` |

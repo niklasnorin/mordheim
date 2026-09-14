@@ -27,7 +27,7 @@ const today = todayFor(null);
 let warbands: Warband[] = [], scenarios: Scenario[] = [], articles: NewsArticle[] = [], dispatches: PrintedDispatch[] = [], moves: Move[] = [];
 let stories: Record<string, MemberChapter[]> = {};
 let story: CurfewStory = { members: {}, warbands: {} };
-// The standings stay the Watch's until the admin shows them: no table, no rating on the cards.
+// The standings stay the Watch's until the admin shows them.
 let settings: CampaignSettings = DEFAULT_SETTINGS;
 let trouble = !hasDatabase();
 if (hasDatabase()) {
@@ -58,7 +58,7 @@ const played = scenarios.filter((s) => s.status === 'played').length;
         wyrdstone, gold, and glory. Most will find only death. Click a warrior to read their tale.
       </p>
       <div class="warband-grid">
-        {warbands.map((wb) => <WarbandCard warband={wb} standing={story.warbands[wb.id]} showRating={settings.standingsVisible} />)}
+        {warbands.map((wb) => <WarbandCard warband={wb} standing={story.warbands[wb.id]} />)}
       </div>
     </section>
 

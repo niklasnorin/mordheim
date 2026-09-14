@@ -43,7 +43,7 @@ const free = warbands.filter((w) => !w.ownerId);
                 <div class="mg-card">
                   <span class="mg-sub">{w.type}</span>
                   <h3>{w.name}</h3>
-                  <p>{w.members.length} {w.members.length === 1 ? 'soul' : 'souls'} · rating {w.rating}{w.player ? ` · ${w.player}'s, by the record` : ''}</p>
+                  <p>{w.members.length} {w.members.length === 1 ? 'soul' : 'souls'}{w.player ? ` · ${w.player}'s, by the record` : ''}</p>
                   <div class="mg-actions">
                     <button type="button" class="mg-btn" data-act="warbands/claim" data-body={JSON.stringify({ warbandId: w.id })} data-goto={`${base}/warbands/${w.id}/`} data-confirm={`Take up ${w.name}? They are yours to keep from here on.`}>Take them up</button>
                     <a class="mg-btn ghost" href={`${base}/warbands/${w.id}/`}>Read the roll</a>
@@ -60,10 +60,6 @@ const free = warbands.filter((w) => !w.ownerId);
             <label class="mg-field">Name<input name="name" required maxlength="80" placeholder="The Grey Hand" /></label>
             <label class="mg-field">Kind<input name="type" required maxlength="60" placeholder="Skaven, Reiklanders, Witch Hunters…" /></label>
             <label class="mg-field">Their story<textarea name="lore" maxlength="4000" placeholder="Where they are from, what drove them to the city, what they want."></textarea><small>One paragraph, in the warband's own temperament. It can wait.</small></label>
-            <div class="mg-two">
-              <label class="mg-field">Rating<input name="rating" type="number" min="0" max="99999" value="0" /></label>
-              <label class="mg-field">Gold crowns<input name="gold" type="number" min="0" max="99999" value="0" /></label>
-            </div>
             <div class="mg-actions"><button type="submit" class="mg-btn">Register the company</button><span class="mg-note">{isGm(viewer) ? 'A game master founds it unowned and hands it out from its page.' : 'It is yours the moment it is registered; add the warriors on its page.'}</span></div>
           </form>
         </section>

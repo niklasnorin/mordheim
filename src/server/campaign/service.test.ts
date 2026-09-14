@@ -53,10 +53,10 @@ test('a player claims a warband, edits it and its warriors, and a stranger may n
   await assert.rejects(claimWarband(rival, 'nordost'), (e: unknown) => e instanceof LedgerError && e.status === 409);
   await assert.rejects(claimWarband(niklas, 'welling-rune'), (e: unknown) => e instanceof LedgerError && /already keep/.test(e.message));
   await assert.rejects(updateWarband(stranger, 'nordost', { lore: 'Mine now.' }), (e: unknown) => e instanceof LedgerError && e.status === 403);
-  const edited = await updateWarband(niklas, 'nordost', { lore: 'A holding of longhouses.', gold: 80 });
-  assert.equal(edited.gold, 80);
+  const edited = await updateWarband(niklas, 'nordost', { lore: 'A holding of longhouses.', type: 'Ostlanders' });
+  assert.equal(edited.lore, 'A holding of longhouses.');
   assert.equal(edited.version, w.version + 1);
-  await assert.rejects(updateWarband(niklas, 'nordost', { gold: -1 }), LedgerError);
+  await assert.rejects(updateWarband(niklas, 'nordost', { name: '  ' }), LedgerError);
   const withNew = await addMember(niklas, 'nordost', { name: 'Ulf Nordost', role: 'Jaeger', stats: { BS: 4 }, skills: ['Quick Shot', ''] });
   const ulf = withNew.members.find((m) => m.name === 'Ulf Nordost')!;
   assert.equal(ulf.id, 'ulf');

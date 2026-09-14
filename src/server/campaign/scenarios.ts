@@ -34,7 +34,7 @@ function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mem
     battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null,
     warbands: parts.filter((p) => p.scenarioId === r.id).map((p): ScenarioWarband => ({
       scenarioId: p.scenarioId, warbandId: p.warbandId, result: p.result, prologue: p.prologue, epilogue: p.epilogue, accomplishments: p.accomplishments,
-      highlights: (p.highlights as string[]) ?? [], lowlights: (p.lowlights as string[]) ?? [], rating: p.rating, wyrdstone: p.wyrdstone, gold: p.gold,
+      highlights: (p.highlights as string[]) ?? [], lowlights: (p.lowlights as string[]) ?? [],
       members: mems.filter((m) => m.scenarioId === r.id && m.warbandId === p.warbandId).map((m): ScenarioMember => ({
         scenarioId: m.scenarioId, warbandId: m.warbandId, memberId: m.memberId, status: m.status, highlight: m.highlight, lowlight: m.lowlight, stats: m.stats as Statline | null, experience: m.experience,
       })),
@@ -234,7 +234,7 @@ export async function writeBattle(actor: Actor, id: string, battle: string[]): P
 
 // ───────────────────────── each warband's own telling ─────────────────────────
 
-export interface PerspectivePatch { prologue?: string; epilogue?: string; accomplishments?: string; highlights?: string[]; lowlights?: string[]; rating?: number | null; wyrdstone?: number | null; gold?: number | null }
+export interface PerspectivePatch { prologue?: string; epilogue?: string; accomplishments?: string; highlights?: string[]; lowlights?: string[] }
 
 export async function writePerspective(actor: Actor, id: string, warbandId: string, patch: PerspectivePatch): Promise<Scenario> {
   await speaksFor(actor, id, warbandId);
@@ -244,7 +244,6 @@ export async function writePerspective(actor: Actor, id: string, warbandId: stri
   if (patch.accomplishments !== undefined) set.accomplishments = clean(patch.accomplishments, 2000);
   if (patch.highlights !== undefined) set.highlights = paragraphs(patch.highlights, 12);
   if (patch.lowlights !== undefined) set.lowlights = paragraphs(patch.lowlights, 12);
-  for (const k of ['rating', 'wyrdstone', 'gold'] as const) if (patch[k] !== undefined) set[k] = patch[k] == null ? null : Math.max(0, Math.floor(Number(patch[k])));
   if (Object.keys(set).length) await db().update(scenarioWarbands).set(set).where(and(eq(scenarioWarbands.scenarioId, id), eq(scenarioWarbands.warbandId, warbandId)));
   await db().update(scenarios).set({ updatedAt: new Date() }).where(eq(scenarios.id, id));
   return (await getScenario(id))!;

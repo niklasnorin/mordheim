@@ -1,7 +1,7 @@
 /**
  * The campaign's switches. Each is a row with a default when unset; only the admin changes them, from the Watch
- * House. Today there is one: whether the standings are shown. A campaign keeps its ratings, shards and gold to
- * itself until the admin says otherwise, so the table and the cards' ratings are hidden by default.
+ * House. Today there is one: whether the standings are shown. A campaign keeps its tally to itself until the admin
+ * says otherwise, so the table of battles and victories is hidden by default.
  */
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client.ts';
@@ -10,7 +10,7 @@ import { LedgerError } from '../../curfew/ledger.ts';
 import { isAdmin, type Actor } from '../roles.ts';
 
 export interface CampaignSettings {
-  /** Whether the home page prints the standings table and the warband cards their ratings. */
+  /** Whether the home page prints the standings table: who has fought and who has won. */
   standingsVisible: boolean;
 }
 export const DEFAULT_SETTINGS: CampaignSettings = { standingsVisible: false };
