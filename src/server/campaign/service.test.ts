@@ -3,7 +3,7 @@ import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { actorOf, testDatabase } from '../testdb.ts';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, getWarband, listWarbands, loadRoster, releaseWarband, removeMember, updateMember, updateWarband, LedgerError } from './roster.ts';
-import { addEvent, addOutOfAction, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writePerspective } from './scenarios.ts';
+import { addEvent, addOutOfAction, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, reopenScenario, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writePerspective } from './scenarios.ts';
 import { articlesFor, createArticle, deleteArticle, listArticles, updateArticle } from './news.ts';
 import { deleteDocument, getDocument, listDocuments, primeContent, saveDocument, documentRevisions } from '../content/curfew.ts';
 import { seedIfEmpty } from './seed.ts';
@@ -145,8 +145,9 @@ test('a game master sets up an upcoming scenario and the players tell their side
   assert.deepEqual(revisions.at(-1)!.battle, ['The bell tolled.', 'Nobody counted.']);
   // played
   await assert.rejects(markPlayed(gm, s.id, [{ warbandId: 'nordost', result: 'victory' }]), (e: unknown) => e instanceof LedgerError && /result/.test(e.message));
-  await assert.rejects(markPlayed(niklas, s.id, []), (e: unknown) => e instanceof LedgerError && e.status === 403);
-  t = await markPlayed(gm, s.id, [{ warbandId: 'nordost', result: 'defeat' }, { warbandId: 'bitterbrow-expedition', result: 'victory' }]);
+  await assert.rejects(markPlayed(stranger, s.id, []), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(markPlayed(niklas, s.id, []), (e: unknown) => e instanceof LedgerError && /result/.test(e.message), 'the table may call the game, but must say how it ended');
+  t = await markPlayed(niklas, s.id, [{ warbandId: 'nordost', result: 'defeat' }, { warbandId: 'bitterbrow-expedition', result: 'victory' }]);
   assert.equal(t.status, 'played');
   assert.equal(t.sequence, 2);
   const bitterbrow = (await listWarbands()).find((w) => w.id === 'bitterbrow-expedition')!;
@@ -213,6 +214,7 @@ test('the battle tracker: the table keeps the turn, the log and the tally; the r
   // the tally's name is the game master's to change; the turn survives the game being marked played
   t = await updateScenario(gm, s.id, { tally: 'Green shards' });
   assert.equal(tallyOf(t), 'Green shards');
+  await assert.rejects(reopenScenario(niklas, s.id), (e: unknown) => e instanceof LedgerError && e.status === 403, 'reopening stays a game master’s');
   t = await markPlayed(gm, s.id, [{ warbandId: 'nordost', result: 'victory' }, { warbandId: 'bitterbrow-expedition', result: 'defeat' }]);
   assert.equal(t.turn, 2);
   assert.equal(t.events.length, 2);

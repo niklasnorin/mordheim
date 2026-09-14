@@ -6,7 +6,7 @@
  * page is visible it asks the server every few seconds whether another phone has written something. Nothing is
  * updated optimistically: the server's answer is the table.
  */
-import { scoresOf, tallyOf, type OutOfAction, type Scenario, type ScenarioEvent } from '../campaign/model';
+import { SCENARIO_RESULTS, scoresOf, tallyOf, type OutOfAction, type Scenario, type ScenarioEvent, type ScenarioResult } from '../campaign/model';
 
 export interface TrackerRoster { id: string; name: string; members: { id: string; name: string; role: string; dead: boolean }[] }
 export interface TrackerState {
@@ -48,7 +48,9 @@ const ICON = {
   close: 'm6 6 12 12M18 6 6 18',
   plus: 'M12 5v14M5 12h14',
   minus: 'M5 12h14',
+  laurel: 'm3 6 3 13h12l3-13-6 5-3-8-3 8-6-5ZM6 16h12',
 };
+const RESULT_LABEL: Record<ScenarioResult, string> = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' };
 
 export function mountTracker(root: HTMLElement, initial: TrackerState): void {
   let state = initial;
@@ -118,19 +120,38 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
 
   function renderTurn(s: Scenario): void {
     turnBox.replaceChildren();
+    const played = s.status === 'played';
+    const live = state.may && !played;
     turnBox.dataset.idle = String(s.turn === 0);
-    if (s.turn === 0) {
-      put(turnBox,
-        h('div', {}, h('div', { class: 'tk-turn-label' }, 'Before the first turn'), h('p', { class: 'tk-turn-note' }, s.status === 'played' ? 'The game was not tracked turn by turn.' : 'The warbands are deploying. Anything logged now goes down as turn 1.')),
-        state.may && s.status !== 'played' ? h('button', { type: 'button', class: 'tk-btn big wide tk-turn-begin', 'data-turn': '1' }, 'Begin: turn 1') : null,
+    if (played) {
+      // how it ended, first: the one thing the table wants to see once the game is called
+      const results = h('div', { class: 'tk-result' },
+        h('div', { class: 'tk-turn-label' }, 'The game is played'),
+        h('ul', { class: 'tk-result-list' }, ...s.warbands.map((w) => h('li', { 'data-result': w.result ?? '' }, h('span', {}, warbandName(w.warbandId)), h('b', {}, w.result ? RESULT_LABEL[w.result] : 'No result')))),
+        h('p', { class: 'tk-turn-note' }, s.turn > 0 ? `It ran ${s.turn} ${s.turn === 1 ? 'turn' : 'turns'} as the table counted them.` : 'It was not tracked turn by turn.'),
+        h('div', { class: 'tk-result-actions' },
+          h('a', { class: 'tk-btn', href: `${state.base}/scenarios/${s.id}/#pen` }, svg(ICON.quill), 'Write it up'),
+          state.may ? h('button', { type: 'button', class: 'tk-btn ghost', 'data-open': 'wrap-up' }, 'Change how it ended') : null,
+        ),
       );
+      turnBox.dataset.idle = 'true';
+      put(turnBox, results);
       return;
     }
-    put(turnBox,
-      h('button', { type: 'button', class: 'tk-btn ghost', 'data-turn': String(s.turn - 1), 'aria-label': 'Back a turn', hidden: !state.may }, svg(ICON.minus)),
-      h('div', {}, h('div', { class: 'tk-turn-label' }, 'Turn'), h('div', { class: 'tk-turn-number' }, String(s.turn), s.status === 'played' ? h('small', {}, 'The game is played.') : null)),
-      state.may && s.status !== 'played' ? h('button', { type: 'button', class: 'tk-btn big', 'data-turn': String(s.turn + 1) }, svg(ICON.plus), 'Next turn') : h('span'),
-    );
+    if (s.turn === 0) {
+      put(turnBox,
+        h('div', {}, h('div', { class: 'tk-turn-label' }, 'Before the first turn'), h('p', { class: 'tk-turn-note' }, 'The warbands are deploying. Anything logged now goes down as turn 1.')),
+        live ? h('button', { type: 'button', class: 'tk-btn big wide tk-turn-begin', 'data-turn': '1' }, 'Begin: turn 1') : null,
+      );
+    } else {
+      put(turnBox,
+        h('button', { type: 'button', class: 'tk-btn ghost tk-turn-back', 'data-turn': String(s.turn - 1), 'aria-label': 'Back a turn', hidden: !live }, svg(ICON.minus)),
+        h('div', { class: 'tk-turn-now' }, h('div', { class: 'tk-turn-label' }, 'Turn'), h('div', { class: 'tk-turn-number' }, String(s.turn))),
+        live ? h('button', { type: 'button', class: 'tk-btn big', 'data-turn': String(s.turn + 1) }, svg(ICON.plus), 'Next turn') : h('span'),
+      );
+    }
+    // the way out: calling the game is the table's, and it should never be hunted for
+    if (live) put(turnBox, h('button', { type: 'button', class: 'tk-btn tk-wrap', 'data-open': 'wrap-up' }, svg(ICON.laurel), 'The game is done: who won?'));
   }
 
   function renderTally(s: Scenario): void {
@@ -227,10 +248,38 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     return sel;
   };
 
-  function openSheet(kind: 'out-of-action' | 'score' | 'note'): void {
+  type SheetKind = 'out-of-action' | 'score' | 'note' | 'wrap-up';
+  /** What the tally says, when it decides anything: the one warband ahead wins, the rest lose. Otherwise nothing is presumed. */
+  function suggestedResults(s: Scenario): Record<string, ScenarioResult> {
+    const out: Record<string, ScenarioResult> = {};
+    for (const w of s.warbands) if (w.result) out[w.warbandId] = w.result;
+    if (Object.keys(out).length) return out;
+    if (!tallyOf(s)) return out;
+    const scores = scoresOf(s);
+    const top = Math.max(...scores.map((x) => x.points));
+    if (scores.filter((x) => x.points === top).length !== 1) return out;
+    for (const x of scores) out[x.warbandId] = x.points === top ? 'victory' : 'defeat';
+    return out;
+  }
+
+  function openSheet(kind: SheetKind): void {
     sheet.replaceChildren();
     const form = h('form', { method: 'dialog', 'data-kind': kind });
-    if (kind === 'out-of-action') {
+    if (kind === 'wrap-up') {
+      const s = state.scenario;
+      const given = suggestedResults(s);
+      form.append(h('div', { class: 'tk-sheet-head' }, h('h2', {}, s.status === 'played' ? 'How it ended' : 'The game is done'), closeButton()));
+      if (!s.warbands.length) form.append(h('p', { class: 'tk-empty' }, 'No warbands are named for this scenario yet. A game master names them on the scenario page.'));
+      for (const w of attending()) {
+        const box = h('div', { class: 'tk-choices', role: 'group', 'aria-label': w.name });
+        for (const r of SCENARIO_RESULTS) box.append(h('label', {}, h('input', { type: 'radio', name: `result.${w.id}`, value: r, required: true, checked: given[w.id] === r }), h('span', { 'data-result': r }, RESULT_LABEL[r])));
+        form.append(h('div', { class: 'tk-field' }, w.name, box));
+      }
+      form.append(
+        h('p', { class: 'tk-note' }, s.status === 'played' ? 'The results are changed as they stand; the scenario stays in the Chronicle.' : Object.keys(given).length && !s.warbands.some((w) => w.result) ? 'Suggested from the tally. Change it if the table says otherwise.' : 'Every warband that fought gets a result. The scenario joins the Chronicle, and the writing-up begins on its page.'),
+        h('div', { class: 'tk-actions' }, h('button', { type: 'submit', class: 'tk-btn big', disabled: !s.warbands.length }, svg(ICON.laurel), s.status === 'played' ? 'Save how it ended' : 'Call the game')),
+      );
+    } else if (kind === 'out-of-action') {
       const target = memberSelect('targetId', 'Who fell', { value: '@other', label: 'Someone not on the roll…' });
       const other = h('label', { class: 'tk-field', hidden: true }, 'Their name', h('input', { name: 'target', maxlength: '120', placeholder: 'A hired sword, a beast, a bystander' }));
       target.addEventListener('change', () => { other.hidden = target.value !== '@other'; if (!other.hidden) other.querySelector('input')!.focus(); });
@@ -297,7 +346,12 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     const button = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
     button.disabled = true; button.setAttribute('aria-busy', 'true');
     let ok = false;
-    if (kind === 'out-of-action') {
+    if (kind === 'wrap-up') {
+      const results = state.scenario.warbands.map((w) => ({ warbandId: w.warbandId, result: String(data.get(`result.${w.warbandId}`) ?? '') }));
+      if (results.some((r) => !r.result)) { toast('Every warband that fought needs a result.'); button.disabled = false; button.removeAttribute('aria-busy'); return; }
+      ok = await post('played', { results });
+      if (ok) window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (kind === 'out-of-action') {
       const targetId = String(data.get('targetId') ?? '');
       ok = await post('out-of-action', { attackerId: data.get('attackerId'), targetId: targetId && targetId !== '@other' ? targetId : null, target: targetId === '@other' ? data.get('target') : '', detail: data.get('detail') ?? '', turn });
     } else if (kind === 'score') {
@@ -313,7 +367,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
   root.addEventListener('click', async (e) => {
     const t = e.target as HTMLElement;
     const open = t.closest<HTMLButtonElement>('[data-open]');
-    if (open) { openSheet(open.dataset.open as 'out-of-action' | 'score' | 'note'); return; }
+    if (open) { openSheet(open.dataset.open as SheetKind); return; }
     const turn = t.closest<HTMLButtonElement>('[data-turn]');
     if (turn) { await post('turn', { turn: Number(turn.dataset.turn) }); return; }
     const score = t.closest<HTMLButtonElement>('[data-score]');

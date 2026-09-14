@@ -401,20 +401,19 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
               </form>
             )}
             {gm && (
-              <form class="mg-form" data-api="scenarios/played" data-json={JSON.stringify({ scenarioId: scenario.id })}>
-                {!upcoming && <h4 class="mg-h3">How it ended</h4>}
-                {scenario.warbands.length === 0 && <p class="mg-note">Name the warbands that fight first, under the scenario above.</p>}
-                <div class="mg-grid">{scenario.warbands.map((w, i) => (
-                  <div class="mg-fieldset"><input type="hidden" name={`results.${i}.warbandId`} value={w.warbandId} />
-                    <label class="mg-field">{nameOf(w.warbandId)}<select name={`results.${i}.result`}>{(['victory', 'defeat', 'draw'] as const).map((r) => <option value={r} selected={w.result === r}>{resultLabel[r]}</option>)}</select></label>
-                  </div>
-                ))}</div>
+              <div class="mg-form ending">
+                <h4 class="mg-h3">How it ended</h4>
+                {upcoming ? (
+                  <p class="mg-note">The game is called at the table: the tracker takes every warband's result and moves the scenario into the Chronicle.{scenario.warbands.length === 0 ? ' Name the warbands that fight first, under the scenario above.' : ''}</p>
+                ) : (
+                  <ul class="ending-list">{scenario.warbands.map((w) => <li><span>{nameOf(w.warbandId)}</span><b class={w.result ?? ''}>{w.result ? resultLabel[w.result] : 'No result'}</b></li>)}</ul>
+                )}
                 <div class="mg-actions end">
                   {!upcoming && <button type="button" class="mg-btn ghost" data-act="scenarios/reopen" data-body={JSON.stringify({ scenarioId: scenario.id })} data-confirm="Lift this scenario out of the Chronicle and make it upcoming again? Everything written stays.">Reopen as upcoming</button>}
                   {upcoming && <button type="button" class="mg-btn blood" data-act="scenarios/delete" data-body={JSON.stringify({ scenarioId: scenario.id })} data-goto={`${base}/scenarios/`} data-confirm="Strike this scenario? Every prologue written for it goes too.">Strike it</button>}
-                  <button type="submit" class="mg-btn" disabled={scenario.warbands.length === 0}>{upcoming ? 'The game is played' : 'Save the results'}</button>
+                  <a class="mg-btn" href={trackerUrl}><Icon name="swords" size={14} /> {upcoming ? 'Call the game in the tracker' : 'Change it in the tracker'}</a>
                 </div>
-              </form>
+              </div>
             )}
             {!upcoming && mayRetell && revisions.length > 0 && (
               <div>
@@ -852,6 +851,12 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   .mg-revisions details summary { list-style: none; cursor: pointer; }
   .mg-revisions details p { margin-top: .4rem; }
   .report-header h1 { font: normal clamp(2.4rem, 7vw, 4rem)/1.05 'Pirata One', Georgia, serif; color: var(--parchment); margin: .5rem 0 1rem; }
+  .ending-list { list-style: none; padding: 0; display: grid; gap: .4rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+  .ending-list li { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem .8rem; border: 1px solid var(--border); font-size: var(--text-ui); }
+  .ending-list li span { color: var(--parchment); }
+  .ending-list li b { font-weight: normal; color: var(--ink-dim); }
+  .ending-list li b.victory { color: var(--gold); }
+  .ending-list li b.defeat { color: var(--blood-bright); }
   .tracker-call { margin-top: 1.5rem; display: grid; gap: .5rem; justify-items: center; }
   .tracker-call .mg-btn { min-height: 3rem; padding-inline: 1.4rem; }
 </style>

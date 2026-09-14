@@ -24,7 +24,7 @@ const routes = {
   create: route(z.object(scenarioFields).partial().required({ title: true, playedOn: true }), (i, a) => wrap(createScenario(a, i)), 'gm'),
   update: route(z.object({ scenarioId: id, patch: z.object(scenarioFields).partial() }), (i, a) => wrap(updateScenario(a, i.scenarioId, i.patch)), 'gm'),
   participants: route(z.object({ scenarioId: id, warbandIds: z.array(z.string().max(64)).max(20) }), (i, a) => wrap(setParticipants(a, i.scenarioId, i.warbandIds)), 'gm'),
-  played: route(z.object({ scenarioId: id, results: z.array(z.object({ warbandId: z.string().max(64), result: z.enum(['victory', 'defeat', 'draw']) })).max(20) }), (i, a) => wrap(markPlayed(a, i.scenarioId, i.results)), 'gm'),
+  played: route(z.object({ scenarioId: id, results: z.array(z.object({ warbandId: z.string().max(64), result: z.enum(['victory', 'defeat', 'draw']) })).max(20) }), (i, a) => wrap(markPlayed(a, i.scenarioId, i.results))),
   reopen: route(z.object({ scenarioId: id }), (i, a) => wrap(reopenScenario(a, i.scenarioId)), 'gm'),
   delete: route(z.object({ scenarioId: id }), (i, a) => deleteScenario(a, i.scenarioId).then(() => ({ ok: true })), 'gm'),
   battle: route(z.object({ scenarioId: id, battle: paragraphs }), (i, a) => wrap(writeBattle(a, i.scenarioId, i.battle))),
