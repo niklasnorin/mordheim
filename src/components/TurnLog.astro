@@ -1,0 +1,67 @@
+---
+/**
+ * The battle turn by turn, as the table logged it in the tracker: who struck whom, who scored, what happened.
+ * Read-only here; the tracker at /scenarios/<id>/battle/ is where it is written. Out-of-action results written up
+ * afterwards, with no turn, close the list.
+ */
+import { scoresOf, tallyOf, type Scenario, type Warband } from '../campaign/model';
+
+interface Props { scenario: Scenario; warbands: Warband[] }
+const { scenario, warbands } = Astro.props;
+
+const nameOf = (id: string | null | undefined) => warbands.find((w) => w.id === id)?.name ?? id ?? '';
+const members = warbands.flatMap((w) => w.members.map((m) => ({ ...m, warbandName: w.name })));
+const memberOf = (id: string) => members.find((m) => m.id === id);
+const tally = tallyOf(scenario);
+const scores = scoresOf(scenario);
+
+type Line = { turn: number | null; at: number; kind: 'out-of-action' | 'note' | 'score'; html: { lead: string; strong?: string; rest?: string }; who?: string; by?: string };
+const lines: Line[] = [
+  ...scenario.outOfAction.map((o): Line => ({ turn: o.turn ?? null, at: o.id, kind: 'out-of-action', html: { lead: `${memberOf(o.attackerId)?.name ?? o.attackerId} put `, strong: o.target, rest: ` out of action${o.detail ? `: ${o.detail}` : ''}` }, who: memberOf(o.attackerId)?.warbandName })),
+  ...scenario.events.map((e): Line => e.kind === 'score'
+    ? ({ turn: e.turn, at: e.id, kind: 'score', html: { lead: `${nameOf(e.warbandId)} `, strong: `${e.points > 0 ? '+' : '−'}${Math.abs(e.points)} ${tally || 'points'}`, rest: e.text ? ` — ${e.text}` : '' }, by: e.authorName })
+    : ({ turn: e.turn, at: e.id, kind: 'note', html: { lead: e.text }, who: e.warbandId ? nameOf(e.warbandId) : undefined, by: e.authorName })),
+];
+// oldest turn first here: the archive reads forwards
+const turns = [...new Set(lines.map((l) => l.turn))].sort((a, b) => (a ?? 1e9) - (b ?? 1e9));
+---
+
+{lines.length > 0 && (
+  <div class="turn-log">
+    {tally && scores.length > 0 && (
+      <p class="turn-log-tally"><span class="voice-label">{tally}</span> {scores.map((s) => `${nameOf(s.warbandId)} ${s.points}`).join(' · ')}</p>
+    )}
+    {turns.map((t) => (
+      <section class="turn-log-turn" aria-label={t === null ? 'Written up afterwards' : `Turn ${t}`}>
+        <h3>{t === null ? <small>Written up afterwards</small> : `Turn ${t}`}</h3>
+        <ol>
+          {lines.filter((l) => l.turn === t).sort((a, b) => a.at - b.at).map((l) => (
+            <li class:list={['turn-log-line', l.kind]}>
+              <span class="turn-log-mark" aria-hidden="true">{l.kind === 'out-of-action' ? '†' : l.kind === 'score' ? '◆' : '·'}</span>
+              <span>{l.html.lead}{l.html.strong && <b>{l.html.strong}</b>}{l.html.rest}{(l.who || l.by) && <small class="turn-log-meta">{[l.who, l.by].filter(Boolean).join(' · ')}</small>}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+    ))}
+    {scenario.turn > 0 && scenario.status === 'played' && <p class="archive-note turn-log-end">The game ran {scenario.turn} {scenario.turn === 1 ? 'turn' : 'turns'} as the table counted them.</p>}
+  </div>
+)}
+
+<style>
+  .turn-log { max-width: 760px; margin: 0 auto; }
+  .turn-log-tally { text-align: center; color: var(--parchment); margin-bottom: 1.5rem; }
+  .turn-log-tally .voice-label { display: inline; margin: 0 .5rem 0 0; }
+  .turn-log-turn { margin: 1.25rem 0; padding: 0; }
+  .turn-log-turn h3 { font: 1.3rem/1.3 'Pirata One', Georgia, serif; color: var(--gold); margin-bottom: .4rem; border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
+  .turn-log-turn h3 small { font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .12em; color: var(--ink-dim); }
+  .turn-log ol { list-style: none; padding: 0; }
+  .turn-log-line { display: grid; grid-template-columns: 1.4rem 1fr; gap: .4rem; margin: 0; padding: .35rem 0; font-size: .95rem; }
+  .turn-log-line + .turn-log-line { border-top: 1px solid #1c231f; }
+  .turn-log-line b { color: var(--parchment); font-weight: 600; }
+  .turn-log-mark { color: var(--gold-dim); text-align: center; }
+  .turn-log-line.out-of-action .turn-log-mark { color: var(--blood-bright); }
+  .turn-log-line.score .turn-log-mark { color: var(--gold); }
+  .turn-log-meta { display: block; color: var(--ink-dim); font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; margin-top: .15rem; }
+  .turn-log-end { text-align: center; margin-top: 1.5rem; }
+</style>

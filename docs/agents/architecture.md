@@ -25,8 +25,10 @@ Astro is `output: 'static'` with the Vercel adapter (`astro.config.mjs`), but ev
 | Route | Mode | Why |
 | --- | --- | --- |
 | `/` | function, edge-cached five minutes, `Cache-Control: public, s-maxage=300` | The whole campaign's record, but nothing personal. Signed-in links are revealed by the browser after asking `/api/account/me`, which also says the viewer's role and warband. |
-| `/scenarios/`, `/scenarios/<id>/`, `/warbands/`, `/warbands/<id>/`, `/curfew/`, `/curfew/eve/`, `/admin/**` | function, `private, no-store` | They show the viewer's own pen: what they may edit depends on who they are. |
+| `/scenarios/`, `/scenarios/<id>/`, `/scenarios/<id>/battle/`, `/warbands/`, `/warbands/<id>/`, `/curfew/`, `/curfew/eve/`, `/admin/**` | function, `private, no-store` | They show the viewer's own pen: what they may edit depends on who they are. |
 | `/api/**` | function | Same-origin JSON. |
+
+The battle tracker is the one page that does not reload: `src/lib/tracker.ts` renders the turn, the tally and the log from the scenario the server last answered with, posts each tap to `api/scenarios/` (`turn`, `event`, `out-of-action`, `remove-event`) and re-renders from the answer, and while the page is visible asks `tracker` every few seconds whether another phone at the table has written (re-rendering only when `updatedAt` moved). Takedowns logged there are the record's own `scenario_out_of_action` rows, tagged with the turn; notes and scores are `scenario_events`. The page hands the client the roster once, in a JSON script tag; the log is what changes.
 
 The management pages share one client script, `src/lib/manage.ts`: a `button[data-act="warbands/claim"]` posts its `data-body`, a `form[data-api="scenarios/update"]` posts its fields as nested JSON (`patch.lore`, `patch.stats.WS`; `data-list` textareas one line per entry, `data-paragraphs` one paragraph per blank line, checkbox groups arrays) merged over `data-json`, and on success the page reloads. Nothing is updated optimistically: the server's answer is the page.
 
@@ -89,5 +91,5 @@ The schema is `src/server/db/schema.ts`; migrations under `drizzle/` are generat
 | Something the Cryer should print | `cryer.ts` if from a night, `admin/service.ts` if from the Watch, the Articles panel in the Watch House if authored |
 | A new place, or more prose for one | On a seeded database: the document in `/admin/content/` (a pasted pack for a new place, plus its band and mark under `public/curfew/places/`). For the built-in set and the tests: `src/data/curfew/locations/*.json` and `BUILT_IN_DOCUMENTS` in `engine.ts` |
 | A new table or column | `schema.ts`, `npm run db:generate`, the files under `drizzle/` |
-| A battle played | On the site: the game master marks the scenario played and writes it up at `/scenarios/<id>/`; the players tell their part; the roster is changed at `/warbands/<id>/` |
+| A battle played | On the site: at the table, the tracker at `/scenarios/<id>/battle/` logs the turns, the tally and the takedowns; afterwards the game master marks the scenario played and writes it up at `/scenarios/<id>/`; the players tell their part; the roster is changed at `/warbands/<id>/` |
 | A change to the record's shape | `src/campaign/model.ts`, the service, the seed, the page |

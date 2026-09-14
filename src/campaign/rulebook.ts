@@ -16,3 +16,14 @@ export function rulebookUrl(name: string | null | undefined): string | null {
   const known = (RULEBOOK_SCENARIOS as readonly string[]).find((r) => r.toLowerCase() === name.trim().toLowerCase());
   return known ? `${RULES_BASE}/${known.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : null;
 }
+
+/**
+ * What each rulebook scenario counts, for the battle tracker's tally. The others are decided by who routs and who
+ * is left standing, so they tally nothing beyond the out-of-action results; a game master may still name one.
+ */
+export const RULEBOOK_TALLIES: Readonly<Partial<Record<RulebookScenario, string>>> = {
+  'Wyrdstone Hunt': 'Shards',
+  'Breakthrough': 'Warriors through',
+  'Occupy': 'Buildings held',
+  'Hidden Treasure': 'Treasure found',
+};

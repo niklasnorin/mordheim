@@ -57,6 +57,13 @@
       "when": 1789332648545,
       "tag": "0007_prologue-summary",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789407012956,
+      "tag": "0008_battle-tracker",
+      "breakpoints": true
     }
   ]
 }

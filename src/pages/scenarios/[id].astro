@@ -6,15 +6,16 @@
  */
 import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
+import TurnLog from '../../components/TurnLog.astro';
 import '../../styles/manage.css';
 import { base } from '../../lib/site';
 import { formatImperial, imperialForDate } from '../../lib/calendar';
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm } from '../../server/roles';
-import { listScenarios, revisionsOf } from '../../server/campaign/scenarios';
+import { listScenarios, mayTrack, revisionsOf } from '../../server/campaign/scenarios';
 import { listWarbands } from '../../server/campaign/roster';
-import { RULEBOOK_SCENARIOS, rulebookUrl } from '../../campaign/rulebook';
-import { MEMBER_STATUSES, carriedForward, summaryOf, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
+import { RULEBOOK_SCENARIOS, RULEBOOK_TALLIES, rulebookUrl } from '../../campaign/rulebook';
+import { MEMBER_STATUSES, carriedForward, hasTurnLog, summaryOf, tallyOf, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
 import { CAMPAIGN } from '../../curfew/engine';
 
 export const prerender = false;
@@ -51,6 +52,10 @@ const statusLabel = { active: 'Active', injured: 'Injured', dead: 'Fell in this 
 /** The warbands the viewer speaks for here: their own, or every attending one for a game master. */
 const speaksFor = scenario.warbands.filter((p) => gm || (viewer && warbandOf(p.warbandId)?.ownerId === viewer.id));
 const mayRetell = gm || (scenario.battleOpen && speaksFor.length > 0);
+// the battle tracker: those at the table write in it, and the log it kept is read here
+const atTable = await mayTrack(viewer, scenario.id);
+const tracked = hasTurnLog(scenario);
+const trackerUrl = `${base}/scenarios/${scenario.id}/battle/`;
 const winners = scenario.warbands.filter((w) => w.result === 'victory');
 const attendingMembers = scenario.warbands.flatMap((p) => (warbandOf(p.warbandId)?.members ?? []).map((m) => ({ ...m, warbandName: nameOf(p.warbandId) })));
 const when = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: CAMPAIGN.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
@@ -83,6 +88,12 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
       )}
       <h1>{scenario.title}</h1>
       {summary && <p class="summary">{summary}</p>}
+      {atTable && (
+        <p class="tracker-call">
+          <a class:list={['mg-btn', { ghost: !upcoming }]} href={trackerUrl}><Icon name="swords" size={16} /> {upcoming ? (scenario.turn > 0 ? `At the table: turn ${scenario.turn}` : 'Open the battle tracker') : 'The tracker'}</a>
+          {upcoming && <small class="archive-note">Turns, takedowns and the tally, on a phone at the table.</small>}
+        </p>
+      )}
     </header>
 
     <nav class="report-nav" aria-label="Scenario sections">
@@ -90,6 +101,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         <>
           <a href="#rules">When &amp; how</a>
           <a href="#prologue">Prologue</a>
+          {tracked && <a href="#turns">At the table</a>}
           <a href="#muster">Warbands</a>
         </>
       ) : (
@@ -97,6 +109,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           <a href="#outcome">Outcome</a>
           <a href="#prologue">Prologue</a>
           <a href="#battle">The battle</a>
+          {tracked && <a href="#turns">Turn by turn</a>}
           <a href="#epilogue">Epilogue</a>
           {scenario.puzzle && <a href="#merchant-puzzle">The sealed clue</a>}
           <a href="#muster">Warbands &amp; warriors</a>
@@ -153,6 +166,15 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
       )}
     </section>
 
+    {upcoming && tracked && (
+      <section id="turns">
+        <p class="section-kicker">At the table</p>
+        <h2 class="section-title">The game so far</h2>
+        <p class="neutral archive-note">{scenario.turn > 0 ? `Turn ${scenario.turn}, as the table counts it.` : 'The tracker is open; the first turn has not been called.'}{atTable ? <> <a href={trackerUrl}>Open the tracker</a>.</> : null}</p>
+        <TurnLog scenario={scenario} warbands={warbands} />
+      </section>
+    )}
+
     {!upcoming && (
       <>
         <section id="battle" class="battle-narrative">
@@ -161,6 +183,14 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           {scenario.battle.length ? scenario.battle.map((paragraph) => <p>{paragraph}</p>) : <p class="neutral archive-note">The battle has not been told yet.</p>}
           {scenario.battleOpen && <p class="neutral archive-note">The game master has opened this account to those who fought. Earlier tellings are kept.</p>}
         </section>
+
+        {tracked && (
+          <section id="turns">
+            <p class="section-kicker">As the table kept it</p>
+            <h2 class="section-title">Turn by turn</h2>
+            <TurnLog scenario={scenario} warbands={warbands} />
+          </section>
+        )}
 
         <section id="epilogue">
           <p class="section-kicker">When the fighting ends</p>
@@ -273,7 +303,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                   {takedowns.length > 0 && (
                     <>
                       <h4>Opponents put out of action</h4>
-                      <ul>{takedowns.map((e) => (<li><a href={`#member-${e.attackerId}`}>{memberName(e.attackerId)}</a> defeated {e.targetId ? <a href={`#member-${e.targetId}`}>{e.target}</a> : e.target}</li>))}</ul>
+                      <ul>{takedowns.map((e) => (<li><a href={`#member-${e.attackerId}`}>{memberName(e.attackerId)}</a> defeated {e.targetId ? <a href={`#member-${e.targetId}`}>{e.target}</a> : e.target}{e.turn != null && <span class="archive-note"> · turn {e.turn}</span>}</li>))}</ul>
                     </>
                   )}
                 </>
@@ -296,7 +326,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                         {events.length > 0 && (
                           <>
                             <p><strong>Put out of action:</strong></p>
-                            <ul>{events.map((e) => (<li>{e.targetId ? <a href={`#member-${e.targetId}`}>{e.target}</a> : e.target}{e.detail ? <> — {e.detail}</> : null}</li>))}</ul>
+                            <ul>{events.map((e) => (<li>{e.targetId ? <a href={`#member-${e.targetId}`}>{e.target}</a> : e.target}{e.turn != null && <span class="archive-note"> (turn {e.turn})</span>}{e.detail ? <> — {e.detail}</> : null}</li>))}</ul>
                           </>
                         )}
                         {fell.length > 0 && <p><strong class="darkest">Taken out by:</strong> {fell.map((e) => memberName(e.attackerId)).join(', ')}</p>}
@@ -338,6 +368,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                 <label class="mg-field">Played on<input name="patch.playedOn" type="date" required value={scenario.playedOn} /><small>{imperial}</small></label>
                 <label class="mg-field">Rulebook scenario{rulesUrl && <> <a class="mg-rules-link" href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules <Icon name="arrow-up-right" size={12} /></a></>}<select name="patch.rulebookScenario" data-nullable><option value="" selected={!scenario.rulebookScenario}>Custom scenario</option>{RULEBOOK_SCENARIOS.map((r) => <option value={r} selected={r === scenario!.rulebookScenario}>{r}</option>)}{scenario.rulebookScenario && !(RULEBOOK_SCENARIOS as readonly string[]).includes(scenario.rulebookScenario) && <option value={scenario.rulebookScenario} selected>{scenario.rulebookScenario}</option>}</select></label>
               </div>
+              <label class="mg-field">What the tracker tallies<input name="patch.tally" maxlength="60" value={scenario.tally} placeholder={tallyOf({ tally: '', rulebookScenario: scenario.rulebookScenario }) || 'Nothing beyond the fallen'} /><small>What the battle tracker counts per warband besides who fell: shards on a Wyrdstone Hunt, warriors through on a Breakthrough. Empty means the rulebook scenario's own ({Object.entries(RULEBOOK_TALLIES).map(([k, v]) => `${k}: ${v!.toLowerCase()}`).join('; ')}), or none.</small></label>
               <fieldset class="mg-fieldset"><legend>Who fights</legend>
                 <div class="mg-checks">{warbands.map((w) => <label class="mg-field check"><input type="checkbox" name="patch.warbandIds" value={w.id} data-array checked={scenario!.warbands.some((p) => p.warbandId === w.id)} /> {w.name} <span class="mg-muted">({w.type})</span></label>)}</div>
                 <p class="mg-note">A warband taken off the list takes its warriors' records for this scenario with it.</p>
@@ -445,7 +476,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                 <div class="ooa">
                   <h4 class="mg-h3">Out of action</h4>
                   {scenario!.outOfAction.filter((e) => band?.members.some((m) => m.id === e.attackerId || m.id === e.targetId)).map((e) => (
-                    <p class="ooa-row"><span><b>{memberName(e.attackerId)}</b> put <b>{e.target}</b> out of action{e.detail ? <>: {e.detail}</> : null}</span><button type="button" class="mg-btn ghost sm" data-act="scenarios/remove-out-of-action" data-body={JSON.stringify({ scenarioId: scenario!.id, id: e.id })} data-confirm="Strike this record?">Strike</button></p>
+                    <p class="ooa-row"><span><b>{memberName(e.attackerId)}</b> put <b>{e.target}</b> out of action{e.turn != null && <span class="mg-muted"> in turn {e.turn}</span>}{e.detail ? <>: {e.detail}</> : null}</span><button type="button" class="mg-btn ghost sm" data-act="scenarios/remove-out-of-action" data-body={JSON.stringify({ scenarioId: scenario!.id, id: e.id })} data-confirm="Strike this record?">Strike</button></p>
                   ))}
                   <form class="mg-form inline" data-api="scenarios/out-of-action" data-json={JSON.stringify({ scenarioId: scenario!.id })}>
                     <label class="mg-field">Who struck<select name="attackerId" required>{attendingMembers.map((m) => <option value={m.id}>{m.name} ({m.warbandName})</option>)}</select></label>
@@ -821,4 +852,6 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   .mg-revisions details summary { list-style: none; cursor: pointer; }
   .mg-revisions details p { margin-top: .4rem; }
   .report-header h1 { font: normal clamp(2.4rem, 7vw, 4rem)/1.05 'Pirata One', Georgia, serif; color: var(--parchment); margin: .5rem 0 1rem; }
+  .tracker-call { margin-top: 1.5rem; display: grid; gap: .5rem; justify-items: center; }
+  .tracker-call .mg-btn { min-height: 3rem; padding-inline: 1.4rem; }
 </style>

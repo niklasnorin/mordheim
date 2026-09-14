@@ -229,6 +229,9 @@ export const scenarios = pgTable('scenarios', {
   loot: jsonb('loot').notNull().default([]),
   campaignNotes: jsonb('campaign_notes').notNull().default([]),
   puzzle: jsonb('puzzle'),
+  /** The battle tracker: the game turn the table is on (0 before the first), and what the scenario scores (empty: the rulebook's tally, or none). */
+  turn: integer('turn').notNull().default(0),
+  tally: text('tally').notNull().default(''),
   createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -279,8 +282,32 @@ export const scenarioOutOfAction = pgTable(
     targetId: text('target_id'),
     target: text('target').notNull(),
     detail: text('detail').notNull().default(''),
+    /** The game turn it happened in, when logged at the table; null when written up afterwards. */
+    turn: integer('turn'),
   },
   (t) => [index('scenario_ooa_scenario_idx').on(t.scenarioId)],
+);
+
+/**
+ * The battle tracker's log: what the table noted turn by turn while the game was played. A `note` is anything
+ * worth remembering, a `score` counts towards the scenario's tally for one warband. Out-of-action results are
+ * not here: they go straight into `scenario_out_of_action` with their turn.
+ */
+export const scenarioEvents = pgTable(
+  'scenario_events',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    scenarioId: text('scenario_id').notNull().references(() => scenarios.id, { onDelete: 'cascade' }),
+    turn: integer('turn').notNull(),
+    kind: text('kind', { enum: ['note', 'score'] }).notNull(),
+    warbandId: text('warband_id'),
+    points: integer('points').notNull().default(0),
+    text: text('text').notNull().default(''),
+    authorId: text('author_id'),
+    authorName: text('author_name').notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('scenario_events_scenario_idx').on(t.scenarioId)],
 );
 
 /** Every earlier telling of a battle, kept whole when the narrative is rewritten. */

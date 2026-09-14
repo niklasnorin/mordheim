@@ -1,0 +1,124 @@
+/* ═══════════════════════════════════════════
+   The battle tracker: one phone at the table, held in one hand, during the game.
+   Built for thumbs: the turn and the tally up top, the log in the middle, the three
+   things worth logging pinned to the bottom. The archive's palette (global.css).
+   ═══════════════════════════════════════════ */
+
+.tk { max-width: 40rem; margin: 0 auto; padding: 0 1rem calc(6.5rem + env(safe-area-inset-bottom, 0px)); min-height: 100dvh; display: flex; flex-direction: column; }
+.tk section { margin: 0; }
+.tk [hidden] { display: none !important; }
+
+/* the masthead: where you are, and the way back */
+.tk-top { display: flex; align-items: center; gap: .75rem; padding: .75rem 0 .5rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 5; background: linear-gradient(var(--bg) 70%, transparent); }
+.tk-back { display: inline-flex; align-items: center; gap: .3rem; min-height: var(--control-size); min-width: var(--control-size); color: var(--ink-dim); text-decoration: none; font: var(--text-ui)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; flex-shrink: 0; }
+.tk-back:hover { color: var(--parchment); }
+.tk-heading { min-width: 0; flex: 1; }
+.tk-title { font: normal clamp(1.35rem, 5.5vw, 1.9rem)/1.1 'Pirata One', Georgia, serif; color: var(--parchment); letter-spacing: .02em; overflow-wrap: anywhere; }
+.tk-sub { color: var(--ink-dim); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tk-live { width: .5rem; height: .5rem; border-radius: 50%; background: var(--gold-dim); flex-shrink: 0; transition: background .3s; }
+.tk-live[data-on='true'] { background: var(--green-wyrd); box-shadow: 0 0 8px var(--green-wyrd); }
+
+/* the turn: the one number everyone at the table asks for */
+.tk-turn { display: grid; grid-template-columns: var(--control-size) 1fr auto; align-items: center; gap: .75rem; padding: 1rem 0 .75rem; }
+.tk-turn[data-idle='true'] { grid-template-columns: 1fr; }
+.tk-turn-note { color: var(--ink-dim); font-style: italic; margin-top: .25rem; }
+.tk-turn-label { color: var(--gold); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .22em; }
+.tk-turn-number { font: normal clamp(2.6rem, 12vw, 3.6rem)/1 'Pirata One', Georgia, serif; color: var(--parchment); letter-spacing: .02em; }
+.tk-turn-number small { font: italic var(--text-ui)/1.4 'IM Fell English', Georgia, serif; color: var(--ink-dim); letter-spacing: 0; display: block; margin-top: .2rem; }
+
+/* the tally: one card per warband, a total and the two quick taps */
+.tk-tally { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); padding-bottom: .75rem; }
+.tk-tally-head { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; color: var(--gold); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .18em; }
+.tk-score { display: grid; grid-template-columns: 1fr auto; grid-template-areas: 'name total' 'taps total'; align-items: center; gap: .25rem .75rem; padding: .7rem .8rem; background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); border: 1px solid var(--gold-dim); min-width: 0; }
+.tk-score-name { grid-area: name; color: var(--parchment); font: var(--text-ui)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; overflow-wrap: anywhere; }
+.tk-score-total { grid-area: total; font: normal 2.4rem/1 'Pirata One', Georgia, serif; color: var(--gold); min-width: 2ch; text-align: right; }
+.tk-score-taps { grid-area: taps; display: flex; gap: .4rem; }
+.tk-score-taps .tk-btn { min-width: var(--control-size); padding: .3rem .6rem; }
+
+/* the log, latest turn first */
+.tk-log { flex: 1; padding-top: .5rem; border-top: 1px solid var(--border); }
+.tk-log-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: .6rem 0 .4rem; color: var(--gold); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .18em; }
+.tk-empty { color: var(--ink-dim); font-style: italic; padding: 1.5rem 0; text-align: center; }
+.tk-group { padding: .4rem 0 .6rem; }
+.tk-group + .tk-group { border-top: 1px dashed var(--border); }
+.tk-group-head { display: flex; align-items: baseline; gap: .6rem; color: var(--parchment); font: normal 1.15rem/1.3 'Pirata One', Georgia, serif; letter-spacing: .03em; padding: .3rem 0; }
+.tk-group-head[data-now='true']::after { content: 'now'; color: var(--green-wyrd); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .18em; }
+.tk-group-head small { color: var(--ink-dim); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .12em; }
+.tk-line { display: grid; grid-template-columns: 1.6rem 1fr auto; gap: .5rem .6rem; align-items: start; padding: .5rem 0; min-width: 0; }
+.tk-line + .tk-line { border-top: 1px solid #1c231f; }
+.tk-line-icon { width: 1.5rem; height: 1.5rem; color: var(--gold-dim); margin-top: .1rem; }
+.tk-line[data-kind='out-of-action'] .tk-line-icon { color: var(--blood-bright); }
+.tk-line[data-kind='score'] .tk-line-icon { color: var(--gold); }
+.tk-line-body { min-width: 0; overflow-wrap: anywhere; }
+.tk-line-body b { color: var(--parchment); font-weight: 600; }
+.tk-line-body .points { color: var(--gold); font-weight: 600; }
+.tk-line-body .points.minus { color: var(--blood-bright); }
+.tk-line-meta { display: flex; flex-wrap: wrap; gap: .3rem .6rem; align-items: center; margin-top: .2rem; color: var(--ink-dim); font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; }
+.tk-chip { display: inline-block; padding: .05rem .45rem; border: 1px solid var(--border); color: var(--ink-dim); font: var(--text-meta)/1.6 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; }
+.tk-strike { background: none; border: 0; color: var(--ink-dim); min-width: var(--control-size); min-height: var(--control-size); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; margin: -.5rem -.5rem -.5rem 0; }
+.tk-strike:hover { color: var(--blood-bright); }
+.tk-strike svg { width: 1.1rem; height: 1.1rem; }
+
+/* buttons */
+.tk-btn { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: var(--control-size); padding: .55rem 1rem; border: 1px solid var(--gold-dim); background: #141b17; color: var(--gold); font: var(--text-ui)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; text-decoration: none; cursor: pointer; touch-action: manipulation; transition: background .2s, border-color .2s, color .2s; }
+.tk-btn:hover:not([disabled]) { background: #1f2823; border-color: var(--gold); color: var(--parchment); }
+.tk-btn[disabled], .tk-btn[aria-busy='true'] { opacity: .5; cursor: progress; }
+.tk-btn.ghost { border-color: var(--border); color: var(--ink-dim); }
+.tk-btn.ghost:hover:not([disabled]) { color: var(--parchment); border-color: var(--ink-dim); }
+.tk-btn.blood { border-color: var(--blood); color: var(--blood-bright); }
+.tk-btn.blood:hover:not([disabled]) { background: #2a1616; }
+.tk-btn.big { min-height: 3.5rem; font-size: 1rem; letter-spacing: .12em; }
+.tk-btn.wide { width: 100%; }
+.tk-btn svg { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
+
+/* the three things worth logging, always under the thumb */
+.tk-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: .6rem 1rem calc(.75rem + env(safe-area-inset-bottom, 0px)); background: linear-gradient(transparent, var(--bg) 30%); }
+.tk-bar-inner { max-width: 40rem; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+.tk-bar .tk-btn { flex-direction: column; gap: .2rem; padding: .5rem .3rem; min-height: 3.6rem; background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); font-size: var(--text-meta); letter-spacing: .08em; }
+.tk-bar .tk-btn[data-open='out-of-action'] { color: var(--blood-bright); border-color: #5a2323; }
+.tk-bar .tk-btn[data-open='out-of-action']:hover { border-color: var(--blood); }
+.tk-bar[data-may='false'] { display: none; }
+.tk-watching { text-align: center; color: var(--ink-dim); font-style: italic; padding: 1rem 0; }
+
+/* the sheet: one dialog, three faces, slid up from the bottom of a phone */
+.tk-sheet { border: 1px solid var(--gold-dim); background: linear-gradient(160deg, #1b231d, #111915); color: var(--ink); padding: 0; width: min(100vw, 40rem); max-width: 100vw; max-height: 92dvh; margin: auto auto 0; box-shadow: 0 -20px 60px -20px #000; }
+.tk-sheet::backdrop { background: #05080699; backdrop-filter: blur(2px); }
+.tk-sheet[open] { animation: tk-rise .22s ease-out; }
+@keyframes tk-rise { from { transform: translateY(1.5rem); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tk-sheet[open] { animation: none; } }
+.tk-sheet form { display: grid; gap: .9rem; padding: 1rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
+.tk-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.tk-sheet-head h2 { font: normal 1.5rem/1.2 'Pirata One', Georgia, serif; color: var(--parchment); letter-spacing: .02em; }
+.tk-sheet-head .tk-strike { margin: 0; }
+.tk-field { display: grid; gap: .3rem; font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; color: var(--ink-dim); min-width: 0; }
+.tk-field > input, .tk-field > textarea, .tk-field > select { width: 100%; font: var(--text-body)/1.5 'IM Fell English', Georgia, serif; background: #0d1210; color: var(--ink); border: 1px solid var(--border); padding: .6rem .7rem; min-height: var(--control-size); text-transform: none; letter-spacing: 0; color-scheme: dark; }
+.tk-field > textarea { min-height: 4.5rem; resize: vertical; }
+.tk-field > input:focus-visible, .tk-field > textarea:focus-visible, .tk-field > select:focus-visible { border-color: var(--gold); outline: none; }
+.tk-field small { text-transform: none; letter-spacing: 0; font-style: italic; color: var(--ink-dim); }
+.tk-row { display: grid; grid-template-columns: 1fr auto; gap: .75rem; align-items: end; }
+/* a row of choices that fit a thumb: warbands, quick words */
+.tk-choices { display: flex; flex-wrap: wrap; gap: .4rem; }
+.tk-choices label { position: relative; }
+.tk-choices input { position: absolute; inset: 0; opacity: 0; margin: 0; }
+.tk-choices span { display: inline-flex; align-items: center; min-height: var(--control-size); padding: .4rem .9rem; border: 1px solid var(--border); color: var(--ink-dim); font: var(--text-ui)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; cursor: pointer; }
+.tk-choices input:checked + span { border-color: var(--gold); color: var(--parchment); background: #1f2823; }
+.tk-choices input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: 2px; }
+.tk-quick { display: flex; flex-wrap: wrap; gap: .4rem; }
+.tk-quick .tk-btn { min-height: 2.25rem; padding: .3rem .75rem; font-size: var(--text-meta); text-transform: none; letter-spacing: .02em; font-style: italic; }
+/* the stepper: a number between two big taps */
+.tk-stepper { display: grid; grid-template-columns: var(--control-size) 1fr var(--control-size); gap: .4rem; align-items: center; }
+.tk-stepper input { text-align: center; font: 1.4rem/1.4 var(--font-utility); background: #0d1210; color: var(--parchment); border: 1px solid var(--border); min-height: var(--control-size); width: 100%; -moz-appearance: textfield; }
+.tk-stepper input::-webkit-inner-spin-button, .tk-stepper input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.tk-sheet .tk-actions { display: flex; gap: .6rem; justify-content: flex-end; align-items: center; flex-wrap: wrap; margin-top: .25rem; }
+.tk-sheet .tk-actions .tk-turn-field { margin-right: auto; display: flex; align-items: center; gap: .4rem; color: var(--ink-dim); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; }
+.tk-sheet .tk-actions .tk-turn-field input { width: 3.5rem; text-align: center; font: 1rem/1.4 var(--font-utility); background: #0d1210; color: var(--parchment); border: 1px solid var(--border); min-height: var(--control-size); }
+
+.tk-toast { position: fixed; left: 50%; bottom: calc(6rem + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 100; max-width: min(92vw, 520px); padding: .8rem 1.1rem; background: var(--bg-panel2); border: 1px solid var(--gold-dim); color: var(--parchment); font-style: italic; text-align: center; box-shadow: 0 10px 30px -8px #000c; }
+
+/* the hidden theme switch would sit under the bar */
+.tk-page #theme-toggle { display: none; }
+
+@media (min-width: 40rem) {
+  .tk-sheet { margin: auto; max-height: 85vh; }
+  .tk-bar .tk-btn { flex-direction: row; font-size: var(--text-ui); }
+}

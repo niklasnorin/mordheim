@@ -11,6 +11,8 @@ The record lives in the database and is written on the site: a game master at `/
 
 ## 1. Gather what was recorded, and only that
 
+If the table used the **battle tracker** (`/scenarios/<id>/battle/`, opened from the scenario page during the game), much of this is already in the record: the turn the game ran to, the tally per warband, the out-of-action results with their turns, and the notes and scores logged turn by turn. The scenario page prints it under **Turn by turn**; treat it as the table's own account. Anything the tracker did not see still comes from the players.
+
 From the players' accounts, app exports, photos or notes: the warbands that fought, the real date, the rulebook scenario and its win condition, who won and by what positions, confirmed out-of-action results, serious injuries and deaths, experience and advances, treasury totals afterwards, loot and exploration, and anything left unresolved. Where a fact was not recorded, the record says so ("was not recorded"; the rulebook field left as custom). Never infer a takedown from a hit, a bow notch or a fall. Never guess a rule from the narrative.
 
 ## 2. The scenario itself (game master)
@@ -29,7 +31,7 @@ Under **The pen**, one drawer per warband the viewer speaks for:
 
 - Prologue, epilogue, accomplishments (a factual sentence or two), and finest and darkest moments one per line.
 - **Who fought, and how it went**: tick the warriors brought; for each, how they came out (`Active`, `Injured`, `Fell in this battle`) and one true sentence each for the finest and the darkest moment. A warrior who did nothing notable gets an honest small moment, not an invented one.
-- **Out of action**: who struck, who fell (a warrior on the roll, or a name), how. The one who struck or the one who fell may record it; a game master may record any.
+- **Out of action**: who struck, who fell (a warrior on the roll, or a name), how. The one who struck or the one who fell may record it; a game master may record any. A takedown logged in the tracker at the table is already here, with its turn; do not enter it twice.
 
 ## 4. Carry the consequences into the roster (`/warbands/<id>/`)
 

@@ -3,11 +3,11 @@ import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { actorOf, testDatabase } from '../testdb.ts';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, getWarband, listWarbands, loadRoster, releaseWarband, removeMember, updateMember, updateWarband, LedgerError } from './roster.ts';
-import { addOutOfAction, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, memberStories, removeOutOfAction, revisionsOf, setBrought, setParticipants, updateScenario, writeBattle, writePerspective } from './scenarios.ts';
+import { addEvent, addOutOfAction, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writePerspective } from './scenarios.ts';
 import { articlesFor, createArticle, deleteArticle, listArticles, updateArticle } from './news.ts';
 import { deleteDocument, getDocument, listDocuments, primeContent, saveDocument, documentRevisions } from '../content/curfew.ts';
 import { seedIfEmpty } from './seed.ts';
-import { carriedForward, summaryOf } from '../../campaign/model.ts';
+import { carriedForward, scoresOf, summaryOf, tallyOf } from '../../campaign/model.ts';
 import { claimWarband as claimLedger, loadOwnLedger, releaseWarband as giveUp } from '../curfew/service.ts';
 import { LOCATIONS, OMENS, locationById } from '../../curfew/engine.ts';
 import { warbands as fixtures } from '../../data/warbands.ts';
@@ -163,6 +163,59 @@ test('a game master sets up an upcoming scenario and the players tell their side
   assert.equal((await getScenario(later.id))!.warbands.length, 1);
   await deleteScenario(gm, later.id);
   assert.equal(await getScenario(later.id), undefined);
+});
+
+test('the battle tracker: the table keeps the turn, the log and the tally; the record gets the takedowns', async () => {
+  const s = await createScenario(gm, { title: 'The Shard Field', playedOn: '2026-10-10', rulebookScenario: 'Wyrdstone Hunt', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  assert.equal(s.turn, 0, 'the game has not begun');
+  assert.equal(tallyOf(s), 'Shards', 'the rulebook scenario says what is counted');
+  assert.equal(tallyOf({ ...s, tally: 'Relics' }), 'Relics', 'the game master may name it');
+  assert.equal(tallyOf({ tally: '', rulebookScenario: 'Skirmish' }), '', 'a skirmish counts nothing but the fallen');
+  assert.equal(tallyOf({ tally: '', rulebookScenario: null }), '');
+  assert.equal(await mayTrack(niklas, s.id), true, 'the keeper of an attending warband sits at the table');
+  assert.equal(await mayTrack(stranger, s.id), false);
+  assert.equal(await mayTrack(null, s.id), false);
+  // the turn: anyone at the table, never a stranger, never past the game
+  await assert.rejects(setTurn(stranger, s.id, 1), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(setTurn(niklas, s.id, 100), LedgerError);
+  let t = await setTurn(niklas, s.id, 1);
+  assert.equal(t.turn, 1);
+  // the log: a note needs words, a score needs a warband and a count, both take the turn the table is on
+  await assert.rejects(addEvent(stranger, s.id, { kind: 'note', text: 'Nope.' }), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(addEvent(niklas, s.id, { kind: 'note', text: '   ' }), (e: unknown) => e instanceof LedgerError && /what happened/.test(e.message));
+  await assert.rejects(addEvent(niklas, s.id, { kind: 'score', points: 1 }), (e: unknown) => e instanceof LedgerError && /which warband/.test(e.message));
+  await assert.rejects(addEvent(niklas, s.id, { kind: 'score', warbandId: 'nordost', points: 0 }), (e: unknown) => e instanceof LedgerError && /how much/.test(e.message));
+  await assert.rejects(addEvent(niklas, s.id, { kind: 'score', warbandId: 'welling-rune', points: 1 }), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  t = await addEvent(niklas, s.id, { kind: 'note', text: 'Agnar charged the wall.' });
+  assert.equal(t.events.length, 1);
+  assert.equal(t.events[0].turn, 1);
+  assert.equal(t.events[0].authorName, 'Niklas');
+  t = await setTurn(gm, s.id, 2);
+  t = await addEvent(niklas, s.id, { kind: 'score', warbandId: 'nordost', points: 2, text: 'Two shards from the fountain.' });
+  t = await addEvent(rival, s.id, { kind: 'score', warbandId: 'bitterbrow-expedition', points: 1 });
+  t = await addEvent(rival, s.id, { kind: 'score', warbandId: 'bitterbrow-expedition', points: -1, text: 'Dropped it running.', turn: 1 });
+  assert.deepEqual(t.events.map((e) => e.turn), [1, 1, 2, 2], 'the log reads in turn order');
+  assert.deepEqual(scoresOf(t), [{ warbandId: 'nordost', points: 2 }, { warbandId: 'bitterbrow-expedition', points: 0 }]);
+  // a takedown logged at the table is the record's own row, with its turn
+  t = await addOutOfAction(rival, s.id, { attackerId: 'jorgrim', targetId: 'agnar', turn: 2 });
+  assert.equal(t.outOfAction[0].turn, 2);
+  await assert.rejects(addOutOfAction(rival, s.id, { attackerId: 'jorgrim', targetId: 'torgrim', turn: 0 }), LedgerError);
+  t = await addOutOfAction(gm, s.id, { attackerId: 'norri', targetId: 'torgrim' });
+  assert.equal(t.outOfAction[1].turn, null, 'written up afterwards, it has no turn');
+  // striking a line: the one who wrote it, or a game master
+  const mine = t.events.find((e) => e.authorName === 'Niklas' && e.kind === 'note')!;
+  await assert.rejects(removeEvent(rival, s.id, mine.id), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  t = await removeEvent(niklas, s.id, mine.id);
+  assert.equal(t.events.length, 3);
+  t = await removeEvent(gm, s.id, t.events[0].id);
+  assert.equal(t.events.length, 2);
+  await assert.rejects(removeEvent(gm, s.id, 999999), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  // the tally's name is the game master's to change; the turn survives the game being marked played
+  t = await updateScenario(gm, s.id, { tally: 'Green shards' });
+  assert.equal(tallyOf(t), 'Green shards');
+  t = await markPlayed(gm, s.id, [{ warbandId: 'nordost', result: 'victory' }, { warbandId: 'bitterbrow-expedition', result: 'defeat' }]);
+  assert.equal(t.turn, 2);
+  assert.equal(t.events.length, 2);
 });
 
 test('the summary swallows the Chronicle entry, and the notes swallow the loot', async () => {
