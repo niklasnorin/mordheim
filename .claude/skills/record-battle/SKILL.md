@@ -17,9 +17,9 @@ From the players' accounts, app exports, photos or notes: the warbands that foug
 
 If it was announced beforehand it is already at `/scenarios/` as **Upcoming**; otherwise set it up there first (title, played on, rulebook scenario or custom rules, who fights, prologue — which stands under the title as the summary until the game is played, unless the game master unticks it). Then on its page:
 
-1. **Mark it played**: every attending warband gets `victory`, `defeat` or `draw`. The scenario joins the Chronicle in play order; its Imperial date follows from the real one.
-2. **The scenario** drawer: the win condition for a custom scenario (a rulebook scenario sets its own, so the field is hidden and the page links to the rules), how the outcome was decided (who won by what positions, and what was not recorded), the epilogue, the Chronicle entry (one present-tense paragraph for the home page: scenario type, who did what, who won, what it cost), loot and costs one per line (say when a figure is a total and not a reward), lasting consequences and unresolved records one per line.
-3. **The battle, told**: one paragraph per beat, a blank line between, naming who did what to whom. Tick **Open the battle narrative** if the players may retell it; every telling before is kept and readable under the drawer.
+1. **Mark it played**, under **The battle**: every attending warband gets `victory`, `defeat` or `draw`. The scenario joins the Chronicle in play order; its Imperial date follows from the real one.
+2. **The scenario** drawer: the win condition for a custom scenario (a rulebook scenario sets its own, so the field is hidden and the page links to the rules), how the outcome was decided (who won by what positions, and what was not recorded), the epilogue, the summary (two or three sentences, which stand under the title here and as the paragraph the Chronicle prints on the front page), and **what the campaign carries forward** one per line: noteworthy loot and costs, lasting consequences, unresolved or conflicting records. Say when a figure is a total and not a reward.
+3. **The battle** drawer: the account, one paragraph per beat, a blank line between, naming who did what to whom; then how it ended, one result per warband. Tick **Open the battle narrative** under the scenario if the players may retell it; every telling before is kept and readable under the drawer.
 
 The API behind the forms is `src/pages/api/scenarios/[action].ts` (`update`, `played`, `battle`); a script or an agent with a session may post the same JSON.
 

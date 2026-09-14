@@ -14,7 +14,7 @@ import { getActor, isGm } from '../../server/roles';
 import { listScenarios, revisionsOf } from '../../server/campaign/scenarios';
 import { listWarbands } from '../../server/campaign/roster';
 import { RULEBOOK_SCENARIOS, rulebookUrl } from '../../campaign/rulebook';
-import { MEMBER_STATUSES, summaryOf, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
+import { MEMBER_STATUSES, carriedForward, summaryOf, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
 import { CAMPAIGN } from '../../curfew/engine';
 
 export const prerender = false;
@@ -62,6 +62,8 @@ const rulesUrl = rulebookUrl(scenario.rulebookScenario);
 // A telling nobody has written is not printed at all.
 const prologues = scenario.warbands.filter((w) => w.prologue.trim());
 const epilogues = scenario.warbands.filter((w) => w.epilogue.trim());
+// loot, costs and the lasting records are one list
+const carried = carriedForward(scenario);
 const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', Anchor: 'anchor', Crown: 'crown', Moon: 'moon' };
 ---
 
@@ -253,7 +255,6 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
     <section id="muster">
       <p class="section-kicker">{upcoming ? 'Who takes the field' : 'The final reckoning'}</p>
       <h2 class="section-title">{upcoming ? 'Warbands' : 'Warbands & warriors'}</h2>
-      {!upcoming && <p class="neutral archive-note">Treasury and ratings are post-battle totals, not loot earned in this battle. Only explicitly recorded out-of-action results are credited; a hit, a fall, or a bow notch alone is not confirmation. “Not recorded” does not mean none occurred.</p>}
       {scenario.warbands.length === 0 && <p class="neutral archive-note">No warbands are named yet.{gm ? ' Name them under the pen below.' : ''}</p>}
       <div class="warband-summaries">
         {scenario.warbands.map((w) => {
@@ -316,13 +317,10 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
       <details id="campaign" class="panel campaign-ledger">
         <summary>
           <h2>What the campaign carries forward</h2>
-          <span class="summary-note">Loot, costs &amp; unresolved records <Icon name="arrow-down" size={14} /></span>
+          <span class="summary-note">Loot, costs and what is still unresolved <Icon name="arrow-down" size={14} /></span>
         </summary>
         <div class="campaign-body">
-          <h3>Noteworthy loot &amp; costs</h3>
-          {scenario.loot.length ? <ul>{scenario.loot.map((item) => <li>{item}</li>)}</ul> : <p>No noteworthy loot recorded.</p>}
-          <h3>Lasting consequences &amp; unresolved records</h3>
-          {scenario.campaignNotes.length ? <ul>{scenario.campaignNotes.map((note) => <li>{note}</li>)}</ul> : <p>No lasting consequences recorded.</p>}
+          {carried.length ? <ul>{carried.map((note) => <li>{note}</li>)}</ul> : <p>Nothing was carried forward.</p>}
         </div>
       </details>
     )}
@@ -350,14 +348,12 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
               <label class="mg-field" data-when-custom hidden={!!scenario.rulebookScenario}>Win condition<textarea name="patch.winCondition" maxlength="4000">{scenario.winCondition}</textarea><small>How a custom scenario is won. A rulebook scenario sets its own.</small></label>
               <label class="mg-field">Prologue<textarea name="patch.prologue" maxlength="8000" class="tall">{scenario.prologue}</textarea></label>
               <label class="mg-field check"><input type="checkbox" name="patch.prologueAsSummary" checked={scenario.prologueAsSummary} /> Print the prologue under the title until the game is played</label>
-              <label class="mg-field">Summary<textarea name="patch.summary" maxlength="1000">{scenario.summary}</textarea><small>Two or three sentences under the title.</small></label>
+              <label class="mg-field">Summary<textarea name="patch.summary" maxlength="1000">{summaryOf({ ...scenario, status: 'played' })}</textarea><small>Two or three sentences: what stands under the title here, and what the Chronicle prints on the front page.</small></label>
               {!upcoming && (
                 <>
                   <label class="mg-field">How the outcome was decided<textarea name="patch.outcome" maxlength="4000">{scenario.outcome}</textarea></label>
                   <label class="mg-field">Epilogue<textarea name="patch.epilogue" maxlength="8000" class="tall">{scenario.epilogue}</textarea></label>
-                  <label class="mg-field">Chronicle entry<textarea name="patch.chronicle" maxlength="4000">{scenario.chronicle}</textarea><small>One present-tense paragraph for the home page: the scenario type, who did what, who won, what it cost. The summary stands in when empty.</small></label>
-                  <label class="mg-field">Noteworthy loot &amp; costs<textarea name="patch.loot" data-list>{scenario.loot.join('\n')}</textarea><small>One per line.</small></label>
-                  <label class="mg-field">Lasting consequences &amp; unresolved records<textarea name="patch.campaignNotes" data-list>{scenario.campaignNotes.join('\n')}</textarea><small>One per line.</small></label>
+                  <label class="mg-field">What the campaign carries forward<textarea name="patch.campaignNotes" data-list>{carried.join('\n')}</textarea><small>One per line: noteworthy loot and costs, lasting consequences, unresolved or conflicting records.</small></label>
                   <label class="mg-field check"><input type="checkbox" name="patch.battleOpen" checked={scenario.battleOpen} /> Open the battle narrative to those who fought</label>
                 </>
               )}
@@ -366,33 +362,32 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           </details>
         )}
 
-        {gm && (
+        {(gm || (!upcoming && mayRetell)) && (
           <details class="mg-editor">
-            <summary>{upcoming ? 'Mark it played' : 'Results'}</summary>
-            <form class="mg-form" data-api="scenarios/played" data-json={JSON.stringify({ scenarioId: scenario.id })}>
-              {scenario.warbands.length === 0 && <p class="mg-note">Name the warbands that fight first.</p>}
-              <div class="mg-grid">{scenario.warbands.map((w, i) => (
-                <div class="mg-fieldset"><input type="hidden" name={`results.${i}.warbandId`} value={w.warbandId} />
-                  <label class="mg-field">{nameOf(w.warbandId)}<select name={`results.${i}.result`}>{(['victory', 'defeat', 'draw'] as const).map((r) => <option value={r} selected={w.result === r}>{resultLabel[r]}</option>)}</select></label>
+            <summary>The battle</summary>
+            {!upcoming && mayRetell && (
+              <form class="mg-form" data-api="scenarios/battle" data-json={JSON.stringify({ scenarioId: scenario.id })}>
+                <label class="mg-field">The account<textarea name="battle" data-paragraphs class="tall" style="min-height: 22rem">{scenario.battle.join('\n\n')}</textarea><small>One paragraph per beat of the fight, a blank line between them. Who did what to whom, in the archivist's neutral past tense. The telling as it stands now is kept before yours replaces it.</small></label>
+                <div class="mg-actions end"><button type="submit" class="mg-btn">Set down this telling</button></div>
+              </form>
+            )}
+            {gm && (
+              <form class="mg-form" data-api="scenarios/played" data-json={JSON.stringify({ scenarioId: scenario.id })}>
+                {!upcoming && <h4 class="mg-h3">How it ended</h4>}
+                {scenario.warbands.length === 0 && <p class="mg-note">Name the warbands that fight first, under the scenario above.</p>}
+                <div class="mg-grid">{scenario.warbands.map((w, i) => (
+                  <div class="mg-fieldset"><input type="hidden" name={`results.${i}.warbandId`} value={w.warbandId} />
+                    <label class="mg-field">{nameOf(w.warbandId)}<select name={`results.${i}.result`}>{(['victory', 'defeat', 'draw'] as const).map((r) => <option value={r} selected={w.result === r}>{resultLabel[r]}</option>)}</select></label>
+                  </div>
+                ))}</div>
+                <div class="mg-actions end">
+                  {!upcoming && <button type="button" class="mg-btn ghost" data-act="scenarios/reopen" data-body={JSON.stringify({ scenarioId: scenario.id })} data-confirm="Lift this scenario out of the Chronicle and make it upcoming again? Everything written stays.">Reopen as upcoming</button>}
+                  {upcoming && <button type="button" class="mg-btn blood" data-act="scenarios/delete" data-body={JSON.stringify({ scenarioId: scenario.id })} data-goto={`${base}/scenarios/`} data-confirm="Strike this scenario? Every prologue written for it goes too.">Strike it</button>}
+                  <button type="submit" class="mg-btn" disabled={scenario.warbands.length === 0}>{upcoming ? 'The game is played' : 'Save the results'}</button>
                 </div>
-              ))}</div>
-              <div class="mg-actions end">
-                {!upcoming && <button type="button" class="mg-btn ghost" data-act="scenarios/reopen" data-body={JSON.stringify({ scenarioId: scenario.id })} data-confirm="Lift this scenario out of the Chronicle and make it upcoming again? Everything written stays.">Reopen as upcoming</button>}
-                {upcoming && <button type="button" class="mg-btn blood" data-act="scenarios/delete" data-body={JSON.stringify({ scenarioId: scenario.id })} data-goto={`${base}/scenarios/`} data-confirm="Strike this scenario? Every prologue written for it goes too.">Strike it</button>}
-                <button type="submit" class="mg-btn" disabled={scenario.warbands.length === 0}>{upcoming ? 'The game is played' : 'Save the results'}</button>
-              </div>
-            </form>
-          </details>
-        )}
-
-        {!upcoming && mayRetell && (
-          <details class="mg-editor">
-            <summary>The battle, told</summary>
-            <form class="mg-form" data-api="scenarios/battle" data-json={JSON.stringify({ scenarioId: scenario.id })}>
-              <label class="mg-field">The account<textarea name="battle" data-paragraphs class="tall" style="min-height: 22rem">{scenario.battle.join('\n\n')}</textarea><small>One paragraph per beat of the fight, a blank line between them. Who did what to whom, in the archivist's neutral past tense. The telling as it stands now is kept before yours replaces it.</small></label>
-              <div class="mg-actions end"><button type="submit" class="mg-btn">Set down this telling</button></div>
-            </form>
-            {revisions.length > 0 && (
+              </form>
+            )}
+            {!upcoming && mayRetell && revisions.length > 0 && (
               <div>
                 <h4 class="mg-h3">Earlier tellings</h4>
                 <ul class="mg-revisions">{revisions.slice(0, 8).map((r) => (
