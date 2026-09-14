@@ -3,7 +3,6 @@
  * House. Today there is one: whether the standings are shown. A campaign keeps its tally to itself until the admin
  * says otherwise, so the table of battles and victories is hidden by default.
  */
-import { eq } from 'drizzle-orm';
 import { db } from '../db/client.ts';
 import { campaignSettings } from '../db/schema.ts';
 import { LedgerError } from '../../curfew/ledger.ts';

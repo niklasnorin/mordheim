@@ -5,10 +5,9 @@
  */
 import Base from '../../layouts/Base.astro';
 import ManageTop from '../../components/ManageTop.astro';
-import Icon from '../../components/Icon.astro';
+import WarriorStory from '../../components/WarriorStory.astro';
 import '../../styles/manage.css';
 import { asset, base } from '../../lib/site';
-import { formatImperial, imperialForDate } from '../../lib/calendar';
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm, listUsers } from '../../server/roles';
 import { getWarband, listWarbands } from '../../server/campaign/roster';
@@ -16,7 +15,7 @@ import { listScenarios, memberStories, type MemberChapter } from '../../server/c
 import { curfewStory, todayFor } from '../../server/curfew/service';
 import { primeContent } from '../../server/content/curfew';
 import { STAT_KEYS, STAT_NAMES, type Warband } from '../../campaign/model';
-import type { WarbandStanding } from '../../curfew/story';
+import type { MemberNights, WarbandStanding } from '../../curfew/story';
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -24,6 +23,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 const ready = hasDatabase();
 const viewer = ready ? await getActor(Astro.request) : null;
 let warband: Warband | undefined, stories: Record<string, MemberChapter[]> = {}, standing: WarbandStanding | undefined, keeperless = 0;
+let nights: Record<string, MemberNights> = {}, roster: Warband[] = [];
 let players: { id: string; name: string; email: string }[] = [];
 if (ready) {
   try {
@@ -33,6 +33,8 @@ if (ready) {
       const [scenarios, story, all] = await Promise.all([listScenarios(), curfewStory(todayFor(null)), listWarbands()]);
       stories = memberStories(scenarios);
       standing = story.warbands[warband.id];
+      nights = story.members;
+      roster = all;
       keeperless = all.filter((w) => !w.ownerId).length;
       if (viewer && isGm(viewer)) players = await listUsers();
     }
@@ -43,9 +45,6 @@ const gm = isGm(viewer);
 const owner = !!viewer && !!warband && warband.ownerId === viewer.id;
 const canEdit = owner || gm;
 const mayClaim = !!viewer && !!warband && !warband.ownerId;
-const imperialOf = (day: string) => formatImperial(imperialForDate(day));
-const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
-const statusLabel = { active: 'stood', injured: 'was hurt', dead: 'fell' } as const;
 const living = warband?.members.filter((m) => !m.dead).length ?? 0;
 ---
 
@@ -144,11 +143,7 @@ const living = warband?.members.filter((m) => !m.dead).length ?? 0;
                       {m.skills.length > 0 && <><h4 class="mg-h3">Skills &amp; special rules</h4><ul class="mg-list">{m.skills.map((x) => <li>{x}</li>)}</ul></>}
                       {m.injuries.length > 0 && <><h4 class="mg-h3">Old wounds</h4><ul class="mg-list">{m.injuries.map((x) => <li>{x}</li>)}</ul></>}
                       {m.lore.trim() && <><h4 class="mg-h3">Tale</h4><p class="mg-lede">{m.lore}</p></>}
-                      {m.dead && m.death && <p class="mg-muted"><Icon name="cross" size={11} /> Laid to rest{m.death.date ? `, ${m.death.date}` : ''}{m.death.epitaph ? <>: <em>{m.death.epitaph}</em></> : null}</p>}
-                      {chapters.length > 0 && (
-                        <><h4 class="mg-h3">Battles</h4>
-                        <ul class="mg-list">{chapters.map((c) => <li><a href={`${base}/scenarios/${c.scenario.id}/#member-${m.id}`}>{c.scenario.title}</a> <span class="mg-muted">— {imperialOf(c.scenario.playedOn)}, {c.warband.result ? resultLabel[c.warband.result].toLowerCase() : 'fought'}; {m.name.split(' ')[0]} {statusLabel[c.snapshot.status]}</span></li>)}</ul></>
-                      )}
+                      <WarriorStory member={m} chapters={chapters} nights={nights[m.id]} warbands={roster} open />
                       {canEdit && (
                         <details class="mg-editor">
                           <summary>Change {m.name.split(' ')[0]}</summary>
