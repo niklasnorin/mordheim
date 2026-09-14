@@ -50,6 +50,8 @@ const played = scenarios.filter((s) => s.status === 'played').length;
     {trouble && <div class="empty-state"><p>The campaign's record could not be read just now. Try again in a moment.</p></div>}
     <TownCryer today={today} articles={articles} dispatches={dispatches} moves={moves} />
 
+    <Chronicle scenarios={scenarios} warbands={warbands} />
+
     <section id="warbands" class="warbands">
       <p class="section-kicker">I · Those who enter the gates</p>
       <h2 class="section-title"><span class="ornament" aria-hidden="true"><Icon name="diamond" /></span> The Warbands <span class="ornament" aria-hidden="true"><Icon name="diamond" /></span></h2>
@@ -63,7 +65,6 @@ const played = scenarios.filter((s) => s.status === 'played').length;
     </section>
 
     {settings.standingsVisible && <Standings warbands={warbands} />}
-    <Chronicle scenarios={scenarios} warbands={warbands} />
     <Graveyard warbands={warbands} />
   </main>
 
