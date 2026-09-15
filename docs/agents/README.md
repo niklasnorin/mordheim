@@ -11,4 +11,4 @@ Context for anyone, human or coding agent, working in this repository. `CLAUDE.m
 
 Procedures for the common tasks are skills under [`.claude/skills/`](../../.claude/skills/): `record-battle`, `add-warband`, `town-cryer`, `curfew-pack`, `curfew-engine`, `schema-change`, `preflight`. Each `SKILL.md` is a checklist; some carry a script.
 
-Product intent is in [`PRODUCT.md`](../../PRODUCT.md), the Curfew plan and its decisions in [`src/data/curfew/PLAN.md`](../../src/data/curfew/PLAN.md), the prose rules in [`src/data/curfew/STYLE.md`](../../src/data/curfew/STYLE.md).
+Product intent is in [`PRODUCT.md`](../../PRODUCT.md), the Curfew plan and its decisions in [`src/data/curfew/PLAN.md`](../../src/data/curfew/PLAN.md), the warband builder plan in [`docs/warband-builder/PLAN.md`](../warband-builder/PLAN.md), the prose rules in [`src/data/curfew/STYLE.md`](../../src/data/curfew/STYLE.md).
