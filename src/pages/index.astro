@@ -60,7 +60,7 @@ const played = scenarios.filter((s) => s.status === 'played').length;
         wyrdstone, gold, and glory. Most will find only death. Click a warrior to read their tale.
       </p>
       <div class="warband-grid">
-        {warbands.map((wb) => <WarbandCard warband={wb} standing={story.warbands[wb.id]} />)}
+        {warbands.map((wb) => <WarbandCard warband={wb} />)}
       </div>
     </section>
 

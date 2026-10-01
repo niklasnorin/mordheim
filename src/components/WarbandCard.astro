@@ -1,16 +1,13 @@
 ---
 import type { Warband } from '../campaign/model';
-import type { WarbandStanding } from '../curfew/story';
 import Icon from './Icon.astro';
 import { asset, base } from '../lib/site';
 
 interface Props {
   warband: Warband;
-  /** What the Curfew nights say of this warband, when a ledger is kept for it. */
-  standing?: WarbandStanding;
 }
 
-const { warband, standing } = Astro.props;
+const { warband } = Astro.props;
 ---
 
 <article class="warband-card reveal" class:list={{ 'warband-ostland': warband.type === 'Ostlanders' }}>
@@ -19,13 +16,9 @@ const { warband, standing } = Astro.props;
       {warband.crest ? <img src={asset(warband.crest)} width="120" height="140" alt="" loading="lazy" /> : warband.sigil}
     </span>
     <div class="warband-title">
-      <span class="warband-register">Registered company · {warband.members.length} souls</span>
       <h3>{warband.name}</h3>
       <span class="warband-type">{warband.type}{warband.player && ` — led by ${warband.player}`}</span>
       <a class="warband-open" href={`${base}/warbands/${warband.id}/`}>The muster roll in full <Icon name="arrow-up-right" size={14} /></a>
-      {standing && standing.nights > 0 && (
-        <span class="warband-curfew">Spoken of in the taverns as <b>{standing.title}</b> after {standing.nights} {standing.nights === 1 ? 'night' : 'nights'} in the city. <a href={`${base}/curfew/`}>Their ledger</a></span>
-      )}
     </div>
   </div>
   {warband.lore.trim()
@@ -69,7 +62,6 @@ const { warband, standing } = Astro.props;
     overflow: hidden;
   }
   .warband-card::before { content: ''; position: absolute; top: 0; left: 1.5rem; right: 1.5rem; height: 2px; background: linear-gradient(90deg, transparent, var(--gold-dim), transparent); }
-  .warband-register { display: block; font: var(--text-meta)/1.6 var(--font-utility); color: var(--ink-dim); text-transform: uppercase; letter-spacing: .08em; margin-bottom: .45rem; }
   .warband-title { min-width: 0; }
 
   .warband-header {
@@ -104,10 +96,6 @@ const { warband, standing } = Astro.props;
   }
   .warband-open { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; margin-top: .3rem; color: var(--gold); font: var(--text-ui)/1.5 var(--font-utility); text-underline-offset: .2em; }
   .warband-open:hover { color: var(--parchment); }
-  .warband-curfew { display: block; margin-top: .55rem; font-size: var(--text-ui); font-style: italic; color: var(--ink-dim); }
-  .warband-curfew b { color: var(--parchment); font-weight: 600; }
-  .warband-curfew a { color: var(--gold); text-underline-offset: .2em; }
-  .warband-curfew a:hover { color: var(--parchment); }
   .warband-lore {
     padding: 1.5rem 2rem;
     font-style: italic;
