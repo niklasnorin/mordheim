@@ -10,7 +10,7 @@ The repository names technical things in the fiction's words. This maps each wor
 | **today** | The night the server treats as current, always passed into the services as a number. With `CURFEW_DEBUG` on, `?date=YYYY-MM-DD` overrides it for a game master's own Ledger and Eve; never for a player, never in the Watch House, never for the cron. | `todayFor(url, viewer)` in `src/server/curfew/service.ts` |
 | **Moon** | Seven nights. Eight Moons in `moons.json`, drawn as a seeded shuffle per cycle. A Moon favours one errand by one point (`boost`) and carries a tie-in line per errand. | `moonIndex`, `moonForNight`, `moonBoostAt`, `moonTiesAt` |
 | **Season** | Twelve Moons (`seasonMoons`). The finale is unbuilt. | `campaign.json` |
-| **Imperial Calendar, IC** | The Empire's 400-day year, eight-day week and six holy days. Every date shown to a player goes through it; the anchor is the first game. "Marktag, 5th of Pflugzeit, 2007 IC". | `src/lib/calendar.ts`: `imperialForDate`, `formatImperial`, `parseImperial`, `ANCHOR` |
+| **Imperial Calendar, IC** | The Empire's 400-day year, eight-day week and six holy days. Every date shown to a player goes through it; the anchor is the first game. "Marktag, 5th of Pflugzeit, 2004 IC". | `src/lib/calendar.ts`: `imperialForDate`, `formatImperial`, `parseImperial`, `ANCHOR` |
 | **Dusk, Midnight, Dawn** | Orders are given at dusk (any time before midnight), the night resolves at midnight, the Dawn Report is read next visit. | `giveOrders`, `reconcile`, `NightResult` |
 
 ## The Night

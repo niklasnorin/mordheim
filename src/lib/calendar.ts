@@ -120,8 +120,8 @@ export function addDays(d: ImperialDate, days: number): ImperialDate { return fr
 const ORDINAL_SUFFIX = (n: number) => (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
 
 /**
- * "Marktag, 5th of Pflugzeit, 2007 IC"; a holy day reads "Mitterfruhl, 2007 IC".
- * `short` drops the weekday and the era: "5th of Pflugzeit, 2007"; `day` drops the year too: "Marktag, 5th of Pflugzeit".
+ * "Marktag, 5th of Pflugzeit, 2004 IC"; a holy day reads "Mitterfruhl, 2004 IC".
+ * `short` drops the weekday and the era: "5th of Pflugzeit, 2004"; `day` drops the year too: "Marktag, 5th of Pflugzeit".
  */
 export function formatImperial(d: ImperialDate, style: 'long' | 'short' | 'day' = 'long'): string {
   if (d.holy) return style === 'day' ? d.month : `${d.month}, ${d.year}${style === 'long' ? ' IC' : ''}`;

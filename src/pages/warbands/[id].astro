@@ -165,7 +165,7 @@ const living = warband?.members.filter((m) => !m.dead).length ?? 0;
                             <label class="mg-field">Tale<textarea name="patch.lore" maxlength="4000">{m.lore}</textarea></label>
                             <label class="mg-field check"><input type="checkbox" name="patch.dead" checked={m.dead} /> Fallen</label>
                             <div class="mg-two">
-                              <label class="mg-field">Laid to rest on<input name="patch.death.date" maxlength="80" value={m.death?.date ?? ''} placeholder="Marktag, 5th of Pflugzeit, 2007 IC" /></label>
+                              <label class="mg-field">Laid to rest on<input name="patch.death.date" maxlength="80" value={m.death?.date ?? ''} placeholder="Marktag, 5th of Pflugzeit, 2004 IC" /></label>
                               <label class="mg-field">Epitaph<input name="patch.death.epitaph" maxlength="200" value={m.death?.epitaph ?? ''} placeholder="As carved. Short." /></label>
                             </div>
                             <div class="mg-actions end">
