@@ -57,6 +57,9 @@ const atTable = await mayTrack(viewer, scenario.id);
 const tracked = hasTurnLog(scenario);
 const trackerUrl = `${base}/scenarios/${scenario.id}/battle/`;
 const winners = scenario.warbands.filter((w) => w.result === 'victory');
+// the rest of the field: the beaten when someone won, everyone when nobody did
+const rest = scenario.warbands.filter((w) => w.result !== 'victory');
+const joined = (names: string[]) => names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names.join('');
 const attendingMembers = scenario.warbands.flatMap((p) => (warbandOf(p.warbandId)?.members ?? []).map((m) => ({ ...m, warbandName: nameOf(p.warbandId) })));
 const when = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: CAMPAIGN.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
 const puzzle = upcoming ? null : scenario.puzzle;
@@ -84,17 +87,27 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
       {upcoming ? (
         <p class="section-kicker"><span class="mg-chip upcoming">Upcoming</span> {imperial} · {realDay}</p>
       ) : (
-        <p class="section-kicker">From the campaign archives · {imperial}</p>
+        <p class="section-kicker">{imperial}</p>
       )}
       <h1>{scenario.title}</h1>
       {summary && <p class="summary">{summary}</p>}
-      {atTable && (
+      {upcoming && atTable && (
         <p class="tracker-call">
-          <a class:list={['mg-btn', { ghost: !upcoming }]} href={trackerUrl}><Icon name="swords" size={16} /> {upcoming ? (scenario.turn > 0 ? `At the table: turn ${scenario.turn}` : 'Open the battle tracker') : 'The tracker'}</a>
-          {upcoming && <small class="archive-note">Turns, takedowns and the tally, on a phone at the table.</small>}
+          <a class="mg-btn" href={trackerUrl}><Icon name="swords" size={16} /> {scenario.turn > 0 ? `At the table: turn ${scenario.turn}` : 'Open the battle tracker'}</a>
+          <small class="archive-note">Turns, takedowns and the tally, on a phone at the table.</small>
         </p>
       )}
     </header>
+
+    {!upcoming && (
+      <section id="outcome" class="verdict" aria-labelledby="verdict-title">
+        <p class="voice-label">{winners.length > 1 ? 'The victors' : winners.length ? 'The victor' : 'No victor'}</p>
+        <h2 id="verdict-title" class="verdict-winner">{winners.length ? joined(winners.map((w) => nameOf(w.warbandId))) : 'A draw'}</h2>
+        {rest.length > 0 && <p class="verdict-field">{winners.length ? 'over' : 'between'} {joined(rest.map((w) => nameOf(w.warbandId)))}</p>}
+        <h3 class="verdict-how">How the outcome was decided</h3>
+        <p>{scenario.outcome || 'Not recorded.'}</p>
+      </section>
+    )}
 
     <nav class="report-nav" aria-label="Scenario sections">
       {upcoming ? (
@@ -106,7 +119,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         </>
       ) : (
         <>
-          <a href="#outcome">Outcome</a>
+          <a href="#scenario">The scenario</a>
           <a href="#prologue">Prologue</a>
           <a href="#battle">The battle</a>
           {tracked && <a href="#turns">Turn by turn</a>}
@@ -133,16 +146,13 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
     )}
 
     {!upcoming && (
-      <section id="outcome" class="panel">
-        <h2>Scenario &amp; outcome</h2>
+      <section id="scenario" class="panel">
+        <h2>The scenario</h2>
         <dl class="outcome-facts">
           <div><dt>Rulebook scenario</dt><dd>{scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'Custom scenario'}</dd></div>
           {(scenario.winCondition || !scenario.rulebookScenario) && <div><dt>Win condition</dt><dd>{scenario.winCondition || 'Not recorded'}</dd></div>}
-          <div><dt>Winner</dt><dd>{winners.length ? winners.map((w) => nameOf(w.warbandId)).join(' & ') : 'No winner — draw'}</dd></div>
         </dl>
         {scenario.customRules && (<><h3>Rules in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>)}
-        <h3>How the outcome was decided</h3>
-        <p>{scenario.outcome || 'Not recorded.'}</p>
         {!scenario.rulebookScenario && !scenario.winCondition && (
           <p class="archive-note">The chapter title is not a rulebook scenario name. Missing rules information is left unconfirmed rather than inferred from the story.</p>
         )}
@@ -817,6 +827,13 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   .member-record p { font-size: .95rem; }
   .warband-summary { scroll-margin-top: 2rem; }
   .chapter-nav { font-size: .9rem; margin-top: 3rem; }
+  /* a played game's gist, where the tracker stood while it was being fought */
+  .verdict { max-width: 740px; margin: 0 auto 2rem; padding: 1.25rem 1.5rem 1.5rem; text-align: center; border-block: 1px solid var(--gold-dim); background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); scroll-margin-top: 2rem; }
+  .verdict .voice-label { margin-bottom: .25rem; }
+  h2.verdict-winner { font: 2.4rem/1.1 'Pirata One', Georgia, serif; color: var(--gold); margin: 0; }
+  .verdict-field { margin-top: .35rem; color: var(--ink-dim); }
+  .verdict-how { font: inherit; font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; color: var(--gold); margin: 1.25rem 0 .5rem; }
+  .verdict-how + p { text-align: left; }
   @media (max-width: 700px) {
     .thumbprint { opacity: .12; }
     .seal-tray { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -826,6 +843,8 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
     .perspectives, .warband-summaries, .outcome-facts { grid-template-columns: 1fr; }
     .panel { padding: 1.25rem; }
     .report-header { margin-top: 3rem; }
+    .verdict { padding-inline: 1rem; }
+    h2.verdict-winner { font-size: 2rem; }
     .breadcrumb { font-size: .75rem; }
     .chapter-nav { flex-direction: column; text-align: center; }
   }
