@@ -36,7 +36,7 @@ A campaign archivist writing after the fact from the players' accounts. Neutral,
 
 - `rulebookScenario` and `winCondition` are the rulebook's words or `null`. Never guess a rule from the narrative.
 - `outcome` says who won and by what positions, and names what was not recorded ("The exact finishing turn and whether either warband voluntarily routed were not recorded").
-- `prologue`, `battle[]`, `epilogue` are the neutral account; each `battle` paragraph is one beat of the fight, naming who did what to whom. `perspectives[]` are partisan in sympathy but not in fact, one per warband, with `accomplishments` as a single factual sentence or two.
+- `prologue`, `battle[]`, `epilogue` are the neutral account; each `battle` paragraph is one beat of the fight, naming who did what to whom. `perspectives[]` are partisan in sympathy but not in fact, one per warband, with finest and darkest moments one per line. (`accomplishments` is still in the seed and the table, but no longer written or shown.)
 - `outOfAction` lists only confirmed takedowns. A hit, a notch on a bow, a fall from a wall are not takedowns. An empty list means none were recorded, not that none happened.
 - `campaignNotes` preserve deaths, lasting injuries, recurring items, bookkeeping reconciliations and conflicting accounts, including which account supersedes an earlier roster story.
 - `highlight` and `lowlight` per member are one sentence each and must be true of this scenario. A member who did nothing notable gets an honest small moment, not an invented one.

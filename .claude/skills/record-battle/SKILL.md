@@ -29,9 +29,9 @@ The API behind the forms is `src/pages/api/scenarios/[action].ts` (`update`, `pl
 
 Under **The pen**, one drawer per warband the viewer speaks for:
 
-- Prologue, epilogue, accomplishments (a factual sentence or two), and finest and darkest moments one per line.
-- **Who fought, and how it went**: tick the warriors brought; for each, how they came out (`Active`, `Injured`, `Fell in this battle`) and one true sentence each for the finest and the darkest moment. A warrior who did nothing notable gets an honest small moment, not an invented one.
-- **Out of action**: who struck, who fell (a warrior on the roll, or a name), how. The one who struck or the one who fell may record it; a game master may record any. A takedown logged in the tracker at the table is already here, with its turn; do not enter it twice.
+- Prologue, epilogue, and finest and darkest moments one per line.
+- **Who fought, and how it went**: tick the warriors brought; for each, how they came out (`Alive`, `Out of action`, `Fell in this battle`; stored as `active`, `injured`, `dead`) and one true sentence each for the finest and the darkest moment. A warrior who did nothing notable gets an honest small moment, not an invented one.
+- **Out of action**: who struck, who fell (a warrior on the roll, or a name), how. The one who struck or the one who fell may record it; a game master may record any. A takedown logged in the tracker at the table is already here, with its turn; do not enter it twice. Recording a takedown marks both warriors as having fought and the one who fell as out of action (a fallen warrior stays fallen); striking it, with no other takedown of them left, gives them back their `Alive`. The page prints every takedown once, under the battle.
 
 ## 4. Carry the consequences into the roster (`/warbands/<id>/`)
 

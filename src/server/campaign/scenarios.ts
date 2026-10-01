@@ -257,14 +257,13 @@ export async function writeBattle(actor: Actor, id: string, battle: string[]): P
 
 // ───────────────────────── each warband's own telling ─────────────────────────
 
-export interface PerspectivePatch { prologue?: string; epilogue?: string; accomplishments?: string; highlights?: string[]; lowlights?: string[] }
+export interface PerspectivePatch { prologue?: string; epilogue?: string; highlights?: string[]; lowlights?: string[] }
 
 export async function writePerspective(actor: Actor, id: string, warbandId: string, patch: PerspectivePatch): Promise<Scenario> {
   await speaksFor(actor, id, warbandId);
   const set: Partial<typeof scenarioWarbands.$inferInsert> = {};
   if (patch.prologue !== undefined) set.prologue = clean(patch.prologue, 8000);
   if (patch.epilogue !== undefined) set.epilogue = clean(patch.epilogue, 8000);
-  if (patch.accomplishments !== undefined) set.accomplishments = clean(patch.accomplishments, 2000);
   if (patch.highlights !== undefined) set.highlights = paragraphs(patch.highlights, 12);
   if (patch.lowlights !== undefined) set.lowlights = paragraphs(patch.lowlights, 12);
   if (Object.keys(set).length) await db().update(scenarioWarbands).set(set).where(and(eq(scenarioWarbands.scenarioId, id), eq(scenarioWarbands.warbandId, warbandId)));
@@ -282,10 +281,13 @@ export async function setBrought(actor: Actor, id: string, warbandId: string, br
   const wanted = brought.filter((b) => own.has(b.memberId));
   const seen = new Set<string>();
   await d.delete(scenarioMembers).where(and(eq(scenarioMembers.scenarioId, id), eq(scenarioMembers.warbandId, warbandId), wanted.length ? sql`${scenarioMembers.memberId} not in (${sql.join(wanted.map((b) => sql`${b.memberId}`), sql`, `)})` : sql`true`));
+  // a warrior somebody put out of action did not walk away whole, whatever the muster says
+  const fallen = new Set((await d.select({ id: scenarioOutOfAction.targetId }).from(scenarioOutOfAction).where(eq(scenarioOutOfAction.scenarioId, id))).map((r) => r.id));
   for (const b of wanted) {
     if (seen.has(b.memberId)) continue;
     seen.add(b.memberId);
-    const status = MEMBER_STATUSES.includes(b.status as MemberStatus) ? (b.status as MemberStatus) : 'active';
+    const given = MEMBER_STATUSES.includes(b.status as MemberStatus) ? (b.status as MemberStatus) : 'active';
+    const status = given === 'active' && fallen.has(b.memberId) ? 'injured' : given;
     const values = { status, highlight: clean(b.highlight, 1000), lowlight: clean(b.lowlight, 1000) };
     await d.insert(scenarioMembers).values({ scenarioId: id, memberId: b.memberId, warbandId, ...values }).onConflictDoUpdate({ target: [scenarioMembers.scenarioId, scenarioMembers.memberId], set: values });
   }
@@ -321,6 +323,12 @@ export async function addOutOfAction(actor: Actor, id: string, input: OutOfActio
   const owns = (warbandId: string) => attending.some((a) => a.warbandId === warbandId && a.ownerId === actor.id);
   if (!isGm(actor) && !owns(attacker.warbandId) && !(target && owns(target.warbandId))) throw new LedgerError('You may record only what your own warriors did or suffered.', 403);
   await d.insert(scenarioOutOfAction).values({ scenarioId: id, attackerId: attacker.id, targetId: target?.id ?? null, target: targetName, detail: clean(input.detail, 1000), turn });
+  // a takedown says both fought, and that the one who fell came out of it out of action
+  await d.insert(scenarioMembers).values({ scenarioId: id, memberId: attacker.id, warbandId: attacker.warbandId }).onConflictDoNothing();
+  if (target) {
+    await d.insert(scenarioMembers).values({ scenarioId: id, memberId: target.id, warbandId: target.warbandId, status: 'injured' })
+      .onConflictDoUpdate({ target: [scenarioMembers.scenarioId, scenarioMembers.memberId], set: { status: 'injured' }, setWhere: eq(scenarioMembers.status, 'active') });
+  }
   await d.update(scenarios).set({ updatedAt: new Date() }).where(eq(scenarios.id, id));
   return (await getScenario(id))!;
 }
@@ -336,6 +344,13 @@ export async function removeOutOfAction(actor: Actor, id: string, ooaId: number)
     if (!mine.length) throw new LedgerError('You may remove only what concerns your own warriors.', 403);
   }
   await d.delete(scenarioOutOfAction).where(eq(scenarioOutOfAction.id, ooaId));
+  // struck from the record and not put out of action by anyone else: they came out of it whole after all
+  const fellId = rows[0].targetId;
+  if (fellId) {
+    const still = await d.select({ id: scenarioOutOfAction.id }).from(scenarioOutOfAction).where(and(eq(scenarioOutOfAction.scenarioId, id), eq(scenarioOutOfAction.targetId, fellId))).limit(1);
+    if (!still.length) await d.update(scenarioMembers).set({ status: 'active' }).where(and(eq(scenarioMembers.scenarioId, id), eq(scenarioMembers.memberId, fellId), eq(scenarioMembers.status, 'injured')));
+  }
+  await d.update(scenarios).set({ updatedAt: new Date() }).where(eq(scenarios.id, id));
   return (await getScenario(id))!;
 }
 

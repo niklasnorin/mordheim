@@ -157,7 +157,7 @@ test('a game master sets up an upcoming scenario and the players tell their side
   assert.equal(stories.agnar!.length, 2);
   assert.equal(stories.agnar![1].snapshot.highlight, 'Stood.');
   const roster = await loadRoster();
-  assert.deepEqual(roster.injured.nordost, ['torgrim'], 'the last played scenario says who is still hurt');
+  assert.deepEqual(roster.injured.nordost, ['agnar'], 'the last played scenario says who is still hurt: the takedowns that stand decide it');
   await assert.rejects(deleteScenario(gm, s.id), (e: unknown) => e instanceof LedgerError && e.status === 409);
   const later = await createScenario(gm, { title: 'Later', playedOn: '2026-11-01' });
   await setParticipants(gm, later.id, ['nordost']);
@@ -203,6 +203,22 @@ test('the battle tracker: the table keeps the turn, the log and the tally; the r
   await assert.rejects(addOutOfAction(rival, s.id, { attackerId: 'jorgrim', targetId: 'torgrim', turn: 0 }), LedgerError);
   t = await addOutOfAction(gm, s.id, { attackerId: 'norri', targetId: 'torgrim' });
   assert.equal(t.outOfAction[1].turn, null, 'written up afterwards, it has no turn');
+  // a takedown keeps the muster in step: both fought, and the one who fell came out of it out of action
+  const cameOut = (sc: typeof t, id: string) => sc.warbands.flatMap((w) => w.members).find((m) => m.memberId === id)?.status;
+  assert.equal(cameOut(t, 'jorgrim'), 'active', 'the one who struck is on the muster');
+  assert.equal(cameOut(t, 'agnar'), 'injured', 'the one who fell is out of action');
+  t = await setBrought(niklas, s.id, 'nordost', [{ memberId: 'agnar', status: 'active' }, { memberId: 'torgrim', status: 'dead' }]);
+  assert.equal(cameOut(t, 'agnar'), 'injured', 'the muster cannot say a fallen warrior walked away whole');
+  assert.equal(cameOut(t, 'torgrim'), 'dead', 'out of action may be worse than that');
+  const extra = await addOutOfAction(rival, s.id, { attackerId: 'norri', targetId: 'agnar', turn: 2 });
+  t = await removeOutOfAction(gm, s.id, extra.outOfAction.at(-1)!.id);
+  assert.equal(cameOut(t, 'agnar'), 'injured', 'still out of action by the first takedown');
+  const kept = t.outOfAction.find((o) => o.targetId === 'agnar')!;
+  t = await removeOutOfAction(gm, s.id, kept.id);
+  assert.equal(cameOut(t, 'agnar'), 'active', 'struck from the record, they came out of it whole');
+  t = await addOutOfAction(rival, s.id, { attackerId: 'jorgrim', targetId: 'agnar', turn: 2 });
+  t = await removeOutOfAction(gm, s.id, t.outOfAction.find((o) => o.targetId === 'torgrim')!.id);
+  assert.equal(cameOut(t, 'torgrim'), 'dead', 'striking a takedown never raises the dead');
   // striking a line: the one who wrote it, or a game master
   const mine = t.events.find((e) => e.authorName === 'Niklas' && e.kind === 'note')!;
   await assert.rejects(removeEvent(rival, s.id, mine.id), (e: unknown) => e instanceof LedgerError && e.status === 403);
