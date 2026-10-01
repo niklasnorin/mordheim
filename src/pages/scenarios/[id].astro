@@ -191,7 +191,6 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           <p class="section-kicker">An account of blood &amp; wyrdstone</p>
           <h2 class="section-title">The battle</h2>
           {scenario.battle.length ? scenario.battle.map((paragraph) => <p>{paragraph}</p>) : <p class="neutral archive-note">The battle has not been told yet.</p>}
-          {scenario.battleOpen && <p class="neutral archive-note">The game master has opened this account to those who fought. Earlier tellings are kept.</p>}
           {takedowns.length > 0 && (
             <div id="out-of-action" class="takedowns">
               <h3>Out of action</h3>
