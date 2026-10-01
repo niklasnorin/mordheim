@@ -9,7 +9,7 @@ const { crumbs, viewer } = Astro.props;
 
 <header class="mg-top">
   <nav class="mg-crumbs" aria-label="Breadcrumb">
-    <a href={`${base}/`}>Mordheim</a>
+    <a href={`${base}/`}>Mordgrim</a>
     {crumbs.map((c) => (<><span aria-hidden="true">/</span>{c.href ? <a href={c.href}>{c.label}</a> : <span aria-current="page" style="color:var(--parchment)">{c.label}</span>}</>))}
   </nav>
   <span class="mg-who">{viewer ? <>{viewer.name}{viewer.role !== 'player' && <> · {viewer.role === 'admin' ? 'Admin' : 'Game Master'}</>}</> : <a href={`${base}/curfew/`}>Sign in at the Curfew</a>}</span>

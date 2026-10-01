@@ -28,7 +28,10 @@ function createAuth() {
     },
     // No cookie cache: a reset or a "sign out everywhere" must hold at once, so every request asks the database.
     session: { expiresIn: 60 * 60 * 24 * 30, updateAge: 60 * 60 * 24 },
-    trustedOrigins: [env.BASE_URL, ...(env.VERCEL_URL ? [env.VERCEL_URL] : [])],
+    // The configured origin, the deployment's own, any extra in BETTER_AUTH_TRUSTED_ORIGINS (read by Better Auth), and
+    // the origin the request was addressed to: a custom domain, its www twin or the vercel.app name all sign in, while a
+    // form posted from another site still carries its own Origin and is refused.
+    trustedOrigins: (request) => [env.BASE_URL, ...(env.VERCEL_URL ? [env.VERCEL_URL] : []), ...(request ? [new URL(request.url).origin] : [])],
     advanced: { useSecureCookies: env.BASE_URL.startsWith('https://') },
   });
 }
