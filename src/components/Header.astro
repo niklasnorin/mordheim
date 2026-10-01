@@ -1,6 +1,8 @@
 ---
 import Icon from './Icon.astro';
 import { asset, base } from '../lib/site';
+import { imperialForDate } from '../lib/calendar';
+import campaign from '../data/curfew/campaign.json' with { type: 'json' };
 
 interface Props {
   /** The campaign's counts, read from the database by the page. */
@@ -11,6 +13,8 @@ interface Props {
   standings?: boolean;
 }
 const { warbands, scenarios, fallen, standings = true } = Astro.props;
+// the year the campaign stands in today, counted by the Imperial Calendar from the first game
+const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campaign.timezone }).format(new Date())).year;
 ---
 
   <div class="header-bar" id="campaign-navigation">
@@ -46,7 +50,7 @@ const { warbands, scenarios, fallen, standings = true } = Astro.props;
     <img class="hero-city" src={asset('ruined-city.jpg')} alt="" width="1536" height="1024" fetchpriority="high" />
     <div class="hero-shade" aria-hidden="true"></div>
     <div class="hero-content">
-      <p class="eyebrow"><span></span> The year of Sigmar 2000 <span></span></p>
+      <p class="eyebrow"><span></span> The year of Sigmar {year} IC <span></span></p>
       <h1 class="logo">
         <span class="logo-main">Mordheim</span>
         <span class="logo-sub">City of the Damned</span>
