@@ -15,7 +15,7 @@ import { getActor, isGm } from '../../server/roles';
 import { listScenarios, mayTrack, revisionsOf } from '../../server/campaign/scenarios';
 import { listWarbands } from '../../server/campaign/roster';
 import { RULEBOOK_SCENARIOS, RULEBOOK_TALLIES, rulebookUrl } from '../../campaign/rulebook';
-import { MEMBER_STATUSES, carriedForward, hasTurnLog, summaryOf, tallyOf, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
+import { MEMBER_STATUSES, hasTurnLog, summaryOf, tallyOf, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
 import { CAMPAIGN } from '../../curfew/engine';
 
 export const prerender = false;
@@ -73,8 +73,6 @@ const rulesUrl = rulebookUrl(scenario.rulebookScenario);
 // A telling nobody has written is not printed at all.
 const prologues = scenario.warbands.filter((w) => w.prologue.trim());
 const epilogues = scenario.warbands.filter((w) => w.epilogue.trim());
-// loot, costs and the lasting records are one list
-const carried = carriedForward(scenario);
 const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', Anchor: 'anchor', Crown: 'crown', Moon: 'moon' };
 ---
 
@@ -129,7 +127,6 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           <a href="#epilogue">Epilogue</a>
           {scenario.puzzle && <a href="#merchant-puzzle">The sealed clue</a>}
           <a href="#muster">Warbands &amp; warriors</a>
-          <a href="#campaign">Campaign consequences</a>
         </>
       )}
       {(gm || speaksFor.length > 0) && <a href="#pen" class="pen-link">The pen</a>}
@@ -324,37 +321,38 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                   {w.lowlights.length > 0 && (<><h4 class="darkest">Darkest moments</h4><ul>{w.lowlights.map((l) => <li>{l}</li>)}</ul></>)}
                 </>
               )}
-              {(upcoming || w.members.length > 0) && <h4 class="roster-title">{upcoming ? (w.members.length ? 'Warriors brought' : 'Warriors') : 'Every warrior\'s battle record'}</h4>}
+              {upcoming && <h4 class="roster-title">{w.members.length ? 'Warriors brought' : 'Warriors'}</h4>}
               {upcoming && w.members.length === 0 && <p class="archive-note">Not yet named. {band ? `${band.members.filter((m) => !m.dead).length} could take the field.` : ''}</p>}
-              {w.members.map((member) => {
-                const m = memberOf(member.memberId);
+              {(() => {
+                const records = w.members.map((member) => {
+                  const m = memberOf(member.memberId);
+                  return (
+                    <article id={`member-${member.memberId}`} class="member-record">
+                      <h5>{m?.name ?? member.memberId}</h5>
+                      <p class="member-meta">{m?.rank} · {m?.role}{!upcoming && <> · <span class:list={{ darkest: member.status !== 'active' }}>{statusLabel[member.status]}</span></>}</p>
+                      {member.experience != null && <p><strong>Experience:</strong> {member.experience}</p>}
+                      {member.highlight.trim() && <p><strong class="finest">Finest moment:</strong> {member.highlight}</p>}
+                      {member.lowlight.trim() && <p><strong class="darkest">Darkest moment:</strong> {member.lowlight}</p>}
+                    </article>
+                  );
+                });
+                // played, the warband's moments are the gist; every warrior's record waits behind a tap
+                if (upcoming) return records;
+                if (!w.members.length) return null;
+                const fell = w.members.filter((x) => x.status !== 'active').length;
                 return (
-                  <article id={`member-${member.memberId}`} class="member-record">
-                    <h5>{m?.name ?? member.memberId}</h5>
-                    <p class="member-meta">{m?.rank} · {m?.role}{!upcoming && <> · <span class:list={{ darkest: member.status !== 'active' }}>{statusLabel[member.status]}</span></>}</p>
-                    {member.experience != null && <p><strong>Experience:</strong> {member.experience}</p>}
-                    {member.highlight.trim() && <p><strong class="finest">Finest moment:</strong> {member.highlight}</p>}
-                    {member.lowlight.trim() && <p><strong class="darkest">Darkest moment:</strong> {member.lowlight}</p>}
-                  </article>
+                  <details class="roster-records" data-records>
+                    <summary><span>Every warrior&rsquo;s battle record</span><span class="summary-note">{w.members.length} fought{fell ? `, ${fell} out of action or worse` : ''} <Icon name="arrow-down" size={14} /></span></summary>
+                    {records}
+                  </details>
                 );
-              })}
+              })()}
             </article>
           );
         })}
       </div>
     </section>
 
-    {!upcoming && (
-      <details id="campaign" class="panel campaign-ledger">
-        <summary>
-          <h2>What the campaign carries forward</h2>
-          <span class="summary-note">Loot, costs and what is still unresolved <Icon name="arrow-down" size={14} /></span>
-        </summary>
-        <div class="campaign-body">
-          {carried.length ? <ul>{carried.map((note) => <li>{note}</li>)}</ul> : <p>Nothing was carried forward.</p>}
-        </div>
-      </details>
-    )}
 
     {(gm || speaksFor.length > 0) && (
       <section id="pen" class="pen">
@@ -385,7 +383,6 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                 <>
                   <label class="mg-field">How the outcome was decided<textarea name="patch.outcome" maxlength="4000">{scenario.outcome}</textarea></label>
                   <label class="mg-field">Epilogue<textarea name="patch.epilogue" maxlength="8000" class="tall">{scenario.epilogue}</textarea></label>
-                  <label class="mg-field">What the campaign carries forward<textarea name="patch.campaignNotes" data-list>{carried.join('\n')}</textarea><small>One per line: noteworthy loot and costs, lasting consequences, unresolved or conflicting records.</small></label>
                   <label class="mg-field check"><input type="checkbox" name="patch.battleOpen" checked={scenario.battleOpen} /> Open the battle narrative to those who fought</label>
                 </>
               )}
@@ -695,17 +692,16 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
 </script>
 
 <script>
-  /* The campaign ledger sits closed at the foot of the page; anyone arriving on it
-     from the section nav or a shared link should land on it already open. */
-  const ledger = document.querySelector<HTMLDetailsElement>('#campaign');
-  if (ledger) {
-    const openOnHash = () => { if (location.hash === '#campaign') ledger.open = true; };
-    openOnHash();
-    window.addEventListener('hashchange', openOnHash);
-    document.querySelectorAll<HTMLAnchorElement>('a[href="#campaign"]').forEach((link) => {
-      link.addEventListener('click', () => { ledger.open = true; });
-    });
-  }
+  /* A warband's warriors sit folded behind its moments; a link to one of them, from the
+     takedowns under the battle or a shared address, opens the fold before it lands. */
+  const unfold = (hash: string) => {
+    const target = hash.startsWith('#member-') ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
+    const fold = target?.closest<HTMLDetailsElement>('details[data-records]');
+    if (fold) fold.open = true;
+  };
+  unfold(location.hash);
+  window.addEventListener('hashchange', () => unfold(location.hash));
+  document.querySelectorAll<HTMLAnchorElement>('a[href^="#member-"]').forEach((link) => link.addEventListener('click', () => unfold(link.hash)));
 </script>
 <style>
   .puzzle-evidence { margin: 1.5rem 0; }
@@ -765,17 +761,14 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   .working-index { display: block; color: var(--gold); font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; margin-bottom: .35rem; }
   .margin-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
   .margin-actions button[hidden] { display: none; }
-  .campaign-ledger { margin: 3.5rem 0; scroll-margin-top: 2rem; }
-  .campaign-ledger summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .5rem 1.5rem; min-height: 48px; cursor: pointer; list-style: none; }
-  .campaign-ledger summary::-webkit-details-marker { display: none; }
-  .campaign-ledger summary h2 { margin-bottom: 0; }
-  .campaign-ledger summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
-  .campaign-ledger summary:hover .summary-note { color: var(--parchment); }
-  .summary-note { color: var(--gold); font-size: .85rem; }
+  .roster-records { margin-top: 1.25rem; border-top: 1px solid var(--gold-dim); }
+  .roster-records summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; min-height: 48px; padding-top: .75rem; cursor: pointer; list-style: none; color: var(--gold); }
+  .roster-records summary::-webkit-details-marker { display: none; }
+  .roster-records summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+  .roster-records summary:hover .summary-note { color: var(--parchment); }
+  .summary-note { color: var(--ink-dim); font-size: .85rem; }
   .summary-note :global(svg) { margin-left: .35rem; transition: transform .25s ease; }
-  .campaign-ledger[open] .summary-note :global(svg) { transform: rotate(180deg); }
-  .campaign-body { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
-  .campaign-body h3:first-child { margin-bottom: 1rem; }
+  .roster-records[open] .summary-note :global(svg) { transform: rotate(180deg); }
   .dispatch { margin-top: 1.5rem; padding: 1.5rem; border: 1px solid var(--gold-dim); background: var(--bg-panel2); }
   .dispatch[hidden] { display: none; }
   .battle-report { padding-top: 2rem; }
