@@ -267,3 +267,60 @@ export function leaderOf(w: Pick<Warband, 'members'>): Member | undefined {
   const living = w.members.filter((m) => !m.dead);
   return living.find(leads) ?? living.find((m) => m.rank === 'hero') ?? w.members.find(leads) ?? w.members[0];
 }
+
+/** Where a picture sits in a chapter: floated to one side with the text running round it, or alone in the middle. */
+export type ImageAlign = 'left' | 'centre' | 'right';
+export const IMAGE_ALIGNS: ImageAlign[] = ['left', 'centre', 'right'];
+/** A picture's width, as a share of the column or in pixels. */
+export type ImageUnit = '%' | 'px';
+export const IMAGE_UNITS: ImageUnit[] = ['%', 'px'];
+/** How large a picture may be set, so a typo cannot make one vanish or burst the page. */
+export const IMAGE_SIZE: Record<ImageUnit, { min: number; max: number; default: number }> = { '%': { min: 10, max: 100, default: 50 }, px: { min: 60, max: 1200, default: 320 } };
+
+/** Prose, in paragraphs separated by a blank line. */
+export interface ChapterText { kind: 'text'; text: string }
+/** A picture uploaded to the site (`/images/<imageId>`), placed, sized and captioned. */
+export interface ChapterImage { kind: 'image'; imageId: string; align: ImageAlign; size: number; unit: ImageUnit; caption: string }
+export type ChapterBlock = ChapterText | ChapterImage;
+
+/** One chapter of a warband's own story, as its keeper wrote it: prose and pictures in order. */
+export interface StoryChapter {
+  id: number;
+  warbandId: string;
+  title: string;
+  blocks: ChapterBlock[];
+  /** Order in the story; lower is earlier. */
+  sort: number;
+  authorName: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** A chapter's text in paragraphs: a blank line starts a new one, a single line break is kept as a space. */
+export function paragraphsOf(text: string): string[] {
+  return text.split(/\n\s*\n/).map((s) => s.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean);
+}
+
+/**
+ * A chapter's blocks as they may be kept: text trimmed and empty text dropped, a picture's size clamped to what its
+ * unit allows, its alignment and unit one of the known ones, its caption trimmed.
+ */
+export function normaliseBlocks(blocks: ChapterBlock[]): ChapterBlock[] {
+  const out: ChapterBlock[] = [];
+  for (const b of blocks) {
+    if (b.kind === 'text') { const text = b.text.replace(/\r\n/g, '\n').trim(); if (text) out.push({ kind: 'text', text }); continue; }
+    const unit: ImageUnit = IMAGE_UNITS.includes(b.unit) ? b.unit : '%';
+    const { min, max, default: fallback } = IMAGE_SIZE[unit];
+    const size = Number.isFinite(b.size) ? Math.min(max, Math.max(min, Math.round(b.size))) : fallback;
+    out.push({ kind: 'image', imageId: b.imageId, align: IMAGE_ALIGNS.includes(b.align) ? b.align : 'centre', size, unit, caption: b.caption.trim() });
+  }
+  return out;
+}
+
+/** The roman numeral a chapter is headed with. */
+export function chapterNumeral(n: number): string {
+  const table: [number, string][] = [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
+  let out = '';
+  for (const [v, s] of table) while (n >= v) { out += s; n -= v; }
+  return out;
+}

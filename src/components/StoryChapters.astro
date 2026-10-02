@@ -1,0 +1,193 @@
+---
+/**
+ * A warband's own story as its keeper wrote it, chapter by chapter, in the scenario reports' typography: the
+ * prose in IM Fell at a long measure, each chapter opening on a blackletter initial, pictures set left, right or
+ * in the middle at the width the keeper gave them, and any picture opening full size when it is pressed. The
+ * keeper (or a game master) gets a drawer under each chapter to change it, and one at the end to write the next.
+ */
+import { chapterNumeral, paragraphsOf, type StoryChapter } from '../campaign/model';
+import { base } from '../lib/site';
+
+interface Props {
+  warbandId: string;
+  /** How they came to the city, from the warband's record: the story's opening, before the first chapter. */
+  lore: string;
+  chapters: StoryChapter[];
+  canEdit: boolean;
+}
+const { warbandId, lore, chapters, canEdit } = Astro.props;
+const imageUrl = (id: string) => `${base}/images/${id}`;
+const opening = paragraphsOf(lore);
+/** Which paragraph of a chapter opens it, so only that one is given the initial. */
+const firstText = (c: StoryChapter) => c.blocks.findIndex((b) => b.kind === 'text');
+---
+
+<div class="story">
+  {opening.length > 0 && (
+    <section class="ch ch-opening" aria-labelledby="ch-opening-title">
+      <p class="ch-kicker">Before the gates</p>
+      <h3 class="ch-title" id="ch-opening-title">How they came to the city</h3>
+      <div class="ch-body">{opening.map((p, i) => <p class:list={{ 'ch-first': i === 0 }}>{p}</p>)}</div>
+    </section>
+  )}
+
+  {chapters.map((c, n) => (
+    <article class="ch" id={`chapter-${c.id}`} aria-labelledby={`chapter-${c.id}-title`}>
+      <p class="ch-kicker">Chapter {chapterNumeral(n + 1)}</p>
+      <h3 class="ch-title" id={`chapter-${c.id}-title`}>{c.title || `Chapter ${chapterNumeral(n + 1)}`}</h3>
+      <div class="ch-body">
+        {c.blocks.map((b, i) => b.kind === 'text'
+          ? paragraphsOf(b.text).map((p, j) => <p class:list={{ 'ch-first': i === firstText(c) && j === 0 }}>{p}</p>)
+          : (
+            <figure class:list={['ch-fig', b.align]} style={`--w: ${b.size}${b.unit}`}>
+              <button type="button" class="ch-zoom" data-zoom={imageUrl(b.imageId)} data-caption={b.caption} aria-label={b.caption ? `Enlarge the picture: ${b.caption}` : 'Enlarge the picture'}>
+                <img src={imageUrl(b.imageId)} alt={b.caption} loading="lazy" decoding="async" />
+              </button>
+              {b.caption && <figcaption>{b.caption}</figcaption>}
+            </figure>
+          ))}
+      </div>
+      <p class="ch-end" aria-hidden="true">❦</p>
+      {canEdit && (
+        <div class="ch-keep">
+          <details class="mg-editor">
+            <summary>Change this chapter</summary>
+            <div data-chapter-editor data-warband={warbandId} data-chapter={JSON.stringify({ id: c.id, title: c.title, blocks: c.blocks })}></div>
+          </details>
+          <div class="mg-actions">
+            {n > 0 && <button type="button" class="mg-btn ghost sm" data-act="warbands/move-chapter" data-body={JSON.stringify({ chapterId: c.id, by: -1 })}>Earlier</button>}
+            {n < chapters.length - 1 && <button type="button" class="mg-btn ghost sm" data-act="warbands/move-chapter" data-body={JSON.stringify({ chapterId: c.id, by: 1 })}>Later</button>}
+            <button type="button" class="mg-btn blood sm" data-act="warbands/remove-chapter" data-body={JSON.stringify({ chapterId: c.id })} data-confirm={`Strike “${c.title || `Chapter ${chapterNumeral(n + 1)}`}” from their story? It does not come back.`}>Strike the chapter</button>
+          </div>
+        </div>
+      )}
+    </article>
+  ))}
+
+  {opening.length === 0 && chapters.length === 0 && (
+    <p class="mg-empty">{canEdit ? 'Their story is not written yet. Write the first chapter below, or how they came to the city in the keeper’s pen.' : 'Their story is not written yet.'}</p>
+  )}
+
+  {canEdit && (
+    <details class="mg-editor ch-new" id="new-chapter">
+      <summary>Write {chapters.length ? 'the next chapter' : 'the first chapter'}</summary>
+      <div data-chapter-editor data-warband={warbandId}></div>
+    </details>
+  )}
+</div>
+
+<dialog class="ch-lightbox" id="ch-lightbox" aria-label="The picture, full size">
+  <button type="button" class="ch-lightbox-close" aria-label="Close">✕</button>
+  <img alt="" />
+  <p class="ch-lightbox-caption"></p>
+</dialog>
+
+<style>
+  .story { max-width: 760px; margin-inline: auto; }
+  .ch { padding: 2.2rem 0 1.4rem; scroll-margin-top: 4rem; }
+  .ch + .ch { border-top: 1px solid var(--border); }
+  .ch-kicker { text-align: center; color: var(--gold); font: var(--text-meta)/1.6 var(--font-utility); text-transform: uppercase; letter-spacing: .22em; margin-bottom: .3rem; }
+  .ch-title { text-align: center; font: normal clamp(1.9rem, 6vw, 2.6rem)/1.15 'Pirata One', Georgia, serif; color: var(--parchment); letter-spacing: .02em; margin-bottom: 1.6rem; text-wrap: balance; overflow-wrap: anywhere; }
+  .ch-body { color: var(--ink); }
+  .ch-body::after { content: ''; display: block; clear: both; }
+  .ch-body p { line-height: 1.9; margin-bottom: 1.1rem; hyphens: auto; }
+  .ch-body p:last-child { margin-bottom: 0; }
+
+  /* the opening paragraph holds its initial, so a short one does not leave the next running round it */
+  .ch-first { display: flow-root; }
+  /* the initial: a blackletter capital in a dark, double-ruled frame, lit like a candle behind dirty glass */
+  .ch-first::first-letter {
+    float: left;
+    font-family: 'UnifrakturMaguntia', 'Pirata One', Georgia, serif;
+    font-size: 4.4em;
+    line-height: .86;
+    padding: .1em .12em .04em;
+    margin: .1em .16em 0 0;
+    color: #d9b466;
+    background: radial-gradient(circle at 50% 38%, #4a1712 0%, #22100d 52%, #0d0b09 100%);
+    border: 3px double #8c6d39;
+    text-shadow: 0 0 .18em #b3261ecc, 0 0 .5em #6e0f0a99, 0 .04em 0 #000;
+  }
+
+  .ch-fig { width: var(--w); max-width: 100%; margin: .35rem 0 1.1rem; }
+  .ch-fig.left { float: left; margin-right: 1.5rem; }
+  .ch-fig.right { float: right; margin-left: 1.5rem; }
+  .ch-fig.centre { clear: both; margin-inline: auto; }
+  .ch-zoom { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+  .ch-zoom img { display: block; width: 100%; height: auto; border: 1px solid #79623c90; box-shadow: 0 10px 28px -10px #000d; filter: saturate(.9) contrast(1.03); transition: filter .25s, border-color .25s; }
+  .ch-zoom:hover img, .ch-zoom:focus-visible img { filter: none; border-color: var(--gold); }
+  .ch-fig figcaption { margin-top: .45rem; text-align: center; font-style: italic; font-size: var(--text-ui); line-height: 1.5; color: var(--ink-dim); }
+  @media (max-width: 520px) {
+    /* a phone is too narrow to run prose round a picture: it stands alone, at least two thirds of the column */
+    .ch-fig.left, .ch-fig.right { float: none; margin-inline: auto; width: max(var(--w), 66%); }
+  }
+
+  .ch-end { clear: both; text-align: center; color: var(--gold-dim); font-size: 1.3rem; margin-top: 1.4rem; }
+  .ch-keep { margin-top: .8rem; }
+  .ch-new { margin-top: 1.6rem; border-style: dashed; border-color: var(--gold-dim); background: transparent; }
+  .ch-new > summary { min-height: 3.5rem; justify-content: center; }
+  .ch-new[open] { border-style: solid; background: #0f1512; }
+  .ch-new[open] > summary { justify-content: flex-start; }
+  .story :global([data-chapter-editor]) { padding: .3rem .9rem 1rem; display: grid; gap: .9rem; }
+
+  .ch-lightbox { max-width: 96vw; max-height: 96vh; max-height: 96dvh; margin: auto; padding: 0; border: 1px solid var(--gold-dim); background: #070908; color: var(--ink); overflow: hidden; }
+  .ch-lightbox::backdrop { background: #000d; }
+  .ch-lightbox img { display: block; max-width: 96vw; max-height: calc(96dvh - 3.5rem); width: auto; height: auto; margin: auto; cursor: zoom-out; }
+  .ch-lightbox-caption { padding: .6rem 3rem .7rem 1rem; font-style: italic; color: var(--ink-dim); text-align: center; }
+  .ch-lightbox-caption:empty { display: none; }
+  .ch-lightbox-close { position: absolute; top: .4rem; right: .4rem; width: var(--control-size); height: var(--control-size); border: 1px solid var(--border); background: #070908cc; color: var(--parchment); font-size: 1.1rem; cursor: pointer; }
+  .ch-lightbox-close:hover { border-color: var(--gold); }
+</style>
+
+<style is:global>
+  /* the chapter editor's own parts, built in the browser by lib/chapters.ts */
+  .ce-blocks { list-style: none; display: grid; gap: .7rem; padding: 0; }
+  .ce-block { border: 1px solid var(--border); background: #0d1210; padding: .6rem .7rem .8rem; display: grid; gap: .5rem; }
+  .ce-head { display: flex; align-items: center; gap: .3rem; }
+  .ce-kind { flex: 1; color: var(--gold); font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .12em; }
+  .ce-tool { width: 2.5rem; height: 2.5rem; border: 1px solid var(--border); background: #141b17; color: var(--ink); cursor: pointer; font: 1rem/1 var(--font-utility); }
+  .ce-tool:hover:not([disabled]) { border-color: var(--gold); color: var(--parchment); }
+  .ce-tool[disabled] { opacity: .35; cursor: default; }
+  .ce-cut { color: var(--blood-bright); }
+  .ce-text { width: 100%; min-height: 10rem; resize: vertical; font: var(--text-body)/1.7 'IM Fell English', Georgia, serif; background: #0a0e0c; color: var(--ink); border: 1px solid var(--border); padding: .6rem .7rem; color-scheme: dark; }
+  .ce-text:focus-visible, .ce-image-fields input:focus-visible, .ce-image-fields select:focus-visible { border-color: var(--gold); outline: none; }
+  .ce-image-fields { display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: .8rem; align-items: start; }
+  .ce-thumb { width: 100%; height: auto; max-height: 10rem; object-fit: contain; border: 1px solid var(--border); background: #070908; }
+  .ce-image-controls { display: grid; gap: .35rem; min-width: 0; }
+  .ce-label { color: var(--ink-dim); font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; }
+  .ce-caption { display: grid; gap: .3rem; margin-top: .2rem; }
+  .ce-aligns { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .ce-aligns label { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.5rem; padding: 0 .7rem; border: 1px solid var(--border); color: var(--ink); cursor: pointer; font: var(--text-ui)/1 var(--font-utility); }
+  .ce-aligns label:has(input:checked) { border-color: var(--gold); color: var(--parchment); background: #1f2823; }
+  .ce-aligns input { accent-color: var(--gold); }
+  .ce-size { display: flex; gap: .4rem; }
+  .ce-size input { width: 6rem; }
+  .ce-image-fields input[type='text'], .ce-image-fields input[type='number'], .ce-image-fields select { min-height: 2.5rem; padding: .4rem .55rem; background: #0a0e0c; color: var(--ink); border: 1px solid var(--border); font: var(--text-body)/1.4 'IM Fell English', Georgia, serif; text-transform: none; letter-spacing: 0; color-scheme: dark; min-width: 0; }
+  .ce-add { display: flex; gap: .5rem; flex-wrap: wrap; }
+  @media (max-width: 480px) { .ce-image-fields { grid-template-columns: 1fr; } .ce-thumb { max-height: 12rem; } }
+</style>
+
+<script>
+  import { wireChapterEditors } from '../lib/chapters';
+  const story = document.querySelector<HTMLElement>('.story');
+  const base = document.querySelector<HTMLElement>('[data-base]')?.dataset.base ?? '';
+  if (story) wireChapterEditors(story, base);
+
+  // a picture opens full size; a press anywhere on it, the button or Escape closes it
+  const box = document.getElementById('ch-lightbox') as HTMLDialogElement | null;
+  if (box) {
+    const img = box.querySelector('img')!, caption = box.querySelector('.ch-lightbox-caption')!;
+    let opener: HTMLElement | null = null;
+    document.addEventListener('click', (e) => {
+      const zoom = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-zoom]');
+      if (!zoom) return;
+      opener = zoom;
+      img.src = zoom.dataset.zoom!;
+      img.alt = zoom.dataset.caption ?? '';
+      caption.textContent = zoom.dataset.caption ?? '';
+      box.showModal();
+    });
+    box.addEventListener('click', () => box.close());
+    box.addEventListener('close', () => { img.removeAttribute('src'); opener?.focus({ preventScroll: true }); });
+  }
+</script>

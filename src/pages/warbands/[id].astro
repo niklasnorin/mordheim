@@ -8,7 +8,7 @@ import Base from '../../layouts/Base.astro';
 import ManageTop from '../../components/ManageTop.astro';
 import WarriorStory from '../../components/WarriorStory.astro';
 import WarbandChronicle from '../../components/WarbandChronicle.astro';
-import Icon from '../../components/Icon.astro';
+import StoryChapters from '../../components/StoryChapters.astro';
 import '../../styles/manage.css';
 import { asset, base } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
@@ -17,7 +17,8 @@ import { getWarband, listWarbands } from '../../server/campaign/roster';
 import { listScenarios, memberStories, type MemberChapter } from '../../server/campaign/scenarios';
 import { curfewStory, todayFor } from '../../server/curfew/service';
 import { primeContent } from '../../server/content/curfew';
-import { STAT_KEYS, STAT_NAMES, type Scenario, type Warband } from '../../campaign/model';
+import { STAT_KEYS, STAT_NAMES, type Scenario, type StoryChapter, type Warband } from '../../campaign/model';
+import { listChapters } from '../../server/campaign/chapters';
 import type { MemberNights } from '../../curfew/story';
 
 export const prerender = false;
@@ -26,14 +27,15 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 const ready = hasDatabase();
 const viewer = ready ? await getActor(Astro.request) : null;
 let warband: Warband | undefined, stories: Record<string, MemberChapter[]> = {}, keeperless = 0;
-let nights: Record<string, MemberNights> = {}, roster: Warband[] = [], scenarios: Scenario[] = [];
+let nights: Record<string, MemberNights> = {}, roster: Warband[] = [], scenarios: Scenario[] = [], chapters: StoryChapter[] = [];
 let players: { id: string; name: string; email: string }[] = [];
 if (ready) {
   try {
     await primeContent();
     warband = await getWarband(Astro.params.id!);
     if (warband) {
-      const [list, story, all] = await Promise.all([listScenarios(), curfewStory(todayFor(null)), listWarbands()]);
+      const [list, story, all, written] = await Promise.all([listScenarios(), curfewStory(todayFor(null)), listWarbands(), listChapters(warband.id)]);
+      chapters = written;
       scenarios = list;
       stories = memberStories(scenarios);
       nights = story.members;
@@ -63,23 +65,25 @@ const hasPen = canEdit || mayClaim;
         <div class="mg-hero wb-hero">
           <span class="wb-crest" aria-hidden="true">{warband.crest ? <img src={asset(warband.crest)} width="120" height="140" alt="" /> : warband.sigil}</span>
           <div>
-            <p class="mg-kicker">{warband.type}{warband.player ? <> · kept by {warband.player}</> : <> · <span class="mg-chip">nobody’s yet</span></>}{owner && <span class="mg-chip gold">Yours</span>}</p>
+            <p class="mg-kicker">{warband.type}{warband.player ? <> · kept by {warband.player}</> : <> · <span class="mg-chip">nobody’s yet</span></>}{owner && <span class="mg-chip gold">Yours</span>}{owner && <a class="wb-kicker-link" href={`${base}/curfew/`}>The Curfew ledger</a>}{!viewer && ready && <a class="wb-kicker-link" href={`${base}/curfew/`}>Sign in to keep a warband</a>}</p>
             <h1 class="mg-h1">{warband.name}</h1>
           </div>
         </div>
 
-        {warband.lore.trim() && <p class="mg-lede wb-lore">{warband.lore}</p>}
 
-        <nav class="wb-nav" aria-label="On this page">
-          <a href="#roster">The muster roll</a>
-          <a href="#chronicle">Their chronicle</a>
-          {hasPen && <a href="#keeping">{mayClaim && !canEdit ? 'Take them up' : 'The keeper’s pen'}</a>}
-          {canEdit && !warband.lore.trim() && <a href="#record" data-open-drawer>Add their story</a>}
-          {owner && <a href={`${base}/curfew/`}>The Curfew ledger</a>}
-          {!viewer && ready && <a href={`${base}/curfew/`}>Sign in to keep a warband</a>}
+        <nav class="wb-tabs" aria-label="The warband">
+          <a href="#story" data-tab>Their story</a>
+          <a href="#roster" data-tab>The muster roll</a>
+          <a href="#chronicle" data-tab>Their chronicle</a>
+          {hasPen && <a href="#keeping" data-tab>{mayClaim && !canEdit ? 'Take them up' : 'The keeper’s pen'}</a>}
         </nav>
 
-        <section class="mg-section" id="roster">
+        <section class="mg-section wb-pane" id="story" data-pane>
+          <h2 class="visually-hidden">Their story</h2>
+          <StoryChapters warbandId={warband.id} lore={warband.lore} chapters={chapters} canEdit={canEdit} />
+        </section>
+
+        <section class="mg-section wb-pane" id="roster" data-pane hidden>
           <div class="mg-section-head">
             <h2 class="mg-h2">The muster roll</h2>
           </div>
@@ -165,13 +169,13 @@ const hasPen = canEdit || mayClaim;
           )}
         </section>
 
-        <section class="mg-section" id="chronicle">
+        <section class="mg-section wb-pane" id="chronicle" data-pane hidden>
           <div class="mg-section-head"><h2 class="mg-h2">Their chronicle</h2></div>
           <WarbandChronicle warband={warband} scenarios={scenarios} nights={nights} warbands={roster} />
         </section>
 
         {hasPen && (
-          <section class="mg-section wb-keeping" id="keeping">
+          <section class="mg-section wb-pane" id="keeping" data-pane hidden>
             <div class="mg-section-head"><h2 class="mg-h2">The keeper’s pen</h2></div>
             {mayClaim && (
               <div class="mg-actions">
@@ -235,18 +239,22 @@ const hasPen = canEdit || mayClaim;
   .wb-hero { display: flex; gap: 1.2rem; align-items: center; }
   .wb-crest { flex: none; font: 1.6rem/1 var(--font-utility); color: var(--gold); filter: drop-shadow(0 5px 8px #0007); }
   .wb-crest img { display: block; width: 84px; height: auto; }
-  .wb-lore { margin: 0 0 1rem; }
-  /* the page's parts, reached from the top: the roll, the chronicle, and the keeper's pen at the foot */
-  .wb-nav { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; padding: .3rem 0; border-block: 1px solid var(--border); font: var(--text-ui)/1.5 var(--font-utility); }
-  .wb-nav a { display: inline-flex; align-items: center; min-height: var(--control-size); color: var(--gold); text-underline-offset: .25em; }
-  .wb-nav a:hover { color: var(--parchment); }
+  .wb-kicker-link { color: var(--gold); letter-spacing: .1em; text-underline-offset: .25em; }
+  .wb-kicker-link:hover { color: var(--parchment); }
+  /* the page's parts as tabs: one shows at a time, and the bar stays in reach while it is read */
+  .wb-tabs { position: sticky; top: 0; z-index: 20; display: flex; gap: 0 1.6rem; overflow-x: auto; scrollbar-width: none; margin: 0 -1rem; padding: 0 1rem; border-bottom: 1px solid var(--border); background: var(--bg); box-shadow: 0 8px 16px -12px #000c; font: var(--text-ui)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; }
+  .wb-tabs::-webkit-scrollbar { display: none; }
+  .wb-tabs a { flex: none; display: inline-flex; align-items: center; min-height: 3rem; color: var(--ink-dim); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; transition: color .2s, border-color .2s; }
+  .wb-tabs a:hover { color: var(--parchment); }
+  .wb-tabs a[aria-current='page'] { color: var(--gold); border-bottom-color: var(--gold); }
+  @media (max-width: 640px) { .wb-tabs { padding-right: 3.5rem; } }
+  .wb-pane { margin-top: 1.6rem; scroll-margin-top: 4rem; }
   .wb-hint { margin: -.25rem 0 .75rem; }
   /* the add drawer reads as a row of the roll waiting to be filled */
   .wb-add { margin-top: .5rem; border-style: dashed; border-color: var(--gold-dim); background: transparent; }
   .wb-add > summary { min-height: 3.5rem; justify-content: center; }
   .wb-add[open] { border-style: solid; background: #0f1512; }
   .wb-add[open] > summary { justify-content: flex-start; }
-  .wb-keeping { padding-top: 1.5rem; border-top: 1px solid var(--border); }
   @media (max-width: 540px) { .wb-crest img { width: 56px; } .wb-hero { gap: .9rem; } }
 </style>
 
@@ -254,23 +262,34 @@ const hasPen = canEdit || mayClaim;
   import { wireManage } from '../../lib/manage';
   const root = document.getElementById('main-content')!;
   wireManage(root, root.dataset.base ?? '');
-  // a hash opens what it names: #member for a warrior, #record for the warband's own drawer, #add-warrior for a new one
-  const openDrawer = (id: string) => {
-    const target = id && document.getElementById(id);
-    if (!(target instanceof HTMLDetailsElement)) return;
-    target.open = true;
-    target.scrollIntoView({ block: 'start' });
-    (target.querySelector('textarea, input, select') as HTMLElement | null)?.focus({ preventScroll: true });
+  // One part of the page shows at a time, chosen by the address: a tab's own name (#roster), or anything inside a
+  // part (#agnar, #record, #add-warrior, #chapter-3), which shows that part and opens or scrolls to the thing itself.
+  const panes = [...root.querySelectorAll<HTMLElement>('[data-pane]')];
+  const tabs = [...root.querySelectorAll<HTMLAnchorElement>('a[data-tab]')];
+  const bar = root.querySelector<HTMLElement>('.wb-tabs');
+  const show = (pane: HTMLElement) => {
+    for (const p of panes) p.hidden = p !== pane;
+    for (const t of tabs) { if (t.hash === `#${pane.id}`) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); }
   };
-  const openFromHash = () => openDrawer(location.hash.slice(1));
-  openFromHash();
-  addEventListener('hashchange', openFromHash);
-  // a button that names a drawer opens it even when the address already points there
-  root.querySelectorAll<HTMLAnchorElement>('a[data-open-drawer]').forEach((a) => a.addEventListener('click', (e) => {
-    const id = a.hash.slice(1);
-    if (!(document.getElementById(id) instanceof HTMLDetailsElement)) return;
+  const route = (id: string, opening: boolean) => {
+    const target = id ? document.getElementById(id) : null;
+    const pane = target?.closest<HTMLElement>('[data-pane]') ?? panes[0];
+    if (!pane) return;
+    show(pane);
+    if (target === pane) { if (bar && bar.getBoundingClientRect().top < 0) bar.scrollIntoView({ block: 'start' }); return; }
+    if (!target) return;
+    if (target instanceof HTMLDetailsElement) target.open = true;
+    target.scrollIntoView({ block: 'start' });
+    if (opening && target instanceof HTMLDetailsElement) (target.querySelector('textarea, input, select') as HTMLElement | null)?.focus({ preventScroll: true });
+  };
+  const fromAddress = () => route(location.hash.slice(1), true);
+  fromAddress();
+  addEventListener('hashchange', fromAddress);
+  addEventListener('popstate', fromAddress);
+  // a tab switches in place, without the jump a bare anchor makes
+  for (const t of tabs) t.addEventListener('click', (e) => {
     e.preventDefault();
-    history.replaceState(null, '', `#${id}`);
-    openDrawer(id);
-  }));
+    if (location.hash !== t.hash) history.pushState(null, '', t.hash);
+    route(t.hash.slice(1), false);
+  });
 </script>

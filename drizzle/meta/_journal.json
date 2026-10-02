@@ -64,6 +64,13 @@
       "when": 1789407012956,
       "tag": "0008_battle-tracker",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790969308548,
+      "tag": "0009_warband-story",
+      "breakpoints": true
     }
   ]
 }

@@ -303,3 +303,37 @@ test('the standings are hidden until the admin shows them', async () => {
   assert.equal((await setSetting(admin, 'standingsVisible', true)).standingsVisible, true);
   assert.equal((await setSetting(admin, 'standingsVisible', false)).standingsVisible, false);
 });
+
+test('a warband’s story: its keeper writes chapters with their own pictures, in an order they choose', async () => {
+  const { db } = await import('../db/client.ts');
+  const schema = await import('../db/schema.ts');
+  const { addChapter, getImage, listChapters, moveChapter, removeChapter, updateChapter, uploadImage } = await import('./chapters.ts');
+  const scribe = actorOf('user-scribe', 'Scribe');
+  await db().insert(schema.user).values({ id: scribe.id, name: scribe.name, email: scribe.email, emailVerified: true });
+  const w = await createWarband(scribe, { name: 'The Inkwell Company', type: 'Reikland' });
+
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]).toString('base64');
+  await assert.rejects(uploadImage(stranger, w.id, 'image/png', png), (e: unknown) => e instanceof LedgerError && e.status === 403, 'only the keeper or a game master uploads');
+  await assert.rejects(uploadImage(scribe, w.id, 'image/jpeg', png), (e: unknown) => e instanceof LedgerError && e.status === 415, 'the bytes must be what the upload says');
+  const { id: picture } = await uploadImage(scribe, w.id, 'image/png', png);
+  assert.equal((await getImage(picture))!.mime, 'image/png');
+  assert.equal((await getImage(picture))!.bytes.length, 12);
+
+  await assert.rejects(addChapter(scribe, w.id, { title: 'Nothing', blocks: [{ kind: 'text', text: '   ' }] }), (e: unknown) => e instanceof LedgerError && /some words/.test(e.message));
+  await assert.rejects(addChapter(scribe, w.id, { title: 'Stolen', blocks: [{ kind: 'image', imageId: crypto.randomUUID(), align: 'left', size: 40, unit: '%', caption: '' }] }), (e: unknown) => e instanceof LedgerError && /not one of theirs/.test(e.message));
+  let story = await addChapter(scribe, w.id, { title: 'The road in', blocks: [{ kind: 'text', text: 'They came by the river.' }, { kind: 'image', imageId: picture, align: 'right', size: 900, unit: 'px', caption: 'The ferry' }] });
+  story = await addChapter(gm, w.id, { title: 'The first night', blocks: [{ kind: 'text', text: 'Nobody slept.' }] });
+  assert.deepEqual(story.map((c) => c.title), ['The road in', 'The first night']);
+  assert.equal((story[0].blocks[1] as { size: number }).size, 900, 'a size within its unit stands');
+  assert.equal(story[1].authorName, 'Game Master');
+  await assert.rejects(addChapter(stranger, w.id, { title: 'Graffiti', blocks: [{ kind: 'text', text: 'Hello' }] }), (e: unknown) => e instanceof LedgerError && e.status === 403);
+
+  story = await moveChapter(scribe, story[1].id, -1);
+  assert.deepEqual(story.map((c) => c.title), ['The first night', 'The road in']);
+  assert.deepEqual((await moveChapter(scribe, story[0].id, -1)).map((c) => c.title), ['The first night', 'The road in'], 'the first chapter goes no earlier');
+  story = await updateChapter(scribe, story[1].id, { title: 'The road in, again' });
+  assert.equal(story[1].blocks.length, 2, 'a patch without blocks keeps them');
+  story = await removeChapter(scribe, story[0].id);
+  assert.deepEqual((await listChapters(w.id)).map((c) => c.title), ['The road in, again']);
+  assert.ok(await getImage(picture), 'a picture a chapter shows is kept');
+});

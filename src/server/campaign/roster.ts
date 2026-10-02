@@ -84,6 +84,10 @@ function mayEdit(actor: Actor, w: WarbandRow): void {
   if (isGm(actor) || w.ownerId === actor.id) return;
   throw new LedgerError('That warband is not yours to keep.', 403);
 }
+/** Refuse unless the actor may edit this warband: its owner, or a game master. For the services beside this one. */
+export async function mayTend(actor: Actor, warbandId: string): Promise<void> {
+  mayEdit(actor, await warbandRow(warbandId));
+}
 
 // ───────────────────────── the warband ─────────────────────────
 

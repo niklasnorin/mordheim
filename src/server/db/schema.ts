@@ -205,6 +205,45 @@ export const members = pgTable(
 );
 
 /**
+ * A warband's own story, chapter by chapter, written on its page by its keeper or a game master. `blocks` is the
+ * chapter's prose and pictures in order (`ChapterBlock[]` in campaign/model.ts); `sort` orders the chapters.
+ */
+export const warbandChapters = pgTable(
+  'warband_chapters',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    warbandId: text('warband_id').notNull().references(() => warbands.id, { onDelete: 'cascade' }),
+    title: text('title').notNull().default(''),
+    blocks: jsonb('blocks').notNull().default([]),
+    sort: integer('sort').notNull().default(0),
+    authorId: text('author_id'),
+    authorName: text('author_name').notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('warband_chapters_warband_idx').on(t.warbandId)],
+);
+
+/**
+ * Pictures uploaded for a warband's story, kept in the database and served at `/images/<id>`. `data` is base64,
+ * so it reads back the same through Neon's HTTP driver and PGlite alike; the browser shrinks a picture before it
+ * is sent, so a row is a few hundred kilobytes. A picture no chapter shows is swept a day after it was uploaded.
+ */
+export const images = pgTable(
+  'images',
+  {
+    id: text('id').primaryKey(),
+    warbandId: text('warband_id').notNull().references(() => warbands.id, { onDelete: 'cascade' }),
+    mime: text('mime').notNull(),
+    data: text('data').notNull(),
+    bytes: integer('bytes').notNull(),
+    uploadedBy: text('uploaded_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('images_warband_idx').on(t.warbandId)],
+);
+
+/**
  * The scenarios: set up by a game master ahead of the game, written up after it. `played_on` is the real day;
  * the Imperial date is derived. `battle` is the current narrative; earlier tellings are in `scenario_revisions`.
  */

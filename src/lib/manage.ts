@@ -11,12 +11,7 @@
  */
 export function wireManage(root: HTMLElement, base: string): void {
   const toast = ensureToast();
-  const post = async (path: string, body: unknown) => {
-    const res = await fetch(new URL(`${base}/api/${path}`, location.href), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), credentials: 'same-origin' });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error ?? 'The city did not answer. Try again.');
-    return data as { message?: string; [k: string]: unknown };
-  };
+  const post = (path: string, body: unknown) => postApi(base, path, body);
   const done = (el: HTMLElement, data: { message?: string }) => {
     const goto = el.dataset.goto;
     if (data.message) toast(data.message);
@@ -56,6 +51,14 @@ export function wireManage(root: HTMLElement, base: string): void {
     const o = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-open]');
     if (o) { const t = document.getElementById(o.dataset.open!); if (t) { t.hidden = false; (t.querySelector('input, textarea, select') as HTMLElement | null)?.focus(); } }
   });
+}
+
+/** POST a JSON order to `/api/<path>`; a refusal throws with the server's own words. */
+export async function postApi(base: string, path: string, body: unknown): Promise<{ message?: string; [k: string]: unknown }> {
+  const res = await fetch(new URL(`${base}/api/${path}`, location.href), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), credentials: 'same-origin' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? 'The city did not answer. Try again.');
+  return data as { message?: string; [k: string]: unknown };
 }
 
 /**
@@ -107,7 +110,8 @@ function merge(a: Record<string, unknown>, b: Record<string, unknown>): Record<s
   return out;
 }
 
-function ensureToast(): (text: string) => void {
+/** The page's one toast, made on first use. */
+export function ensureToast(): (text: string) => void {
   let el = document.getElementById('mg-toast');
   if (!el) { el = document.createElement('div'); el.id = 'mg-toast'; el.className = 'mg-toast'; el.setAttribute('role', 'status'); el.hidden = true; document.body.append(el); }
   const node = el;

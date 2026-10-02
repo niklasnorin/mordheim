@@ -1,6 +1,6 @@
 ---
 interface Props {
-  name: 'arrow-down' | 'arrow-left' | 'arrow-right' | 'arrow-up-right' | 'close' | 'cross' | 'diamond' | 'moon' | 'sun' | 'swords' | 'tombstone' | 'bell' | 'boat' | 'key' | 'candle' | 'anchor' | 'crown' | 'thumbprint' | 'plus';
+  name: 'arrow-down' | 'arrow-left' | 'arrow-right' | 'arrow-up-right' | 'close' | 'cross' | 'diamond' | 'moon' | 'sun' | 'swords' | 'tombstone' | 'bell' | 'boat' | 'key' | 'candle' | 'anchor' | 'crown' | 'thumbprint';
   class?: string;
   size?: number;
 }
@@ -25,7 +25,6 @@ const { name, class: className, size = 16 } = Astro.props;
   {name === 'arrow-right' && <path d="M4 12h16m-6-6 6 6-6 6" />}
   {name === 'arrow-up-right' && <path d="M5 19 19 5M9 5h10v10" />}
   {name === 'close' && <path d="m6 6 12 12M18 6 6 18" />}
-  {name === 'plus' && <path d="M12 5v14M5 12h14" />}
   {name === 'cross' && <path d="M12 3v18M6 9h12" />}
   {name === 'diamond' && <path d="m12 4 6 8-6 8-6-8 6-8Z" />}
   {name === 'moon' && <path d="M19 15.5A8 8 0 0 1 8.5 5a8 8 0 1 0 10.5 10.5Z" />}
