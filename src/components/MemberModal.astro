@@ -12,8 +12,11 @@ interface Props {
   stories: Record<string, MemberChapter[]>;
   /** What the Curfew nights have written about each member, by member id. */
   nights?: Record<string, MemberNights>;
+  /** The member ids whose profiles are rendered; every warrior when absent. */
+  only?: string[];
 }
-const { warbands, stories, nights = {} } = Astro.props;
+const { warbands, stories, nights = {}, only } = Astro.props;
+const shown = (id: string) => !only || only.includes(id);
 const getMemberStory = (id: string) => stories[id] ?? [];
 
 const statKeys = ['M', 'WS', 'BS', 'S', 'T', 'W', 'I', 'A', 'Ld'] as const;
@@ -31,7 +34,7 @@ const statNames = {
   <div class="dialog-body">
   {
     warbands.map((wb) =>
-      wb.members.map((m) => {
+      wb.members.filter((m) => shown(m.id)).map((m) => {
         const story = getMemberStory(m.id);
         const curfew = nights[m.id];
         const openStory = m.rank === 'hero' && (story.length > 0 || (curfew?.entries.length ?? 0) > 0);

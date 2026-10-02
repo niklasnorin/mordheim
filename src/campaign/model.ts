@@ -257,3 +257,13 @@ export function scoresOf(s: Pick<Scenario, 'warbands' | 'events'>): { warbandId:
 export function hasTurnLog(s: Pick<Scenario, 'events' | 'outOfAction' | 'turn'>): boolean {
   return s.turn > 0 || s.events.length > 0 || s.outOfAction.some((o) => o.turn != null);
 }
+
+/**
+ * Who leads a warband, for the home page's card: the living warrior with the Leader rule, else the first living
+ * hero on the roll, else whoever stands first. Undefined only for an empty roll.
+ */
+export function leaderOf(w: Pick<Warband, 'members'>): Member | undefined {
+  const leads = (m: Member) => m.skills.some((s) => /^leader\b/i.test(s.trim()));
+  const living = w.members.filter((m) => !m.dead);
+  return living.find(leads) ?? living.find((m) => m.rank === 'hero') ?? w.members.find(leads) ?? w.members[0];
+}

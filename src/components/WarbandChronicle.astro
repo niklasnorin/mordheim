@@ -1,0 +1,182 @@
+---
+/**
+ * A warband's chronicle, told the way a warrior's story is (WarriorStory.astro, the same look from story.css):
+ * every battle they fought in the order it was played, with the Curfew's nights folded between the battles, and
+ * what each battle cost and won them. The warband's own page shows it under the muster roll.
+ */
+import type { Scenario, ScenarioWarband, Warband } from '../campaign/model';
+import type { MemberNights, NightEntry } from '../curfew/story';
+import { dateForNight, locationById } from '../curfew/engine';
+import { formatImperial, imperialForDate } from '../lib/calendar';
+import Icon from './Icon.astro';
+import { base } from '../lib/site';
+import '../styles/story.css';
+
+interface Props {
+  warband: Warband;
+  /** Every scenario; the played ones this warband attended are its battles. */
+  scenarios: Scenario[];
+  /** What the Curfew nights wrote of each warrior, by member id. */
+  nights?: Record<string, MemberNights>;
+  /** Every warband, so the other side of a battle can be named. */
+  warbands: Warband[];
+}
+const { warband, scenarios, nights = {}, warbands } = Astro.props;
+
+const ours = new Set(warband.members.map((m) => m.id));
+const nameOf = (id: string) => warband.members.find((m) => m.id === id)?.name ?? id;
+const warbandName = (id: string) => warbands.find((w) => w.id === id)?.name ?? id;
+const scenarioUrl = (id: string) => `${base}/scenarios/${id}/`;
+const imperialOf = (day: string) => formatImperial(imperialForDate(day));
+const imperialDay = (night: number) => formatImperial(imperialForDate(dateForNight(night)), 'day');
+const outcomeLabel = { boon: 'a good night', fair: 'a fair night', poor: 'a poor night' } as const;
+const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
+const countOf = (n: number, one: string, many: string) => (n === 1 ? `One ${one}` : `${n} ${many}`);
+const listed = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`);
+
+interface Battle { scenario: Scenario; part: ScenarioWarband }
+const battles: Battle[] = scenarios
+  .filter((s) => s.status === 'played')
+  .flatMap((scenario) => scenario.warbands.filter((w) => w.warbandId === warband.id).map((part) => ({ scenario, part })));
+/** What they did to others in one battle, and what was done to them. Only confirmed results are recorded. */
+const tookIn = (b: Battle) => b.scenario.outOfAction.filter((e) => ours.has(e.attackerId));
+const lostIn = (b: Battle) => b.scenario.outOfAction.filter((e) => e.targetId && ours.has(e.targetId));
+const fellIn = (b: Battle) => b.part.members.filter((m) => m.status === 'dead').map((m) => nameOf(m.memberId));
+const against = (b: Battle) => b.scenario.warbands.filter((w) => w.warbandId !== warband.id).map((w) => warbandName(w.warbandId));
+
+/** The warband's nights: every warrior's entries from its ledger, gathered night by night. */
+interface Night { night: number; locationId?: string; entries: (NightEntry & { memberId: string })[] }
+const byNight = new Map<number, Night>();
+for (const m of warband.members) {
+  for (const e of nights[m.id]?.entries ?? []) {
+    if (e.warbandId !== warband.id) continue;
+    const n = byNight.get(e.night) ?? { night: e.night, locationId: e.locationId, entries: [] };
+    n.entries.push({ ...e, memberId: m.id });
+    byNight.set(e.night, n);
+  }
+}
+
+/** Battles and nights in the order they happened; the nights between two battles fold into one row. */
+type Row = { kind: 'battle'; battle: Battle } | { kind: 'nights'; nights: Night[] };
+function timeline(): Row[] {
+  const items = [
+    ...battles.map((battle) => ({ key: battle.scenario.playedOn, row: { kind: 'battle', battle } as Row })),
+    ...[...byNight.values()].map((n) => ({ key: dateForNight(n.night), n })),
+  ].sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  const rows: Row[] = [];
+  for (const item of items) {
+    if ('row' in item) { rows.push(item.row); continue; }
+    const last = rows.at(-1);
+    if (last?.kind === 'nights') last.nights.push(item.n); else rows.push({ kind: 'nights', nights: [item.n] });
+  }
+  for (const r of rows) if (r.kind === 'nights') r.nights.sort((a, b) => a.night - b.night);
+  return rows;
+}
+const rows = timeline();
+const nightCount = byNight.size;
+const placesOf = (list: Night[]) => [...new Set(list.map((n) => locationById(n.locationId).name))];
+const took = battles.flatMap(tookIn).length;
+const lost = battles.flatMap(lostIn).length;
+const won = battles.filter((b) => b.part.result === 'victory').length;
+const ended = warband.members.length > 0 && warband.members.every((m) => m.dead);
+---
+
+{rows.length === 0 ? (
+  <p class="mg-empty">No battle or night is on their record yet. The first entry is written when they fight, or when the Curfew sends them out.</p>
+) : (
+  <div class="wb-chronicle" data-story>
+    <p class="wb-tally">
+      <b>{battles.length}</b> {battles.length === 1 ? 'battle' : 'battles'} fought{battles.length > 0 && <>, <b>{won}</b> won</>}
+      {took > 0 && <> · <b>{took}</b> put out of action</>}
+      {lost > 0 && <> · <b>{lost}</b> of their own taken out</>}
+      {nightCount > 0 && <> · <b>{nightCount}</b> {nightCount === 1 ? 'night' : 'nights'} out after curfew</>}
+    </p>
+    {nightCount > 0 && (
+      <div class="story-tools">
+        <button type="button" class="story-fold" data-fold-nights aria-pressed="false">Show the nights</button>
+        <span class="story-tools-note">{countOf(nightCount, 'night is', 'nights are')} folded between the battles.</span>
+      </div>
+    )}
+    <ol class="story-timeline">
+      {rows.map((row) => {
+        if (row.kind === 'battle') {
+          const b = row.battle;
+          const fell = fellIn(b), them = against(b), t = tookIn(b), l = lostIn(b);
+          return (
+            <li class:list={['story-chapter', { 'story-fell': fell.length > 0 }]}>
+              <span class="story-marker" aria-hidden="true">{fell.length > 0 ? <Icon name="cross" size={14} /> : <Icon name="swords" size={14} />}</span>
+              <h5><a href={scenarioUrl(b.scenario.id)}>{b.scenario.title}</a></h5>
+              <span class="story-meta">
+                {imperialOf(b.scenario.playedOn)} —{' '}
+                <span class:list={['story-result', b.part.result ?? 'draw']}>{b.part.result ? resultLabel[b.part.result] : 'Fought'}</span>
+                {them.length > 0 && <> against {listed(them)}</>}
+                {b.part.members.length > 0 && <> · {b.part.members.length} brought</>}
+              </span>
+              {b.part.accomplishments.trim() && <p class="story-text">{b.part.accomplishments}</p>}
+              {b.part.highlights.length > 0 && <p class="story-text story-highlight"><strong>Finest {b.part.highlights.length === 1 ? 'moment' : 'moments'}:</strong> {b.part.highlights.join(' ')}</p>}
+              {b.part.lowlights.length > 0 && <p class="story-text story-lowlight"><strong>Darkest {b.part.lowlights.length === 1 ? 'moment' : 'moments'}:</strong> {b.part.lowlights.join(' ')}</p>}
+              {t.length > 0 && <p class="story-text story-took"><strong>Put out of action:</strong> {t.map((e) => e.target).join('; ')}</p>}
+              {l.length > 0 && <p class="story-text story-lowlight"><strong>Taken out:</strong> {l.map((e) => nameOf(e.targetId!)).join('; ')}</p>}
+              {fell.length > 0 && <p class="story-text story-lowlight"><strong>Fell:</strong> {listed(fell)}</p>}
+              <a class="wb-part" href={`${scenarioUrl(b.scenario.id)}#${warband.id}`}>Their part in full <Icon name="arrow-right" size={13} /></a>
+            </li>
+          );
+        }
+        const first = row.nights[0].night, last = row.nights[row.nights.length - 1].night;
+        return (
+          <li class="story-chapter story-nights-row">
+            <span class="story-marker story-marker-night" aria-hidden="true"><Icon name="moon" size={13} /></span>
+            <details class="story-nights" data-nights data-default-open="false">
+              <summary>
+                <span class="story-nights-title">{countOf(row.nights.length, 'night', 'nights')} in {placesOf(row.nights).join(' and ')}</span>
+                <span class="story-meta">{first === last ? imperialDay(first) : `${imperialDay(first)} to ${imperialDay(last)}`}</span>
+              </summary>
+              <ol class="nights-list">
+                {row.nights.map((n) => (
+                  <li>
+                    <span class="nights-night">Night {n.night} · {imperialDay(n.night)}</span>
+                    {n.entries.map((e) => (
+                      <div class="wb-night">
+                        <p>{e.prose}{e.choice ? ` ${e.choice.setup}` : ''}</p>
+                        {e.choice && <p class="nights-choice"><span class="nights-choice-label">What {nameOf(e.memberId).split(' ')[0]} did</span> <em>{e.choice.label}</em> {e.choice.outcome}</p>}
+                        <span class="nights-meta">{nameOf(e.memberId)}: {e.errandLabel}, {e.standing ? 'on standing orders' : outcomeLabel[e.outcome]}{e.token ? ` · brought back ${e.token}` : ''}{e.rumour ? ' · heard a rumour' : ''}{e.choice?.defaulted ? ' · decided alone' : ''}</span>
+                      </div>
+                    ))}
+                  </li>
+                ))}
+              </ol>
+            </details>
+          </li>
+        );
+      })}
+      {ended ? (
+        <li class="story-chapter story-grave">
+          <span class="story-marker" aria-hidden="true"><Icon name="cross" size={14} /></span>
+          <h5>The Tale Ends</h5>
+          <span class="story-meta">Not one of them is left to walk the streets</span>
+        </li>
+      ) : (
+        <li class="story-chapter story-alive">
+          <span class="story-marker" aria-hidden="true"><Icon name="diamond" size={12} /></span>
+          <h5>The Tale Continues…</h5>
+          <span class="story-meta">Still within the walls</span>
+        </li>
+      )}
+    </ol>
+  </div>
+)}
+
+<style>
+  .wb-chronicle { background: var(--bg-panel); border: 1px solid var(--border); padding: 1rem 1.1rem 1.3rem; }
+  .wb-chronicle .story-timeline { margin-top: 1.2rem; }
+  .wb-tally { color: var(--ink-dim); font: var(--text-ui)/1.6 var(--font-utility); font-variant: small-caps; letter-spacing: .06em; }
+  .wb-tally b { color: var(--gold); font-weight: normal; font-variant-numeric: tabular-nums; }
+  .wb-part { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; color: var(--gold); font: var(--text-ui)/1.5 var(--font-utility); text-underline-offset: .2em; }
+  .wb-part:hover { color: var(--parchment); }
+  .wb-night + .wb-night { margin-top: .6rem; }
+</style>
+
+<script>
+  import { wireNightFolds } from '../lib/story';
+  wireNightFolds();
+</script>

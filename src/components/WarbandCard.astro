@@ -1,5 +1,5 @@
 ---
-import type { Warband } from '../campaign/model';
+import { leaderOf, type Warband } from '../campaign/model';
 import Icon from './Icon.astro';
 import { asset, base } from '../lib/site';
 
@@ -8,6 +8,10 @@ interface Props {
 }
 
 const { warband } = Astro.props;
+// The home page shows who leads them; the rest of the roll is on the warband's own page.
+const leader = leaderOf(warband);
+const rest = warband.members.length - (leader ? 1 : 0);
+const href = `${base}/warbands/${warband.id}/`;
 ---
 
 <article class="warband-card reveal" class:list={{ 'warband-ostland': warband.type === 'Ostlanders' }}>
@@ -18,39 +22,39 @@ const { warband } = Astro.props;
     <div class="warband-title">
       <h3>{warband.name}</h3>
       <span class="warband-type">{warband.type}{warband.player && ` — led by ${warband.player}`}</span>
-      <a class="warband-open" href={`${base}/warbands/${warband.id}/`}>The muster roll in full <Icon name="arrow-up-right" size={14} /></a>
     </div>
   </div>
   {warband.lore.trim()
     ? <div class="warband-lore"><p>{warband.lore}</p></div>
     : <div class="warband-lore warband-lore-empty"><p>Their story is not written yet. <a href={`${base}/warbands/${warband.id}/#record`}>Add their story <Icon name="arrow-up-right" size={14} /></a></p></div>}
-  <div class="roster-heading"><span>The muster roll</span><span>Select a warrior to uncover their tale</span></div>
-  <div class="member-grid">
-    {
-      warband.members.map((m, index) => (
-        <button
-          class:list={['member-card', { 'member-dead': m.dead }]}
-          data-warband={warband.id}
-          data-member={m.id}
-          type="button"
-          aria-haspopup="dialog"
-          aria-controls="member-dialog"
-        >
-          <span class="member-portrait" aria-hidden="true">
-            <span class="member-number">{(index + 1).toString().padStart(2, '0')}</span>
-            {m.dead ? <Icon name="cross" size={16} /> : <Icon name="diamond" size={14} />}
-          </span>
-          <span class="member-name">{m.name}</span>
-          <span class="member-role">{m.role}</span>
-          <span class="member-tag">
-            {m.epithet}
-            {m.dead && <span class="dead-marker"> <Icon name="cross" size={11} /> Fallen</span>}
-          </span>
-          <span class="member-open" aria-hidden="true"><span>Read the record</span> <Icon name="arrow-up-right" size={16} /></span>
-        </button>
-      ))
-    }
-  </div>
+  {leader && (
+    <>
+      <div class="roster-heading"><span>{leader.dead ? 'Their leader, fallen' : 'Their leader'}</span><span>Select to read their tale</span></div>
+      <button
+        class:list={['member-card', { 'member-dead': leader.dead }]}
+        data-warband={warband.id}
+        data-member={leader.id}
+        type="button"
+        aria-haspopup="dialog"
+        aria-controls="member-dialog"
+      >
+        <span class="member-portrait" aria-hidden="true">
+          {leader.dead ? <Icon name="cross" size={16} /> : <Icon name="diamond" size={14} />}
+        </span>
+        <span class="member-name">{leader.name}</span>
+        <span class="member-role">{leader.role}</span>
+        <span class="member-tag">
+          {leader.epithet}
+          {leader.dead && <span class="dead-marker"> <Icon name="cross" size={11} /> Fallen</span>}
+        </span>
+        <span class="member-open" aria-hidden="true"><span>Read the record</span> <Icon name="arrow-up-right" size={16} /></span>
+      </button>
+    </>
+  )}
+  <a class="warband-more" href={href}>
+    <span>{rest > 0 ? `The whole warband: ${rest} more ${rest === 1 ? 'warrior' : 'warriors'} and their chronicle` : 'The warband’s page and their chronicle'}</span>
+    <Icon name="arrow-right" size={16} />
+  </a>
 </article>
 
 <style>
@@ -94,8 +98,6 @@ const { warband } = Astro.props;
     font-variant: small-caps;
     letter-spacing: 0.06em;
   }
-  .warband-open { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; margin-top: .3rem; color: var(--gold); font: var(--text-ui)/1.5 var(--font-utility); text-underline-offset: .2em; }
-  .warband-open:hover { color: var(--parchment); }
   .warband-lore {
     padding: 1.5rem 2rem;
     font-style: italic;
@@ -110,11 +112,11 @@ const { warband } = Astro.props;
   .roster-heading { padding: .75rem 2rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: .25rem 1rem; color: var(--gold); font: var(--text-ui)/1.5 var(--font-utility); border-bottom: 1px solid var(--border); }
   .roster-heading span:last-child { color: var(--ink-dim); }
 
-  .member-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    background: var(--bg-panel);
-  }
+  .warband-more { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 3.25rem; padding: .8rem 2rem; color: var(--gold); background: #141b17; font: var(--text-ui)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; text-decoration: none; transition: background .2s, color .2s; }
+  .warband-more :global(svg) { flex-shrink: 0; transition: transform .2s; }
+  .warband-more:hover, .warband-more:focus-visible { background: #1f2823; color: var(--parchment); }
+  .warband-more:hover :global(svg) { transform: translateX(3px); }
+  .warband-more:focus-visible { outline-offset: -3px; }
 
   .member-card {
     position: relative;
@@ -123,7 +125,6 @@ const { warband } = Astro.props;
     cursor: pointer;
     transition: background 0.25s, transform 0.25s;
     border: none;
-    border-right: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
     text-align: left;
     font-family: inherit;
@@ -151,7 +152,6 @@ const { warband } = Astro.props;
     margin-left: .7rem;
     text-align: center;
   }
-  .member-number { display: block; font: var(--text-meta)/1.8 var(--font-utility); color: var(--ink-dim); }
   .member-open { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: 1rem; border-top: 1px solid #343b2e80; padding-top: .55rem; color: var(--gold); font: var(--text-ui)/1.5 var(--font-utility); }
   .member-open :global(svg) { flex-shrink: 0; }
   .member-name {
@@ -189,8 +189,8 @@ const { warband } = Astro.props;
     .warband-title h3 { font-size: 1.6rem; }
     .warband-lore { padding: 1rem; }
     .roster-heading { padding-inline: 1rem; }
-    .member-grid { grid-template-columns: 1fr; }
-    .member-card { padding: .9rem 3rem .9rem 1rem; border-right: 0; }
+    .warband-more { padding-inline: 1rem; }
+    .member-card { padding: .9rem 3rem .9rem 1rem; }
     .member-card .member-portrait { display: none; }
     .member-open { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); padding: 0; border: 0; margin: 0; }
     .member-open > span { display: none; }
