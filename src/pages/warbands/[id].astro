@@ -82,10 +82,9 @@ const hasPen = canEdit || mayClaim;
         <section class="mg-section" id="roster">
           <div class="mg-section-head">
             <h2 class="mg-h2">The muster roll</h2>
-            {canEdit && <a class="mg-btn" href="#add-warrior" data-open-drawer><Icon name="plus" size={14} /> Add a warrior</a>}
           </div>
           <p class="mg-muted wb-hint">{canEdit ? 'Open a warrior to read them, or to change them.' : 'Open a warrior to read their record.'}</p>
-          {warband.members.length === 0 && <p class="mg-empty">No warriors yet. {canEdit ? 'Add the first with the button above.' : 'The roll is blank.'}</p>}
+          {warband.members.length === 0 && <p class="mg-empty">No warriors yet. {canEdit ? 'Add the first below.' : 'The roll is blank.'}</p>}
           <ul class="mg-roster">
             {warband.members.map((m, i) => {
               const chapters = stories[m.id] ?? [];
@@ -242,7 +241,6 @@ const hasPen = canEdit || mayClaim;
   .wb-nav a { display: inline-flex; align-items: center; min-height: var(--control-size); color: var(--gold); text-underline-offset: .25em; }
   .wb-nav a:hover { color: var(--parchment); }
   .wb-hint { margin: -.25rem 0 .75rem; }
-  .mg-section-head .mg-btn { flex: none; }
   /* the add drawer reads as a row of the roll waiting to be filled */
   .wb-add { margin-top: .5rem; border-style: dashed; border-color: var(--gold-dim); background: transparent; }
   .wb-add > summary { min-height: 3.5rem; justify-content: center; }
