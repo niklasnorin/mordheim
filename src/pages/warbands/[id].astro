@@ -18,14 +18,14 @@ import { listScenarios, memberStories, type MemberChapter } from '../../server/c
 import { curfewStory, todayFor } from '../../server/curfew/service';
 import { primeContent } from '../../server/content/curfew';
 import { STAT_KEYS, STAT_NAMES, type Scenario, type Warband } from '../../campaign/model';
-import type { MemberNights, WarbandStanding } from '../../curfew/story';
+import type { MemberNights } from '../../curfew/story';
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 
 const ready = hasDatabase();
 const viewer = ready ? await getActor(Astro.request) : null;
-let warband: Warband | undefined, stories: Record<string, MemberChapter[]> = {}, standing: WarbandStanding | undefined, keeperless = 0;
+let warband: Warband | undefined, stories: Record<string, MemberChapter[]> = {}, keeperless = 0;
 let nights: Record<string, MemberNights> = {}, roster: Warband[] = [], scenarios: Scenario[] = [];
 let players: { id: string; name: string; email: string }[] = [];
 if (ready) {
@@ -36,7 +36,6 @@ if (ready) {
       const [list, story, all] = await Promise.all([listScenarios(), curfewStory(todayFor(null)), listWarbands()]);
       scenarios = list;
       stories = memberStories(scenarios);
-      standing = story.warbands[warband.id];
       nights = story.members;
       roster = all;
       keeperless = all.filter((w) => !w.ownerId).length;
@@ -51,7 +50,6 @@ const canEdit = owner || gm;
 const mayClaim = !!viewer && !!warband && !warband.ownerId;
 // The keeper's business sits at the foot of the page, under the roll and the chronicle; the links at the top reach it.
 const hasPen = canEdit || mayClaim;
-const living = warband?.members.filter((m) => !m.dead).length ?? 0;
 ---
 
 <Base title={warband ? `${warband.name} — Mordheim` : 'No such warband — Mordheim'} description={warband?.lore.slice(0, 160)}>
@@ -67,8 +65,6 @@ const living = warband?.members.filter((m) => !m.dead).length ?? 0;
           <div>
             <p class="mg-kicker">{warband.type}{warband.player ? <> · kept by {warband.player}</> : <> · <span class="mg-chip">nobody’s yet</span></>}{owner && <span class="mg-chip gold">Yours</span>}</p>
             <h1 class="mg-h1">{warband.name}</h1>
-            <p class="mg-muted">{living} living {living === 1 ? 'soul' : 'souls'} of {warband.members.length} · {warband.battles} {warband.battles === 1 ? 'battle' : 'battles'}, {warband.victories} won
-              {standing && standing.nights > 0 && <> · spoken of in the taverns as <b>{standing.title}</b> after {standing.nights} nights{owner && <>, <a href={`${base}/curfew/`}>their ledger</a></>}</>}</p>
           </div>
         </div>
 
