@@ -17,7 +17,7 @@ import { getWarband, listWarbands } from '../../server/campaign/roster';
 import { listScenarios, memberStories, type MemberChapter } from '../../server/campaign/scenarios';
 import { curfewStory, todayFor } from '../../server/curfew/service';
 import { primeContent } from '../../server/content/curfew';
-import { STAT_KEYS, STAT_NAMES, type Scenario, type StoryChapter, type Warband } from '../../campaign/model';
+import { STAT_KEYS, STAT_NAMES, paragraphsOf, type Scenario, type StoryChapter, type Warband } from '../../campaign/model';
 import { listChapters } from '../../server/campaign/chapters';
 import type { MemberNights } from '../../curfew/story';
 
@@ -52,6 +52,7 @@ const canEdit = owner || gm;
 const mayClaim = !!viewer && !!warband && !warband.ownerId;
 // The keeper's business sits at the foot of the page, under the roll and the chronicle; the links at the top reach it.
 const hasPen = canEdit || mayClaim;
+const overview = paragraphsOf(warband?.lore ?? '');
 ---
 
 <Base title={warband ? `${warband.name} — Mordheim` : 'No such warband — Mordheim'} description={warband?.lore.slice(0, 160)}>
@@ -72,15 +73,24 @@ const hasPen = canEdit || mayClaim;
 
 
         <nav class="wb-tabs" aria-label="The warband">
+          <a href="#overview" data-tab>Overview</a>
           <a href="#story" data-tab>Their story</a>
           <a href="#roster" data-tab>The muster roll</a>
           <a href="#chronicle" data-tab>Their chronicle</a>
           {hasPen && <a href="#keeping" data-tab>{mayClaim && !canEdit ? 'Take them up' : 'The keeper’s pen'}</a>}
         </nav>
 
-        <section class="mg-section wb-pane" id="story" data-pane>
+        <section class="mg-section wb-pane" id="overview" data-pane>
+          <div class="mg-section-head"><h2 class="mg-h2">Warband overview</h2><span class="mg-muted">For the other players: who they are and what they want.</span></div>
+          {overview.length > 0
+            ? <div class="wb-overview">{overview.map((p) => <p>{p}</p>)}</div>
+            : <p class="mg-empty">{canEdit ? 'No overview yet. Write a paragraph the other players can read, in the keeper’s pen.' : 'No overview has been written yet.'}</p>}
+          {canEdit && <div class="mg-actions"><a class="mg-btn ghost" href="#record">{overview.length > 0 ? 'Change the overview' : 'Write the overview'}</a></div>}
+        </section>
+
+        <section class="mg-section wb-pane" id="story" data-pane hidden>
           <h2 class="visually-hidden">Their story</h2>
-          <StoryChapters warbandId={warband.id} lore={warband.lore} chapters={chapters} canEdit={canEdit} />
+          <StoryChapters warbandId={warband.id} chapters={chapters} canEdit={canEdit} />
         </section>
 
         <section class="mg-section wb-pane" id="roster" data-pane hidden>
@@ -192,7 +202,7 @@ const hasPen = canEdit || mayClaim;
                     <label class="mg-field">Name<input name="patch.name" required maxlength="80" value={warband.name} /></label>
                     <label class="mg-field">Kind<input name="patch.type" required maxlength="60" value={warband.type} /></label>
                   </div>
-                  <label class="mg-field">Their story<textarea name="patch.lore" maxlength="4000" class="tall">{warband.lore}</textarea><small>One paragraph: where they are from, what drove them to the city, what they want. No stats, no rules.</small></label>
+                  <label class="mg-field">Warband overview<textarea name="patch.lore" maxlength="4000" class="tall">{warband.lore}</textarea><small>A paragraph for the other players: where they are from, what drove them to the city, what they want. No stats, no rules. It is what the home page shows. Their full story is written chapter by chapter under Their story.</small></label>
                   <p class="mg-note">Battles and victories are counted from the recorded scenarios.</p>
                   {gm && (
                     <div class="mg-two">
@@ -249,6 +259,9 @@ const hasPen = canEdit || mayClaim;
   .wb-tabs a[aria-current='page'] { color: var(--gold); border-bottom-color: var(--gold); }
   @media (max-width: 640px) { .wb-tabs { padding-right: 3.5rem; } }
   .wb-pane { margin-top: 1.6rem; scroll-margin-top: 4rem; }
+  .wb-overview { max-width: 68ch; }
+  .wb-overview p { color: var(--ink-dim); font-style: italic; line-height: 1.8; }
+  .wb-overview p + p { margin-top: 1rem; }
   .wb-hint { margin: -.25rem 0 .75rem; }
   /* the add drawer reads as a row of the roll waiting to be filled */
   .wb-add { margin-top: .5rem; border-style: dashed; border-color: var(--gold-dim); background: transparent; }

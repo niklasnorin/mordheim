@@ -1,36 +1,27 @@
 ---
 /**
- * A warband's own story as its keeper wrote it, chapter by chapter, in the scenario reports' typography: the
- * prose in IM Fell at a long measure, each chapter opening on a blackletter initial, pictures set left, right or
- * in the middle at the width the keeper gave them, and any picture opening full size when it is pressed. The
- * keeper (or a game master) gets a drawer under each chapter to change it, and one at the end to write the next.
+ * A warband's own story as its keeper wrote it, chapter by chapter: the long telling. (The short overview for the
+ * other players is the warband's `lore`, on the page's Overview tab and the home page's card.) Set in the scenario
+ * reports' typography: the prose in IM Fell at a long measure, each chapter opening on a blackletter initial,
+ * pictures set left, right or in the middle at the width the keeper gave them, and any picture opening full size
+ * when it is pressed. The keeper (or a game master) gets a drawer under each chapter to change it, and one at the
+ * end to write the next.
  */
 import { chapterNumeral, paragraphsOf, type StoryChapter } from '../campaign/model';
 import { base } from '../lib/site';
 
 interface Props {
   warbandId: string;
-  /** How they came to the city, from the warband's record: the story's opening, before the first chapter. */
-  lore: string;
   chapters: StoryChapter[];
   canEdit: boolean;
 }
-const { warbandId, lore, chapters, canEdit } = Astro.props;
+const { warbandId, chapters, canEdit } = Astro.props;
 const imageUrl = (id: string) => `${base}/images/${id}`;
-const opening = paragraphsOf(lore);
 /** Which paragraph of a chapter opens it, so only that one is given the initial. */
 const firstText = (c: StoryChapter) => c.blocks.findIndex((b) => b.kind === 'text');
 ---
 
 <div class="story">
-  {opening.length > 0 && (
-    <section class="ch ch-opening" aria-labelledby="ch-opening-title">
-      <p class="ch-kicker">Before the gates</p>
-      <h3 class="ch-title" id="ch-opening-title">How they came to the city</h3>
-      <div class="ch-body">{opening.map((p, i) => <p class:list={{ 'ch-first': i === 0 }}>{p}</p>)}</div>
-    </section>
-  )}
-
   {chapters.map((c, n) => (
     <article class="ch" id={`chapter-${c.id}`} aria-labelledby={`chapter-${c.id}-title`}>
       <p class="ch-kicker">Chapter {chapterNumeral(n + 1)}</p>
@@ -64,8 +55,8 @@ const firstText = (c: StoryChapter) => c.blocks.findIndex((b) => b.kind === 'tex
     </article>
   ))}
 
-  {opening.length === 0 && chapters.length === 0 && (
-    <p class="mg-empty">{canEdit ? 'Their story is not written yet. Write the first chapter below, or how they came to the city in the keeper’s pen.' : 'Their story is not written yet.'}</p>
+  {chapters.length === 0 && (
+    <p class="mg-empty">{canEdit ? 'Their story is not written yet. Write the first chapter below, as long and as full as you like; the overview for the other players is a short paragraph under Overview.' : 'Their story is not written yet.'}</p>
   )}
 
   {canEdit && (

@@ -26,7 +26,7 @@ const href = `${base}/warbands/${warband.id}/`;
   </div>
   {warband.lore.trim()
     ? <div class="warband-lore"><p>{warband.lore}</p></div>
-    : <div class="warband-lore warband-lore-empty"><p>Their story is not written yet. <a href={`${base}/warbands/${warband.id}/#record`}>Add their story <Icon name="arrow-up-right" size={14} /></a></p></div>}
+    : <div class="warband-lore warband-lore-empty"><p>Their overview is not written yet. <a href={`${base}/warbands/${warband.id}/#record`}>Write the overview <Icon name="arrow-up-right" size={14} /></a></p></div>}
   {leader && (
     <button
       class:list={['member-card', { 'member-dead': leader.dead }]}

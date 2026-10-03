@@ -59,7 +59,7 @@ const free = warbands.filter((w) => !w.ownerId);
           <form class="mg-panel mg-form" data-api="warbands/create">
             <label class="mg-field">Name<input name="name" required maxlength="80" placeholder="The Grey Hand" /></label>
             <label class="mg-field">Kind<input name="type" required maxlength="60" placeholder="Skaven, Reiklanders, Witch Hunters…" /></label>
-            <label class="mg-field">Their story<textarea name="lore" maxlength="4000" placeholder="Where they are from, what drove them to the city, what they want."></textarea><small>One paragraph, in the warband's own temperament. It can wait.</small></label>
+            <label class="mg-field">Warband overview<textarea name="lore" maxlength="4000" placeholder="Where they are from, what drove them to the city, what they want."></textarea><small>A paragraph for the other players, in the warband's own temperament. The home page shows it. The longer story is written later, chapter by chapter. It can wait.</small></label>
             <div class="mg-actions"><button type="submit" class="mg-btn">Register the company</button><span class="mg-note">{isGm(viewer) ? 'A game master founds it unowned and hands it out from its page.' : 'It is yours the moment it is registered; add the warriors on its page.'}</span></div>
           </form>
         </section>
