@@ -83,10 +83,15 @@ const leaders = warbands.map((w) => leaderOf(w)?.id).filter((id): id is string =
 </Base>
 
 <style>
+  /* cards stay card-sized: as many abreast as the width allows (three on a laptop), a short last row centred */
   .warband-grid {
-    display: grid;
-    gap: 2.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: stretch;
+    gap: 2rem;
   }
+  .warband-grid > :global(.warband-card) { flex: 1 1 21rem; max-width: 26rem; }
 
   .site-footer {
     position: relative;

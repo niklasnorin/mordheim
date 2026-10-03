@@ -61,7 +61,12 @@ const href = `${base}/warbands/${warband.id}/`;
     border: 1px solid #79623c70;
     box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
     overflow: hidden;
+    /* in a row of cards the leader and the link sit at the foot of each, whatever the length of the backstory */
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
+  .warband-lore { flex: 1; }
   .warband-card::before { content: ''; position: absolute; top: 0; left: 1.5rem; right: 1.5rem; height: 2px; background: linear-gradient(90deg, transparent, var(--gold-dim), transparent); }
   .warband-title { min-width: 0; }
 
@@ -69,7 +74,7 @@ const href = `${base}/warbands/${warband.id}/`;
     display: flex;
     align-items: center;
     gap: 1.2rem;
-    padding: 1.8rem 2rem;
+    padding: 1.5rem;
     border-bottom: 1px solid var(--border);
     background: repeating-linear-gradient(120deg, transparent 0 5px, #b69a6203 5px 6px), linear-gradient(90deg, #68744b18, transparent 70%);
   }
@@ -83,7 +88,7 @@ const href = `${base}/warbands/${warband.id}/`;
   }
   .warband-title h3 {
     font-family: 'Pirata One', cursive;
-    font-size: 2rem;
+    font-size: 1.8rem;
     letter-spacing: 0.05em;
     color: var(--parchment);
     font-weight: normal;
@@ -96,7 +101,7 @@ const href = `${base}/warbands/${warband.id}/`;
     letter-spacing: 0.06em;
   }
   .warband-lore {
-    padding: 1.5rem 2rem;
+    padding: 1.25rem 1.5rem;
     font-style: italic;
     color: var(--ink-dim);
     border-bottom: 1px solid var(--border);
@@ -107,7 +112,7 @@ const href = `${base}/warbands/${warband.id}/`;
   .warband-lore-empty a { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; font-style: normal; color: var(--gold); font: var(--text-ui)/1.5 var(--font-utility); text-underline-offset: .2em; }
   .warband-lore-empty a:hover { color: var(--parchment); }
 
-  .warband-more { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 3.25rem; padding: .8rem 2rem; color: var(--gold); background: #141b17; font: var(--text-ui)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; text-decoration: none; transition: background .2s, color .2s; }
+  .warband-more { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 3.25rem; padding: .8rem 1.5rem; color: var(--gold); background: #141b17; font: var(--text-ui)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; text-decoration: none; transition: background .2s, color .2s; }
   .warband-more :global(svg) { flex-shrink: 0; transition: transform .2s; }
   .warband-more:hover, .warband-more:focus-visible { background: #1f2823; color: var(--parchment); }
   .warband-more:hover :global(svg) { transform: translateX(3px); }
@@ -116,7 +121,7 @@ const href = `${base}/warbands/${warband.id}/`;
   .member-card {
     position: relative;
     background: var(--bg-panel);
-    padding: 1.3rem 1.5rem;
+    padding: 1.2rem 1.5rem;
     cursor: pointer;
     transition: background 0.25s, transform 0.25s;
     border: none;
