@@ -478,3 +478,24 @@ export async function setTurnLimit(actor: Actor, id: string, turnLimit: number):
   await db().update(scenarios).set({ turnLimit: limit, turn, updatedAt: new Date() }).where(eq(scenarios.id, id));
   return (await getScenario(id))!;
 }
+
+/**
+ * The table chooses sides before the first turn: who attacks and who defends, in a scenario that has sides. Anyone at
+ * the table may, until the first turn begins; after that only a game master changes them, on the scenario page.
+ */
+export async function chooseSides(actor: Actor, id: string, sides: Record<string, Side | '' | null>): Promise<Scenario> {
+  const r = await row(id);
+  await tableOnly(actor, id);
+  if (!houseScenario(r.rulebookScenario)?.sides) throw new LedgerError('This scenario has no sides to choose.', 400);
+  if (r.status === 'played') throw new LedgerError('The game is already called.', 409);
+  if (r.turn > 0 && !isGm(actor)) throw new LedgerError('The game has begun; a game master changes the sides now.', 409);
+  const d = db();
+  const attending = (await d.select({ warbandId: scenarioWarbands.warbandId }).from(scenarioWarbands).where(eq(scenarioWarbands.scenarioId, id))).map((x) => x.warbandId);
+  for (const [warbandId, given] of Object.entries(sides)) {
+    if (!attending.includes(warbandId)) throw new LedgerError('That warband is not at this scenario.', 404);
+    if (given && !SIDES.includes(given)) throw new LedgerError('A warband attacks or defends.');
+    await d.update(scenarioWarbands).set({ side: given || null }).where(and(eq(scenarioWarbands.scenarioId, id), eq(scenarioWarbands.warbandId, warbandId)));
+  }
+  await d.update(scenarios).set({ updatedAt: new Date() }).where(eq(scenarios.id, id));
+  return (await getScenario(id))!;
+}

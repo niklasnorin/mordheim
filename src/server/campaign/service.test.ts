@@ -366,3 +366,32 @@ test('the supply cart at the table: sides, a turn’s end with the cart and the 
   await assert.rejects(setTurnLimit(gm, s.id, 5), (e: unknown) => e instanceof LedgerError && /turn 8/.test(e.message));
   await deleteScenario(gm, s.id);
 });
+
+test('the table chooses its sides before the first turn, and only a game master changes them after', async () => {
+  const { chooseSides } = await import('./scenarios.ts');
+  const { db } = await import('../db/client.ts');
+  const schema = await import('../db/schema.ts');
+  const carter = actorOf('user-carter', 'Carter');
+  await db().insert(schema.user).values({ id: carter.id, name: carter.name, email: carter.email, emailVerified: true });
+  if ((await getWarband('bitterbrow-expedition'))!.ownerId) await releaseWarband(gm, 'bitterbrow-expedition');
+  await assignWarband(gm, 'bitterbrow-expedition', carter.id);
+  const s = await createScenario(gm, { title: 'The Supply Cart again', playedOn: '2026-10-11', rulebookScenario: 'The Supply Cart', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+
+  await assert.rejects(chooseSides(stranger, s.id, { nordost: 'attacker' }), (e: unknown) => e instanceof LedgerError && e.status === 403, 'only those at the table');
+  await assert.rejects(chooseSides(carter, s.id, { 'grey-hand': 'attacker' }), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  let now = await chooseSides(carter, s.id, { 'bitterbrow-expedition': 'defender', nordost: 'attacker' });
+  assert.deepEqual(now.warbands.map((w) => [w.warbandId, w.side]).sort(), [['bitterbrow-expedition', 'defender'], ['nordost', 'attacker']]);
+  now = await chooseSides(carter, s.id, { nordost: '' });
+  assert.equal(now.warbands.find((w) => w.warbandId === 'nordost')!.side, null, 'a side can be taken back');
+
+  await setTurn(gm, s.id, 1);
+  await assert.rejects(chooseSides(carter, s.id, { nordost: 'defender' }), (e: unknown) => e instanceof LedgerError && e.status === 409, 'once the first turn begins, the sides are the game master’s');
+  now = await chooseSides(gm, s.id, { nordost: 'attacker' });
+  assert.equal(now.warbands.find((w) => w.warbandId === 'nordost')!.side, 'attacker');
+
+  const plain = await createScenario(gm, { title: 'A skirmish', playedOn: '2026-10-12', rulebookScenario: 'Skirmish', warbandIds: ['nordost'] });
+  await assert.rejects(chooseSides(gm, plain.id, { nordost: 'attacker' }), (e: unknown) => e instanceof LedgerError && /no sides/.test(e.message));
+  await deleteScenario(gm, s.id);
+  await deleteScenario(gm, plain.id);
+  await releaseWarband(gm, 'bitterbrow-expedition');
+});

@@ -7,7 +7,7 @@
  * updated optimistically: the server's answer is the table.
  */
 import { SCENARIO_RESULTS, scoresOf, tallyOf, type OutOfAction, type Scenario, type ScenarioEvent, type ScenarioResult } from '../campaign/model';
-import { SIDE_LABEL, houseScenario, inWords, resultsOf, rollBrings, turnEnds, verdictOf } from '../campaign/house';
+import { SIDES, SIDE_LABEL, houseScenario, inWords, resultsOf, rollBrings, turnEnds, verdictOf } from '../campaign/house';
 
 export interface TrackerRoster { id: string; name: string; members: { id: string; name: string; role: string; dead: boolean }[] }
 export interface TrackerState {
@@ -143,9 +143,20 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       return;
     }
     if (s.turn === 0) {
+      // a scenario with sides has them chosen at the table first: who attacks, who defends
+      const kind = houseScenario(s.rulebookScenario);
+      const unsided = kind?.sides ? s.warbands.filter((w) => !w.side) : [];
+      const chooser = kind?.sides && live ? h('div', { class: 'tk-side-pick', role: 'group', 'aria-label': 'Who attacks and who defends' },
+        h('div', { class: 'tk-turn-label' }, 'Sides'),
+        ...s.warbands.map((w) => h('div', { class: 'tk-side-row' },
+          h('span', { class: 'tk-side-name' }, warbandName(w.warbandId)),
+          h('div', { class: 'tk-choices' }, ...SIDES.map((side) => h('button', { type: 'button', class: 'tk-side-btn', 'data-side': side, 'data-pick-side': w.warbandId, 'aria-pressed': String(w.side === side) }, side === 'attacker' ? 'Attacks' : 'Defends'))),
+        )),
+      ) : null;
       put(turnBox,
-        h('div', {}, h('div', { class: 'tk-turn-label' }, 'Before the first turn'), h('p', { class: 'tk-turn-note' }, 'The warbands are deploying. Anything logged now goes down as turn 1.')),
-        live ? h('button', { type: 'button', class: 'tk-btn big wide tk-turn-begin', 'data-turn': '1' }, 'Begin: turn 1') : null,
+        h('div', {}, h('div', { class: 'tk-turn-label' }, 'Before the first turn'), h('p', { class: 'tk-turn-note' }, kind?.sides && live ? 'Choose who attacks and who defends, then begin. Anything logged now goes down as turn 1.' : 'The warbands are deploying. Anything logged now goes down as turn 1.')),
+        chooser,
+        live ? h('button', { type: 'button', class: 'tk-btn big wide tk-turn-begin', 'data-turn': '1', disabled: unsided.length > 0 }, unsided.length ? 'Choose the sides to begin' : 'Begin: turn 1') : null,
       );
     } else {
       // a house scenario ends each turn with its own questions; any game with a limit stops at it, unless the table adds a round
@@ -184,7 +195,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     const unsided = s.warbands.filter((w) => !w.side);
     holdBox.append(h('div', { class: 'tk-tally-head' }, h('span', {}, kind.objective.title), h('span', {}, 'held at the end of each round')));
     holdBox.append(h('ul', { class: 'tk-sides' }, ...s.warbands.map((w) => h('li', { 'data-side': w.side ?? '' }, h('span', {}, warbandName(w.warbandId)), h('b', {}, w.side ? SIDE_LABEL[w.side] : 'No side')))));
-    if (unsided.length) holdBox.append(h('p', { class: 'tk-note' }, 'A game master sets who attacks and who defends on the scenario page; until then the cart cannot be judged.'));
+    if (unsided.length && s.turn > 0) holdBox.append(h('p', { class: 'tk-note' }, 'A game master sets who attacks and who defends on the scenario page; until then the cart cannot be judged.'));
     const strip = h('ol', { class: 'tk-rounds', 'aria-label': 'Round by round' });
     for (let t = 1; t <= Math.max(limit, ends.at(-1)?.turn ?? 0); t++) {
       const end = ends.find((e) => e.turn === t);
@@ -482,6 +493,15 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     const t = e.target as HTMLElement;
     const open = t.closest<HTMLButtonElement>('[data-open]');
     if (open) { openSheet(open.dataset.open as SheetKind); return; }
+    const pick = t.closest<HTMLButtonElement>('[data-pick-side]');
+    if (pick) {
+      // with two warbands, one side chosen settles the other
+      const s = state.scenario, warbandId = pick.dataset.pickSide!, side = pick.dataset.side as 'attacker' | 'defender';
+      const sides: Record<string, string> = { [warbandId]: side };
+      if (s.warbands.length === 2) for (const w of s.warbands) if (w.warbandId !== warbandId) sides[w.warbandId] = side === 'attacker' ? 'defender' : 'attacker';
+      await post('sides', { sides });
+      return;
+    }
     const more = t.closest<HTMLButtonElement>('[data-limit]');
     if (more) { await post('turn-limit', { turnLimit: Number(more.dataset.limit) }); return; }
     const turn = t.closest<HTMLButtonElement>('[data-turn]');

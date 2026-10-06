@@ -5,7 +5,7 @@
 import type { APIRoute } from 'astro';
 import { z } from 'zod';
 import { dispatch, route } from '../../../server/api';
-import { addEvent, addOutOfAction, createScenario, deleteScenario, endTurn, setTurnLimit, markPlayed, removeEvent, removeOutOfAction, reopenScenario, requireScenario, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writePerspective } from '../../../server/campaign/scenarios';
+import { addEvent, addOutOfAction, chooseSides, createScenario, deleteScenario, endTurn, setTurnLimit, markPlayed, removeEvent, removeOutOfAction, reopenScenario, requireScenario, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writePerspective } from '../../../server/campaign/scenarios';
 
 export const prerender = false;
 
@@ -44,6 +44,7 @@ const routes = {
   turn: route(z.object({ scenarioId: id, turn }), (i, a) => wrap(setTurn(a, i.scenarioId, i.turn))),
   event: route(z.object({ scenarioId: id, kind: z.enum(['note', 'score']), turn: turn.min(1).nullable().optional(), warbandId: z.string().max(64).nullable().optional(), points: z.number().int().min(-99).max(99).optional(), text: z.string().max(500).optional() }), (i, a) => wrap(addEvent(a, i.scenarioId, i))),
   'end-turn': route(z.object({ scenarioId: id, turn: turn.min(1), held: z.string().max(64).nullable().optional(), roll: z.number().int().min(1).max(20).nullable().optional() }), (i, a) => wrap(endTurn(a, i.scenarioId, i))),
+  sides: route(z.object({ scenarioId: id, sides: z.record(z.string().max(64), z.enum(['attacker', 'defender', '']).nullable()) }), (i, a) => wrap(chooseSides(a, i.scenarioId, i.sides))),
   'turn-limit': route(z.object({ scenarioId: id, turnLimit: z.number().int().min(1).max(99) }), (i, a) => wrap(setTurnLimit(a, i.scenarioId, i.turnLimit))),
   'remove-event': route(z.object({ scenarioId: id, id: z.number().int().positive() }), (i, a) => wrap(removeEvent(a, i.scenarioId, i.id))),
 };
