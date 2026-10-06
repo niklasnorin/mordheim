@@ -5,7 +5,7 @@
 import type { APIRoute } from 'astro';
 import { z } from 'zod';
 import { dispatch, route } from '../../../server/api';
-import { addEvent, addOutOfAction, createScenario, deleteScenario, markPlayed, removeEvent, removeOutOfAction, reopenScenario, requireScenario, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writePerspective } from '../../../server/campaign/scenarios';
+import { addEvent, addOutOfAction, createScenario, deleteScenario, endTurn, setTurnLimit, markPlayed, removeEvent, removeOutOfAction, reopenScenario, requireScenario, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writePerspective } from '../../../server/campaign/scenarios';
 
 export const prerender = false;
 
@@ -16,6 +16,7 @@ const scenarioFields = {
   title: z.string().max(120), playedOn: day, rulebookScenario: z.string().max(80).nullable(), customRules: z.string().max(8000), prologue: z.string().max(8000), prologueAsSummary: z.boolean(), summary: z.string().max(1000),
   warbandIds: z.array(z.string().max(64)).max(20), winCondition: z.string().max(4000), chronicle: z.string().max(4000), outcome: z.string().max(4000), epilogue: z.string().max(8000),
   loot: paragraphs, campaignNotes: paragraphs, battleOpen: z.boolean(), tally: z.string().max(60),
+  turnLimit: z.number().int().min(1).max(99).nullable(), sides: z.record(z.string().max(64), z.enum(['attacker', 'defender', '']).nullable()),
 };
 const turn = z.number().int().min(0).max(99);
 const wrap = (p: Promise<unknown>) => p.then((scenario) => ({ scenario }));
@@ -42,6 +43,8 @@ const routes = {
   tracker: route(z.object({ scenarioId: id }), (i) => wrap(requireScenario(i.scenarioId))),
   turn: route(z.object({ scenarioId: id, turn }), (i, a) => wrap(setTurn(a, i.scenarioId, i.turn))),
   event: route(z.object({ scenarioId: id, kind: z.enum(['note', 'score']), turn: turn.min(1).nullable().optional(), warbandId: z.string().max(64).nullable().optional(), points: z.number().int().min(-99).max(99).optional(), text: z.string().max(500).optional() }), (i, a) => wrap(addEvent(a, i.scenarioId, i))),
+  'end-turn': route(z.object({ scenarioId: id, turn: turn.min(1), held: z.string().max(64).nullable().optional(), roll: z.number().int().min(1).max(20).nullable().optional() }), (i, a) => wrap(endTurn(a, i.scenarioId, i))),
+  'turn-limit': route(z.object({ scenarioId: id, turnLimit: z.number().int().min(1).max(99) }), (i, a) => wrap(setTurnLimit(a, i.scenarioId, i.turnLimit))),
   'remove-event': route(z.object({ scenarioId: id, id: z.number().int().positive() }), (i, a) => wrap(removeEvent(a, i.scenarioId, i.id))),
 };
 

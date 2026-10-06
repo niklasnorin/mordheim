@@ -10,6 +10,7 @@ import { getActor, isGm } from '../../server/roles';
 import { listScenarios } from '../../server/campaign/scenarios';
 import { listWarbands } from '../../server/campaign/roster';
 import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook';
+import { HOUSE_SCENARIOS } from '../../campaign/house';
 import { summaryOf, type Scenario, type Warband } from '../../campaign/model';
 import { localDate } from '../../curfew/engine';
 
@@ -65,7 +66,7 @@ const today = localDate();
           <label class="mg-field">Title<input name="title" required maxlength="120" placeholder="The Drowned Bell" /><small>The campaign chapter's name, not the rulebook's.</small></label>
           <div class="mg-two">
             <label class="mg-field">Played on<input name="playedOn" type="date" required value={today} /><small>The Imperial date follows from it.</small></label>
-            <label class="mg-field">Rulebook scenario<select name="rulebookScenario" data-nullable><option value="">Custom scenario</option>{RULEBOOK_SCENARIOS.map((r) => <option value={r}>{r}</option>)}</select></label>
+            <label class="mg-field">Scenario<select name="rulebookScenario" data-nullable><option value="">Custom scenario</option><optgroup label="The campaign’s own">{HOUSE_SCENARIOS.map((h) => <option value={h.name}>{h.name}</option>)}</optgroup><optgroup label="The rulebook">{RULEBOOK_SCENARIOS.map((r) => <option value={r}>{r}</option>)}</optgroup></select><small>One of the campaign’s own brings its rules, its length and its sides to the tracker; set who attacks on the scenario’s page.</small></label>
           </div>
           <fieldset class="mg-fieldset"><legend>Who fights</legend>
             <div class="mg-checks">{warbands.map((w) => <label class="mg-field check"><input type="checkbox" name="warbandIds" value={w.id} data-array /> {w.name} <span class="mg-muted">({w.type})</span></label>)}</div>

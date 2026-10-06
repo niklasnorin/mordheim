@@ -71,6 +71,13 @@
       "when": 1790969308548,
       "tag": "0009_warband-story",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791298463333,
+      "tag": "0010_house-scenarios",
+      "breakpoints": true
     }
   ]
 }

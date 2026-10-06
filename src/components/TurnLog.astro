@@ -5,6 +5,7 @@
  * afterwards, with no turn, close the list.
  */
 import { scoresOf, tallyOf, type Scenario, type Warband } from '../campaign/model';
+import { SIDE_LABEL, houseScenario, rollBrings } from '../campaign/house';
 
 interface Props { scenario: Scenario; warbands: Warband[] }
 const { scenario, warbands } = Astro.props;
@@ -13,6 +14,8 @@ const nameOf = (id: string | null | undefined) => warbands.find((w) => w.id === 
 const members = warbands.flatMap((w) => w.members.map((m) => ({ ...m, warbandName: w.name })));
 const memberOf = (id: string) => members.find((m) => m.id === id);
 const tally = tallyOf(scenario);
+const house = houseScenario(scenario.rulebookScenario);
+const sideOf = (id: string | null | undefined) => scenario.warbands.find((w) => w.warbandId === id)?.side;
 const scores = scoresOf(scenario);
 const played = scenario.status === 'played';
 const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
@@ -20,10 +23,14 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
 const winners = scenario.warbands.filter((w) => w.result === 'victory').map((w) => nameOf(w.warbandId));
 const ending = winners.length ? `Victory to ${winners.join(' and ')}` : scenario.warbands.some((w) => w.result) ? 'A draw' : 'No result recorded';
 
-type Line = { turn: number | null; at: number; kind: 'out-of-action' | 'note' | 'score'; html: { lead: string; strong?: string; rest?: string }; who?: string; by?: string };
+type Line = { turn: number | null; at: number; kind: 'out-of-action' | 'note' | 'score' | 'hold' | 'roll'; html: { lead: string; strong?: string; rest?: string }; who?: string; by?: string };
 const lines: Line[] = [
   ...scenario.outOfAction.map((o): Line => ({ turn: o.turn ?? null, at: o.id, kind: 'out-of-action', html: { lead: `${memberOf(o.attackerId)?.name ?? o.attackerId} put `, strong: o.target, rest: ` out of action${o.detail ? `: ${o.detail}` : ''}` }, who: memberOf(o.attackerId)?.warbandName })),
-  ...scenario.events.map((e): Line => e.kind === 'score'
+  ...scenario.events.map((e): Line => e.kind === 'hold'
+    ? ({ turn: e.turn, at: e.id, kind: 'hold', html: { lead: `${house?.objective?.title ?? 'The objective'}: `, strong: e.warbandId ? `held by ${nameOf(e.warbandId)}` : 'held by nobody', rest: sideOf(e.warbandId) ? ` (${SIDE_LABEL[sideOf(e.warbandId)!].toLowerCase()})` : '' } })
+    : e.kind === 'roll'
+    ? ({ turn: e.turn, at: e.id, kind: 'roll', html: { lead: `${house?.endOfTurnRoll?.label ?? 'The roll'}: ${e.points}. `, strong: house && rollBrings(house, e.points) ? house.endOfTurnRoll!.happens : undefined, rest: house && rollBrings(house, e.points) ? '' : house?.endOfTurnRoll?.nothing ?? '' } })
+    : e.kind === 'score'
     ? ({ turn: e.turn, at: e.id, kind: 'score', html: { lead: `${nameOf(e.warbandId)} `, strong: `${e.points > 0 ? '+' : '−'}${Math.abs(e.points)} ${tally || 'points'}`, rest: e.text ? ` — ${e.text}` : '' }, by: e.authorName })
     : ({ turn: e.turn, at: e.id, kind: 'note', html: { lead: e.text }, who: e.warbandId ? nameOf(e.warbandId) : undefined, by: e.authorName })),
 ];
@@ -42,7 +49,7 @@ const turns = [...new Set(lines.map((l) => l.turn))].sort((a, b) => (a ?? 1e9) -
         <ol>
           {lines.filter((l) => l.turn === t).sort((a, b) => a.at - b.at).map((l) => (
             <li class:list={['turn-log-line', l.kind]}>
-              <span class="turn-log-mark" aria-hidden="true">{l.kind === 'out-of-action' ? '†' : l.kind === 'score' ? '◆' : '·'}</span>
+              <span class="turn-log-mark" aria-hidden="true">{l.kind === 'out-of-action' ? '†' : l.kind === 'score' ? '◆' : l.kind === 'hold' ? '▣' : l.kind === 'roll' ? '⚄' : '·'}</span>
               <span>{l.html.lead}{l.html.strong && <b>{l.html.strong}</b>}{l.html.rest}{(l.who || l.by) && <small class="turn-log-meta">{[l.who, l.by].filter(Boolean).join(' · ')}</small>}</span>
             </li>
           ))}

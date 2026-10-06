@@ -16,8 +16,9 @@ import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
 import { members, scenarioEvents, scenarioMembers, scenarioOutOfAction, scenarioRevisions, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
 import { LedgerError } from '../../curfew/ledger.ts';
-import { EVENT_KINDS, MEMBER_STATUSES, SCENARIO_RESULTS, slugify, type EventKind, type MemberStatus, type NarrativeRevision, type OutOfAction, type Puzzle, type Scenario, type ScenarioEvent, type ScenarioMember, type ScenarioResult, type ScenarioWarband, type Statline } from '../../campaign/model.ts';
+import { LOGGED_KINDS, MEMBER_STATUSES, SCENARIO_RESULTS, slugify, type EventKind, type MemberStatus, type NarrativeRevision, type OutOfAction, type Puzzle, type Scenario, type ScenarioEvent, type ScenarioMember, type ScenarioResult, type ScenarioWarband, type Statline } from '../../campaign/model.ts';
 import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook.ts';
+import { HOUSE_SCENARIOS, SIDES, houseScenario, verdictOf, type Side } from '../../campaign/house.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { ensureSeeded } from './seed.ts';
 
@@ -35,9 +36,9 @@ function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mem
   return {
     id: r.id, sequence: r.sequence, status: r.status, title: r.title, playedOn: r.playedOn, rulebookScenario: r.rulebookScenario, customRules: r.customRules,
     winCondition: r.winCondition, summary: r.summary, chronicle: r.chronicle, outcome: r.outcome, prologue: r.prologue, prologueAsSummary: r.prologueAsSummary, battle: (r.battle as string[]) ?? [], epilogue: r.epilogue,
-    battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null, turn: r.turn, tally: r.tally,
+    battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null, turn: r.turn, turnLimit: r.turnLimit, tally: r.tally,
     warbands: parts.filter((p) => p.scenarioId === r.id).map((p): ScenarioWarband => ({
-      scenarioId: p.scenarioId, warbandId: p.warbandId, result: p.result, prologue: p.prologue, epilogue: p.epilogue, accomplishments: p.accomplishments,
+      scenarioId: p.scenarioId, warbandId: p.warbandId, result: p.result, side: p.side, prologue: p.prologue, epilogue: p.epilogue, accomplishments: p.accomplishments,
       highlights: (p.highlights as string[]) ?? [], lowlights: (p.lowlights as string[]) ?? [],
       members: mems.filter((m) => m.scenarioId === r.id && m.warbandId === p.warbandId).map((m): ScenarioMember => ({
         scenarioId: m.scenarioId, warbandId: m.warbandId, memberId: m.memberId, status: m.status, highlight: m.highlight, lowlight: m.lowlight, stats: m.stats as Statline | null, experience: m.experience,
@@ -119,15 +120,24 @@ async function tableOnly(actor: Actor, scenarioId: string): Promise<void> {
 
 export interface ScenarioInput {
   title: string; playedOn: string; rulebookScenario?: string | null; customRules?: string; prologue?: string; prologueAsSummary?: boolean; summary?: string; warbandIds?: string[];
+  /** The turn the game ends after; a house scenario brings its own when none is given. */
+  turnLimit?: number | null;
 }
 export type ScenarioPatch = Partial<ScenarioInput & {
   winCondition: string; chronicle: string; outcome: string; epilogue: string; loot: string[]; campaignNotes: string[]; battleOpen: boolean; puzzle: Puzzle | null; tally: string;
+  /** Which side each attending warband fights on, in a scenario that has sides; null or empty takes the side away. */
+  sides: Record<string, Side | '' | null>;
 }>;
 
 function rulebookOf(given: string | null | undefined): string | null {
   const s = clean(given, 80);
   if (!s) return null;
-  return (RULEBOOK_SCENARIOS as readonly string[]).find((r) => r.toLowerCase() === s.toLowerCase()) ?? s;
+  return [...RULEBOOK_SCENARIOS, ...HOUSE_SCENARIOS.map((h) => h.name)].find((r) => r.toLowerCase() === s.toLowerCase()) ?? s;
+}
+function turnLimitOf(given: number | null | undefined): number | null {
+  if (given === undefined || given === null) return null;
+  if (!Number.isInteger(given) || given < 1 || given > MAX_TURN) throw new LedgerError('A game lasts a whole number of turns, from 1 to 99.');
+  return given;
 }
 
 export async function createScenario(actor: Actor, input: ScenarioInput): Promise<Scenario> {
@@ -144,6 +154,7 @@ export async function createScenario(actor: Actor, input: ScenarioInput): Promis
   while (taken.has(id)) id = `scenario-${String(seq).padStart(2, '0')}-${slugify(title)}-${k++}`;
   await d.insert(scenarios).values({
     id, sequence: seq, status: 'upcoming', title, playedOn: input.playedOn, rulebookScenario: rulebookOf(input.rulebookScenario), customRules: clean(input.customRules, 8000),
+    turnLimit: turnLimitOf(input.turnLimit) ?? houseScenario(input.rulebookScenario)?.turns ?? null,
     prologue: clean(input.prologue, 8000), prologueAsSummary: input.prologueAsSummary ?? true, summary: clean(input.summary, 1000), createdBy: actor.id,
   });
   if (input.warbandIds?.length) await setParticipants(actor, id, input.warbandIds);
@@ -157,6 +168,9 @@ export async function updateScenario(actor: Actor, id: string, patch: ScenarioPa
   if (patch.title !== undefined) { const t = clean(patch.title, 120); if (!t) throw new LedgerError('The scenario needs a title.'); set.title = t; }
   if (patch.playedOn !== undefined) { if (!isDate(patch.playedOn)) throw new LedgerError('Say which day it is played, as YYYY-MM-DD.'); set.playedOn = patch.playedOn; }
   if (patch.rulebookScenario !== undefined) set.rulebookScenario = rulebookOf(patch.rulebookScenario);
+  if (patch.turnLimit !== undefined) set.turnLimit = turnLimitOf(patch.turnLimit);
+  // a house scenario brings its own length when it is chosen and none was set
+  else if (patch.rulebookScenario !== undefined && (await row(id)).turnLimit === null) set.turnLimit = houseScenario(patch.rulebookScenario)?.turns ?? null;
   if (patch.customRules !== undefined) set.customRules = clean(patch.customRules, 8000);
   if (patch.winCondition !== undefined) set.winCondition = clean(patch.winCondition, 4000);
   // the summary and the Chronicle's paragraph are one field now; saving it empties the older one
@@ -173,6 +187,11 @@ export async function updateScenario(actor: Actor, id: string, patch: ScenarioPa
   if (patch.puzzle !== undefined) set.puzzle = patch.puzzle ?? null;
   if (patch.tally !== undefined) set.tally = clean(patch.tally, 60);
   await db().update(scenarios).set(set).where(eq(scenarios.id, id));
+  for (const [warbandId, given] of Object.entries(patch.sides ?? {})) {
+    const side = given ? (SIDES.includes(given) ? given : null) : null;
+    if (given && !side) throw new LedgerError('A warband attacks or defends.');
+    await db().update(scenarioWarbands).set({ side }).where(and(eq(scenarioWarbands.scenarioId, id), eq(scenarioWarbands.warbandId, warbandId)));
+  }
   if (patch.warbandIds !== undefined) await setParticipants(actor, id, patch.warbandIds);
   return (await getScenario(id))!;
 }
@@ -377,7 +396,7 @@ export interface EventInput { kind: EventKind; turn?: number | null; warbandId?:
 export async function addEvent(actor: Actor, id: string, input: EventInput): Promise<Scenario> {
   const r = await row(id);
   await tableOnly(actor, id);
-  if (!EVENT_KINDS.includes(input.kind)) throw new LedgerError('The tracker does not log that.');
+  if (!LOGGED_KINDS.includes(input.kind)) throw new LedgerError('The tracker does not log that.');
   const turn = turnOf(input.turn, Math.max(1, r.turn))!;
   const d = db();
   const attending = (await d.select({ warbandId: scenarioWarbands.warbandId }).from(scenarioWarbands).where(eq(scenarioWarbands.scenarioId, id))).map((x) => x.warbandId);
@@ -408,3 +427,54 @@ export async function removeEvent(actor: Actor, id: string, eventId: number): Pr
 
 /** Whether the actor may write in the tracker, for the page to know which controls to show. */
 export async function mayTrack(actor: Actor | null, id: string): Promise<boolean> { return !!actor && atTable(actor, id); }
+
+export interface TurnEndInput { turn: number; held?: string | null; roll?: number | null }
+
+/**
+ * The end of a turn in a house scenario (campaign/house.ts): who holds its objective now (a warband at the table, or
+ * null when nobody does) and what the end-of-turn die showed, each written once for the turn; a second telling
+ * replaces the first. Then the table moves on a turn, unless that was the last one or the rules have already decided
+ * the game, in which case it stays where it is for the table to call the game.
+ */
+export async function endTurn(actor: Actor, id: string, input: TurnEndInput): Promise<Scenario> {
+  const r = await row(id);
+  await tableOnly(actor, id);
+  if (r.status === 'played') throw new LedgerError('The game is already called.', 409);
+  const kind = houseScenario(r.rulebookScenario);
+  if (!kind) throw new LedgerError('Only a campaign scenario ends its turns here.', 400);
+  const turn = turnOf(input.turn, null);
+  if (turn === null) throw new LedgerError('Say which turn has ended.');
+  const d = db();
+  const attending = (await d.select({ warbandId: scenarioWarbands.warbandId }).from(scenarioWarbands).where(eq(scenarioWarbands.scenarioId, id))).map((x) => x.warbandId);
+  if (kind.objective) {
+    if (input.held === undefined) throw new LedgerError(`Say who holds ${kind.objective.name}.`);
+    if (input.held !== null && !attending.includes(input.held)) throw new LedgerError('That warband is not at this scenario.', 404);
+  }
+  if (kind.endOfTurnRoll) {
+    const die = input.roll;
+    if (!Number.isInteger(die) || die! < 1 || die! > kind.endOfTurnRoll.die) throw new LedgerError(`Say what the D${kind.endOfTurnRoll.die} showed.`);
+  }
+  const kinds = [...(kind.objective ? ['hold' as const] : []), ...(kind.endOfTurnRoll ? ['roll' as const] : [])];
+  await d.delete(scenarioEvents).where(and(eq(scenarioEvents.scenarioId, id), eq(scenarioEvents.turn, turn), inArray(scenarioEvents.kind, kinds)));
+  if (kind.objective) await d.insert(scenarioEvents).values({ scenarioId: id, turn, kind: 'hold', warbandId: input.held ?? null, points: 0, text: '', authorId: actor.id, authorName: actor.name });
+  if (kind.endOfTurnRoll) await d.insert(scenarioEvents).values({ scenarioId: id, turn, kind: 'roll', warbandId: null, points: input.roll!, text: '', authorId: actor.id, authorName: actor.name });
+  const now = (await getScenario(id))!;
+  const limit = now.turnLimit ?? kind.turns;
+  const over = kind.objective ? verdictOf(kind, now).over : turn >= limit;
+  const next = over || turn >= limit ? turn : turn + 1;
+  await d.update(scenarios).set({ turn: next, updatedAt: new Date() }).where(eq(scenarios.id, id));
+  return (await getScenario(id))!;
+}
+
+/** Another round, time permitting, or one fewer: the table sets how many turns the game runs, never fewer than it has played. */
+export async function setTurnLimit(actor: Actor, id: string, turnLimit: number): Promise<Scenario> {
+  const r = await row(id);
+  await tableOnly(actor, id);
+  const limit = turnLimitOf(turnLimit)!;
+  if (limit < r.turn) throw new LedgerError(`The table is already on turn ${r.turn}.`);
+  // the last turn already ended: another round means the table moves on to it
+  const ended = (await db().select({ id: scenarioEvents.id }).from(scenarioEvents).where(and(eq(scenarioEvents.scenarioId, id), eq(scenarioEvents.turn, r.turn), inArray(scenarioEvents.kind, ['hold', 'roll']))).limit(1)).length > 0;
+  const turn = ended && limit > r.turn && r.status !== 'played' ? r.turn + 1 : r.turn;
+  await db().update(scenarios).set({ turnLimit: limit, turn, updatedAt: new Date() }).where(eq(scenarios.id, id));
+  return (await getScenario(id))!;
+}

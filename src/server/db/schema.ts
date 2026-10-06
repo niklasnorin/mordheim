@@ -271,6 +271,8 @@ export const scenarios = pgTable('scenarios', {
   /** The battle tracker: the game turn the table is on (0 before the first), and what the scenario scores (empty: the rulebook's tally, or none). */
   turn: integer('turn').notNull().default(0),
   tally: text('tally').notNull().default(''),
+  /** The turn after which the game ends of itself (a house scenario's own, or as the game master set it); null runs on. */
+  turnLimit: integer('turn_limit'),
   createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -283,6 +285,8 @@ export const scenarioWarbands = pgTable(
     scenarioId: text('scenario_id').notNull().references(() => scenarios.id, { onDelete: 'cascade' }),
     warbandId: text('warband_id').notNull().references(() => warbands.id, { onDelete: 'cascade' }),
     result: text('result', { enum: ['victory', 'defeat', 'draw'] }),
+    /** Attacker or defender, in a scenario that has sides (campaign/house.ts); null otherwise. */
+    side: text('side', { enum: ['attacker', 'defender'] }),
     prologue: text('prologue').notNull().default(''),
     epilogue: text('epilogue').notNull().default(''),
     accomplishments: text('accomplishments').notNull().default(''),
@@ -338,7 +342,7 @@ export const scenarioEvents = pgTable(
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
     scenarioId: text('scenario_id').notNull().references(() => scenarios.id, { onDelete: 'cascade' }),
     turn: integer('turn').notNull(),
-    kind: text('kind', { enum: ['note', 'score'] }).notNull(),
+    kind: text('kind', { enum: ['note', 'score', 'hold', 'roll'] }).notNull(),
     warbandId: text('warband_id'),
     points: integer('points').notNull().default(0),
     text: text('text').notNull().default(''),

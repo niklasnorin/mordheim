@@ -7,6 +7,7 @@
  * ledgers and the dispatches, so it is chosen once and never renamed.
  */
 import { RULEBOOK_TALLIES, type RulebookScenario } from './rulebook.ts';
+import type { Side } from './house.ts';
 
 export interface Statline {
   M: number; WS: number; BS: number; S: number; T: number; W: number; I: number; A: number; Ld: number;
@@ -98,6 +99,8 @@ export interface ScenarioWarband {
   scenarioId: string;
   warbandId: string;
   result?: ScenarioResult | null;
+  /** Which side it fights on, in a scenario of attackers and defenders; null otherwise. */
+  side?: Side | null;
   prologue: string;
   epilogue: string;
   accomplishments: string;
@@ -119,9 +122,15 @@ export interface OutOfAction {
   turn?: number | null;
 }
 
-/** What the tracker logs besides takedowns: a note is anything worth remembering, a score counts towards the tally. */
-export type EventKind = 'note' | 'score';
-export const EVENT_KINDS: EventKind[] = ['note', 'score'];
+/**
+ * What the tracker logs besides takedowns: a note is anything worth remembering, a score counts towards the tally.
+ * A house scenario's turn ends add two more (campaign/house.ts): `hold`, who held its objective at the end of the
+ * turn (the warband, or none when nobody did), and `roll`, the die rolled at the end of the turn (in `points`).
+ */
+export type EventKind = 'note' | 'score' | 'hold' | 'roll';
+export const EVENT_KINDS: EventKind[] = ['note', 'score', 'hold', 'roll'];
+/** The kinds anyone at the table writes as a line of their own; the others come with the end of a turn. */
+export const LOGGED_KINDS: EventKind[] = ['note', 'score'];
 
 /** One line of the battle tracker's log, tied to a game turn and, for a score or a warband's note, to a warband. */
 export interface ScenarioEvent {
@@ -189,6 +198,8 @@ export interface Scenario {
   puzzle?: Puzzle | null;
   /** The battle tracker: the game turn the table is on, 0 before the first. */
   turn: number;
+  /** The turn after which the game ends of itself, if it does; the table may add another, time permitting. */
+  turnLimit: number | null;
   /** What the scenario scores, as the game master named it; empty means the rulebook scenario's own tally, or none. See `tallyOf`. */
   tally: string;
   warbands: ScenarioWarband[];

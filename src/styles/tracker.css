@@ -56,6 +56,44 @@
 .tk-score-taps { grid-area: taps; display: flex; gap: .4rem; }
 .tk-score-taps .tk-btn { min-width: var(--control-size); padding: .3rem .6rem; }
 
+/* a house scenario's objective: the sides, who held it round by round, and what the rules make of it */
+.tk-hold { display: grid; gap: .6rem; padding-bottom: .9rem; }
+.tk-sides { list-style: none; padding: 0; display: grid; gap: .4rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); }
+.tk-sides li { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; padding: .55rem .75rem; background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); border: 1px solid var(--border); border-left-width: 3px; min-width: 0; }
+.tk-sides li span { color: var(--parchment); font: var(--text-ui)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; overflow-wrap: anywhere; }
+.tk-sides li b { font: normal 1.05rem/1 'Pirata One', Georgia, serif; letter-spacing: .03em; color: var(--ink-dim); flex-shrink: 0; }
+.tk-sides li[data-side='attacker'], .tk-rounds li[data-side='attacker'] { border-left-color: var(--blood-bright); }
+.tk-sides li[data-side='attacker'] b { color: var(--blood-bright); }
+.tk-sides li[data-side='defender'], .tk-rounds li[data-side='defender'] { border-left-color: var(--gold); }
+.tk-sides li[data-side='defender'] b { color: var(--gold); }
+.tk-rounds { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr)); gap: .3rem; }
+.tk-rounds li { display: grid; justify-items: center; gap: .1rem; padding: .3rem .1rem .35rem; border: 1px solid var(--border); border-top-width: 3px; background: #0f1512; }
+.tk-rounds li[data-side='attacker'] { border-top-color: var(--blood-bright); background: #221413; }
+.tk-rounds li[data-side='defender'] { border-top-color: var(--gold); background: #1d1f15; }
+.tk-rounds li[data-side='none'] { border-top-color: var(--ink-dim); }
+.tk-rounds li[data-now='true'] { outline: 1px solid var(--green-wyrd); outline-offset: 1px; }
+.tk-round-n { color: var(--ink-dim); font: var(--text-meta)/1.2 var(--font-utility); }
+.tk-round-who { font: normal 1.15rem/1 'Pirata One', Georgia, serif; color: var(--parchment); }
+.tk-rounds li[data-side='attacker'] .tk-round-who { color: var(--blood-bright); }
+.tk-rounds li[data-side='defender'] .tk-round-who { color: var(--gold); }
+.tk-round-die { font: var(--text-meta)/1.2 var(--font-utility); color: var(--ink-dim); border: 1px solid var(--border); padding: 0 .3rem; }
+.tk-round-die.brings { color: var(--blood-bright); border-color: var(--blood); }
+.tk-verdict { display: grid; gap: .4rem; padding: .8rem .9rem; border: 1px solid var(--gold-dim); background: linear-gradient(150deg, #24301f, #141b17); }
+.tk-verdict[data-side='attacker'] { border-color: var(--blood); background: linear-gradient(150deg, #2a1616, #141b17); }
+.tk-verdict p { color: var(--parchment); }
+.tk-turn-span { grid-column: 1 / -1; text-align: center; }
+.tk-choices span small { margin-left: .5rem; color: var(--ink-dim); font-size: var(--text-meta); letter-spacing: .1em; }
+.tk-choices span[data-side='attacker'] small { color: var(--blood-bright); }
+.tk-choices span[data-side='defender'] small { color: var(--gold); }
+.tk-die { display: grid; grid-template-columns: repeat(6, 1fr); }
+.tk-die span { justify-content: center; padding: .4rem 0; font: 1.25rem/1 var(--font-utility); }
+.tk-die span[data-brings='true'] { color: var(--blood-bright); border-color: #5a2323; }
+.tk-die input:checked + span[data-brings='true'] { background: #2a1616; border-color: var(--blood-bright); color: var(--blood-bright); }
+.tk-roll-says { margin: 0; align-self: center; }
+.tk-roll-says[data-brings='true'] { color: var(--blood-bright); font-style: normal; }
+.tk-line[data-kind='hold'] .tk-line-icon { color: var(--gold); }
+.tk-line[data-kind='roll'] .tk-line-icon { color: var(--ink-dim); }
+
 /* the log, latest turn first */
 .tk-log { flex: 1; padding-top: .5rem; border-top: 1px solid var(--border); }
 .tk-log-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: .6rem 0 .4rem; color: var(--gold); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .18em; }

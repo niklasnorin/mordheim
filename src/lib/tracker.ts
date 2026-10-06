@@ -7,6 +7,7 @@
  * updated optimistically: the server's answer is the table.
  */
 import { SCENARIO_RESULTS, scoresOf, tallyOf, type OutOfAction, type Scenario, type ScenarioEvent, type ScenarioResult } from '../campaign/model';
+import { SIDE_LABEL, houseScenario, inWords, resultsOf, rollBrings, turnEnds, verdictOf } from '../campaign/house';
 
 export interface TrackerRoster { id: string; name: string; members: { id: string; name: string; role: string; dead: boolean }[] }
 export interface TrackerState {
@@ -49,6 +50,8 @@ const ICON = {
   plus: 'M12 5v14M5 12h14',
   minus: 'M5 12h14',
   laurel: 'm3 6 3 13h12l3-13-6 5-3-8-3 8-6-5ZM6 16h12',
+  cart: 'M3 15h14l2-7H6m-3 7V8h3m-1 11a2 2 0 1 0 4 0 2 2 0 1 0-4 0m8 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0',
+  die: 'M5 5h14v14H5Zm4 4h.01M15 15h.01M12 12h.01',
 };
 const RESULT_LABEL: Record<ScenarioResult, string> = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' };
 
@@ -97,6 +100,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
   const live = root.querySelector<HTMLElement>('.tk-live') ?? h('span', { class: 'tk-live' });
   const turnBox = h('section', { class: 'tk-turn', 'aria-label': 'The turn' });
   const tallyBox = h('section', { class: 'tk-tally', 'aria-label': 'The tally' });
+  const holdBox = h('section', { class: 'tk-hold', 'aria-label': 'The objective' });
   const logBox = h('section', { class: 'tk-log', 'aria-label': 'The log' });
   const bar = h('nav', { class: 'tk-bar', 'aria-label': 'Log something', 'data-may': String(state.may) },
     h('div', { class: 'tk-bar-inner' },
@@ -105,13 +109,14 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       h('button', { type: 'button', class: 'tk-btn', 'data-open': 'note' }, svg(ICON.quill), 'Note'),
     ));
   const sheet = h('dialog', { class: 'tk-sheet' });
-  root.append(turnBox, tallyBox, logBox, bar, sheet);
+  root.append(turnBox, holdBox, tallyBox, logBox, bar, sheet);
 
   // ───────────────────────── rendering ─────────────────────────
 
   function render(): void {
     const s = state.scenario;
     renderTurn(s);
+    renderHold(s);
     renderTally(s);
     renderLog(s);
     bar.dataset.may = String(state.may);
@@ -143,14 +148,64 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
         live ? h('button', { type: 'button', class: 'tk-btn big wide tk-turn-begin', 'data-turn': '1' }, 'Begin: turn 1') : null,
       );
     } else {
+      // a house scenario ends each turn with its own questions; any game with a limit stops at it, unless the table adds a round
+      const kind = houseScenario(s.rulebookScenario);
+      const limit = s.turnLimit ?? kind?.turns ?? null;
+      const ended = turnEnds(s.events).some((t) => t.turn === s.turn);
+      const verdict = kind?.objective ? verdictOf(kind, s) : null;
+      const last = limit !== null && s.turn >= limit && (!kind || ended);
+      let forward: HTMLElement = h('span');
+      // the rules have given the game away before its last turn: nothing more to end, only the game to call
+      if (verdict?.over && verdict.winner && !last) forward = h('span');
+      else if (live && last) forward = h('button', { type: 'button', class: 'tk-btn', 'data-limit': String(s.turn + 1) }, svg(ICON.plus), 'Another round');
+      else if (live && kind) forward = h('button', { type: 'button', class: 'tk-btn big', 'data-open': 'end-turn' }, svg(ICON.plus), ended ? `Turn ${s.turn} again` : `End turn ${s.turn}`);
+      else if (live) forward = h('button', { type: 'button', class: 'tk-btn big', 'data-turn': String(s.turn + 1) }, svg(ICON.plus), 'Next turn');
       put(turnBox,
         h('button', { type: 'button', class: 'tk-btn ghost tk-turn-back', 'data-turn': String(s.turn - 1), 'aria-label': 'Back a turn', hidden: !live }, svg(ICON.minus)),
-        h('div', { class: 'tk-turn-now' }, h('div', { class: 'tk-turn-label' }, 'Turn'), h('div', { class: 'tk-turn-number' }, String(s.turn))),
-        live ? h('button', { type: 'button', class: 'tk-btn big', 'data-turn': String(s.turn + 1) }, svg(ICON.plus), 'Next turn') : h('span'),
+        h('div', { class: 'tk-turn-now' }, h('div', { class: 'tk-turn-label' }, 'Turn'), h('div', { class: 'tk-turn-number' }, String(s.turn), limit !== null ? h('small', {}, last ? `the last of ${limit}` : `of ${limit}`) : null)),
+        forward,
       );
+      if (live && last) put(turnBox, h('p', { class: 'tk-turn-note tk-turn-span' }, 'The last round is played. Call the game, or play another round if time permits.'));
     }
     // the way out: calling the game is the table's, and it should never be hunted for
     if (live) put(turnBox, h('button', { type: 'button', class: 'tk-btn tk-wrap', 'data-open': 'wrap-up' }, svg(ICON.laurel), 'The game is done: who won?'));
+  }
+
+  /** A house scenario's objective, round by round: who holds it, the sides, the attackers' run, and the rules' verdict. */
+  function renderHold(s: Scenario): void {
+    holdBox.replaceChildren();
+    const kind = houseScenario(s.rulebookScenario);
+    holdBox.hidden = !kind?.objective;
+    if (!kind?.objective) return;
+    const limit = s.turnLimit ?? kind.turns;
+    const v = verdictOf(kind, s);
+    const ends = turnEnds(s.events);
+    const sideOf = (id: string | null | undefined) => s.warbands.find((w) => w.warbandId === id)?.side ?? null;
+    const unsided = s.warbands.filter((w) => !w.side);
+    holdBox.append(h('div', { class: 'tk-tally-head' }, h('span', {}, kind.objective.title), h('span', {}, 'held at the end of each round')));
+    holdBox.append(h('ul', { class: 'tk-sides' }, ...s.warbands.map((w) => h('li', { 'data-side': w.side ?? '' }, h('span', {}, warbandName(w.warbandId)), h('b', {}, w.side ? SIDE_LABEL[w.side] : 'No side')))));
+    if (unsided.length) holdBox.append(h('p', { class: 'tk-note' }, 'A game master sets who attacks and who defends on the scenario page; until then the cart cannot be judged.'));
+    const strip = h('ol', { class: 'tk-rounds', 'aria-label': 'Round by round' });
+    for (let t = 1; t <= Math.max(limit, ends.at(-1)?.turn ?? 0); t++) {
+      const end = ends.find((e) => e.turn === t);
+      const held = end?.held;
+      const side = held === undefined ? 'open' : held === null ? 'none' : sideOf(held) ?? 'none';
+      const who = held === undefined ? 'not yet' : held === null ? 'nobody' : warbandName(held);
+      const brings = end?.roll !== undefined && rollBrings(kind, end.roll);
+      strip.append(h('li', { 'data-side': side, 'data-now': String(t === s.turn && s.status !== 'played'), title: `Turn ${t}: ${who}${end?.roll !== undefined ? `, rolled ${end.roll}` : ''}` },
+        h('span', { class: 'tk-round-n' }, String(t)),
+        h('span', { class: 'tk-round-who' }, held === undefined ? '·' : held === null ? '—' : side === 'attacker' ? 'A' : side === 'defender' ? 'D' : '?'),
+        end?.roll !== undefined ? h('span', { class: `tk-round-die${brings ? ' brings' : ''}` }, String(end.roll)) : null,
+        h('span', { class: 'visually-hidden' }, `Turn ${t}: ${who}`),
+      ));
+    }
+    holdBox.append(strip);
+    if (!v.over && v.run > 0) holdBox.append(h('p', { class: 'tk-note' }, `The attackers have held ${kind.objective.name} ${inWords(v.run)} ${v.run === 1 ? 'round' : 'rounds'} running; ${inWords(kind.objective.holdToWin)} wins it outright.`));
+    if (v.over) holdBox.append(h('div', { class: 'tk-verdict', 'data-side': v.winner ?? '' },
+      h('div', { class: 'tk-turn-label' }, v.winner ? `${SIDE_LABEL[v.winner]} win` : 'The table decides'),
+      h('p', {}, v.reason),
+      state.may && s.status !== 'played' ? h('button', { type: 'button', class: 'tk-btn', 'data-open': 'wrap-up' }, svg(ICON.laurel), 'Call the game') : null,
+    ));
   }
 
   function renderTally(s: Scenario): void {
@@ -211,7 +266,15 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
 
   function eventLine(e: ScenarioEvent): HTMLElement {
     const body = h('div', { class: 'tk-line-body' });
-    if (e.kind === 'score') {
+    const kind = houseScenario(state.scenario.rulebookScenario);
+    if (e.kind === 'hold') {
+      const side = state.scenario.warbands.find((w) => w.warbandId === e.warbandId)?.side;
+      body.append(h('div', {}, `${kind?.objective?.title ?? 'The objective'}: `, e.warbandId ? h('b', {}, `held by ${warbandName(e.warbandId)}`) : h('b', {}, 'held by nobody'), side ? ` (${SIDE_LABEL[side].toLowerCase()})` : ''));
+    } else if (e.kind === 'roll') {
+      const roll = kind?.endOfTurnRoll;
+      const brings = !!kind && rollBrings(kind, e.points);
+      body.append(h('div', {}, `${roll?.label ?? 'The roll'}: `, h('span', { class: `points${brings ? ' minus' : ''}` }, String(e.points)), '. ', brings ? h('b', {}, roll!.happens) : (roll?.nothing ?? '')));
+    } else if (e.kind === 'score') {
       const sign = e.points > 0 ? '+' : '−';
       body.append(h('div', {}, h('b', {}, warbandName(e.warbandId)), ' ', h('span', { class: `points${e.points < 0 ? ' minus' : ''}` }, `${sign}${Math.abs(e.points)} ${tallyOf(state.scenario) || 'points'}`), e.text ? ` — ${e.text}` : ''));
     } else {
@@ -219,7 +282,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     }
     body.append(h('div', { class: 'tk-line-meta' }, e.kind === 'note' && e.warbandId ? h('span', { class: 'tk-chip' }, warbandName(e.warbandId)) : null, e.authorName ? h('span', {}, e.authorName) : null));
     return h('div', { class: 'tk-line', 'data-kind': e.kind },
-      svg(e.kind === 'score' ? ICON.shard : ICON.quill, 'tk-line-icon'),
+      svg(e.kind === 'score' ? ICON.shard : e.kind === 'hold' ? ICON.cart : e.kind === 'roll' ? ICON.die : ICON.quill, 'tk-line-icon'),
       body,
       state.may ? h('button', { type: 'button', class: 'tk-strike', 'data-strike-event': String(e.id), 'aria-label': 'Strike this line' }, svg(ICON.close)) : h('span'),
     );
@@ -247,12 +310,14 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     return sel;
   };
 
-  type SheetKind = 'out-of-action' | 'score' | 'note' | 'wrap-up';
+  type SheetKind = 'out-of-action' | 'score' | 'note' | 'wrap-up' | 'end-turn';
   /** What the tally says, when it decides anything: the one warband ahead wins, the rest lose. Otherwise nothing is presumed. */
   function suggestedResults(s: Scenario): Record<string, ScenarioResult> {
     const out: Record<string, ScenarioResult> = {};
     for (const w of s.warbands) if (w.result) out[w.warbandId] = w.result;
     if (Object.keys(out).length) return out;
+    const kind = houseScenario(s.rulebookScenario);
+    if (kind?.objective) return resultsOf(verdictOf(kind, s), s.warbands);
     if (!tallyOf(s)) return out;
     const scores = scoresOf(s);
     const top = Math.max(...scores.map((x) => x.points));
@@ -275,8 +340,49 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
         form.append(h('div', { class: 'tk-field' }, w.name, box));
       }
       form.append(
-        h('p', { class: 'tk-note' }, s.status === 'played' ? 'The results are changed as they stand; the scenario stays in the Chronicle.' : Object.keys(given).length && !s.warbands.some((w) => w.result) ? 'Suggested from the tally. Change it if the table says otherwise.' : 'Every warband that fought gets a result. The scenario joins the Chronicle, and the writing-up begins on its page.'),
+        h('p', { class: 'tk-note' }, s.status === 'played' ? 'The results are changed as they stand; the scenario stays in the Chronicle.' : Object.keys(given).length && !s.warbands.some((w) => w.result) ? (houseScenario(s.rulebookScenario)?.objective ? `As the rules have it: ${verdictOf(houseScenario(s.rulebookScenario)!, s).reason} Change it if the table says otherwise.` : 'Suggested from the tally. Change it if the table says otherwise.') : 'Every warband that fought gets a result. The scenario joins the Chronicle, and the writing-up begins on its page.'),
         h('div', { class: 'tk-actions' }, h('button', { type: 'submit', class: 'tk-btn big', disabled: !s.warbands.length }, svg(ICON.laurel), s.status === 'played' ? 'Save how it ended' : 'Call the game')),
+      );
+    } else if (kind === 'end-turn') {
+      const s = state.scenario;
+      const house = houseScenario(s.rulebookScenario)!;
+      const ends = turnEnds(s.events);
+      const before = ends.find((e) => e.turn === s.turn) ?? ends.filter((e) => e.turn < s.turn).at(-1);
+      form.append(h('div', { class: 'tk-sheet-head' }, h('h2', {}, `End of turn ${s.turn}`), closeButton()));
+      if (house.objective) {
+        const held = before?.held;
+        const box = h('div', { class: 'tk-choices', role: 'radiogroup', 'aria-label': `Who holds ${house.objective.name}` });
+        for (const w of attending()) {
+          const side = s.warbands.find((p) => p.warbandId === w.id)?.side;
+          box.append(h('label', {}, h('input', { type: 'radio', name: 'held', value: w.id, required: true, checked: held === w.id }), h('span', { 'data-side': side ?? '' }, w.name, side ? h('small', {}, SIDE_LABEL[side]) : null)));
+        }
+        box.append(h('label', {}, h('input', { type: 'radio', name: 'held', value: '', required: true, checked: held === null }), h('span', {}, 'Nobody: contested')));
+        form.append(h('div', { class: 'tk-field' }, `Who holds ${house.objective.name}`, box, h('small', {}, 'The warband with the most models within 2" of its base.')));
+      }
+      if (house.endOfTurnRoll) {
+        const r = house.endOfTurnRoll;
+        const faces = h('div', { class: 'tk-choices tk-die', role: 'radiogroup', 'aria-label': `What the D${r.die} showed` });
+        for (let n = 1; n <= r.die; n++) faces.append(h('label', {}, h('input', { type: 'radio', name: 'roll', value: String(n), required: true }), h('span', { 'data-brings': String(n >= r.on) }, String(n))));
+        const says = h('p', { class: 'tk-note tk-roll-says', 'aria-live': 'polite' }, `On a ${r.on}${r.on < r.die ? ' or more' : ''}: ${r.happens}`);
+        const roller = h('button', { type: 'button', class: 'tk-btn ghost', 'data-roll-die': String(r.die) }, svg(ICON.die), 'Roll it here');
+        const tell = () => {
+          const v = Number(new FormData(form).get('roll'));
+          if (!v) return;
+          says.textContent = v >= r.on ? `${v}. ${r.happens}` : `${v}. ${r.nothing}`;
+          says.dataset.brings = String(v >= r.on);
+        };
+        faces.addEventListener('change', tell);
+        roller.addEventListener('click', () => {
+          const n = 1 + Math.floor(Math.random() * r.die);
+          (faces.querySelector(`input[value="${n}"]`) as HTMLInputElement).checked = true;
+          tell();
+        });
+        form.append(h('div', { class: 'tk-field' }, `${r.label}, D${r.die}`, faces, h('div', { class: 'tk-row' }, says, roller)));
+      }
+      const limit = s.turnLimit ?? house.turns;
+      form.append(
+        h('p', { class: 'tk-note' }, s.turn >= limit ? 'That is the last round. The cart decides the game.' : `Then on to turn ${s.turn + 1} of ${limit}.`),
+        h('div', { class: 'tk-actions' }, h('button', { type: 'submit', class: 'tk-btn big' }, `End turn ${s.turn}`)),
       );
     } else if (kind === 'out-of-action') {
       const target = memberSelect('targetId', 'Who fell', { value: '@other', label: 'Someone not on the roll…' });
@@ -352,6 +458,13 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       ok = await post('played', { results });
       // the game called, the table goes to the scenario's page to write it up; a changed result stays here
       if (ok && calling) { location.href = `${state.base}/scenarios/${state.scenario.id}/`; return; }
+    } else if (kind === 'end-turn') {
+      const house = houseScenario(state.scenario.rulebookScenario);
+      ok = await post('end-turn', {
+        turn: state.scenario.turn,
+        ...(house?.objective ? { held: String(data.get('held') ?? '') || null } : {}),
+        ...(house?.endOfTurnRoll ? { roll: Number(data.get('roll')) } : {}),
+      });
     } else if (kind === 'out-of-action') {
       const targetId = String(data.get('targetId') ?? '');
       ok = await post('out-of-action', { attackerId: data.get('attackerId'), targetId: targetId && targetId !== '@other' ? targetId : null, target: targetId === '@other' ? data.get('target') : '', detail: data.get('detail') ?? '', turn });
@@ -369,6 +482,8 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     const t = e.target as HTMLElement;
     const open = t.closest<HTMLButtonElement>('[data-open]');
     if (open) { openSheet(open.dataset.open as SheetKind); return; }
+    const more = t.closest<HTMLButtonElement>('[data-limit]');
+    if (more) { await post('turn-limit', { turnLimit: Number(more.dataset.limit) }); return; }
     const turn = t.closest<HTMLButtonElement>('[data-turn]');
     if (turn) { await post('turn', { turn: Number(turn.dataset.turn) }); return; }
     const score = t.closest<HTMLButtonElement>('[data-score]');

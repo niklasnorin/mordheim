@@ -337,3 +337,32 @@ test('a warband’s story: its keeper writes chapters with their own pictures, i
   assert.deepEqual((await listChapters(w.id)).map((c) => c.title), ['The road in, again']);
   assert.ok(await getImage(picture), 'a picture a chapter shows is kept');
 });
+
+test('the supply cart at the table: sides, a turn’s end with the cart and the skaven die, the last round and one more', async () => {
+  const { endTurn, setTurnLimit } = await import('./scenarios.ts');
+  const s = await createScenario(gm, { title: 'The Supply Cart', playedOn: '2026-10-10', rulebookScenario: 'the supply cart', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  assert.equal(s.rulebookScenario, 'The Supply Cart', 'the name is set as the campaign writes it');
+  assert.equal(s.turnLimit, 7, 'a house scenario brings its own length');
+  await assert.rejects(updateScenario(gm, s.id, { sides: { nordost: 'flanking' as never } }), (e: unknown) => e instanceof LedgerError);
+  let now = await updateScenario(gm, s.id, { sides: { nordost: 'attacker', 'bitterbrow-expedition': 'defender' } });
+  assert.deepEqual(now.warbands.map((w) => [w.warbandId, w.side]).sort(), [['bitterbrow-expedition', 'defender'], ['nordost', 'attacker']]);
+
+  await assert.rejects(endTurn(stranger, s.id, { turn: 1, held: 'nordost', roll: 2 }), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(endTurn(gm, s.id, { turn: 1, held: 'nordost' }), (e: unknown) => e instanceof LedgerError && /D6/.test(e.message), 'the die is part of the turn’s end');
+  await assert.rejects(endTurn(gm, s.id, { turn: 1, held: 'grey-hand', roll: 2 }), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  now = await endTurn(gm, s.id, { turn: 1, held: 'nordost', roll: 2 });
+  assert.equal(now.turn, 2, 'the table moves on');
+  now = await endTurn(gm, s.id, { turn: 1, held: null, roll: 6 });
+  assert.equal(now.events.filter((e) => e.turn === 1).length, 2, 'a second telling of a turn replaces the first');
+  assert.equal(now.events.find((e) => e.turn === 1 && e.kind === 'hold')!.warbandId, null);
+  assert.equal(now.events.find((e) => e.turn === 1 && e.kind === 'roll')!.points, 6);
+  await assert.rejects(addEvent(gm, s.id, { kind: 'hold', warbandId: 'nordost' }), (e: unknown) => e instanceof LedgerError, 'a hold comes only with a turn’s end');
+
+  for (let t = 2; t <= 7; t++) now = await endTurn(gm, s.id, { turn: t, held: t === 7 ? 'bitterbrow-expedition' : t % 2 ? 'nordost' : null, roll: 1 });
+  assert.equal(now.turn, 7, 'the last turn ends where it is');
+  now = await setTurnLimit(gm, s.id, 8);
+  assert.equal(now.turnLimit, 8);
+  assert.equal(now.turn, 8, 'another round, time permitting, moves the table on to it');
+  await assert.rejects(setTurnLimit(gm, s.id, 5), (e: unknown) => e instanceof LedgerError && /turn 8/.test(e.message));
+  await deleteScenario(gm, s.id);
+});

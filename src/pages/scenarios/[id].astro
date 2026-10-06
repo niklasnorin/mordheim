@@ -15,6 +15,7 @@ import { getActor, isGm } from '../../server/roles';
 import { listScenarios, mayTrack, revisionsOf } from '../../server/campaign/scenarios';
 import { listWarbands } from '../../server/campaign/roster';
 import { RULEBOOK_SCENARIOS, RULEBOOK_TALLIES, rulebookUrl } from '../../campaign/rulebook';
+import { HOUSE_SCENARIOS, SIDE_LABEL, houseScenario } from '../../campaign/house';
 import { MEMBER_STATUSES, hasTurnLog, summaryOf, tallyOf, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
 import { CAMPAIGN } from '../../curfew/engine';
 
@@ -70,6 +71,9 @@ const puzzle = upcoming ? null : scenario.puzzle;
 const summary = summaryOf(scenario);
 // A rulebook scenario carries its own rules and its own win condition; a custom one is written out here.
 const rulesUrl = rulebookUrl(scenario.rulebookScenario);
+// a campaign scenario brings its rules from the code: printed here, and kept by the tracker
+const house = houseScenario(scenario.rulebookScenario);
+const sidesLine = house?.sides ? (['attacker', 'defender'] as const).map((side) => { const names = scenario!.warbands.filter((w) => w.side === side).map((w) => nameOf(w.warbandId)); return `${SIDE_LABEL[side]}: ${names.length ? joined(names) : 'to be named'}`; }).join(' · ') : '';
 // A telling nobody has written is not printed at all.
 const prologues = scenario.warbands.filter((w) => w.prologue.trim());
 const epilogues = scenario.warbands.filter((w) => w.epilogue.trim());
@@ -137,11 +141,15 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         <h2>When &amp; how</h2>
         <dl class="outcome-facts">
           <div><dt>Played on</dt><dd>{imperial}<br /><small class="archive-note">{realDay}</small></dd></div>
-          <div><dt>Rulebook scenario</dt><dd>{scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'A custom scenario'}</dd></div>
+          <div><dt>{house ? 'Scenario' : 'Rulebook scenario'}</dt><dd>{house ? <>{house.name}<br /><small class="archive-note">one of the campaign’s own</small></> : scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'A custom scenario'}</dd></div>
+          {scenario.turnLimit && <div><dt>Length</dt><dd>{scenario.turnLimit} turns{house ? <><br /><small class="archive-note">more if time permits</small></> : null}</dd></div>}
+          {house?.sides && <div><dt>Sides</dt><dd>{sidesLine}</dd></div>}
           <div><dt>Warbands</dt><dd>{scenario.warbands.length ? scenario.warbands.map((w) => nameOf(w.warbandId)).join(' against ') : 'To be named'}</dd></div>
         </dl>
-        {scenario.customRules ? (<><h3>Rules in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>) : <p class="archive-note">{scenario.rulebookScenario ? <>Played as the rulebook has it{rulesUrl ? <>; <a href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules in full</a></> : null}.</> : 'The rules are still being written.'}</p>}
+        {house && house.rules.map((r) => (<><h3>{r.heading}</h3><ul class="house-rules">{r.lines.map((l) => <li>{l}</li>)}</ul></>))}
+        {house ? (scenario.customRules && (<><h3>Also in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>)) : scenario.customRules ? (<><h3>Rules in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>) : <p class="archive-note">{scenario.rulebookScenario ? <>Played as the rulebook has it{rulesUrl ? <>; <a href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules in full</a></> : null}.</> : 'The rules are still being written.'}</p>}
         {scenario.winCondition && !scenario.rulebookScenario && (<><h3>Win condition</h3><p>{scenario.winCondition}</p></>)}
+        {house && (<><h3>In short</h3><p>{house.winCondition}</p></>)}
       </section>
     )}
 
@@ -149,10 +157,12 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
       <section id="scenario" class="panel">
         <h2>The scenario</h2>
         <dl class="outcome-facts">
-          <div><dt>Rulebook scenario</dt><dd>{scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'Custom scenario'}</dd></div>
-          {(scenario.winCondition || !scenario.rulebookScenario) && <div><dt>Win condition</dt><dd>{scenario.winCondition || 'Not recorded'}</dd></div>}
+          <div><dt>{house ? 'Scenario' : 'Rulebook scenario'}</dt><dd>{house ? house.name : scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'Custom scenario'}</dd></div>
+          {house?.sides && <div><dt>Sides</dt><dd>{sidesLine}</dd></div>}
+          {(house || scenario.winCondition || !scenario.rulebookScenario) && <div><dt>Win condition</dt><dd>{house ? house.winCondition : scenario.winCondition || 'Not recorded'}</dd></div>}
         </dl>
-        {scenario.customRules && (<><h3>Rules in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>)}
+        {house && <details class="house-rules-fold"><summary>The rules as played</summary>{house.rules.map((r) => (<><h3>{r.heading}</h3><ul class="house-rules">{r.lines.map((l) => <li>{l}</li>)}</ul></>))}</details>}
+        {scenario.customRules && (<><h3>{house ? 'Also in play' : 'Rules in play'}</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>)}
         {!scenario.rulebookScenario && !scenario.winCondition && (
           <p class="archive-note">The chapter title is not a rulebook scenario name. Missing rules information is left unconfirmed rather than inferred from the story.</p>
         )}
@@ -366,9 +376,16 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
               <label class="mg-field">Title<input name="patch.title" required maxlength="120" value={scenario.title} /></label>
               <div class="mg-two">
                 <label class="mg-field">Played on<input name="patch.playedOn" type="date" required value={scenario.playedOn} /><small>{imperial}</small></label>
-                <label class="mg-field">Rulebook scenario{rulesUrl && <> <a class="mg-rules-link" href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules <Icon name="arrow-up-right" size={12} /></a></>}<select name="patch.rulebookScenario" data-nullable><option value="" selected={!scenario.rulebookScenario}>Custom scenario</option>{RULEBOOK_SCENARIOS.map((r) => <option value={r} selected={r === scenario!.rulebookScenario}>{r}</option>)}{scenario.rulebookScenario && !(RULEBOOK_SCENARIOS as readonly string[]).includes(scenario.rulebookScenario) && <option value={scenario.rulebookScenario} selected>{scenario.rulebookScenario}</option>}</select></label>
+                <label class="mg-field">Scenario{<> <a class="mg-rules-link" href={rulesUrl ?? '#'} hidden={!rulesUrl} rel="noreferrer noopener" target="_blank">the rules <Icon name="arrow-up-right" size={12} /></a></>}<select name="patch.rulebookScenario" data-nullable><option value="" selected={!scenario.rulebookScenario}>Custom scenario</option><optgroup label="The campaign’s own">{HOUSE_SCENARIOS.map((h) => <option value={h.name} data-sides={String(h.sides)} selected={h.name === scenario!.rulebookScenario}>{h.name}</option>)}</optgroup><optgroup label="The rulebook">{RULEBOOK_SCENARIOS.map((r) => <option value={r} data-rulebook selected={r === scenario!.rulebookScenario}>{r}</option>)}</optgroup>{scenario.rulebookScenario && !house && !(RULEBOOK_SCENARIOS as readonly string[]).includes(scenario.rulebookScenario) && <option value={scenario.rulebookScenario} selected>{scenario.rulebookScenario}</option>}</select></label>
               </div>
               <label class="mg-field">What the tracker tallies<input name="patch.tally" maxlength="60" value={scenario.tally} placeholder={tallyOf({ tally: '', rulebookScenario: scenario.rulebookScenario }) || 'Nothing beyond the fallen'} /><small>What the battle tracker counts per warband besides who fell: shards on a Wyrdstone Hunt, warriors through on a Breakthrough. Empty means the rulebook scenario's own ({Object.entries(RULEBOOK_TALLIES).map(([k, v]) => `${k}: ${v!.toLowerCase()}`).join('; ')}), or none.</small></label>
+              <label class="mg-field">Turns<input name="patch.turnLimit" type="number" min="1" max="99" inputmode="numeric" value={scenario.turnLimit ?? ''} data-nullable placeholder="Until it is decided" /><small>The game ends of itself after this many; the table may add another round in the tracker, time permitting. A campaign scenario sets its own when chosen.</small></label>
+              <fieldset class="mg-fieldset" data-when-sides hidden={!house?.sides}><legend>Sides</legend>
+                {scenario.warbands.length ? scenario.warbands.map((w) => (
+                  <label class="mg-field">{nameOf(w.warbandId)}<select name={`patch.sides.${w.warbandId}`} data-nullable><option value="" selected={!w.side}>No side yet</option><option value="attacker" selected={w.side === 'attacker'}>Attacks</option><option value="defender" selected={w.side === 'defender'}>Defends</option></select></label>
+                )) : <p class="mg-note">Name who fights and save, and their sides can be set here.</p>}
+                <p class="mg-note">Who attacks and who defends: the tracker judges who holds the objective by it.</p>
+              </fieldset>
               <fieldset class="mg-fieldset"><legend>Who fights</legend>
                 <div class="mg-checks">{warbands.map((w) => <label class="mg-field check"><input type="checkbox" name="patch.warbandIds" value={w.id} data-array checked={scenario!.warbands.some((p) => p.warbandId === w.id)} /> {w.name} <span class="mg-muted">({w.type})</span></label>)}</div>
                 <p class="mg-note">A warband taken off the list takes its warriors' records for this scenario with it.</p>
@@ -510,9 +527,13 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
     const form = select.closest('form');
     const field = form?.querySelector<HTMLElement>('[data-when-custom]');
     const link = form?.querySelector<HTMLAnchorElement>('.mg-rules-link');
+    const sides = form?.querySelector<HTMLElement>('[data-when-sides]');
     const follow = () => {
+      const picked = select.selectedOptions[0];
       if (field) field.hidden = !!select.value;
-      if (link) { const slug = select.value.toLowerCase().replace(/[^a-z0-9]+/g, '-'); link.hidden = !select.value; if (select.value) link.href = `https://mordheimer.net/docs/campaigns/scenarios/mordheim-rulebook/${slug}`; }
+      if (sides) sides.hidden = picked?.dataset.sides !== 'true';
+      const rulebook = picked?.dataset.rulebook !== undefined;
+      if (link) { const slug = select.value.toLowerCase().replace(/[^a-z0-9]+/g, '-'); link.hidden = !rulebook; if (rulebook) link.href = `https://mordheimer.net/docs/campaigns/scenarios/mordheim-rulebook/${slug}`; }
     };
     select.addEventListener('change', follow);
     follow();
@@ -788,6 +809,11 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   ul { padding-left: 1.25rem; }
   li { margin-bottom: .5rem; }
   ul + h3 { margin-top: 1.75rem; }
+  .house-rules { list-style: none; padding: 0; display: grid; gap: .45rem; }
+  .house-rules li { position: relative; padding-left: 1.1rem; }
+  .house-rules li::before { content: ''; position: absolute; left: 0; top: .7em; width: .35rem; height: .35rem; background: var(--gold-dim); transform: rotate(45deg); }
+  .house-rules-fold { margin: .5rem 0 1rem; }
+  .house-rules-fold > summary { cursor: pointer; color: var(--gold); min-height: var(--control-size); display: flex; align-items: center; }
   .outcome-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
   dt { color: var(--ink-dim); font-size: .8rem; }
   dd { color: var(--parchment); }
