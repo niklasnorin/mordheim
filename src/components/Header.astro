@@ -26,6 +26,7 @@ const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campai
       {standings && <a class="nav-inline" href="#standings">Standings</a>}
       <a class="nav-inline" href="#graveyard">Graveyard</a>
       <a class="nav-inline" href={`${base}/scenarios/`}>Scenarios</a>
+      <a class="nav-inline" href={`${base}/locations/`}>Locations</a>
       <a class="nav-inline nav-account" href={`${base}/warbands/`} hidden data-when="warband">My warband</a>
       <a class="nav-inline nav-account" href={`${base}/curfew/`} hidden data-when="signed-in">Curfew</a>
       <a class="nav-inline nav-account" href={`${base}/admin/`} hidden data-when="gm">Watch House</a>
@@ -39,6 +40,7 @@ const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campai
           {standings && <a href="#standings">Standings</a>}
           <a href="#graveyard">Graveyard</a>
           <a href={`${base}/scenarios/`}>Scenarios</a>
+          <a href={`${base}/locations/`}>Locations</a>
           <a class="nav-account" href={`${base}/warbands/`} hidden data-when="warband">My warband</a>
           <a class="nav-account" href={`${base}/curfew/`} hidden data-when="signed-in">Curfew</a>
           <a class="nav-account" href={`${base}/admin/`} hidden data-when="gm">Watch House</a>

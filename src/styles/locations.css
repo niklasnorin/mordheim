@@ -1,0 +1,92 @@
+/* ═══════════════════════════════════════════
+   The campaign's locations: the map and its pins, the places of interest, the trading post.
+   On top of manage.css; the archive's palette (global.css), built for thumbs first.
+   ═══════════════════════════════════════════ */
+
+/* the map */
+.lmap { margin: 0; position: relative; }
+.lmap-frame { position: relative; border: 1px solid var(--gold-dim); background: #0d1210; overflow: hidden; box-shadow: 0 18px 44px -22px #000; }
+.lmap-img { display: block; width: 100%; height: auto; }
+.lmap.is-picker .lmap-frame { cursor: crosshair; }
+.lmap.is-picker .lmap-img { user-select: none; -webkit-user-drag: none; }
+.lmap-caption { margin-top: .5rem; color: var(--ink-dim); font-size: var(--text-meta); font-style: italic; }
+
+.lmap-pin { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; margin: 0; border: 0; background: none; color: inherit; text-decoration: none; cursor: pointer; z-index: 2; font: inherit; }
+.lmap-pin:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+.lmap-pin .lmap-dot { display: grid; place-items: center; width: .8rem; height: .8rem; border-radius: 50%; background: var(--gold); border: 2px solid #1b1510; box-shadow: 0 0 0 2px #e7dcc5b0, 0 2px 6px #000a; transition: transform .15s; }
+.lmap-pin:hover .lmap-dot, .lmap-pin:focus-visible .lmap-dot, .lmap-pin.is-lit .lmap-dot { transform: scale(1.35); }
+.lmap-pin .lmap-label { position: absolute; bottom: calc(100% - .15rem); left: 50%; transform: translateX(-50%); white-space: nowrap; padding: .3rem .6rem; background: #0d1210f0; border: 1px solid var(--gold-dim); color: var(--parchment); font: var(--text-meta)/1.3 var(--font-utility); letter-spacing: .04em; text-align: center; opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 3; }
+.lmap-pin .lmap-label small { display: block; color: var(--gold); text-transform: uppercase; letter-spacing: .1em; font-size: .62rem; margin-top: .1rem; }
+.lmap-pin.below .lmap-label { bottom: auto; top: calc(100% - .15rem); }
+.lmap-pin:hover .lmap-label, .lmap-pin:focus-visible .lmap-label, .lmap-pin.is-lit .lmap-label { opacity: 1; }
+.lmap-pin:hover, .lmap-pin:focus-visible, .lmap-pin.is-lit { z-index: 4; }
+.lmap-pin.fight .lmap-dot { width: 1.35rem; height: 1.35rem; background: var(--blood); color: #f3e9d6; border-color: #e7dcc5; box-shadow: 0 0 0 2px #0d1210, 0 3px 8px #000c; }
+.lmap-pin.fight.upcoming .lmap-dot { background: #4a5a3c; }
+.lmap-pin.fight .lmap-label { border-color: var(--blood); }
+.lmap-pin.here .lmap-dot { width: 1.5rem; height: 1.5rem; animation: lmap-pulse 1.8s ease-out infinite; }
+.lmap-pin.here .lmap-label { opacity: 1; }
+.lmap.is-picker .lmap-pin.here { pointer-events: none; }
+.lmap.is-picker .lmap-pin.is-under .lmap-label { opacity: 0; }
+.lmap.quiet .lmap-pin.poi .lmap-dot { width: .55rem; height: .55rem; opacity: .7; box-shadow: 0 0 0 1px #e7dcc580; }
+@keyframes lmap-pulse { 0% { box-shadow: 0 0 0 2px #0d1210, 0 0 0 2px #c5786580; } 100% { box-shadow: 0 0 0 2px #0d1210, 0 0 0 14px #c5786500; } }
+@media (prefers-reduced-motion: reduce) { .lmap-pin.here .lmap-dot { animation: none; } }
+/* labels of pinned points stay visible on wide screens, where there is room; a phone keeps them for the tap */
+@media (min-width: 900px) and (hover: hover) { .lmap:not(.quiet):not(.is-picker) .lmap-pin.poi .lmap-label { opacity: .85; } .lmap:not(.quiet):not(.is-picker) .lmap-pin.poi .lmap-label small { display: none; } }
+
+/* the page's parts, reached from a sticky row of links */
+.loc-tabs { position: sticky; top: 0; z-index: 20; display: flex; gap: 0 1.6rem; overflow-x: auto; scrollbar-width: none; margin: 0 -1rem; padding: 0 1rem; border-bottom: 1px solid var(--border); background: var(--bg); box-shadow: 0 8px 16px -12px #000c; font: var(--text-ui)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; }
+.loc-tabs::-webkit-scrollbar { display: none; }
+.loc-tabs a { flex: none; display: inline-flex; align-items: center; min-height: var(--control-size); padding: .6rem 0; color: var(--ink-dim); text-decoration: none; border-bottom: 2px solid transparent; }
+.loc-tabs a:hover { color: var(--parchment); }
+
+/* the location's hero */
+.loc-hero { display: grid; gap: 1rem; }
+.loc-hero .mg-lede { max-width: 76ch; }
+.loc-lede p + p { margin-top: .6rem; }
+
+/* places of interest */
+.poi-list { list-style: none; display: grid; gap: .6rem; counter-reset: poi; }
+.poi-list > li { position: relative; display: grid; grid-template-columns: 2.2rem minmax(0, 1fr); gap: .25rem .8rem; padding: .85rem .95rem .95rem; border: 1px solid var(--border); background: var(--bg-panel); scroll-margin-top: 1rem; transition: border-color .3s, background .3s; }
+.poi-list > li:target { border-color: var(--gold); background: #1a2219; }
+.poi-list .poi-num { grid-row: 1 / span 3; color: var(--ink-dim); font: var(--text-meta)/1 var(--font-utility); text-align: center; padding-top: .35rem; }
+.poi-list .poi-num::before { counter-increment: poi; content: counter(poi, decimal-leading-zero); }
+.poi-list .poi-name { font: 1.15rem/1.2 'Pirata One', Georgia, serif; color: var(--parchment); }
+.poi-list .poi-kind { margin-left: .5rem; vertical-align: .15em; }
+.poi-list .poi-text { color: var(--ink); font-size: var(--text-ui); line-height: 1.6; }
+.poi-list .poi-foot { display: flex; gap: .4rem 1rem; flex-wrap: wrap; align-items: center; color: var(--ink-dim); font-size: var(--text-meta); font-style: italic; }
+.poi-list .poi-foot a { color: var(--gold); text-underline-offset: .2em; }
+.poi-list .poi-foot a:hover { color: var(--parchment); }
+.poi-list .poi-foot .mg-editor { grid-column: 1 / -1; }
+.poi-list > li .mg-editor { grid-column: 2; margin-top: .4rem; }
+
+/* the picker's own inputs sit small beside the map */
+.loc-spot { display: grid; grid-template-columns: 1fr 1fr auto; gap: .6rem; align-items: end; }
+.loc-spot .mg-field > input { min-height: 2.5rem; padding: .4rem .6rem; }
+@media (max-width: 420px) { .loc-spot { grid-template-columns: 1fr 1fr; } .loc-spot .mg-btn { grid-column: 1 / -1; } }
+
+/* the trading post */
+.stock { width: 100%; border-collapse: collapse; font-size: var(--text-ui); }
+.stock caption { text-align: left; padding: 1.1rem 0 .4rem; font: normal 1.25rem/1.3 'Pirata One', Georgia, serif; color: var(--parchment); }
+.stock th, .stock td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.stock th { color: var(--gold); font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; font-weight: normal; white-space: nowrap; }
+.stock td.num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stock tr.withheld td { color: var(--ink-dim); }
+.stock tr.withheld td:first-child { text-decoration: line-through; text-decoration-color: var(--gold-dim); }
+.stock .stock-name { color: var(--parchment); }
+.stock .stock-note { display: block; color: var(--ink-dim); font-size: var(--text-meta); font-style: italic; }
+.stock .stock-was { color: var(--ink-dim); font-size: var(--text-meta); text-decoration: line-through; margin-right: .3rem; }
+.stock .stock-changed { color: var(--gold); }
+.stock td.act { text-align: right; white-space: nowrap; }
+.stock td.act .mg-actions { margin: 0; justify-content: flex-end; gap: .35rem; }
+.stock tr[data-editor] td { padding: .6rem .6rem 1rem; background: #0f1512; }
+.stock tr[data-editor] .mg-form { gap: .6rem; }
+.stock-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-inline: -1rem; padding-inline: 1rem; }
+.stock-legend { display: flex; gap: .6rem 1.2rem; flex-wrap: wrap; color: var(--ink-dim); font-size: var(--text-meta); font-style: italic; margin: .6rem 0 0; }
+@media (max-width: 560px) { .stock th:nth-child(3), .stock td:nth-child(3) { display: none; } .stock .stock-rarity-inline { display: inline; } }
+@media (min-width: 561px) { .stock .stock-rarity-inline { display: none; } }
+
+/* cards on the index */
+.loc-card { display: grid; gap: .5rem; padding: 0 0 1.1rem; overflow: hidden; }
+.loc-card .loc-thumb { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; object-position: center; border-bottom: 1px solid var(--border); background: #0d1210; }
+.loc-card .loc-nomap { display: grid; place-items: center; aspect-ratio: 16 / 9; border-bottom: 1px solid var(--border); background: radial-gradient(ellipse at 50% 60%, #1b231d, #0d1210); color: var(--ink-dim); font-style: italic; font-size: var(--text-ui); }
+.loc-card > :not(.loc-thumb):not(.loc-nomap) { margin-inline: 1.1rem; }

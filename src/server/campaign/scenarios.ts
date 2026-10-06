@@ -14,13 +14,13 @@
  */
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { members, scenarioEvents, scenarioMembers, scenarioOutOfAction, scenarioRevisions, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
+import { locationPoints, locations, members, scenarioEvents, scenarioMembers, scenarioOutOfAction, scenarioRevisions, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
 import { LedgerError } from '../../curfew/ledger.ts';
-import { LOGGED_KINDS, MEMBER_STATUSES, SCENARIO_RESULTS, slugify, type EventKind, type MemberStatus, type NarrativeRevision, type OutOfAction, type Puzzle, type Scenario, type ScenarioEvent, type ScenarioMember, type ScenarioResult, type ScenarioWarband, type Statline } from '../../campaign/model.ts';
+import { LOGGED_KINDS, MEMBER_STATUSES, SCENARIO_RESULTS, positionOf, slugify, type EventKind, type MemberStatus, type NarrativeRevision, type OutOfAction, type Puzzle, type Scenario, type ScenarioEvent, type ScenarioMember, type ScenarioResult, type ScenarioWarband, type Statline } from '../../campaign/model.ts';
 import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook.ts';
 import { HOUSE_SCENARIOS, SIDES, houseScenario, verdictOf, type Side } from '../../campaign/house.ts';
 import { isGm, type Actor } from '../roles.ts';
-import { ensureSeeded } from './seed.ts';
+import { ensureLocationsSeeded, ensureSeeded } from './seed.ts';
 
 export { LedgerError };
 
@@ -37,6 +37,7 @@ function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mem
     id: r.id, sequence: r.sequence, status: r.status, title: r.title, playedOn: r.playedOn, rulebookScenario: r.rulebookScenario, customRules: r.customRules,
     winCondition: r.winCondition, summary: r.summary, chronicle: r.chronicle, outcome: r.outcome, prologue: r.prologue, prologueAsSummary: r.prologueAsSummary, battle: (r.battle as string[]) ?? [], epilogue: r.epilogue,
     battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null, turn: r.turn, turnLimit: r.turnLimit, tally: r.tally,
+    locationId: r.locationId, pointId: r.pointId, mapX: r.mapX, mapY: r.mapY,
     warbands: parts.filter((p) => p.scenarioId === r.id).map((p): ScenarioWarband => ({
       scenarioId: p.scenarioId, warbandId: p.warbandId, result: p.result, side: p.side, prologue: p.prologue, epilogue: p.epilogue, accomplishments: p.accomplishments,
       highlights: (p.highlights as string[]) ?? [], lowlights: (p.lowlights as string[]) ?? [],
@@ -122,6 +123,8 @@ export interface ScenarioInput {
   title: string; playedOn: string; rulebookScenario?: string | null; customRules?: string; prologue?: string; prologueAsSummary?: boolean; summary?: string; warbandIds?: string[];
   /** The turn the game ends after; a house scenario brings its own when none is given. */
   turnLimit?: number | null;
+  /** Where it is fought: a location of the campaign's, a point of interest there, a spot on its map. Null clears each. */
+  locationId?: string | null; pointId?: number | null; mapX?: number | null; mapY?: number | null;
 }
 export type ScenarioPatch = Partial<ScenarioInput & {
   winCondition: string; chronicle: string; outcome: string; epilogue: string; loot: string[]; campaignNotes: string[]; battleOpen: boolean; puzzle: Puzzle | null; tally: string;
@@ -140,6 +143,38 @@ function turnLimitOf(given: number | null | undefined): number | null {
   return given;
 }
 
+/**
+ * Where a scenario is fought, as it may be kept. The location must be on the map; the point must be in that location;
+ * a spot on the map is both distances or none. Changing the location drops a point and a spot not given with it.
+ */
+async function whereOf(patch: Pick<ScenarioInput, 'locationId' | 'pointId' | 'mapX' | 'mapY'>, before?: Pick<Row, 'locationId' | 'pointId' | 'mapX' | 'mapY'>): Promise<Pick<typeof scenarios.$inferInsert, 'locationId' | 'pointId' | 'mapX' | 'mapY'>> {
+  const out: Pick<typeof scenarios.$inferInsert, 'locationId' | 'pointId' | 'mapX' | 'mapY'> = {};
+  if (patch.locationId === undefined && patch.pointId === undefined && patch.mapX === undefined && patch.mapY === undefined) return out;
+  await ensureLocationsSeeded();
+  const moved = patch.locationId !== undefined && patch.locationId !== (before?.locationId ?? null);
+  const locationId = patch.locationId === undefined ? before?.locationId ?? null : patch.locationId;
+  if (patch.locationId !== undefined) {
+    if (locationId && !(await db().select({ id: locations.id }).from(locations).where(eq(locations.id, locationId)).limit(1)).length) throw new LedgerError('No such place is on the map.', 404);
+    out.locationId = locationId;
+  }
+  if (patch.pointId !== undefined || moved) {
+    const pointId = patch.pointId === undefined ? null : patch.pointId;
+    if (pointId !== null) {
+      if (!locationId) throw new LedgerError('Say which place the fight is in before naming a spot there.');
+      const found = await db().select({ id: locationPoints.id }).from(locationPoints).where(and(eq(locationPoints.id, pointId), eq(locationPoints.locationId, locationId))).limit(1);
+      if (!found.length) throw new LedgerError('No such place is marked there.', 404);
+    }
+    out.pointId = pointId;
+  }
+  if (patch.mapX !== undefined || patch.mapY !== undefined || moved) {
+    const pos = positionOf(patch.mapX === undefined ? (moved ? null : before?.mapX) : patch.mapX, patch.mapY === undefined ? (moved ? null : before?.mapY) : patch.mapY);
+    if (pos === 'invalid') throw new LedgerError('A spot on the map needs both its distances across and down, between 0 and 100.');
+    if (pos && !locationId) throw new LedgerError('Say which place the fight is in before marking the map.');
+    out.mapX = pos?.x ?? null; out.mapY = pos?.y ?? null;
+  }
+  return out;
+}
+
 export async function createScenario(actor: Actor, input: ScenarioInput): Promise<Scenario> {
   gmOnly(actor);
   await ensureSeeded();
@@ -156,6 +191,7 @@ export async function createScenario(actor: Actor, input: ScenarioInput): Promis
     id, sequence: seq, status: 'upcoming', title, playedOn: input.playedOn, rulebookScenario: rulebookOf(input.rulebookScenario), customRules: clean(input.customRules, 8000),
     turnLimit: turnLimitOf(input.turnLimit) ?? houseScenario(input.rulebookScenario)?.turns ?? null,
     prologue: clean(input.prologue, 8000), prologueAsSummary: input.prologueAsSummary ?? true, summary: clean(input.summary, 1000), createdBy: actor.id,
+    ...(await whereOf(input)),
   });
   if (input.warbandIds?.length) await setParticipants(actor, id, input.warbandIds);
   return (await getScenario(id))!;
@@ -163,8 +199,8 @@ export async function createScenario(actor: Actor, input: ScenarioInput): Promis
 
 export async function updateScenario(actor: Actor, id: string, patch: ScenarioPatch): Promise<Scenario> {
   gmOnly(actor);
-  await row(id);
-  const set: Partial<typeof scenarios.$inferInsert> = { updatedAt: new Date() };
+  const before = await row(id);
+  const set: Partial<typeof scenarios.$inferInsert> = { updatedAt: new Date(), ...(await whereOf(patch, before)) };
   if (patch.title !== undefined) { const t = clean(patch.title, 120); if (!t) throw new LedgerError('The scenario needs a title.'); set.title = t; }
   if (patch.playedOn !== undefined) { if (!isDate(patch.playedOn)) throw new LedgerError('Say which day it is played, as YYYY-MM-DD.'); set.playedOn = patch.playedOn; }
   if (patch.rulebookScenario !== undefined) set.rulebookScenario = rulebookOf(patch.rulebookScenario);

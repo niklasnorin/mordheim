@@ -8,7 +8,7 @@ Three kinds of thing live here, and every feature question starts by asking whic
 
 | Kind | Holds | Written by | Lives in |
 | --- | --- | --- | --- |
-| **The record** | Warbands and members, scenarios (upcoming and played) with every warband's telling and every warrior's part, the Cryer's articles, the Curfew's content documents (decks and packs) | Players for their own warband and their part of a scenario; game masters for everything; through the site's forms | Postgres, schema in `src/server/db/schema.ts`, services under `src/server/campaign/` and `src/server/content/` |
+| **The record** | Warbands and members, scenarios (upcoming and played) with every warband's telling and every warrior's part, the locations with their maps, points of interest and trading posts, the Cryer's articles, the Curfew's content documents (decks and packs) | Players for their own warband and their part of a scenario; game masters for everything; through the site's forms | Postgres, schema in `src/server/db/schema.ts`, services under `src/server/campaign/` and `src/server/content/` |
 | **The nights** | Ledgers, dispatches, players and sessions, midnight runs, reset words, the log of where the campaign is | The engine, the players through the Curfew API, the game master through the Watch House | Postgres, `src/server/curfew/`, `src/server/admin/` |
 | **The rules** | The engine and the ledger, the calendar, the campaign's constants (`campaign.json`), the pages, and the seed fixtures under `src/data/` | People and coding agents, as commits | The repository |
 
@@ -25,7 +25,7 @@ Astro is `output: 'static'` with the Vercel adapter (`astro.config.mjs`), but ev
 | Route | Mode | Why |
 | --- | --- | --- |
 | `/` | function, edge-cached five minutes, `Cache-Control: public, s-maxage=300` | The whole campaign's record, but nothing personal. Signed-in links are revealed by the browser after asking `/api/account/me`, which also says the viewer's role and warband. |
-| `/scenarios/`, `/scenarios/<id>/`, `/scenarios/<id>/battle/`, `/warbands/`, `/warbands/<id>/`, `/curfew/`, `/curfew/eve/`, `/admin/**` | function, `private, no-store` | They show the viewer's own pen: what they may edit depends on who they are. |
+| `/scenarios/`, `/scenarios/<id>/`, `/scenarios/<id>/battle/`, `/warbands/`, `/warbands/<id>/`, `/locations/`, `/locations/<id>/`, `/curfew/`, `/curfew/eve/`, `/admin/**` | function, `private, no-store` | They show the viewer's own pen: what they may edit depends on who they are. |
 | `/api/**` | function | Same-origin JSON. |
 
 The battle tracker is the one page that does not reload: `src/lib/tracker.ts` renders the turn, the tally and the log from the scenario the server last answered with, posts each tap to `api/scenarios/` (`turn`, `event`, `out-of-action`, `remove-event`) and re-renders from the answer, and while the page is visible asks `tracker` every few seconds whether another phone at the table has written (re-rendering only when `updatedAt` moved). Takedowns logged there are the record's own `scenario_out_of_action` rows, tagged with the turn; notes and scores are `scenario_events`. The page hands the client the roster once, in a JSON script tag; the log is what changes.
@@ -91,5 +91,7 @@ The schema is `src/server/db/schema.ts`; migrations under `drizzle/` are generat
 | Something the Cryer should print | `cryer.ts` if from a night, `admin/service.ts` if from the Watch, the Articles panel in the Watch House if authored |
 | A new place, or more prose for one | On a seeded database: the document in `/admin/content/` (a pasted pack for a new place, plus its band and mark under `public/curfew/places/`). For the built-in set and the tests: `src/data/curfew/locations/*.json` and `BUILT_IN_DOCUMENTS` in `engine.ts` |
 | A new table or column | `schema.ts`, `npm run db:generate`, the files under `drizzle/` |
+| A location, a point of interest, the trading post | On the site: `/locations/` founds one, `/locations/<id>/` writes it up, uploads the map, pins the points and keeps the post (`src/server/campaign/locations.ts`, `api/locations/`). The rulebook's price chart is a rule: `src/campaign/trading.ts`. The seed for an empty table: `src/data/locations.ts` and `public/locations/` |
+| Where a scenario is fought | The Where fieldset on `/scenarios/<id>/`: a location, a point of interest there or a spot tapped on the map (`whereOf` in `campaign/scenarios.ts`; `fightPosition` in `model.ts`) |
 | A battle played | On the site: at the table, the tracker at `/scenarios/<id>/battle/` logs the turns, the tally and the takedowns; afterwards the game master marks the scenario played and writes it up at `/scenarios/<id>/`; the players tell their part; the roster is changed at `/warbands/<id>/` |
 | A change to the record's shape | `src/campaign/model.ts`, the service, the seed, the page |

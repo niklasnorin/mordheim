@@ -5,8 +5,9 @@
  */
 import { sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { members, newsArticles, scenarioMembers, scenarioOutOfAction, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
+import { locationPoints, locations, members, newsArticles, scenarioMembers, scenarioOutOfAction, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
 import { warbands as seedWarbands } from '../../data/warbands.ts';
+import { locations as seedLocations } from '../../data/locations.ts';
 import { news as seedNews } from '../../data/news.ts';
 import { chronicle as seedChronicle } from '../../data/chronicle.ts';
 import { history as seedHistory } from '../../data/history.ts';
@@ -20,7 +21,32 @@ export function ensureSeeded(): Promise<void> {
 }
 
 /** For tests and a reset: forget that the check was made. */
-export function forgetSeeded(): void { seeded = undefined; }
+export function forgetSeeded(): void { seeded = undefined; locationsSeeded = undefined; }
+
+let locationsSeeded: Promise<void> | undefined;
+
+/**
+ * Import the locations if their table is empty. Kept apart from the campaign's seed because the locations came later:
+ * a database seeded before they existed still gets Fussenbach and Mordheim on its next read.
+ */
+export function ensureLocationsSeeded(): Promise<void> {
+  locationsSeeded ??= seedLocationsIfEmpty().then(() => undefined, (e) => { locationsSeeded = undefined; throw e; });
+  return locationsSeeded;
+}
+
+export async function seedLocationsIfEmpty(): Promise<boolean> {
+  const d = db();
+  const [{ n }] = await d.select({ n: sql<number>`count(*)::int` }).from(locations);
+  if (n > 0) return false;
+  for (const [i, l] of seedLocations.entries()) {
+    await d.insert(locations).values({ id: l.id, name: l.name, region: l.region, description: l.description, map: l.map ?? null, sort: i + 1 }).onConflictDoNothing();
+    for (const [j, p] of l.points.entries()) await d.insert(locationPoints).values({ locationId: l.id, name: p.name, kind: p.kind, description: p.description, x: p.x ?? null, y: p.y ?? null, sort: j + 1 });
+  }
+  return true;
+}
+
+/** Where the campaign began, and where the seeded battles were fought. */
+const FIRST_LOCATION = 'mordheim';
 
 export async function seedIfEmpty(): Promise<boolean> {
   const d = db();
@@ -33,6 +59,7 @@ export async function seedIfEmpty(): Promise<boolean> {
 /** Write every fixture. Only ever called on empty tables; `onConflictDoNothing` keeps a race harmless. */
 export async function seedCampaign(): Promise<void> {
   const d = db();
+  await seedLocationsIfEmpty();
   for (const [i, w] of seedWarbands.entries()) {
     await d.insert(warbands).values({
       id: w.id, name: w.name, type: w.type, sigil: w.sigil, crest: w.crest ?? null, player: w.player, rating: w.rating, wyrdstone: w.wyrdstone, gold: w.gold, lore: w.lore, sort: i + 1,
@@ -50,7 +77,7 @@ export async function seedCampaign(): Promise<void> {
     await d.insert(scenarios).values({
       id: record.id, sequence: record.sequence, status: 'played', title: record.scenario, playedOn: record.playedOn ?? '2026-09-05',
       rulebookScenario: r.rulebookScenario, winCondition: r.winCondition ?? '', summary: record.summary, chronicle: chron?.body ?? '', outcome: r.outcome,
-      prologue: r.prologue, battle: r.battle, epilogue: r.epilogue, loot: r.loot, campaignNotes: r.campaignNotes, puzzle: r.puzzle ?? null,
+      prologue: r.prologue, battle: r.battle, epilogue: r.epilogue, loot: r.loot, campaignNotes: r.campaignNotes, puzzle: r.puzzle ?? null, locationId: FIRST_LOCATION,
     }).onConflictDoNothing();
     for (const w of record.warbands) {
       const p = r.perspectives.find((x) => x.warbandId === w.warbandId);

@@ -66,7 +66,7 @@ The repository names technical things in the fiction's words. This maps each wor
 
 | Word | Meaning | Code |
 | --- | --- | --- |
-| **The record** | The campaign as it is kept in the database: warbands, members, scenarios, articles, the Curfew's content documents. Seeded once from `src/data/`, managed on the site since. | `src/campaign/model.ts`, `src/server/campaign/`, `src/server/content/` |
+| **The record** | The campaign as it is kept in the database: warbands, members, scenarios, locations, articles, the Curfew's content documents. Seeded once from `src/data/`, managed on the site since. | `src/campaign/model.ts`, `src/server/campaign/`, `src/server/content/` |
 | **Player, game master, admin** | The three roles. A player keeps one warband; a game master (`user.role`) runs the campaign; an admin (`ADMIN_EMAILS`) keeps the accounts too. | `Role`, `Actor`, `getActor`, `isGm`, `isAdmin`, `setRole` in `src/server/roles.ts` |
 | **Owner, keeper** | The player a warband belongs to. The ledger follows. | `warbands.owner_id`, `claimWarband`, `releaseWarband`, `assignWarband` in `campaign/roster.ts` |
 | **Upcoming, played** | A scenario's status. Upcoming: set up by a game master, dated in both calendars, attended by named warbands, with a rulebook scenario or custom rules and a prologue. Played: results given, in the Chronicle, in play order. | `Scenario.status`, `createScenario`, `markPlayed`, `reopenScenario` |
@@ -80,7 +80,11 @@ The repository names technical things in the fiction's words. This maps each wor
 | **Event, note, score** | One line of the tracker's log: a note is anything worth remembering (optionally a warband's), a score counts towards the tally for one warband and may be negative. | `ScenarioEvent`, `addEvent`, `removeEvent`, `scenario_events` |
 | **Revision** | An earlier telling of the battle, kept whole whenever the narrative is rewritten; also an earlier version of a content document. | `scenario_revisions`, `writeBattle`; `curfew_content_revisions`, `saveDocument` |
 | **Document** | One of the Curfew's content JSON documents: `omens`, `moons`, `tokens`, `location:<id>`. Checked by `validateDocument` before it is saved; put in force by `useContent`. | `src/curfew/packs.ts`, `src/server/content/curfew.ts` |
-| **Seed** | The first fill of an empty database from the files under `src/data/`. Once. | `ensureSeeded`, `seedCampaign`; `primeContent` for content |
+| **Location (the campaign's)** | A town or city the campaign fights in, as the record keeps it: description, map, points of interest, trading post. Not the Curfew's pack, though they share an id (Fussenbach, Mordheim). | `CampaignLocation`, `src/server/campaign/locations.ts`, `locations`, `/locations/<id>/` |
+| **Point of interest, pin** | A place within a location worth the story's attention (a tavern, a bridge). Pinned on the map when it has a position in percent of the map's width and height; listed either way. | `PointOfInterest`, `pinned`, `location_points`, `addPoint` |
+| **Where, the spot, the marker** | Where a scenario is fought: its location, perhaps a point of interest there, perhaps a spot of its own on the map. The spot wins over the point; the marker follows the point when there is no spot. | `Scenario.locationId`, `pointId`, `mapX`/`mapY`, `fightPosition`, `whereOf` |
+| **Trading post, the chart, stock** | The rulebook's price chart (code), and a location's amendments to it: an item offered or withheld, repriced, made rarer or commoner, a note, items of the post's own. Common items are to be had unless withheld; rare ones wait to be offered. Players see only what is to be had. | `TRADING_POST`, `StockEntry`, `stockOf`, `byCategory` in `src/campaign/trading.ts`; `location_stock`, `setStock`, `addItem` |
+| **Seed** | The first fill of an empty database from the files under `src/data/`. Once; the locations separately when their table is empty. | `ensureSeeded`, `seedCampaign`, `ensureLocationsSeeded`; `primeContent` for content |
 | **Switch, setting** | One of the campaign's switches, set by the admin in the Watch House. `standingsVisible`: whether the home page prints the standings; off by default. | `campaign_settings`, `getSettings`, `setSetting` in `campaign/settings.ts` |
 
 ## Ledgers and the server

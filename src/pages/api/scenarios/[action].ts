@@ -17,6 +17,7 @@ const scenarioFields = {
   warbandIds: z.array(z.string().max(64)).max(20), winCondition: z.string().max(4000), chronicle: z.string().max(4000), outcome: z.string().max(4000), epilogue: z.string().max(8000),
   loot: paragraphs, campaignNotes: paragraphs, battleOpen: z.boolean(), tally: z.string().max(60),
   turnLimit: z.number().int().min(1).max(99).nullable(), sides: z.record(z.string().max(64), z.enum(['attacker', 'defender', '']).nullable()),
+  locationId: z.string().max(64).nullable(), pointId: z.number().int().positive().nullable(), mapX: z.number().min(0).max(100).nullable(), mapY: z.number().min(0).max(100).nullable(),
 };
 const turn = z.number().int().min(0).max(99);
 const wrap = (p: Promise<unknown>) => p.then((scenario) => ({ scenario }));

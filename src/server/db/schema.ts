@@ -2,12 +2,12 @@
  * Database schema. Postgres on Neon, managed with Drizzle.
  *
  * Three groups of tables: the four Better Auth needs, the Curfew's ledgers and dispatches, and the campaign's
- * record (warbands, members, scenarios, articles, Curfew content) since it moved out of the source files.
+ * record (warbands, members, scenarios, locations, articles, Curfew content) since it moved out of the source files.
  * A ledger is stored whole as JSON: it is the same serialisable `WarbandState` the browser used to keep,
  * resolved by the same pure engine, so the shape is owned by `src/curfew/ledger.ts` and not duplicated here.
  * Dispatches are the one thing the Town Cryer has to query across warbands, so they get their own rows.
  */
-import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 // ───────────────────────── auth (Better Auth core schema) ─────────────────────────
 
@@ -225,15 +225,17 @@ export const warbandChapters = pgTable(
 );
 
 /**
- * Pictures uploaded for a warband's story, kept in the database and served at `/images/<id>`. `data` is base64,
- * so it reads back the same through Neon's HTTP driver and PGlite alike; the browser shrinks a picture before it
- * is sent, so a row is a few hundred kilobytes. A picture no chapter shows is swept a day after it was uploaded.
+ * Pictures uploaded to the site, kept in the database and served at `/images/<id>`: a warband's story pictures
+ * (`warband_id`) and a location's map (`location_id`), one or the other. `data` is base64, so it reads back the same
+ * through Neon's HTTP driver and PGlite alike; the browser shrinks a picture before it is sent, so a row is a few
+ * hundred kilobytes. A story picture no chapter shows is swept a day after it was uploaded; a map goes when replaced.
  */
 export const images = pgTable(
   'images',
   {
     id: text('id').primaryKey(),
-    warbandId: text('warband_id').notNull().references(() => warbands.id, { onDelete: 'cascade' }),
+    warbandId: text('warband_id').references(() => warbands.id, { onDelete: 'cascade' }),
+    locationId: text('location_id').references(() => locations.id, { onDelete: 'cascade' }),
     mime: text('mime').notNull(),
     data: text('data').notNull(),
     bytes: integer('bytes').notNull(),
@@ -273,6 +275,11 @@ export const scenarios = pgTable('scenarios', {
   tally: text('tally').notNull().default(''),
   /** The turn after which the game ends of itself (a house scenario's own, or as the game master set it); null runs on. */
   turnLimit: integer('turn_limit'),
+  /** Where it is fought: a location of the campaign's, a point of interest there, or a spot on the map (percent of its width and height). */
+  locationId: text('location_id').references(() => locations.id, { onDelete: 'set null' }),
+  pointId: integer('point_id').references(() => locationPoints.id, { onDelete: 'set null' }),
+  mapX: real('map_x'),
+  mapY: real('map_y'),
   createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -365,6 +372,74 @@ export const scenarioRevisions = pgTable(
     savedAt: timestamp('saved_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('scenario_revisions_scenario_idx').on(t.scenarioId)],
+);
+
+// ───────────────────────── the campaign's locations ─────────────────────────
+
+/**
+ * Where the campaign fights: a town or city as the record keeps it, with its map, its points of interest and its
+ * trading post. The id is forever and matches the Curfew's pack for the place (`location:<id>`) where there is one,
+ * so Fussenbach is Fussenbach on both sides; a location may have no pack and a pack no record. Seeded from
+ * `src/data/locations.ts` when the table is empty; after that a game master keeps them at /locations/.
+ */
+export const locations = pgTable('locations', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  /** "Ostermark": the province or the wider country, printed under the name. */
+  region: text('region').notNull().default(''),
+  description: text('description').notNull().default(''),
+  /** The map, as a path on this site: a file under public/ for the seed, `/images/<id>` once a game master uploads one. Null until there is one. */
+  map: text('map'),
+  sort: integer('sort').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * A point of interest in a location: a tavern, a bridge, a shrine, anything the story turns on. Pinned on the map when
+ * `x` and `y` are set (percent of the map's width and height, from the top left corner); in the list either way.
+ */
+export const locationPoints = pgTable(
+  'location_points',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    locationId: text('location_id').notNull().references(() => locations.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    /** "Tavern", "Bridge": the kind of place, for the list and the pin's label. */
+    kind: text('kind').notNull().default(''),
+    description: text('description').notNull().default(''),
+    x: real('x'),
+    y: real('y'),
+    sort: integer('sort').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('location_points_location_idx').on(t.locationId)],
+);
+
+/**
+ * The trading post at a location, as the game master set it over the rulebook's price chart (`campaign/trading.ts`).
+ * A row for a chart item overrides it: whether it is to be had here (null keeps the chart's own rule: common items
+ * are, rare ones are not), its price and its rarity (0 is common). A custom item (`custom`) is wholly its row. An item
+ * with no row is the chart's as printed.
+ */
+export const locationStock = pgTable(
+  'location_stock',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    locationId: text('location_id').notNull().references(() => locations.id, { onDelete: 'cascade' }),
+    itemId: text('item_id').notNull(),
+    custom: boolean('custom').notNull().default(false),
+    name: text('name').notNull().default(''),
+    category: text('category').notNull().default(''),
+    available: boolean('available'),
+    price: text('price'),
+    rarity: integer('rarity'),
+    notes: text('notes').notNull().default(''),
+    sort: integer('sort').notNull().default(0),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('location_stock_item_idx').on(t.locationId, t.itemId)],
 );
 
 /** The Town Cryer's articles and notices, written by game masters, printed where the campaign is. */

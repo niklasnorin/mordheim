@@ -2,12 +2,13 @@
  * The campaign's record, as the database keeps it and the pages read it.
  *
  * Warbands and their members, the scenarios (upcoming and played), what each warband and warrior did in
- * them, and the Town Cryer's articles. These shapes are shared by the services, the API's answers, the pages
+ * them, the locations the campaign fights in, and the Town Cryer's articles. These shapes are shared by the services, the API's answers, the pages
  * and the seed fixtures under `src/data/`. Ids are forever: a warband or member id keys the archives, the
  * ledgers and the dispatches, so it is chosen once and never renamed.
  */
 import { RULEBOOK_TALLIES, type RulebookScenario } from './rulebook.ts';
 import type { Side } from './house.ts';
+import type { StockEntry } from './trading.ts';
 
 export interface Statline {
   M: number; WS: number; BS: number; S: number; T: number; W: number; I: number; A: number; Ld: number;
@@ -202,6 +203,13 @@ export interface Scenario {
   turnLimit: number | null;
   /** What the scenario scores, as the game master named it; empty means the rulebook scenario's own tally, or none. See `tallyOf`. */
   tally: string;
+  /** Where it is fought: one of the campaign's locations, or null when not said. */
+  locationId: string | null;
+  /** A point of interest there, when the fight is at one; see `fightPosition` for where the marker goes. */
+  pointId: number | null;
+  /** A spot on the location's map, as percent of its width and height; null when the fight is at a point or nowhere in particular. */
+  mapX: number | null;
+  mapY: number | null;
   warbands: ScenarioWarband[];
   outOfAction: OutOfAction[];
   /** The tracker's log, oldest first. */
@@ -221,6 +229,65 @@ export interface NewsArticle {
   locationId: string;
   published: boolean;
   sort: number;
+}
+
+/** Where on a map: percent of its width and height from the top left corner. */
+export interface MapPosition { x: number; y: number }
+
+/**
+ * A point of interest in a location: a tavern, a bridge, a shrine. Pinned on the map when it has a position; in the
+ * list either way, since a place may matter to the story before anyone has drawn it.
+ */
+export interface PointOfInterest {
+  id: number;
+  locationId: string;
+  name: string;
+  /** "Tavern", "Bridge": the kind of place. */
+  kind: string;
+  description: string;
+  x: number | null;
+  y: number | null;
+  sort: number;
+}
+
+/**
+ * A location the campaign fights in: a town or a city, with its map, its points of interest and its trading post. Its id
+ * is forever, and the same as the Curfew's pack for the place where there is one.
+ */
+export interface CampaignLocation {
+  id: string;
+  name: string;
+  /** "Ostermark": printed under the name. */
+  region: string;
+  description: string;
+  /** A path on this site to the map picture, or null while there is none. */
+  map: string | null;
+  points: PointOfInterest[];
+  /** How this trading post differs from the rulebook's chart; `stockOf` in campaign/trading.ts lays one over the other. */
+  stock: StockEntry[];
+  sort: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** Whether a point is on the map. */
+export const pinned = (p: Pick<PointOfInterest, 'x' | 'y'>): p is PointOfInterest & MapPosition => p.x != null && p.y != null;
+
+/** A position as it may be kept: both numbers within the map, or none. A half-position is a mistake, not a marker. */
+export function positionOf(x: number | null | undefined, y: number | null | undefined): MapPosition | null | 'invalid' {
+  if (x == null && y == null) return null;
+  if (x == null || y == null || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 100 || y < 0 || y > 100) return 'invalid';
+  return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
+}
+
+/**
+ * Where a scenario's marker goes on its location's map: the spot the game master set, else the point of interest it
+ * was fought at, else nowhere. The point wins over nothing, the spot over the point.
+ */
+export function fightPosition(s: Pick<Scenario, 'pointId' | 'mapX' | 'mapY'>, location: Pick<CampaignLocation, 'points'> | undefined): MapPosition | null {
+  if (s.mapX != null && s.mapY != null) return { x: s.mapX, y: s.mapY };
+  const point = location?.points.find((p) => p.id === s.pointId);
+  return point && pinned(point) ? { x: point.x, y: point.y } : null;
 }
 
 /**

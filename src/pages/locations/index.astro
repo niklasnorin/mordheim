@@ -1,0 +1,75 @@
+---
+/** The campaign's locations: where the warbands fight. A game master founds the next one here. */
+import Base from '../../layouts/Base.astro';
+import ManageTop from '../../components/ManageTop.astro';
+import '../../styles/manage.css';
+import '../../styles/locations.css';
+import { base } from '../../lib/site';
+import { hasDatabase } from '../../server/db/client';
+import { getActor, isGm } from '../../server/roles';
+import { listLocations, scenarioCounts } from '../../server/campaign/locations';
+import { pinned, type CampaignLocation } from '../../campaign/model';
+import { stockOf } from '../../campaign/trading';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const viewer = ready ? await getActor(Astro.request) : null;
+let locations: CampaignLocation[] = [], fought: Record<string, number> = {};
+if (ready) { try { [locations, fought] = await Promise.all([listLocations(), scenarioCounts()]); } catch (e) { console.error('[locations] unavailable', e); } }
+const gm = isGm(viewer);
+const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}`;
+---
+
+<Base title="Locations — Mordheim" description="The towns and cities the campaign fights in: their maps, their places of interest and their trading posts.">
+  <main class="mg mg-page" id="main-content" data-base={base}>
+    <ManageTop crumbs={[{ label: 'Locations' }]} viewer={viewer} />
+    <div class="mg-hero">
+      <p class="mg-kicker">The map</p>
+      <h1 class="mg-h1">Locations</h1>
+      <p class="mg-lede">Every place the campaign has fought in or means to. A location carries its map with the places worth knowing on it, the battles fought there, and the trading post with what may be bought and at what price.</p>
+    </div>
+    {!ready && <p class="mg-empty">The campaign's record is not open on this deployment.</p>}
+
+    <section class="mg-section" id="places">
+      {locations.length ? (
+        <div class="mg-cards">
+          {locations.map((l) => {
+            const pins = l.points.filter(pinned).length;
+            const stocked = stockOf(l.stock).filter((x) => x.available).length;
+            return (
+              <a class="mg-card loc-card" href={`${base}/locations/${l.id}/`}>
+                {l.map ? <img class="loc-thumb" src={`${base}${l.map}`} alt="" loading="lazy" decoding="async" /> : <span class="loc-nomap">No map has been drawn yet</span>}
+                <span class="mg-sub">{l.region || 'The Empire'}</span>
+                <h3>{l.name}</h3>
+                <span class="mg-who"><span>{plural(fought[l.id] ?? 0, 'scenario')}</span><span>{plural(l.points.length, 'place')} of interest{pins ? `, ${pins} on the map` : ''}</span><span>{plural(stocked, 'item')} at the post</span></span>
+                {l.description && <p>{l.description.slice(0, 200)}{l.description.length > 200 ? '…' : ''}</p>}
+              </a>
+            );
+          })}
+        </div>
+      ) : ready && <p class="mg-empty">No place is on the map yet.{gm ? ' Found the first below.' : ''}</p>}
+    </section>
+
+    {gm && (
+      <section class="mg-section" id="new">
+        <div class="mg-section-head"><h2 class="mg-h2">Found a location</h2></div>
+        <form class="mg-panel mg-form" data-api="locations/create">
+          <div class="mg-two">
+            <label class="mg-field">Name<input name="name" required maxlength="80" placeholder="Kleinfeld" /><small>Its id is made from the name once, and never changes.</small></label>
+            <label class="mg-field">Region<input name="region" maxlength="80" placeholder="Ostermark" /></label>
+          </div>
+          <label class="mg-field">Description<textarea name="description" maxlength="8000" placeholder="What the place is, who holds it, what the warbands want there. The archivist's neutral voice."></textarea></label>
+          <div class="mg-actions end"><span class="mg-note">The map, the places of interest and the trading post are set on its page.</span><button type="submit" class="mg-btn">Put it on the map</button></div>
+        </form>
+      </section>
+    )}
+  </main>
+</Base>
+
+<script>
+  import { wireManage } from '../../lib/manage';
+  const root = document.getElementById('main-content')!;
+  wireManage(root, root.dataset.base ?? '');
+</script>

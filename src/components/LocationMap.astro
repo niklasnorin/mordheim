@@ -1,0 +1,60 @@
+---
+/**
+ * A location's map with its pins: the points of interest (a tap goes to the point's entry in the list), the battles
+ * fought there (a tap opens the scenario), and, on a scenario's page, the one marker for that fight. As a picker,
+ * for a game master's form, the pins are buttons and a tap on the map sets the fight's spot; `src/lib/locations.ts`
+ * wires it. Styles in `src/styles/locations.css`.
+ */
+import Icon from './Icon.astro';
+import '../styles/locations.css';
+import { base } from '../lib/site';
+import { fightPosition, pinned, type CampaignLocation, type MapPosition, type Scenario } from '../campaign/model';
+
+interface Props {
+  location: CampaignLocation;
+  /** The scenarios to pin: those fought or set at this location, each at its own spot. */
+  scenarios?: Scenario[];
+  /** The one fight this map is about, when it is a scenario's page. */
+  marker?: MapPosition | null;
+  markerLabel?: string;
+  /** A game master's picker: the pins are buttons, a tap on the map sets the spot. The marker then shows what is set. */
+  picker?: boolean;
+  /** The points dimmed, the fight loud: for a scenario's page. */
+  quiet?: boolean;
+  caption?: string;
+}
+const { location, scenarios = [], marker = null, markerLabel = 'Here', picker = false, quiet = false, caption } = Astro.props;
+const points = location.points.filter(pinned);
+const fights = scenarios.map((s) => ({ s, at: fightPosition(s, location) })).filter((f): f is { s: Scenario; at: MapPosition } => !!f.at);
+const at = (p: MapPosition) => `left:${p.x}%;top:${p.y}%`;
+/** A label above its pin, or below it when the pin is near the top edge where it would be cut off. */
+const side = (p: MapPosition) => (p.y < 14 ? 'below' : '');
+---
+
+{location.map && (
+  <figure class:list={['lmap', { 'is-picker': picker, quiet }]} data-map>
+    <div class="lmap-frame" data-frame>
+      <img class="lmap-img" src={`${base}${location.map}`} alt={`A map of ${location.name}`} loading="lazy" decoding="async" />
+      {points.map((p) => picker ? (
+        <button type="button" class:list={['lmap-pin', 'poi', side(p)]} style={at(p)} data-pin-point={p.id} data-x={p.x} data-y={p.y} aria-label={`Set the fight at ${p.name}`}>
+          <span class="lmap-dot"></span><span class="lmap-label">{p.name}</span>
+        </button>
+      ) : (
+        <a class:list={['lmap-pin', 'poi', side(p)]} style={at(p)} href={`${base}/locations/${location.id}/#point-${p.id}`} data-pin={p.id} aria-label={`${p.name}${p.kind ? `, ${p.kind.toLowerCase()}` : ''}`}>
+          <span class="lmap-dot"></span><span class="lmap-label">{p.name}{p.kind && <small>{p.kind}</small>}</span>
+        </a>
+      ))}
+      {!picker && fights.map(({ s, at: pos }) => (
+        <a class:list={['lmap-pin', 'fight', side(pos), { upcoming: s.status === 'upcoming' }]} style={at(pos)} href={`${base}/scenarios/${s.id}/`} aria-label={`${s.title}${s.status === 'upcoming' ? ', upcoming' : ''}`}>
+          <span class="lmap-dot"><Icon name="swords" size={11} /></span><span class="lmap-label">{s.title}<small>{s.status === 'upcoming' ? 'Upcoming' : `Scenario ${String(s.sequence).padStart(2, '0')}`}</small></span>
+        </a>
+      ))}
+      {(marker || picker) && (
+        <span class:list={['lmap-pin', 'fight', 'here', marker ? side(marker) : '']} style={marker ? at(marker) : undefined} data-marker hidden={!marker} aria-hidden={picker ? 'true' : undefined} role={picker ? undefined : 'img'} aria-label={picker ? undefined : markerLabel}>
+          <span class="lmap-dot"><Icon name="swords" size={11} /></span><span class="lmap-label">{markerLabel}</span>
+        </span>
+      )}
+    </div>
+    {(caption || Astro.slots.has('default')) && <figcaption class="lmap-caption">{caption}<slot /></figcaption>}
+  </figure>
+)}

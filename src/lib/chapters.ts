@@ -22,11 +22,11 @@ function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, 
   return el;
 }
 
-/** The picture made small enough to keep: a GIF that already fits is sent as it is, so it still moves. */
-async function shrink(file: File): Promise<Blob> {
+/** The picture made small enough to keep: a GIF that already fits is sent as it is, so it still moves. A map may ask for a longer edge. */
+export async function shrink(file: File, longest = LONGEST): Promise<Blob> {
   if (file.type === 'image/gif' && file.size <= MAX_BYTES) return file;
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, LONGEST / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, longest / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(bitmap.width * scale));
   canvas.height = Math.max(1, Math.round(bitmap.height * scale));
@@ -42,7 +42,7 @@ async function shrink(file: File): Promise<Blob> {
   throw new Error('That picture is too large, even shrunk. Try a smaller one.');
 }
 
-const base64Of = (blob: Blob) => new Promise<string>((ok, fail) => {
+export const base64Of = (blob: Blob) => new Promise<string>((ok, fail) => {
   const reader = new FileReader();
   reader.onload = () => ok(String(reader.result).replace(/^data:[^,]*,/, ''));
   reader.onerror = () => fail(new Error('The picture could not be read.'));

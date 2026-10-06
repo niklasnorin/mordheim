@@ -78,6 +78,13 @@
       "when": 1791298463333,
       "tag": "0010_house-scenarios",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791320067676,
+      "tag": "0011_locations",
+      "breakpoints": true
     }
   ]
 }

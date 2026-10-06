@@ -1,0 +1,299 @@
+---
+/**
+ * One location: its map with the places of interest and the battles pinned on it, the places listed, the battles
+ * fought and set there, and the trading post. At the foot, the game master's pen: the place itself, its map, its
+ * points of interest and what the post sells. Everyone reads; a game master writes. Built for a phone first.
+ */
+import Base from '../../layouts/Base.astro';
+import ManageTop from '../../components/ManageTop.astro';
+import LocationMap from '../../components/LocationMap.astro';
+import '../../styles/manage.css';
+import '../../styles/locations.css';
+import { base } from '../../lib/site';
+import { formatImperial, imperialForDate } from '../../lib/calendar';
+import { hasDatabase } from '../../server/db/client';
+import { getActor, isGm } from '../../server/roles';
+import { listLocations } from '../../server/campaign/locations';
+import { listScenarios } from '../../server/campaign/scenarios';
+import { listWarbands } from '../../server/campaign/roster';
+import { fightPosition, paragraphsOf, pinned, type CampaignLocation, type Scenario, type Warband } from '../../campaign/model';
+import { TRADE_CATEGORIES, byCategory, priceLabel, rarityLabel, stockOf } from '../../campaign/trading';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const viewer = ready ? await getActor(Astro.request) : null;
+let location: CampaignLocation | undefined, scenarios: Scenario[] = [], warbands: Warband[] = [];
+if (ready) {
+  try {
+    const all = await listLocations();
+    location = all.find((l) => l.id === Astro.params.id);
+    if (location) [scenarios, warbands] = await Promise.all([listScenarios(), listWarbands()]);
+  } catch (e) { console.error('[locations] unavailable', e); }
+}
+if (!location) return Astro.redirect(`${base}/locations/`);
+
+const gm = isGm(viewer);
+const here = scenarios.filter((s) => s.locationId === location!.id);
+const played = here.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence);
+const upcoming = here.filter((s) => s.status === 'upcoming');
+const nameOf = (id: string) => warbands.find((w) => w.id === id)?.name ?? id;
+const imperialOf = (day: string) => formatImperial(imperialForDate(day));
+const pointName = (id: number | null) => location!.points.find((p) => p.id === id)?.name;
+const lines = stockOf(location.stock);
+const shown = gm ? lines : lines.filter((l) => l.available);
+const groups = byCategory(shown);
+const offered = lines.filter((l) => l.available).length;
+const pins = location.points.filter(pinned);
+const description = paragraphsOf(location.description);
+const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}`;
+---
+
+<Base title={`${location.name} — Mordheim`} description={location.description.slice(0, 160)}>
+  <main class="mg mg-page" id="main-content" data-base={base}>
+    <ManageTop crumbs={[{ label: 'Locations', href: `${base}/locations/` }, { label: location.name }]} viewer={viewer} />
+
+    <div class="mg-hero loc-hero">
+      <div>
+        <p class="mg-kicker">{location.region || 'The Empire'} · {plural(here.length, 'scenario')} · {plural(location.points.length, 'place')} of interest</p>
+        <h1 class="mg-h1">{location.name}</h1>
+      </div>
+      {description.length > 0 ? <div class="mg-lede loc-lede">{description.map((p) => <p>{p}</p>)}</div> : <p class="mg-lede">{gm ? 'Nothing has been written about this place yet. The pen is at the foot of the page.' : 'Nothing has been written about this place yet.'}</p>}
+    </div>
+
+    <nav class="loc-tabs" aria-label="The location">
+      <a href="#map">The map</a>
+      <a href="#places">Places of interest</a>
+      <a href="#battles">Battles</a>
+      <a href="#post">Trading post</a>
+      {gm && <a href="#pen">The pen</a>}
+    </nav>
+
+    <section class="mg-section" id="map">
+      <div class="mg-section-head"><h2 class="mg-h2">The map</h2>{location.map && <span class="mg-muted">{pins.length ? `${plural(pins.length, 'place')} marked` : 'Nothing marked yet'}{here.some((s) => fightPosition(s, location!)) ? `, ${plural(here.filter((s) => fightPosition(s, location!)).length, 'battle')} pinned` : ''}</span>}</div>
+      {location.map ? (
+        <LocationMap location={location} scenarios={here} caption={pins.length ? 'Tap a gold pin to read about the place; a red one opens the battle fought there.' : 'No place is marked on it yet.'} />
+      ) : (
+        <p class="mg-empty">No map of {location.name} has been drawn yet.{gm ? ' Upload one in the pen below; the places of interest are listed meanwhile.' : ' The places of interest are listed below.'}</p>
+      )}
+    </section>
+
+    <section class="mg-section" id="places">
+      <div class="mg-section-head"><h2 class="mg-h2">Places of interest</h2><span class="mg-muted">What the story turns on here.</span></div>
+      {location.points.length === 0 && <p class="mg-empty">No place has been marked yet.{gm ? ' Add the first in the pen.' : ''}</p>}
+      <ol class="poi-list">
+        {location.points.map((p) => (
+          <li id={`point-${p.id}`}>
+            <span class="poi-num" aria-hidden="true"></span>
+            <span><span class="poi-name">{p.name}</span>{p.kind && <span class="mg-chip poi-kind">{p.kind}</span>}</span>
+            {p.description && <p class="poi-text">{p.description}</p>}
+            <p class="poi-foot">
+              {pinned(p) && location!.map ? <a href="#map" data-show-pin={p.id}>On the map</a> : <span>Not on the map</span>}
+              {here.filter((s) => s.pointId === p.id).map((s) => <a href={`${base}/scenarios/${s.id}/`}>{s.status === 'upcoming' ? 'Upcoming here' : 'Fought here'}: {s.title}</a>)}
+            </p>
+            {gm && (
+              <details class="mg-editor">
+                <summary>Change it</summary>
+                <form class="mg-form" data-api="locations/update-point" data-json={JSON.stringify({ pointId: p.id })}>
+                  <div class="mg-two">
+                    <label class="mg-field">Name<input name="patch.name" required maxlength="80" value={p.name} /></label>
+                    <label class="mg-field">Kind<input name="patch.kind" maxlength="40" value={p.kind} placeholder="Tavern, bridge, shrine" /></label>
+                  </div>
+                  <label class="mg-field">Description<textarea name="patch.description" maxlength="2000">{p.description}</textarea></label>
+                  {location!.map && <LocationMap location={location!} picker marker={pinned(p) ? { x: p.x, y: p.y } : null} markerLabel={p.name} caption="Tap the map where it stands." />}
+                  <div class="loc-spot">
+                    <label class="mg-field">Across<input name="patch.x" type="number" min="0" max="100" step="0.1" inputmode="decimal" data-nullable data-x-input value={p.x ?? ''} placeholder="%" /></label>
+                    <label class="mg-field">Down<input name="patch.y" type="number" min="0" max="100" step="0.1" inputmode="decimal" data-nullable data-y-input value={p.y ?? ''} placeholder="%" /></label>
+                    <button type="button" class="mg-btn ghost sm" data-clear-marker>Off the map</button>
+                  </div>
+                  <div class="mg-actions end">
+                    <button type="button" class="mg-btn ghost sm" data-act="locations/move-point" data-body={JSON.stringify({ pointId: p.id, by: -1 })} aria-label="Move it up the list">↑</button>
+                    <button type="button" class="mg-btn ghost sm" data-act="locations/move-point" data-body={JSON.stringify({ pointId: p.id, by: 1 })} aria-label="Move it down the list">↓</button>
+                    <button type="button" class="mg-btn blood sm" data-act="locations/remove-point" data-body={JSON.stringify({ pointId: p.id })} data-confirm={`Strike ${p.name} from the map? A scenario fought there keeps the place, and loses the pin.`}>Strike</button>
+                    <button type="submit" class="mg-btn">Save the place</button>
+                  </div>
+                </form>
+              </details>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <section class="mg-section" id="battles">
+      <div class="mg-section-head"><h2 class="mg-h2">Battles</h2>{here.length > 0 && <span class="mg-muted">{plural(played.length, 'battle')} fought here{upcoming.length ? `, ${upcoming.length} to come` : ''}</span>}</div>
+      {here.length ? (
+        <div class="mg-cards">
+          {[...upcoming, ...played].map((s) => (
+            <a class:list={['mg-card', { upcoming: s.status === 'upcoming' }]} href={`${base}/scenarios/${s.id}/`}>
+              <span>{s.status === 'upcoming' ? <span class="mg-chip upcoming">Upcoming</span> : <span class="mg-chip gold">Scenario {String(s.sequence).padStart(2, '0')}</span>} {s.rulebookScenario && <span class="mg-chip">{s.rulebookScenario}</span>}</span>
+              <h3>{s.title}</h3>
+              <span class="mg-date">{imperialOf(s.playedOn)}</span>
+              {pointName(s.pointId) && <span class="mg-real">At {pointName(s.pointId)}</span>}
+              {s.warbands.length > 0 && <span class="mg-who">{s.warbands.map((w) => <span>{nameOf(w.warbandId)}</span>)}</span>}
+            </a>
+          ))}
+        </div>
+      ) : <p class="mg-empty">No battle has been fought in {location.name} yet, and none is set here.{gm ? ' A scenario names its place on its own page.' : ''}</p>}
+    </section>
+
+    <section class="mg-section" id="post">
+      <div class="mg-section-head"><h2 class="mg-h2">The trading post</h2><span class="mg-muted">{plural(offered, 'item')} to be had. Prices in gold crowns; a rare item is found on that roll or better on two dice.</span></div>
+      {gm && <p class="mg-note">You see the whole chart. Players see only what is to be had: common items unless withheld, rare ones once offered. Amend a line to change its price, its rarity or to leave a note; a line put back to the chart in every way forgets it was ever touched.</p>}
+      {gm && (
+        <details class="mg-editor">
+          <summary>Add an item of the post’s own</summary>
+          <form class="mg-form" data-api="locations/add-item" data-json={JSON.stringify({ locationId: location.id })}>
+            <div class="mg-two">
+              <label class="mg-field">Name<input name="item.name" required maxlength="80" placeholder="Eel oil" /></label>
+              <label class="mg-field">Category<input name="item.category" maxlength="60" list="trade-categories" placeholder="Miscellaneous equipment" /><small>One of the chart's, or a heading of your own.</small></label>
+            </div>
+            <datalist id="trade-categories">{TRADE_CATEGORIES.map((c) => <option value={c}></option>)}</datalist>
+            <div class="mg-two">
+              <label class="mg-field">Price<input name="item.price" required maxlength="40" placeholder="5+D6" /><small>In gold crowns; dice are welcome.</small></label>
+              <label class="mg-field">Rarity<input name="item.rarity" type="number" min="0" max="12" inputmode="numeric" value="0" /><small>0 is common; otherwise the roll needed on 2D6.</small></label>
+            </div>
+            <label class="mg-field">Note<input name="item.notes" maxlength="500" placeholder="Who sells it, and what they say about it." /></label>
+            <label class="mg-field check"><input type="checkbox" name="item.available" checked /> To be had now</label>
+            <div class="mg-actions end"><button type="submit" class="mg-btn">Stock it</button></div>
+          </form>
+        </details>
+      )}
+      <div class="stock-wrap">
+        {groups.map((g) => (
+          <table class="stock">
+            <caption>{g.category}</caption>
+            <thead><tr><th scope="col">Item</th><th scope="col">Price</th><th scope="col">Rarity</th>{gm && <th scope="col"><span class="visually-hidden">Actions</span></th>}</tr></thead>
+            <tbody>
+              {g.lines.map((l) => (
+                <>
+                  <tr class:list={{ withheld: !l.available }}>
+                    <td><span class="stock-name">{l.name}</span>{l.custom && <> <span class="mg-chip gold">Own</span></>}{!l.available && gm && <> <span class="mg-chip">Not to be had</span></>}<span class="stock-rarity-inline mg-muted"> · {rarityLabel(l.rarity)}</span>{(l.note || l.notes) && <span class="stock-note">{[l.note, l.notes].filter(Boolean).join('. ')}</span>}</td>
+                    <td class="num">{l.chart && l.changed.price && <span class="stock-was">{priceLabel(l.chart.price)}</span>}<span class:list={{ 'stock-changed': l.changed.price }}>{priceLabel(l.price)}</span></td>
+                    <td class="num">{l.chart && l.changed.rarity && <span class="stock-was">{rarityLabel(l.chart.rarity)}</span>}<span class:list={{ 'stock-changed': l.changed.rarity }}>{rarityLabel(l.rarity)}</span></td>
+                    {gm && (
+                      <td class="act"><div class="mg-actions">
+                        {l.custom ? (
+                          <>
+                            <button type="button" class="mg-btn ghost sm" data-act="locations/update-item" data-body={JSON.stringify({ locationId: location!.id, itemId: l.itemId, patch: { available: !l.available } })}>{l.available ? 'Withhold' : 'Offer'}</button>
+                            <button type="button" class="mg-btn ghost sm" data-open={`stock-edit-${l.itemId}`}>Amend</button>
+                          </>
+                        ) : (
+                          <>
+                            <button type="button" class="mg-btn ghost sm" data-act="locations/stock" data-body={JSON.stringify({ locationId: location!.id, itemId: l.itemId, patch: { available: !l.available } })}>{l.available ? 'Withhold' : 'Offer'}</button>
+                            {l.changed.available && <button type="button" class="mg-btn ghost sm" data-act="locations/stock" data-body={JSON.stringify({ locationId: location!.id, itemId: l.itemId, patch: { available: null } })} title="Back to the chart's own rule">As the chart</button>}
+                            <button type="button" class="mg-btn ghost sm" data-open={`stock-edit-${l.itemId}`}>Amend</button>
+                          </>
+                        )}
+                      </div></td>
+                    )}
+                  </tr>
+                  {gm && (
+                    <tr id={`stock-edit-${l.itemId}`} data-editor hidden>
+                      <td colspan="4">
+                        {l.custom ? (
+                          <form class="mg-form" data-api="locations/update-item" data-json={JSON.stringify({ locationId: location!.id, itemId: l.itemId })}>
+                            <div class="mg-two">
+                              <label class="mg-field">Name<input name="patch.name" required maxlength="80" value={l.name} /></label>
+                              <label class="mg-field">Category<input name="patch.category" maxlength="60" list="trade-categories" value={l.category} /></label>
+                            </div>
+                            <div class="mg-two">
+                              <label class="mg-field">Price<input name="patch.price" required maxlength="40" value={l.price} /></label>
+                              <label class="mg-field">Rarity<input name="patch.rarity" type="number" min="0" max="12" inputmode="numeric" value={l.rarity} /></label>
+                            </div>
+                            <label class="mg-field">Note<input name="patch.notes" maxlength="500" value={l.notes} /></label>
+                            <div class="mg-actions end">
+                              <button type="button" class="mg-btn blood sm" data-act="locations/remove-item" data-body={JSON.stringify({ locationId: location!.id, itemId: l.itemId })} data-confirm={`Strike ${l.name} from the post?`}>Strike</button>
+                              <button type="button" class="mg-btn ghost sm" data-cancel>Leave it</button>
+                              <button type="submit" class="mg-btn sm">Save</button>
+                            </div>
+                          </form>
+                        ) : (
+                          <form class="mg-form" data-api="locations/stock" data-json={JSON.stringify({ locationId: location!.id, itemId: l.itemId })}>
+                            <div class="mg-two">
+                              <label class="mg-field">Price here<input name="patch.price" maxlength="40" data-nullable value={l.changed.price ? l.price : ''} placeholder={`${l.chart?.price ?? l.price} as the chart has it`} /><small>Empty keeps the chart's.</small></label>
+                              <label class="mg-field">Rarity here<input name="patch.rarity" type="number" min="0" max="12" inputmode="numeric" data-nullable value={l.changed.rarity ? l.rarity : ''} placeholder={`${l.chart?.rarity ?? l.rarity}`} /><small>Empty keeps the chart's; 0 makes it common, and common items are to be had unless withheld.</small></label>
+                            </div>
+                            <label class="mg-field">Note<input name="patch.notes" maxlength="500" value={l.notes} placeholder="Who sells it here, and on what terms." /></label>
+                            <div class="mg-actions end">
+                              <button type="button" class="mg-btn ghost sm" data-cancel>Leave it</button>
+                              <button type="submit" class="mg-btn sm">Save</button>
+                            </div>
+                          </form>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </>
+              ))}
+            </tbody>
+          </table>
+        ))}
+      </div>
+      {shown.length === 0 && <p class="mg-empty">The post has nothing to sell.</p>}
+    </section>
+
+    {gm && (
+      <section class="mg-section" id="pen">
+        <div class="mg-section-head"><h2 class="mg-h2">The pen</h2><span class="mg-muted">A game master keeps the map. Everything here is saved as written and shown to everyone at once.</span></div>
+
+        <details class="mg-editor" open={!location.description}>
+          <summary>The place</summary>
+          <form class="mg-form" data-api="locations/update" data-json={JSON.stringify({ locationId: location.id })}>
+            <div class="mg-two">
+              <label class="mg-field">Name<input name="patch.name" required maxlength="80" value={location.name} /><small>Its id, {location.id}, stays whatever the name becomes.</small></label>
+              <label class="mg-field">Region<input name="patch.region" maxlength="80" value={location.region} placeholder="Ostermark" /></label>
+            </div>
+            <label class="mg-field">Description<textarea name="patch.description" maxlength="8000" class="tall">{location.description}</textarea><small>What the place is, who holds it, what the warbands want there. A blank line starts a new paragraph.</small></label>
+            <div class="mg-actions end"><button type="submit" class="mg-btn">Save the place</button></div>
+          </form>
+        </details>
+
+        <details class="mg-editor" open={!location.map}>
+          <summary>The map</summary>
+          <div class="mg-form">
+            <p class="mg-note">{location.map ? <>The map is <code>{location.map}</code>. Upload another to replace it; the pins keep their places on the new one, so a redrawn map should keep the old one's framing.</> : 'A picture of the place: a drawn map, a photograph of one, anything the pins can sit on. It is shrunk in the browser before it is sent.'}</p>
+            <label class="mg-field">{location.map ? 'Replace the map' : 'Upload a map'}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-map-upload={location.id} /></label>
+            {location.map && <div class="mg-actions"><button type="button" class="mg-btn blood sm" data-act="locations/remove-map" data-body={JSON.stringify({ locationId: location.id })} data-confirm={`Take the map of ${location.name} away? The places keep their positions for when a map comes back.`}>Take the map away</button></div>}
+          </div>
+        </details>
+
+        <details class="mg-editor">
+          <summary>Add a place of interest</summary>
+          <form class="mg-form" data-api="locations/add-point" data-json={JSON.stringify({ locationId: location.id })}>
+            <div class="mg-two">
+              <label class="mg-field">Name<input name="point.name" required maxlength="80" placeholder="The Cracked Flagon" /></label>
+              <label class="mg-field">Kind<input name="point.kind" maxlength="40" placeholder="Tavern, bridge, shrine" /></label>
+            </div>
+            <label class="mg-field">Description<textarea name="point.description" maxlength="2000" placeholder="What it is and why it matters, in two or three sentences. Hint at its plots; never tell them."></textarea></label>
+            {location.map ? <LocationMap location={location} picker caption="Tap the map where it stands, or leave it unmarked for a place the map does not show." /> : <p class="mg-note">With no map, the place is listed and not pinned. Its position can be set once a map is uploaded.</p>}
+            <div class="loc-spot">
+              <label class="mg-field">Across<input name="point.x" type="number" min="0" max="100" step="0.1" inputmode="decimal" data-nullable data-x-input placeholder="%" /></label>
+              <label class="mg-field">Down<input name="point.y" type="number" min="0" max="100" step="0.1" inputmode="decimal" data-nullable data-y-input placeholder="%" /></label>
+              <button type="button" class="mg-btn ghost sm" data-clear-marker>Off the map</button>
+            </div>
+            <div class="mg-actions end"><button type="submit" class="mg-btn">Mark the place</button></div>
+          </form>
+        </details>
+
+        <details class="mg-editor">
+          <summary>Strike the location</summary>
+          <div class="mg-form">
+            <p class="mg-note">A location no scenario names may be struck from the map, with its places and its post. One a battle was fought in stays: the Chronicle points at it.</p>
+            <div class="mg-actions"><button type="button" class="mg-btn blood" data-act="locations/delete" data-body={JSON.stringify({ locationId: location.id })} data-goto={`${base}/locations/`} data-confirm={`Strike ${location.name} from the map, with every place marked on it and its trading post?`} disabled={here.length > 0}>Strike it</button>{here.length > 0 && <span class="mg-note">{plural(here.length, 'scenario')} named here; move them first.</span>}</div>
+          </div>
+        </details>
+      </section>
+    )}
+  </main>
+</Base>
+
+<script>
+  import { wireManage } from '../../lib/manage';
+  import { wireLocations } from '../../lib/locations';
+  const root = document.getElementById('main-content')!;
+  const base = root.dataset.base ?? '';
+  wireManage(root, base);
+  wireLocations(root, base);
+</script>

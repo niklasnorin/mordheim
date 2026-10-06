@@ -7,6 +7,7 @@
 import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
 import TurnLog from '../../components/TurnLog.astro';
+import LocationMap from '../../components/LocationMap.astro';
 import '../../styles/manage.css';
 import { base } from '../../lib/site';
 import { formatImperial, imperialForDate } from '../../lib/calendar';
@@ -14,9 +15,10 @@ import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm } from '../../server/roles';
 import { listScenarios, mayTrack, revisionsOf } from '../../server/campaign/scenarios';
 import { listWarbands } from '../../server/campaign/roster';
+import { listLocations } from '../../server/campaign/locations';
 import { RULEBOOK_SCENARIOS, RULEBOOK_TALLIES, rulebookUrl } from '../../campaign/rulebook';
 import { HOUSE_SCENARIOS, SIDE_LABEL, houseScenario } from '../../campaign/house';
-import { MEMBER_STATUSES, hasTurnLog, summaryOf, tallyOf, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
+import { MEMBER_STATUSES, fightPosition, hasTurnLog, summaryOf, tallyOf, type CampaignLocation, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
 import { CAMPAIGN } from '../../curfew/engine';
 
 export const prerender = false;
@@ -24,11 +26,11 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 
 const ready = hasDatabase();
 const viewer = ready ? await getActor(Astro.request) : null;
-let scenarios: Scenario[] = [], warbands: Warband[] = [], revisions: NarrativeRevision[] = [];
+let scenarios: Scenario[] = [], warbands: Warband[] = [], revisions: NarrativeRevision[] = [], locations: CampaignLocation[] = [];
 let scenario: Scenario | undefined;
 if (ready) {
   try {
-    [scenarios, warbands] = await Promise.all([listScenarios(), listWarbands()]);
+    [scenarios, warbands, locations] = await Promise.all([listScenarios(), listWarbands(), listLocations()]);
     scenario = scenarios.find((s) => s.id === Astro.params.id);
     if (scenario) revisions = await revisionsOf(scenario.id);
   } catch (e) { console.error('[scenarios] unavailable', e); }
@@ -77,6 +79,11 @@ const sidesLine = house?.sides ? (['attacker', 'defender'] as const).map((side) 
 // A telling nobody has written is not printed at all.
 const prologues = scenario.warbands.filter((w) => w.prologue.trim());
 const epilogues = scenario.warbands.filter((w) => w.epilogue.trim());
+// where it is fought: a location of the campaign's, perhaps a place there, perhaps a spot on its map
+const where = locations.find((l) => l.id === scenario!.locationId);
+const wherePoint = where?.points.find((p) => p.id === scenario!.pointId);
+const whereAt = fightPosition(scenario, where);
+const mapped = locations.filter((l) => l.map);
 const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', Anchor: 'anchor', Crown: 'crown', Moon: 'moon' };
 ---
 
@@ -142,6 +149,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         <h2>When &amp; how</h2>
         <dl class="outcome-facts">
           <div><dt>Played on</dt><dd>{imperial}<br /><small class="archive-note">{realDay}</small></dd></div>
+          <div><dt>Where</dt><dd>{where ? <><a href={`${base}/locations/${where.id}/`}>{where.name}</a>{wherePoint && <><br /><small class="archive-note">at <a href={`${base}/locations/${where.id}/#point-${wherePoint.id}`}>{wherePoint.name}</a></small></>}</> : 'Not yet said'}</dd></div>
           <div><dt>{house ? 'Scenario' : 'Rulebook scenario'}</dt><dd>{house ? <>{house.name}<br /><small class="archive-note">one of the campaign’s own</small></> : scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'A custom scenario'}</dd></div>
           {scenario.turnLimit && <div><dt>Length</dt><dd>{scenario.turnLimit} turns{house ? <><br /><small class="archive-note">more if time permits</small></> : null}</dd></div>}
           {house?.sides && <div><dt>Sides</dt><dd>{sidesLine}</dd></div>}
@@ -151,6 +159,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         {house ? (scenario.customRules && (<><h3>Also in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>)) : scenario.customRules ? (<><h3>Rules in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>) : <p class="archive-note">{scenario.rulebookScenario ? <>Played as the rulebook has it{rulesUrl ? <>; <a href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules in full</a></> : null}.</> : 'The rules are still being written.'}</p>}
         {scenario.winCondition && !scenario.rulebookScenario && (<><h3>Win condition</h3><p>{scenario.winCondition}</p></>)}
         {house && (<><h3>In short</h3><p>{house.winCondition}</p></>)}
+        {where?.map && whereAt && <LocationMap location={where} marker={whereAt} markerLabel={wherePoint?.name ?? scenario.title} quiet caption={`Where the fight is, on the map of ${where.name}.`} />}
       </section>
     )}
 
@@ -159,6 +168,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         <h2>The scenario</h2>
         <dl class="outcome-facts">
           <div><dt>{house ? 'Scenario' : 'Rulebook scenario'}</dt><dd>{house ? house.name : scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'Custom scenario'}</dd></div>
+          <div><dt>Where</dt><dd>{where ? <><a href={`${base}/locations/${where.id}/`}>{where.name}</a>{wherePoint && <><br /><small class="archive-note">at <a href={`${base}/locations/${where.id}/#point-${wherePoint.id}`}>{wherePoint.name}</a></small></>}</> : 'Not recorded'}</dd></div>
           {house?.sides && <div><dt>Sides</dt><dd>{sidesLine}</dd></div>}
           {(house || scenario.winCondition || !scenario.rulebookScenario) && <div><dt>Win condition</dt><dd>{house ? house.winCondition : scenario.winCondition || 'Not recorded'}</dd></div>}
         </dl>
@@ -167,6 +177,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         {!scenario.rulebookScenario && !scenario.winCondition && (
           <p class="archive-note">The chapter title is not a rulebook scenario name. Missing rules information is left unconfirmed rather than inferred from the story.</p>
         )}
+        {where?.map && whereAt && <LocationMap location={where} marker={whereAt} markerLabel={wherePoint?.name ?? scenario.title} quiet caption={`Where it was fought, on the map of ${where.name}.`} />}
       </section>
     )}
 
@@ -381,6 +392,17 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
               </div>
               <label class="mg-field">What the tracker tallies<input name="patch.tally" maxlength="60" value={scenario.tally} placeholder={tallyOf({ tally: '', rulebookScenario: scenario.rulebookScenario }) || 'Nothing beyond the fallen'} /><small>What the battle tracker counts per warband besides who fell: shards on a Wyrdstone Hunt, warriors through on a Breakthrough. Empty means the rulebook scenario's own ({Object.entries(RULEBOOK_TALLIES).map(([k, v]) => `${k}: ${v!.toLowerCase()}`).join('; ')}), or none.</small></label>
               <label class="mg-field">Turns<input name="patch.turnLimit" type="number" min="1" max="99" inputmode="numeric" value={scenario.turnLimit ?? ''} data-nullable placeholder="Until it is decided" /><small>The game ends of itself after this many; the table may add another round in the tracker, time permitting. A campaign scenario sets its own when chosen.</small></label>
+              <fieldset class="mg-fieldset"><legend>Where</legend>
+                <label class="mg-field">Place<select name="patch.locationId" data-nullable data-location-select><option value="" selected={!scenario.locationId}>Not said</option>{locations.map((l) => <option value={l.id} selected={l.id === scenario!.locationId}>{l.name}{l.region ? ` (${l.region})` : ''}</option>)}</select><small>One of <a class="mg-rules-link" href={`${base}/locations/`}>the campaign’s locations</a>. Tap its map where the fight is, or tap a marked place to set the fight there; the marker then follows the place if it is moved.</small></label>
+                <input type="number" name="patch.pointId" data-nullable data-point-input hidden value={scenario.pointId ?? ''} />
+                {mapped.map((l) => <div data-picker-for={l.id} hidden={l.id !== scenario!.locationId}><LocationMap location={l} picker marker={l.id === scenario!.locationId ? whereAt : null} markerLabel="The fight" /></div>)}
+                <p class="mg-note" data-no-map hidden={!scenario.locationId || !!where?.map}>This place has no map yet, so the fight has no spot on one; it can be set once a map is uploaded.</p>
+                <div class="loc-spot">
+                  <label class="mg-field">Across<input name="patch.mapX" type="number" min="0" max="100" step="0.1" inputmode="decimal" data-nullable data-x-input value={scenario.mapX ?? ''} placeholder="%" /></label>
+                  <label class="mg-field">Down<input name="patch.mapY" type="number" min="0" max="100" step="0.1" inputmode="decimal" data-nullable data-y-input value={scenario.mapY ?? ''} placeholder="%" /></label>
+                  <button type="button" class="mg-btn ghost sm" data-clear-marker>Clear the marker</button>
+                </div>
+              </fieldset>
               <fieldset class="mg-fieldset" data-when-sides hidden={!house?.sides}><legend>Sides</legend>
                 {scenario.warbands.length ? scenario.warbands.map((w) => (
                   <label class="mg-field">{nameOf(w.warbandId)}<select name={`patch.sides.${w.warbandId}`} data-nullable><option value="" selected={!w.side}>No side yet</option><option value="attacker" selected={w.side === 'attacker'}>Attacks</option><option value="defender" selected={w.side === 'defender'}>Defends</option></select></label>
@@ -520,9 +542,11 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
 
 <script>
   import { wireManage } from '../../lib/manage';
+  import { wireLocations } from '../../lib/locations';
   const root = document.getElementById('main-content')!;
   const base = root.dataset.base ?? '';
   wireManage(root, base);
+  wireLocations(root, base);
   // a rulebook scenario sets its own win condition, so the field is only for a custom one
   for (const select of root.querySelectorAll<HTMLSelectElement>('select[name="patch.rulebookScenario"]')) {
     const form = select.closest('form');
