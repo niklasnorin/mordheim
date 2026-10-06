@@ -5,7 +5,7 @@ import { actorOf, testDatabase } from '../testdb.ts';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, getWarband, listWarbands, loadRoster, releaseWarband, removeMember, updateMember, updateWarband, LedgerError } from './roster.ts';
 import { addEvent, addOutOfAction, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, reopenScenario, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writePerspective } from './scenarios.ts';
 import { articlesFor, createArticle, deleteArticle, listArticles, updateArticle } from './news.ts';
-import { addItem, addPoint, createLocation, deleteLocation, getLocation, listLocations, movePoint, removeItem, removeMap, removePoint, scenarioCounts, setStock, updateItem, updateLocation, updatePoint, uploadMap } from './locations.ts';
+import { addItem, addPoint, createLocation, deleteLocation, getLocation, listLocations, movePoint, removeBanner, removeItem, removeMap, removePoint, scenarioCounts, setStock, updateItem, updateLocation, updatePoint, uploadMap, uploadPicture } from './locations.ts';
 import { locations as locationFixtures } from '../../data/locations.ts';
 import { stockOf } from '../../campaign/trading.ts';
 import { fightPosition } from '../../campaign/model.ts';
@@ -405,10 +405,13 @@ test('the campaign’s locations: seeded with Fussenbach and Mordheim, kept by a
   assert.deepEqual(list.map((l) => l.id), locationFixtures.map((l) => l.id));
   const fussenbach = list.find((l) => l.id === 'fussenbach')!;
   assert.equal(fussenbach.map, '/locations/fussenbach-map.jpg');
+  assert.equal(fussenbach.banner, '/curfew/places/fussenbach-band.jpg', 'the Curfew’s band heads the page');
+  assert.equal(fussenbach.bannerFocus, '50% 22%');
   assert.equal(fussenbach.points.length, 12);
   assert.ok(fussenbach.points.every((p) => p.x != null && p.y != null), 'every point of the village is on its map');
   const mordheim = list.find((l) => l.id === 'mordheim')!;
   assert.equal(mordheim.map, null, 'the city has no map yet');
+  assert.equal(mordheim.banner, '/curfew/places/mordheim-band.jpg', 'but it has its banner');
   assert.ok(mordheim.points.length > 0 && mordheim.points.every((p) => p.x == null), 'its points are listed, not pinned');
   assert.equal((await listScenarios()).find((s) => s.id === 'scenario-01-the-merchants-debt')!.locationId, 'mordheim', 'the first battle was fought in the city');
   // founding and writing up
@@ -465,6 +468,18 @@ test('the campaign’s locations: seeded with Fussenbach and Mordheim, kept by a
   l = await removeMap(gm, k.id);
   assert.equal(l.map, null);
   assert.equal(await getImage(l.map === null ? firstMap : ''), undefined);
+  // the banner, the same way, framed as the game master says
+  l = await uploadPicture(gm, k.id, 'banner', 'image/png', png);
+  assert.match(l.banner!, /^\/images\//);
+  assert.equal(l.map, null, 'the banner is not the map');
+  const bannerImage = l.banner!.slice('/images/'.length);
+  l = await updateLocation(gm, k.id, { bannerFocus: '50% 20%' });
+  assert.equal(l.bannerFocus, '50% 20%');
+  l = await updateLocation(gm, k.id, { bannerFocus: 'sideways; drop table' });
+  assert.equal(l.bannerFocus, '50% 50%', 'nonsense framing is centred');
+  l = await removeBanner(gm, k.id);
+  assert.equal(l.banner, null);
+  assert.equal(await getImage(bannerImage), undefined, 'the uploaded banner is forgotten with it');
   await removePoint(gm, well.id);
   assert.equal((await getLocation(k.id))!.points.length, 1);
   await deleteLocation(gm, k.id);

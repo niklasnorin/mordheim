@@ -390,6 +390,9 @@ export const locations = pgTable('locations', {
   description: text('description').notNull().default(''),
   /** The map, as a path on this site: a file under public/ for the seed, `/images/<id>` once a game master uploads one. Null until there is one. */
   map: text('map'),
+  /** The banner, a wide picture of the place at the head of its page, by the same rule; `banner_focus` is its framing (`object-position`) where it is cropped. */
+  banner: text('banner'),
+  bannerFocus: text('banner_focus').notNull().default('50% 50%'),
   sort: integer('sort').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

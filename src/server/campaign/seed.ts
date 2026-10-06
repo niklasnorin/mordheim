@@ -39,7 +39,7 @@ export async function seedLocationsIfEmpty(): Promise<boolean> {
   const [{ n }] = await d.select({ n: sql<number>`count(*)::int` }).from(locations);
   if (n > 0) return false;
   for (const [i, l] of seedLocations.entries()) {
-    await d.insert(locations).values({ id: l.id, name: l.name, region: l.region, description: l.description, map: l.map ?? null, sort: i + 1 }).onConflictDoNothing();
+    await d.insert(locations).values({ id: l.id, name: l.name, region: l.region, description: l.description, map: l.map ?? null, banner: l.banner ?? null, bannerFocus: l.bannerFocus ?? '50% 50%', sort: i + 1 }).onConflictDoNothing();
     for (const [j, p] of l.points.entries()) await d.insert(locationPoints).values({ locationId: l.id, name: p.name, kind: p.kind, description: p.description, x: p.x ?? null, y: p.y ?? null, sort: j + 1 });
   }
   return true;

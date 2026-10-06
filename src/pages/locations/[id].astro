@@ -54,11 +54,21 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
   <main class="mg mg-page" id="main-content" data-base={base}>
     <ManageTop crumbs={[{ label: 'Locations', href: `${base}/locations/` }, { label: location.name }]} viewer={viewer} />
 
-    <div class="mg-hero loc-hero">
-      <div>
-        <p class="mg-kicker">{location.region || 'The Empire'} · {plural(here.length, 'scenario')} · {plural(location.points.length, 'place')} of interest</p>
-        <h1 class="mg-h1">{location.name}</h1>
-      </div>
+    <div class:list={['mg-hero', 'loc-hero', { 'has-banner': !!location.banner }]}>
+      {location.banner ? (
+        <div class="loc-banner">
+          <img class="loc-banner-art" src={`${base}${location.banner}`} alt="" width="1100" height="495" style={`object-position:${location.bannerFocus}`} fetchpriority="high" decoding="async" />
+          <div class="loc-banner-plate">
+            <p class="mg-kicker">{location.region || 'The Empire'} · {plural(here.length, 'scenario')} · {plural(location.points.length, 'place')} of interest</p>
+            <h1 class="mg-h1">{location.name}</h1>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <p class="mg-kicker">{location.region || 'The Empire'} · {plural(here.length, 'scenario')} · {plural(location.points.length, 'place')} of interest</p>
+          <h1 class="mg-h1">{location.name}</h1>
+        </div>
+      )}
       {description.length > 0 ? <div class="mg-lede loc-lede">{description.map((p) => <p>{p}</p>)}</div> : <p class="mg-lede">{gm ? 'Nothing has been written about this place yet. The pen is at the foot of the page.' : 'Nothing has been written about this place yet.'}</p>}
     </div>
 
@@ -254,8 +264,23 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
           <summary>The map</summary>
           <div class="mg-form">
             <p class="mg-note">{location.map ? <>The map is <code>{location.map}</code>. Upload another to replace it; the pins keep their places on the new one, so a redrawn map should keep the old one's framing.</> : 'A picture of the place: a drawn map, a photograph of one, anything the pins can sit on. It is shrunk in the browser before it is sent.'}</p>
-            <label class="mg-field">{location.map ? 'Replace the map' : 'Upload a map'}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-map-upload={location.id} /></label>
+            <label class="mg-field">{location.map ? 'Replace the map' : 'Upload a map'}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-picture-upload="map" data-location={location.id} /></label>
             {location.map && <div class="mg-actions"><button type="button" class="mg-btn blood sm" data-act="locations/remove-map" data-body={JSON.stringify({ locationId: location.id })} data-confirm={`Take the map of ${location.name} away? The places keep their positions for when a map comes back.`}>Take the map away</button></div>}
+          </div>
+        </details>
+
+        <details class="mg-editor">
+          <summary>The banner</summary>
+          <div class="mg-form">
+            <p class="mg-note">{location.banner ? <>The banner is <code>{location.banner}</code>: the wide picture at the head of this page and on the location's card. Upload another to replace it.</> : 'A wide picture of the place for the head of this page and its card: a painting, a view, the mood of it. It is shrunk in the browser before it is sent.'}</p>
+            <label class="mg-field">{location.banner ? 'Replace the banner' : 'Upload a banner'}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-picture-upload="banner" data-location={location.id} /></label>
+            {location.banner && (
+              <form class="mg-form inline" data-api="locations/update" data-json={JSON.stringify({ locationId: location.id })}>
+                <label class="mg-field">Framing<input name="patch.bannerFocus" maxlength="40" value={location.bannerFocus} placeholder="50% 50%" /><small>Where the picture is held when the frame is narrower than it: across then down, as percentages. 50% 22% keeps the sky.</small></label>
+                <button type="submit" class="mg-btn">Frame it</button>
+              </form>
+            )}
+            {location.banner && <div class="mg-actions"><button type="button" class="mg-btn blood sm" data-act="locations/remove-banner" data-body={JSON.stringify({ locationId: location.id })} data-confirm={`Take the banner of ${location.name} away? The page heads itself with the name alone.`}>Take the banner away</button></div>}
           </div>
         </details>
 

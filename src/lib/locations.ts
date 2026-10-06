@@ -12,6 +12,10 @@
  *
  * A tap on the map writes the spot into the inputs and clears the point; a tap on a point's pin writes the point and
  * clears the spot, so the marker follows the point if it is moved later. Nothing is posted until the form is.
+ *
+ *   <input type="file" data-picture-upload="banner" data-location="fussenbach" />
+ *
+ * A picture picked is shrunk, posted as the location's map or banner, and the page reloads with it.
  */
 import { base64Of, shrink } from './chapters';
 import { ensureToast, postApi } from './manage';
@@ -105,17 +109,18 @@ function wireLitPins(root: HTMLElement): void {
   fromHash();
 }
 
-/** A map picked from the device is shrunk, sent, and the page reloads with it. */
+/** A map or banner picked from the device is shrunk, sent, and the page reloads with it. */
 function wireMapUploads(root: HTMLElement, base: string): void {
   const toast = ensureToast();
-  for (const input of root.querySelectorAll<HTMLInputElement>('input[type=file][data-map-upload]')) {
+  for (const input of root.querySelectorAll<HTMLInputElement>('input[type=file][data-picture-upload]')) {
     input.addEventListener('change', async () => {
       const file = input.files?.[0];
       if (!file) return;
       input.disabled = true;
       try {
-        const blob = await shrink(file, 2400);
-        await postApi(base, 'locations/upload-map', { locationId: input.dataset.mapUpload, mime: blob.type, data: await base64Of(blob) });
+        const kind = input.dataset.pictureUpload === 'banner' ? 'banner' : 'map';
+        const blob = await shrink(file, kind === 'map' ? 2400 : 1600);
+        await postApi(base, `locations/upload-${kind}`, { locationId: input.dataset.location, mime: blob.type, data: await base64Of(blob) });
         location.reload();
       } catch (err) { toast((err as Error).message); input.disabled = false; input.value = ''; }
     });

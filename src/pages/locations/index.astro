@@ -40,7 +40,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
             const stocked = stockOf(l.stock).filter((x) => x.available).length;
             return (
               <a class="mg-card loc-card" href={`${base}/locations/${l.id}/`}>
-                {l.map ? <img class="loc-thumb" src={`${base}${l.map}`} alt="" loading="lazy" decoding="async" /> : <span class="loc-nomap">No map has been drawn yet</span>}
+                {l.banner ? <img class="loc-thumb" src={`${base}${l.banner}`} alt="" style={`object-position:${l.bannerFocus}`} loading="lazy" decoding="async" /> : l.map ? <img class="loc-thumb" src={`${base}${l.map}`} alt="" loading="lazy" decoding="async" /> : <span class="loc-nomap">No picture of the place yet</span>}
                 <span class="mg-sub">{l.region || 'The Empire'}</span>
                 <h3>{l.name}</h3>
                 <span class="mg-who"><span>{plural(fought[l.id] ?? 0, 'scenario')}</span><span>{plural(l.points.length, 'place')} of interest{pins ? `, ${pins} on the map` : ''}</span><span>{plural(stocked, 'item')} at the post</span></span>

@@ -262,6 +262,9 @@ export interface CampaignLocation {
   description: string;
   /** A path on this site to the map picture, or null while there is none. */
   map: string | null;
+  /** A path on this site to the banner at the head of its page, or null; `bannerFocus` says how it is framed where it is cropped. */
+  banner: string | null;
+  bannerFocus: string;
   points: PointOfInterest[];
   /** How this trading post differs from the rulebook's chart; `stockOf` in campaign/trading.ts lays one over the other. */
   stock: StockEntry[];

@@ -20,6 +20,9 @@ export interface LocationFixture {
   description: string;
   /** A path on this site to the map, under public/. */
   map?: string;
+  /** The banner at the head of the page, under public/, and how it is framed where it is cropped. The Curfew's bands serve. */
+  banner?: string;
+  bannerFocus?: string;
   points: PointFixture[];
 }
 
@@ -28,6 +31,8 @@ export const locations: LocationFixture[] = [
     id: 'mordheim',
     name: 'Mordheim',
     region: 'Ostermark',
+    banner: '/curfew/places/mordheim-band.jpg',
+    bannerFocus: '50% 34%',
     description: 'The City of the Damned, since the comet fell. What stands of it stands crooked, and what lies under it glows green in the dark. The warbands came for the wyrdstone and stayed for want of a way out; the Town Cryer prints from the ruins and the Watch keeps a curfew nobody obeys. There is no map of the city that two people agree on, and none is kept here yet.',
     points: [
       { name: 'The Merchant’s Quarter', kind: 'District', description: 'The counting houses stand with their doors open and their strongrooms shut. Something is still owed here, by somebody, to somebody.' },
@@ -41,6 +46,8 @@ export const locations: LocationFixture[] = [
     name: 'Fussenbach',
     region: 'Ostermark',
     map: '/locations/fussenbach-map.jpg',
+    banner: '/curfew/places/fussenbach-band.jpg',
+    bannerFocus: '50% 22%',
     description: 'A village of thirteen hundred and one pub on the Fussen, a few days upriver from the Mordheim road. The river keeps its own hours and the village keeps to the north bank: the market, the square and the Cracked Flagon above the water, the barracks and the manor on the slopes behind, and the watch tower on its crag looking down the valley. South of the bridge stand the warehouse, the wharf and Sigmar’s Hammer; east, past the cemetery, the ruins that were there before the village and are left alone. The Village Watch is one half of itself at any time. The algae basins and the silt flats are where the green is found, and the bargemen are where it goes.',
     points: [
       { name: 'The Cracked Flagon', kind: 'Tavern', description: 'The village’s one pub, with rooms above it that strangers are given and locals are not. The village talks here once it trusts you, and talks about you until then.', x: 59.2, y: 41.4 },

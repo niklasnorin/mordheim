@@ -1,8 +1,8 @@
 /**
  * The campaign's locations: the towns and cities the warbands fight in, as the record keeps them.
  *
- * A game master founds a location, writes it up, gives it a map (a picture uploaded here, or the seed's file under
- * public/), pins its points of interest and keeps its trading post: which of the rulebook's items are to be had,
+ * A game master founds a location, writes it up, gives it a banner and a map (pictures uploaded here, or the seed's
+ * files under public/), pins its points of interest and keeps its trading post: which of the rulebook's items are to be had,
  * at what price and rarity, and what else the post sells. Everyone reads. A scenario names the location it is fought
  * in and, on the map, where (campaign/scenarios.ts). Ids are forever and match the Curfew's packs where one exists.
  */
@@ -32,7 +32,7 @@ const entryOf = (s: StockRow): StockEntry => ({ itemId: s.itemId, custom: s.cust
 
 function locationOf(r: Row, points: PointRow[], stock: StockRow[]): CampaignLocation {
   return {
-    id: r.id, name: r.name, region: r.region, description: r.description, map: r.map, sort: r.sort, createdAt: r.createdAt, updatedAt: r.updatedAt,
+    id: r.id, name: r.name, region: r.region, description: r.description, map: r.map, banner: r.banner, bannerFocus: r.bannerFocus, sort: r.sort, createdAt: r.createdAt, updatedAt: r.updatedAt,
     points: points.filter((p) => p.locationId === r.id).map(pointOf),
     stock: stock.filter((s) => s.locationId === r.id).map(entryOf),
   };
@@ -67,14 +67,23 @@ async function row(id: string): Promise<Row> {
 
 // ───────────────────────── the location itself ─────────────────────────
 
-export interface LocationInput { name: string; region?: string; description?: string; map?: string | null }
+export interface LocationInput { name: string; region?: string; description?: string; map?: string | null; banner?: string | null; bannerFocus?: string }
 
-/** A map path as it may be kept: a path on this site, nothing else. The seed's files and uploaded pictures both are. */
-function mapOf(given: string | null | undefined): string | null {
+/** The location's two pictures. */
+export type Picture = 'map' | 'banner';
+
+/** A picture's path as it may be kept: a path on this site, nothing else. The seed's files and uploaded pictures both are. */
+function pathOf(kind: Picture, given: string | null | undefined): string | null {
   const s = clean(given, 300);
   if (!s) return null;
-  if (!/^\/[\w\-./%]+$/.test(s) || s.startsWith('//')) throw new LedgerError('The map must be a picture on this site: upload one, or a path under public/.');
+  if (!/^\/[\w\-./%]+$/.test(s) || s.startsWith('//')) throw new LedgerError(`The ${kind} must be a picture on this site: upload one, or a path under public/.`);
   return s;
+}
+
+/** How a banner is framed where it is cropped: an `object-position`, two lengths or keywords. Centred when nonsense. */
+function focusOf(given: string | undefined): string {
+  const s = clean(given, 40);
+  return /^(\d{1,3}%|left|center|centre|right|top|bottom)( (\d{1,3}%|left|center|centre|right|top|bottom))?$/.test(s) ? s.replace('centre', 'center') : '50% 50%';
 }
 
 export async function createLocation(actor: Actor, input: LocationInput): Promise<CampaignLocation> {
@@ -88,7 +97,7 @@ export async function createLocation(actor: Actor, input: LocationInput): Promis
   const stem = slugify(name) || 'place';
   let id = stem, k = 2;
   while (taken.has(id)) id = `${stem}-${k++}`;
-  await d.insert(locations).values({ id, name, region: clean(input.region, 80), description: clean(input.description, 8000), map: mapOf(input.map), sort: n + 1 });
+  await d.insert(locations).values({ id, name, region: clean(input.region, 80), description: clean(input.description, 8000), map: pathOf('map', input.map), banner: pathOf('banner', input.banner), bannerFocus: focusOf(input.bannerFocus), sort: n + 1 });
   return (await getLocation(id))!;
 }
 
@@ -99,7 +108,9 @@ export async function updateLocation(actor: Actor, id: string, patch: Partial<Lo
   if (patch.name !== undefined) { const name = clean(patch.name, 80); if (!name) throw new LedgerError('The place needs a name.'); set.name = name; }
   if (patch.region !== undefined) set.region = clean(patch.region, 80);
   if (patch.description !== undefined) set.description = clean(patch.description, 8000);
-  if (patch.map !== undefined) { set.map = mapOf(patch.map); await dropUploadedMap(id, set.map); }
+  if (patch.map !== undefined) { set.map = pathOf('map', patch.map); await dropUploaded(id, 'map', set.map); }
+  if (patch.banner !== undefined) { set.banner = pathOf('banner', patch.banner); await dropUploaded(id, 'banner', set.banner); }
+  if (patch.bannerFocus !== undefined) set.bannerFocus = focusOf(patch.bannerFocus);
   await db().update(locations).set(set).where(eq(locations.id, id));
   return (await getLocation(id))!;
 }
@@ -113,36 +124,41 @@ export async function deleteLocation(actor: Actor, id: string): Promise<void> {
   await db().delete(locations).where(eq(locations.id, id));
 }
 
-// ───────────────────────── the map ─────────────────────────
+// ───────────────────────── the pictures: the map and the banner ─────────────────────────
 
 const UPLOADED = /^\/images\/([0-9a-f-]{36})$/;
 
-/** Forget the map picture uploaded for this location, if the map was one and is being replaced by something else. */
-async function dropUploadedMap(id: string, next: string | null): Promise<void> {
-  const current = (await row(id)).map;
+/** Forget the picture uploaded for this location as its map or banner, if it was one and is being replaced by something else. */
+async function dropUploaded(id: string, kind: Picture, next: string | null): Promise<void> {
+  const current = (await row(id))[kind];
   const m = current ? UPLOADED.exec(current) : null;
   if (m && current !== next) await db().delete(images).where(and(eq(images.id, m[1]), eq(images.locationId, id)));
 }
 
-/** Keep a picture as the location's map. The browser has shrunk it; the bytes must be the picture they claim to be. */
-export async function uploadMap(actor: Actor, id: string, mime: ImageType, base64: string): Promise<CampaignLocation> {
+/** Keep a picture as the location's map or banner. The browser has shrunk it; the bytes must be the picture they claim to be. */
+export async function uploadPicture(actor: Actor, id: string, kind: Picture, mime: ImageType, base64: string): Promise<CampaignLocation> {
   gmOnly(actor);
   await row(id);
   const bytes = Buffer.from(base64, 'base64');
   if (!bytes.length) throw new LedgerError('That picture came through empty. Try again.');
-  if (bytes.length > IMAGE_MAX_BYTES) throw new LedgerError('That map is too large, even shrunk. Try a smaller one.', 413);
+  if (bytes.length > IMAGE_MAX_BYTES) throw new LedgerError(`That ${kind} is too large, even shrunk. Try a smaller one.`, 413);
   if (!looksLike(mime, bytes)) throw new LedgerError('That file is not a picture the page can show. Use a JPEG, PNG, WebP or GIF.', 415);
   const imageId = crypto.randomUUID();
-  const map = `/images/${imageId}`;
-  await dropUploadedMap(id, map);
+  const path = `/images/${imageId}`;
+  await dropUploaded(id, kind, path);
   await db().insert(images).values({ id: imageId, locationId: id, mime, data: bytes.toString('base64'), bytes: bytes.length, uploadedBy: actor.id });
-  await db().update(locations).set({ map, updatedAt: new Date() }).where(eq(locations.id, id));
+  await db().update(locations).set({ [kind]: path, updatedAt: new Date() }).where(eq(locations.id, id));
   return (await getLocation(id))!;
 }
+export const uploadMap = (actor: Actor, id: string, mime: ImageType, base64: string) => uploadPicture(actor, id, 'map', mime, base64);
 
 /** Take the map away. The points keep their positions, for when a map comes back. */
 export async function removeMap(actor: Actor, id: string): Promise<CampaignLocation> {
   return updateLocation(actor, id, { map: null });
+}
+/** Take the banner away; the page heads itself with the name alone. */
+export async function removeBanner(actor: Actor, id: string): Promise<CampaignLocation> {
+  return updateLocation(actor, id, { banner: null });
 }
 
 // ───────────────────────── points of interest ─────────────────────────

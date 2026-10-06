@@ -85,6 +85,13 @@
       "when": 1791320067676,
       "tag": "0011_locations",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791321283535,
+      "tag": "0012_banners",
+      "breakpoints": true
     }
   ]
 }
