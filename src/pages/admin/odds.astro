@@ -34,7 +34,7 @@ const pct = (x: number, digits = 0) => `${(x * 100).toFixed(digits)}%`;
 const num = (x: number, digits = 1) => x.toFixed(digits);
 const tiltLabel = (t: number) => (t === 0 ? '0' : t > 0 ? `+${t}` : `−${-t}`);
 const TILT_NAMES: Record<number, string> = { [-3]: 'Damned', [-2]: 'Cursed', [-1]: 'Ill-starred', 0: 'A regular night', 1: 'Favoured', 2: 'Blessed', 3: 'Charmed' };
-const ledgerHref = `${base}/curfew/`;
+const signInHref = `${base}/signin/?next=${encodeURIComponent(`${base}/admin/odds/`)}`;
 ---
 
 <Base title="The Odds — The Watch House" description="The Curfew's odds laid out for the game master: outcomes, charms, crossroads and what the Cryer prints, by tilt.">
@@ -54,7 +54,7 @@ const ledgerHref = `${base}/curfew/`;
     </header>
 
     {!ready && <div class="wh-gate"><h1>The ledgers are not open</h1><p>This deployment has no database yet. See the README for the Vercel setup.</p></div>}
-    {ready && !viewer && <div class="wh-gate"><h1>Who goes there?</h1><p>The Odds are for the game master. <a href={ledgerHref}>Sign in at the Ledger</a>, then come back.</p></div>}
+    {ready && !viewer && <div class="wh-gate"><h1>Who goes there?</h1><p>The Odds are for the game master. <a href={signInHref}>Sign in</a>, and you are brought back here.</p></div>}
     {ready && viewer && !admin && <div class="wh-gate"><h1>No admittance</h1><p>You are signed in as {viewer.name}, and that name is neither an admin's nor a game master's.</p></div>}
 
     {admin && (

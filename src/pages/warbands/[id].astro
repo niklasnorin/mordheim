@@ -66,7 +66,7 @@ const overview = paragraphsOf(warband?.lore ?? '');
         <div class="mg-hero wb-hero">
           <span class="wb-crest" aria-hidden="true">{warband.crest ? <img src={asset(warband.crest)} width="120" height="140" alt="" /> : warband.sigil}</span>
           <div>
-            <p class="mg-kicker">{warband.type}{warband.player ? <> · kept by {warband.player}</> : <> · <span class="mg-chip">nobody’s yet</span></>}{owner && <span class="mg-chip gold">Yours</span>}{owner && <a class="wb-kicker-link" href={`${base}/curfew/`}>The Curfew ledger</a>}{!viewer && ready && <a class="wb-kicker-link" href={`${base}/curfew/`}>Sign in to keep a warband</a>}</p>
+            <p class="mg-kicker">{warband.type}{warband.player ? <> · kept by {warband.player}</> : <> · <span class="mg-chip">nobody’s yet</span></>}{owner && <span class="mg-chip gold">Yours</span>}{owner && <a class="wb-kicker-link" href={`${base}/curfew/`}>The Curfew ledger</a>}{!viewer && ready && <a class="wb-kicker-link" href={`${base}/signin/?next=${encodeURIComponent(Astro.url.pathname)}`}>Sign in to keep a warband</a>}</p>
             <h1 class="mg-h1">{warband.name}</h1>
           </div>
         </div>

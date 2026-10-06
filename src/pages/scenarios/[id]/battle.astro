@@ -47,6 +47,7 @@ const sub = [scenario.rulebookScenario ?? 'Custom scenario', roster.map((w) => w
         <h1 class="tk-title">{scenario.title}</h1>
         <p class="tk-sub">{sub}</p>
       </div>
+      {ready && !viewer && <a class="tk-back tk-signin" href={`${base}/signin/?next=${encodeURIComponent(Astro.url.pathname)}`}>Sign in</a>}
       <span class="tk-live" data-on="true" title="Following the table" aria-hidden="true"></span>
     </header>
     <noscript><p class="tk-empty">The tracker needs JavaScript. The log so far is on the scenario's page.</p></noscript>

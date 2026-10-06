@@ -31,7 +31,7 @@ const free = warbands.filter((w) => !w.ownerId);
     </div>
 
     {!ready && <p class="mg-empty">The campaign's record is not open on this deployment.</p>}
-    {ready && !viewer && <p class="mg-empty"><a href={`${base}/curfew/`}>Sign in at the Curfew</a> first; the same name keeps the ledger and the roster.</p>}
+    {ready && !viewer && <p class="mg-empty"><a href={`${base}/signin/?next=${encodeURIComponent(`${base}/warbands/`)}`}>Sign in</a> first; the same name keeps the roster and the Curfew ledger.</p>}
 
     {viewer && (
       <>

@@ -17,7 +17,7 @@ const { warbands, scenarios, fallen, standings = true } = Astro.props;
 const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campaign.timezone }).format(new Date())).year;
 ---
 
-  <div class="header-bar" id="campaign-navigation">
+  <div class="header-bar" id="campaign-navigation" data-me={`${base}/api/account/me`}>
     <a class="wordmark" href="#top" aria-label="Mordgrim home"><Icon name="cross" size={18} /> Mordgrim <span class="wordmark-note">Campaign archive</span></a>
     <nav class="site-nav" aria-label="Campaign sections">
       <a class="nav-inline" href="#town-cryer">Town Cryer</a>
@@ -29,6 +29,7 @@ const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campai
       <a class="nav-inline nav-account" href={`${base}/warbands/`} hidden data-when="warband">My warband</a>
       <a class="nav-inline nav-account" href={`${base}/curfew/`} hidden data-when="signed-in">Curfew</a>
       <a class="nav-inline nav-account" href={`${base}/admin/`} hidden data-when="gm">Watch House</a>
+      <a class="nav-inline nav-account" href={`${base}/signin/`} hidden data-when="signed-out">Sign in</a>
       <details class="section-menu">
         <summary>Menu <Icon name="arrow-down" size={14} /></summary>
         <div class="section-menu-links">
@@ -41,6 +42,7 @@ const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campai
           <a class="nav-account" href={`${base}/warbands/`} hidden data-when="warband">My warband</a>
           <a class="nav-account" href={`${base}/curfew/`} hidden data-when="signed-in">Curfew</a>
           <a class="nav-account" href={`${base}/admin/`} hidden data-when="gm">Watch House</a>
+          <a class="nav-account" href={`${base}/signin/`} hidden data-when="signed-out">Sign in</a>
         </div>
       </details>
     </nav>
@@ -187,16 +189,18 @@ const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campai
   new ResizeObserver(queueUpdate).observe(navigation);
   updateNavigation();
 
-  // The page is cached for everyone; the links for signed-in players and the game master appear once the browser has asked who is looking.
+  // The page is cached for everyone; the links for signed-in players and the game master, or the way in for everyone
+  // else, appear once the browser has asked who is looking.
   const accountLinks = [...navigation.querySelectorAll<HTMLAnchorElement>('.nav-account')];
-  if (accountLinks.length) {
-    fetch(new URL(accountLinks[0].pathname.replace(/\/(curfew|admin|warbands)\/$/, '/api/account/me'), location.href), { credentials: 'same-origin', cache: 'no-store' })
+  if (accountLinks.length && navigation.dataset.me) {
+    fetch(new URL(navigation.dataset.me, location.href), { credentials: 'same-origin', cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((me: { signedIn?: boolean; admin?: boolean; gm?: boolean; warbandId?: string | null } | null) => {
         if (!me) return;
         for (const a of accountLinks) {
           const when = a.dataset.when;
           if (when === 'warband') { a.hidden = !me.signedIn; if (me.warbandId) a.href = a.href.replace(/\/warbands\/$/, `/warbands/${me.warbandId}/`); }
+          else if (when === 'signed-out') { a.hidden = !!me.signedIn; a.search = `?next=${encodeURIComponent(location.pathname)}`; }
           else a.hidden = !(when === 'gm' ? me.gm : when === 'admin' ? me.admin : me.signedIn);
         }
       })

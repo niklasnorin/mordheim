@@ -78,15 +78,15 @@ const boot = {
             <button type="button" role="tab" id="tab-in" aria-selected="true" aria-controls="auth-form" data-mode="in">Sign in</button>
             <button type="button" role="tab" id="tab-up" aria-selected="false" aria-controls="auth-form" data-mode="up">First time here</button>
           </div>
-          <label class="cf-field cf-field-up" hidden>Your name<input name="name" type="text" autocomplete="name" maxlength="40" placeholder="As the others know you" /></label>
+          <label class="cf-field cf-field-up" data-when-up hidden>Your name<input name="name" type="text" autocomplete="name" maxlength="40" placeholder="As the others know you" /></label>
           <label class="cf-field">Email<input name="email" type="email" autocomplete="username" required placeholder="you@example.com" /></label>
-          <label class="cf-field cf-field-reset" hidden>Reset word from the game master<input name="word" type="text" autocomplete="off" spellcheck="false" placeholder="ash-bell-crow-7f3" /></label>
-          <label class="cf-field cf-field-pw">Password<input name="password" type="password" autocomplete="current-password" required minlength="8" placeholder="At least eight characters" /></label>
-          {env.INVITE_CODE && <label class="cf-field cf-field-up" hidden>The word at the gate<input name="inviteCode" type="text" autocomplete="off" placeholder="Ask the game master" /></label>}
+          <label class="cf-field cf-field-reset" data-when-reset hidden>Reset word from the game master<input name="word" type="text" autocomplete="off" spellcheck="false" placeholder="ash-bell-crow-7f3" /></label>
+          <label class="cf-field cf-field-pw" data-auth-password>Password<input name="password" type="password" autocomplete="current-password" required minlength="8" placeholder="At least eight characters" /></label>
+          {env.INVITE_CODE && <label class="cf-field cf-field-up" data-when-up hidden>The word at the gate<input name="inviteCode" type="text" autocomplete="off" placeholder="Ask the game master" /></label>}
           <div class="cf-auth-foot">
-            <button type="submit" class="cf-btn" id="auth-submit">Sign in</button>
-            <span class="cf-note cf-auth-note" id="auth-note">Signed in once, you stay signed in on this device for a Moon or so.</span>
-            <button type="button" class="cf-linkbtn cf-auth-link" id="auth-forgot" data-mode="reset">Forgotten your password?</button>
+            <button type="submit" class="cf-btn" id="auth-submit" data-auth-submit>Sign in</button>
+            <span class="cf-note cf-auth-note" id="auth-note" data-auth-note>Signed in once, you stay signed in on this device for a Moon or so.</span>
+            <button type="button" class="cf-linkbtn cf-auth-link" id="auth-forgot" data-auth-forgot data-mode="reset">Forgotten your password?</button>
           </div>
         </form>
         {env.DEV_LOGIN && (
@@ -205,7 +205,7 @@ const boot = {
 </Base>
 
 <script>
-  import { createAuthClient } from 'better-auth/client';
+  import { authClientFor, wireSignIn } from '../../lib/signin';
   import {
     CAMPAIGN, ERRANDS, ERRAND_LABEL, HAND_SIZE, availability, moonForNight, omenForNight, tiltFor, titleFor, nextTitle, tokenById, dateForNight, statEdge, ERRAND_STATS, STAT_LABEL,
     blurbFor, isErrandAt, locationById, moonBoostAt, unavailableReason, useContent,
@@ -232,7 +232,7 @@ const boot = {
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
   const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const authClient = createAuthClient({ baseURL: location.origin, basePath: `${base}/api/auth` });
+  const authClient = authClientFor(base);
 
   const today = boot.today;
   let view: View | null = boot.view;
@@ -300,80 +300,9 @@ const boot = {
   /** The night's date as the Empire writes it, counted on from the first game. */
   const imperialDate = (night: number, style: 'long' | 'short' | 'day' = 'long') => formatImperial(imperialForDate(dateForNight(night)), style);
 
-  // ── sign in / out ──
-  const authForm = document.getElementById('auth-form') as HTMLFormElement | null;
-  if (authForm) {
-    type Mode = 'in' | 'up' | 'reset';
-    const NOTE: Record<Mode, string> = {
-      in: 'Signed in once, you stay signed in on this device for a Moon or so.',
-      up: 'No emails are sent; the address is only your name at the gate. Keep the password somewhere; the game master can issue a reset word if it is lost.',
-      reset: 'Ask the game master for a reset word, then give it here with a new password. Every device is signed out.',
-    };
-    const LABEL: Record<Mode, string> = { in: 'Sign in', up: 'Take the oath', reset: 'Set the new password' };
-    const setMode = (mode: Mode) => {
-      authForm.dataset.mode = mode;
-      authForm.querySelectorAll<HTMLElement>('.cf-field-up').forEach((f) => { f.hidden = mode !== 'up'; });
-      authForm.querySelectorAll<HTMLElement>('.cf-field-reset').forEach((f) => { f.hidden = mode !== 'reset'; });
-      authForm.querySelectorAll<HTMLButtonElement>('[role=tab]').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.mode === mode)));
-      const pwField = authForm.querySelector<HTMLElement>('.cf-field-pw')!, pw = pwField.querySelector('input')!;
-      pw.autocomplete = mode === 'in' ? 'current-password' : 'new-password';
-      pwField.firstChild!.textContent = mode === 'reset' ? 'New password' : 'Password';
-      $('auth-submit').textContent = LABEL[mode];
-      $('auth-note').textContent = NOTE[mode];
-      $('auth-forgot').hidden = mode !== 'in';
-    };
-    authForm.querySelectorAll<HTMLButtonElement>('[role=tab], #auth-forgot').forEach((t) => t.addEventListener('click', () => setMode(t.dataset.mode as Mode)));
-    setMode('in');
-    authForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const data = new FormData(authForm);
-      const email = String(data.get('email') ?? '').trim(), password = String(data.get('password') ?? '');
-      const mode = authForm.dataset.mode as Mode;
-      if (!email || !password) { toast('Email and password, both.'); return; }
-      if (password.length < 8) { toast('The password needs at least eight characters.'); return; }
-      const button = $<HTMLButtonElement>('auth-submit');
-      button.disabled = true;
-      try {
-        if (mode === 'reset') {
-          const word = String(data.get('word') ?? '').trim();
-          if (!word) throw new Error('The reset word, as the game master gave it to you.');
-          const res = await fetch(new URL(`${base}/api/account/reset`, location.href), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, word, newPassword: password }), credentials: 'same-origin' });
-          const out = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(out.error ?? 'The city did not answer. Try again.');
-          const { error } = await authClient.signIn.email({ email, password });
-          if (error) throw new Error(error.message ?? 'The password is set, but the gate did not open. Sign in again.');
-        } else if (mode === 'up') {
-          const name = String(data.get('name') ?? '').trim();
-          if (!name) throw new Error('Tell us your name.');
-          const inviteCode = String(data.get('inviteCode') ?? '').trim();
-          const { error } = await authClient.signUp.email({ email, password, name, ...(inviteCode ? { inviteCode } : {}) } as never);
-          if (error) throw new Error(error.message ?? 'The gate did not open.');
-        } else {
-          const { error } = await authClient.signIn.email({ email, password });
-          if (error) throw new Error(error.message ?? 'The gate did not open.');
-        }
-        location.href = location.pathname + location.search;
-      } catch (err) {
-        button.disabled = false;
-        toast((err as Error).message);
-      }
-    });
-  }
+  // ── sign in / out: the same form and the same ways through as the sign-in page ──
+  wireSignIn({ base, form: document.getElementById('auth-form') as HTMLFormElement | null, devForm: document.getElementById('devlogin') as HTMLFormElement | null, toast: (t) => toast(t), done: () => { location.href = location.pathname + location.search; } });
   document.getElementById('signout')?.addEventListener('click', async () => { await authClient.signOut(); location.href = location.pathname; });
-  // local development: a name becomes a player, created on first use
-  document.getElementById('devlogin')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const form = e.currentTarget as HTMLFormElement;
-    const name = String(new FormData(form).get('name') ?? '').trim();
-    if (!name) return;
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'player';
-    const email = `${slug}@curfew.local`, password = form.dataset.password!;
-    form.querySelector('button')!.disabled = true;
-    let { error } = await authClient.signIn.email({ email, password });
-    if (error) ({ error } = await authClient.signUp.email({ email, password, name }));
-    if (error) { form.querySelector('button')!.disabled = false; toast(error.message ?? 'The gate did not open.'); return; }
-    location.href = location.pathname + location.search;
-  });
 
   // ── warband ──
   function showPicker(show: boolean) {

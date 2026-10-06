@@ -30,7 +30,7 @@ if (gm) {
 if (ready && !gm) Astro.response.status = viewer ? 403 : 401;
 const ROLE: Record<string, string> = { admin: 'Admin', gm: 'Game Master', player: 'Player' };
 
-const ledgerHref = `${base}/curfew/`;
+const signInHref = `${base}/signin/?next=${encodeURIComponent(`${base}/admin/`)}`;
 const tz = CAMPAIGN.timezone;
 const when = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
 const day = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'short', year: 'numeric' }).format(d);
@@ -60,8 +60,8 @@ const lastRun = data?.runs[0];
     </header>
 
     {!ready && <div class="wh-gate"><h1>The ledgers are not open</h1><p>This deployment has no database yet. See the README for the Vercel setup.</p></div>}
-    {ready && !viewer && <div class="wh-gate"><h1>Who goes there?</h1><p>The Watch House is for the game master. <a href={ledgerHref}>Sign in at the Ledger</a>, then come back.</p></div>}
-    {ready && viewer && !gm && <div class="wh-gate"><h1>No admittance</h1><p>You are signed in as {viewer.name}, and that name is neither a game master's nor an admin's.</p><p>An admin grants the game master's role here; admins are named in <code>ADMIN_EMAILS</code>. <a href={ledgerHref}>Back to the Ledger</a>.</p></div>}
+    {ready && !viewer && <div class="wh-gate"><h1>Who goes there?</h1><p>The Watch House is for the game master. <a href={signInHref}>Sign in</a>, and you are brought back here.</p></div>}
+    {ready && viewer && !gm && <div class="wh-gate"><h1>No admittance</h1><p>You are signed in as {viewer.name}, and that name is neither a game master's nor an admin's.</p><p>An admin grants the game master's role here; admins are named in <code>ADMIN_EMAILS</code>. <a href={`${base}/curfew/`}>Back to the Ledger</a>.</p></div>}
     {trouble && <div class="wh-gate"><h1>The city did not answer</h1><p>The overview could not be read just now. Try again in a moment.</p></div>}
 
     {data && (

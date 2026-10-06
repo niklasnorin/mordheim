@@ -12,6 +12,7 @@
 .tk-top { display: flex; align-items: center; gap: .75rem; padding: .75rem 0 .5rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 5; background: linear-gradient(var(--bg) 70%, transparent); }
 .tk-back { display: inline-flex; align-items: center; gap: .3rem; min-height: var(--control-size); min-width: var(--control-size); color: var(--ink-dim); text-decoration: none; font: var(--text-ui)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; flex-shrink: 0; }
 .tk-back:hover { color: var(--parchment); }
+.tk-signin { color: var(--gold); }
 .tk-heading { min-width: 0; flex: 1; }
 .tk-title { font: normal clamp(1.35rem, 5.5vw, 1.9rem)/1.1 'Pirata One', Georgia, serif; color: var(--parchment); letter-spacing: .02em; overflow-wrap: anywhere; }
 .tk-sub { color: var(--ink-dim); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

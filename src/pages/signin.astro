@@ -1,0 +1,99 @@
+---
+/**
+ * The gate: sign in, take the oath the first time, or trade a game master's reset word for a new password. Reached
+ * from the header's "Sign in" wherever one is not signed in, and from any page that wants a name; `?next=` says
+ * where to go back to. Signed in already, it sends you on, or offers the way out.
+ */
+import Base from '../layouts/Base.astro';
+import ManageTop from '../components/ManageTop.astro';
+import '../styles/manage.css';
+import { base } from '../lib/site';
+import { hasDatabase } from '../server/db/client';
+import { DEV_LOGIN_PASSWORD, env } from '../server/env';
+import { getActor } from '../server/roles';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const viewer = ready ? await getActor(Astro.request) : null;
+// back where the visitor came from: a path on this site, never another one
+const given = Astro.url.searchParams.get('next');
+const next = given && given.startsWith('/') && !given.startsWith('//') && !given.includes('\\') && (!base || given === base || given.startsWith(`${base}/`)) ? given : null;
+if (viewer && next) return Astro.redirect(next);
+---
+
+<Base title="Sign in — Mordheim" description="Sign in to keep your warband, tell your part of a battle and keep a Curfew ledger.">
+  <main class="mg mg-page signin" id="main-content" data-base={base} data-next={next ?? `${base}/`}>
+    <ManageTop crumbs={[{ label: viewer ? 'Signed in' : 'Sign in' }]} viewer={viewer} />
+
+    {!ready && <div class="mg-hero"><h1 class="mg-h1">The gate is shut</h1><p class="mg-lede">This deployment has no database yet, so nobody can sign in.</p></div>}
+
+    {ready && viewer && (
+      <div class="mg-hero">
+        <p class="mg-kicker">Signed in</p>
+        <h1 class="mg-h1">{viewer.name}</h1>
+        <p class="mg-lede">You are known at the gate on this device.</p>
+        <div class="mg-actions">
+          <a class="mg-btn" href={`${base}/warbands/`}>My warband</a>
+          <a class="mg-btn ghost" href={`${base}/`}>The campaign</a>
+          <button type="button" class="mg-btn ghost" id="signout">Sign out</button>
+        </div>
+      </div>
+    )}
+
+    {ready && !viewer && (
+      <>
+        <div class="mg-hero">
+          <p class="mg-kicker">At the gate</p>
+          <h1 class="mg-h1">Who goes there?</h1>
+          <p class="mg-lede">Sign in to keep your warband, tell your part of a battle, write in the tracker at the table, and keep a ledger in the Curfew. The same name does all of it, from any device.</p>
+        </div>
+        <form class="mg-panel mg-form signin-form" id="auth-form" data-mode="in" novalidate>
+          <div class="signin-tabs" role="tablist" aria-label="Sign in or sign up">
+            <button type="button" role="tab" aria-selected="true" aria-controls="auth-form" data-mode="in">Sign in</button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="auth-form" data-mode="up">First time here</button>
+          </div>
+          <label class="mg-field" data-when-up hidden>Your name<input name="name" type="text" autocomplete="name" maxlength="40" placeholder="As the others know you" /></label>
+          <label class="mg-field">Email<input name="email" type="email" autocomplete="username" required placeholder="you@example.com" /></label>
+          <label class="mg-field" data-when-reset hidden>Reset word from the game master<input name="word" type="text" autocomplete="off" spellcheck="false" placeholder="ash-bell-crow-7f3" /></label>
+          <label class="mg-field" data-auth-password>Password<input name="password" type="password" autocomplete="current-password" required minlength="8" placeholder="At least eight characters" /></label>
+          {env.INVITE_CODE && <label class="mg-field" data-when-up hidden>The word at the gate<input name="inviteCode" type="text" autocomplete="off" placeholder="Ask the game master" /></label>}
+          <div class="signin-foot">
+            <button type="submit" class="mg-btn" data-auth-submit>Sign in</button>
+            <p class="mg-note" data-auth-note>Signed in once, you stay signed in on this device for a Moon or so.</p>
+            <button type="button" class="mg-link" data-auth-forgot data-mode="reset">Forgotten your password?</button>
+          </div>
+        </form>
+        {env.DEV_LOGIN && (
+          <form class="mg-form signin-dev" id="devlogin" data-password={DEV_LOGIN_PASSWORD}>
+            <label class="mg-field">Local player<input name="name" type="text" placeholder="Niklas" required maxlength="40" autocomplete="off" /></label>
+            <div class="mg-actions"><button type="submit" class="mg-btn ghost">Sign in as this player</button></div>
+            <p class="mg-note">Development only: no password, any name, and the same name is the same player.</p>
+          </form>
+        )}
+      </>
+    )}
+  </main>
+</Base>
+
+<style>
+  .signin-form, .signin-dev { max-width: 30rem; }
+  .signin-tabs { display: flex; gap: .25rem; border-bottom: 1px solid var(--border); }
+  .signin-tabs button { background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: .5rem .8rem; min-height: var(--control-size); color: var(--ink-dim); font: var(--text-ui)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; cursor: pointer; }
+  .signin-tabs button:hover { color: var(--parchment); }
+  .signin-tabs button[aria-selected='true'] { color: var(--gold); border-bottom-color: var(--gold); }
+  .signin-foot { display: grid; gap: .6rem; justify-items: start; }
+  .signin-dev { margin-top: 1.25rem; padding: 1rem 1.1rem; border: 1px dashed var(--border); }
+</style>
+
+<script>
+  import { authClientFor, wireSignIn } from '../lib/signin';
+  import { ensureToast } from '../lib/manage';
+  const root = document.getElementById('main-content')!;
+  const base = root.dataset.base ?? '';
+  const next = root.dataset.next || `${base}/`;
+  const toast = ensureToast();
+  wireSignIn({ base, form: document.getElementById('auth-form') as HTMLFormElement | null, devForm: document.getElementById('devlogin') as HTMLFormElement | null, toast, done: () => { location.href = next; } });
+  document.getElementById('signout')?.addEventListener('click', async () => { await authClientFor(base).signOut(); location.href = `${base}/`; });
+</script>

@@ -35,7 +35,7 @@ if (gm) {
 const label = (id: string) => (id === 'omens' ? 'The Omens' : id === 'moons' ? 'The Moons' : id === 'tokens' ? 'Charms and curses' : `Place: ${(docs.find((d) => d.id === id)?.document as { name?: string } | undefined)?.name ?? id.slice('location:'.length)}`);
 const kb = (n: number) => `${(n / 1024).toFixed(n > 10240 ? 0 : 1)} kB`;
 const when = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: CAMPAIGN.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
-const ledgerHref = `${base}/curfew/`;
+const signInHref = `${base}/signin/?next=${encodeURIComponent(`${base}/admin/content/`)}`;
 ---
 
 <Base title="Content — The Watch House" description="The Curfew's content packs, edited by the game master.">
@@ -53,7 +53,7 @@ const ledgerHref = `${base}/curfew/`;
     </header>
 
     {!ready && <div class="wh-gate"><h1>The ledgers are not open</h1><p>This deployment has no database yet.</p></div>}
-    {ready && !viewer && <div class="wh-gate"><h1>Who goes there?</h1><p>The content is for the game master. <a href={ledgerHref}>Sign in at the Ledger</a>, then come back.</p></div>}
+    {ready && !viewer && <div class="wh-gate"><h1>Who goes there?</h1><p>The content is for the game master. <a href={signInHref}>Sign in</a>, and you are brought back here.</p></div>}
     {ready && viewer && !gm && <div class="wh-gate"><h1>No admittance</h1><p>You are signed in as {viewer.name}, and that name is neither a game master's nor an admin's.</p></div>}
 
     {gm && (
