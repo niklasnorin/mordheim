@@ -112,7 +112,13 @@
 #post:not([data-view='player']) .player-only { display: none; }
 
 /* the trading post */
-.stock { width: 100%; border-collapse: collapse; font-size: var(--text-ui); }
+/* every category is its own table; fixed columns of the same widths keep the prices and rarities in one line down the post */
+.stock { width: 100%; border-collapse: collapse; font-size: var(--text-ui); table-layout: fixed; }
+.stock thead th:nth-child(2) { width: 9rem; }
+.stock thead th:nth-child(3) { width: 7.5rem; }
+.stock thead th:nth-child(4) { width: 17rem; }
+.stock td:first-child { overflow-wrap: anywhere; }
+#post[data-view='keeper'] .stock { min-width: 42rem; }
 .stock caption { text-align: left; padding: 1.1rem 0 .4rem; font: normal 1.25rem/1.3 'Pirata One', Georgia, serif; color: var(--parchment); }
 .stock th, .stock td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 .stock th { color: var(--gold); font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; font-weight: normal; white-space: nowrap; }
@@ -121,7 +127,7 @@
 .stock tr.withheld td:first-child { text-decoration: line-through; text-decoration-color: var(--gold-dim); }
 .stock .stock-name { color: var(--parchment); }
 .stock .stock-note { display: block; color: var(--ink-dim); font-size: var(--text-meta); font-style: italic; }
-.stock .stock-was { color: var(--ink-dim); font-size: var(--text-meta); text-decoration: line-through; margin-right: .3rem; }
+.stock .stock-was { display: block; color: var(--ink-dim); font-size: var(--text-meta); text-decoration: line-through; }
 .stock .stock-changed { color: var(--gold); }
 .stock td.act { text-align: right; white-space: nowrap; }
 .stock td.act .mg-actions { margin: 0; justify-content: flex-end; gap: .35rem; }
@@ -129,7 +135,7 @@
 .stock tr[data-editor] .mg-form { gap: .6rem; }
 .stock-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-inline: -1rem; padding-inline: 1rem; }
 .stock-legend { display: flex; gap: .6rem 1.2rem; flex-wrap: wrap; color: var(--ink-dim); font-size: var(--text-meta); font-style: italic; margin: .6rem 0 0; }
-@media (max-width: 560px) { .stock th:nth-child(3), .stock td:nth-child(3) { display: none; } .stock .stock-rarity-inline { display: inline; } }
+@media (max-width: 560px) { .stock th:nth-child(3), .stock td:nth-child(3) { display: none; } .stock .stock-rarity-inline { display: inline; } .stock thead th:nth-child(2) { width: 6.5rem; } }
 @media (min-width: 561px) { .stock .stock-rarity-inline { display: none; } }
 
 /* cards on the index: the banner across the top, the map or a quiet placeholder where there is none */
