@@ -64,13 +64,26 @@
 .poi-list .poi-foot { display: flex; gap: .4rem 1rem; flex-wrap: wrap; align-items: center; color: var(--ink-dim); font-size: var(--text-meta); font-style: italic; }
 .poi-list .poi-foot a { color: var(--gold); text-underline-offset: .2em; }
 .poi-list .poi-foot a:hover { color: var(--parchment); }
-.poi-list .poi-foot .mg-editor { grid-column: 1 / -1; }
-.poi-list > li .mg-editor { grid-column: 2; margin-top: .4rem; }
+/* a game master's pen on a place: a quiet word at the card's top right, the form unfolding beneath */
+.poi-list > li:has(.poi-edit) .poi-head { padding-right: 3.5rem; }
+.poi-edit { grid-column: 2; }
+.poi-edit > summary { list-style: none; position: absolute; top: .55rem; right: .7rem; display: inline-flex; align-items: center; min-height: 2.25rem; padding: .2rem .45rem; color: var(--ink-dim); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .14em; cursor: pointer; }
+.poi-edit > summary::-webkit-details-marker { display: none; }
+.poi-edit > summary:hover, .poi-edit[open] > summary { color: var(--gold); }
+.poi-edit[open] > summary::after { content: ' ×'; }
+.poi-edit > .mg-form { margin-top: .7rem; padding: .9rem; border: 1px solid var(--border); background: #0f1512; }
 
 /* the picker's own inputs sit small beside the map */
 .loc-spot { display: grid; grid-template-columns: 1fr 1fr auto; gap: .6rem; align-items: end; }
 .loc-spot .mg-field > input { min-height: 2.5rem; padding: .4rem .6rem; }
 @media (max-width: 420px) { .loc-spot { grid-template-columns: 1fr 1fr; } .loc-spot .mg-btn { grid-column: 1 / -1; } }
+
+/* the trading post: a game master sees it as a player does until they turn to the keeper's desk */
+.stock-view { display: flex; gap: .4rem .6rem; align-items: center; flex-wrap: wrap; margin: 0 0 .8rem; }
+.stock-view .mg-btn[aria-pressed='true'] { border-color: var(--gold); color: var(--parchment); background: #1f2823; }
+#post[data-view='player'] .gm-only, #post[data-view='player'] tr.withheld, #post[data-view='player'] .stock-was, #post[data-view='player'] .stock[data-offered='0'] { display: none; }
+#post[data-view='player'] .stock-changed { color: inherit; }
+#post:not([data-view='player']) .player-only { display: none; }
 
 /* the trading post */
 .stock { width: 100%; border-collapse: collapse; font-size: var(--text-ui); }

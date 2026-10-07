@@ -24,6 +24,29 @@ export function wireLocations(root: HTMLElement, base: string): void {
   for (const form of root.querySelectorAll<HTMLFormElement>('form')) if (form.querySelector('[data-map].is-picker')) wirePicker(form);
   wireLitPins(root);
   wireMapUploads(root, base);
+  wireStockView(root);
+}
+
+/**
+ * A game master is a player too: the trading post opens as a player sees it, and the keeper's desk (the whole chart,
+ * the withheld lines, the amendments) is a tap away. The choice is kept on the device.
+ */
+const STOCK_VIEW_KEY = 'mordheim:stock-view';
+function wireStockView(root: HTMLElement): void {
+  const post = root.querySelector<HTMLElement>('#post[data-view]');
+  if (!post) return;
+  const buttons = [...post.querySelectorAll<HTMLButtonElement>('[data-stock-view]')];
+  const show = (view: string) => {
+    post.dataset.view = view;
+    for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.stockView === view));
+  };
+  let kept: string | null = null;
+  try { kept = localStorage.getItem(STOCK_VIEW_KEY); } catch { /* no storage: the player's view it is */ }
+  show(kept === 'keeper' ? 'keeper' : 'player');
+  for (const b of buttons) b.addEventListener('click', () => {
+    show(b.dataset.stockView === 'keeper' ? 'keeper' : 'player');
+    try { localStorage.setItem(STOCK_VIEW_KEY, post.dataset.view!); } catch { /* not kept, then */ }
+  });
 }
 
 function wirePicker(form: HTMLFormElement): void {

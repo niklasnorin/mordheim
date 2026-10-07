@@ -96,15 +96,15 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
         {location.points.map((p) => (
           <li id={`point-${p.id}`}>
             <span class="poi-num" aria-hidden="true"></span>
-            <span><span class="poi-name">{p.name}</span>{p.kind && <span class="mg-chip poi-kind">{p.kind}</span>}</span>
+            <span class="poi-head"><span class="poi-name">{p.name}</span>{p.kind && <span class="mg-chip poi-kind">{p.kind}</span>}</span>
             {p.description && <p class="poi-text">{p.description}</p>}
             <p class="poi-foot">
               {pinned(p) && location!.map ? <a href="#map" data-show-pin={p.id}>On the map</a> : <span>Not on the map</span>}
               {here.filter((s) => s.pointId === p.id).map((s) => <a href={`${base}/scenarios/${s.id}/`}>{s.status === 'upcoming' ? 'Upcoming here' : 'Fought here'}: {s.title}</a>)}
             </p>
             {gm && (
-              <details class="mg-editor">
-                <summary>Change it</summary>
+              <details class="poi-edit">
+                <summary aria-label={`Edit ${p.name}`}>Edit</summary>
                 <form class="mg-form" data-api="locations/update-point" data-json={JSON.stringify({ pointId: p.id })}>
                   <div class="mg-two">
                     <label class="mg-field">Name<input name="patch.name" required maxlength="80" value={p.name} /></label>
@@ -148,11 +148,19 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
       ) : <p class="mg-empty">No battle has been fought in {location.name} yet, and none is set here.{gm ? ' A scenario names its place on its own page.' : ''}</p>}
     </section>
 
-    <section class="mg-section" id="post">
+    <section class="mg-section" id="post" data-view={gm ? 'player' : undefined}>
       <div class="mg-section-head"><h2 class="mg-h2">The trading post</h2><span class="mg-muted">{plural(offered, 'item')} to be had. Prices in gold crowns; a rare item is found on that roll or better on two dice.</span></div>
-      {gm && <p class="mg-note">You see the whole chart. Players see only what is to be had: common items unless withheld, rare ones once offered. Amend a line to change its price, its rarity or to leave a note; a line put back to the chart in every way forgets it was ever touched.</p>}
       {gm && (
-        <details class="mg-editor">
+        <div class="stock-view" role="group" aria-label="How the post is shown">
+          <span class="mg-muted">Shown as</span>
+          <button type="button" class="mg-btn ghost sm" data-stock-view="player" aria-pressed="true">A player sees it</button>
+          <button type="button" class="mg-btn ghost sm" data-stock-view="keeper" aria-pressed="false">The keeper’s desk</button>
+        </div>
+      )}
+      {gm && <p class="mg-note gm-only">The whole chart. Players see only what is to be had: common items unless withheld, rare ones once offered. Amend a line to change its price, its rarity or to leave a note; a line put back to the chart in every way forgets it was ever touched.</p>}
+      {gm && offered === 0 && <p class="mg-empty player-only">The post has nothing to sell.</p>}
+      {gm && (
+        <details class="mg-editor gm-only">
           <summary>Add an item of the post’s own</summary>
           <form class="mg-form" data-api="locations/add-item" data-json={JSON.stringify({ locationId: location.id })}>
             <div class="mg-two">
@@ -172,18 +180,18 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
       )}
       <div class="stock-wrap">
         {groups.map((g) => (
-          <table class="stock">
+          <table class="stock" data-offered={g.lines.filter((l) => l.available).length}>
             <caption>{g.category}</caption>
-            <thead><tr><th scope="col">Item</th><th scope="col">Price</th><th scope="col">Rarity</th>{gm && <th scope="col"><span class="visually-hidden">Actions</span></th>}</tr></thead>
+            <thead><tr><th scope="col">Item</th><th scope="col">Price</th><th scope="col">Rarity</th>{gm && <th scope="col" class="gm-only"><span class="visually-hidden">Actions</span></th>}</tr></thead>
             <tbody>
               {g.lines.map((l) => (
                 <>
                   <tr class:list={{ withheld: !l.available }}>
-                    <td><span class="stock-name">{l.name}</span>{l.custom && <> <span class="mg-chip gold">Own</span></>}{!l.available && gm && <> <span class="mg-chip">Not to be had</span></>}<span class="stock-rarity-inline mg-muted"> · {rarityLabel(l.rarity)}</span>{(l.note || l.notes) && <span class="stock-note">{[l.note, l.notes].filter(Boolean).join('. ')}</span>}</td>
+                    <td><span class="stock-name">{l.name}</span>{l.custom && <> <span class="mg-chip gold">Own</span></>}{!l.available && gm && <> <span class="mg-chip gm-only">Not to be had</span></>}<span class="stock-rarity-inline mg-muted"> · {rarityLabel(l.rarity)}</span>{(l.note || l.notes) && <span class="stock-note">{[l.note, l.notes].filter(Boolean).join('. ')}</span>}</td>
                     <td class="num">{l.chart && l.changed.price && <span class="stock-was">{priceLabel(l.chart.price)}</span>}<span class:list={{ 'stock-changed': l.changed.price }}>{priceLabel(l.price)}</span></td>
                     <td class="num">{l.chart && l.changed.rarity && <span class="stock-was">{rarityLabel(l.chart.rarity)}</span>}<span class:list={{ 'stock-changed': l.changed.rarity }}>{rarityLabel(l.rarity)}</span></td>
                     {gm && (
-                      <td class="act"><div class="mg-actions">
+                      <td class="act gm-only"><div class="mg-actions">
                         {l.custom ? (
                           <>
                             <button type="button" class="mg-btn ghost sm" data-act="locations/update-item" data-body={JSON.stringify({ locationId: location!.id, itemId: l.itemId, patch: { available: !l.available } })}>{l.available ? 'Withhold' : 'Offer'}</button>
@@ -200,7 +208,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
                     )}
                   </tr>
                   {gm && (
-                    <tr id={`stock-edit-${l.itemId}`} data-editor hidden>
+                    <tr id={`stock-edit-${l.itemId}`} class="gm-only" data-editor hidden>
                       <td colspan="4">
                         {l.custom ? (
                           <form class="mg-form" data-api="locations/update-item" data-json={JSON.stringify({ locationId: location!.id, itemId: l.itemId })}>
