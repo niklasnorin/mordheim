@@ -5,7 +5,7 @@
 import type { APIRoute } from 'astro';
 import { z } from 'zod';
 import { dispatch, route } from '../../../server/api';
-import { addEvent, addOutOfAction, chooseSides, createScenario, deleteScenario, endTurn, setTurnLimit, markPlayed, removeEvent, removeOutOfAction, reopenScenario, requireScenario, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writePerspective } from '../../../server/campaign/scenarios';
+import { addEvent, addOutOfAction, chooseSides, createScenario, deleteScenario, endTurn, setTurnLimit, markPlayed, removeEvent, removeOutOfAction, reopenScenario, requireScenario, setBrought, setParticipants, setTurn, updateScenario, writeBattleReport, writePerspective } from '../../../server/campaign/scenarios';
 
 export const prerender = false;
 
@@ -29,7 +29,8 @@ const routes = {
   played: route(z.object({ scenarioId: id, results: z.array(z.object({ warbandId: z.string().max(64), result: z.enum(['victory', 'defeat', 'draw']) })).max(20) }), (i, a) => wrap(markPlayed(a, i.scenarioId, i.results))),
   reopen: route(z.object({ scenarioId: id }), (i, a) => wrap(reopenScenario(a, i.scenarioId)), 'gm'),
   delete: route(z.object({ scenarioId: id }), (i, a) => deleteScenario(a, i.scenarioId).then(() => ({ ok: true })), 'gm'),
-  battle: route(z.object({ scenarioId: id, battle: paragraphs }), (i, a) => wrap(writeBattle(a, i.scenarioId, i.battle))),
+  // the battle told: the long version for those who may retell it, and with it, for a game master, the short version, the outcome and the epilogue
+  battle: route(z.object({ scenarioId: id, battle: paragraphs.optional(), patch: z.object({ summary: z.string().max(1000), outcome: z.string().max(4000), epilogue: z.string().max(8000) }).partial().optional() }), (i, a) => wrap(writeBattleReport(a, i.scenarioId, { ...i.patch, battle: i.battle }))),
   perspective: route(z.object({
     scenarioId: id, warbandId: z.string().max(64),
     patch: z.object({ prologue: z.string().max(8000), epilogue: z.string().max(8000), highlights: z.array(z.string().max(1000)).max(12), lowlights: z.array(z.string().max(1000)).max(12) }).partial(),

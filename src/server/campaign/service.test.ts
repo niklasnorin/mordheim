@@ -3,7 +3,7 @@ import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { actorOf, testDatabase } from '../testdb.ts';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, getWarband, listWarbands, loadRoster, releaseWarband, removeMember, updateMember, updateWarband, LedgerError } from './roster.ts';
-import { addEvent, addOutOfAction, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, reopenScenario, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writePerspective } from './scenarios.ts';
+import { addEvent, addOutOfAction, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, reopenScenario, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writeBattleReport, writePerspective } from './scenarios.ts';
 import { articlesFor, createArticle, deleteArticle, listArticles, updateArticle } from './news.ts';
 import { addItem, addPoint, createLocation, deleteLocation, getLocation, listLocations, movePoint, removeBanner, removeItem, removeMap, removePoint, scenarioCounts, setStock, updateItem, updateLocation, updatePoint, uploadMap, uploadPicture } from './locations.ts';
 import { locations as locationFixtures } from '../../data/locations.ts';
@@ -534,4 +534,25 @@ test('two seeds racing on an empty locations table write each place and its poin
   const list = await listLocations();
   assert.deepEqual(list.map((l) => l.id), locationFixtures.map((l) => l.id));
   assert.equal(list.find((l) => l.id === 'fussenbach')!.points.length, 12, 'the points are not doubled');
+});
+
+test('the battle told in one go: the short and long versions, the outcome and the epilogue, each by whoever may write it', async () => {
+  const s = await createScenario(gm, { title: 'The Long and the Short', playedOn: '2026-12-12', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  let t = await writeBattleReport(gm, s.id, { summary: 'Two warbands, one bridge.' });
+  assert.equal(t.summary, 'Two warbands, one bridge.', 'an upcoming game takes the short version alone');
+  await markPlayed(gm, s.id, [{ warbandId: 'nordost', result: 'victory' }, { warbandId: 'bitterbrow-expedition', result: 'defeat' }]);
+  t = await writeBattleReport(gm, s.id, { summary: 'The kin held the bridge.', battle: ['They met at the bridge.', 'The kin held it.'], outcome: 'The kin held the bridge at the end.', epilogue: 'The bridge stood.' });
+  assert.equal(t.summary, 'The kin held the bridge.');
+  assert.deepEqual(t.battle, ['They met at the bridge.', 'The kin held it.']);
+  assert.equal(t.outcome, 'The kin held the bridge at the end.');
+  assert.equal(t.epilogue, 'The bridge stood.');
+  // a player who fought may retell the long version once it is opened, and nothing else
+  await assert.rejects(writeBattleReport(niklas, s.id, { battle: ['Mine.'] }), (e: unknown) => e instanceof LedgerError && e.status === 403, 'not until it is opened');
+  await updateScenario(gm, s.id, { battleOpen: true });
+  t = await writeBattleReport(niklas, s.id, { battle: ['They met at the bridge.', 'Agnar held it.'] });
+  assert.deepEqual(t.battle, ['They met at the bridge.', 'Agnar held it.']);
+  await assert.rejects(writeBattleReport(niklas, s.id, { summary: 'Ours.', battle: ['Ours.'] }), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  t = (await getScenario(s.id))!;
+  assert.equal(t.summary, 'The kin held the bridge.', 'a refused report writes nothing');
+  assert.deepEqual(t.battle, ['They met at the bridge.', 'Agnar held it.']);
 });

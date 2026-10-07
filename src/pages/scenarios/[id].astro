@@ -417,14 +417,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
               <label class="mg-field" data-when-custom hidden={!!scenario.rulebookScenario}>Win condition<textarea name="patch.winCondition" maxlength="4000">{scenario.winCondition}</textarea><small>How a custom scenario is won. A rulebook scenario sets its own.</small></label>
               <label class="mg-field">Prologue<textarea name="patch.prologue" maxlength="8000" class="tall">{scenario.prologue}</textarea></label>
               <label class="mg-field check"><input type="checkbox" name="patch.prologueAsSummary" checked={scenario.prologueAsSummary} /> Print the prologue under the title until the game is played</label>
-              <label class="mg-field">Summary<textarea name="patch.summary" maxlength="1000">{summaryOf({ ...scenario, status: 'played' })}</textarea><small>Two or three sentences: what stands under the title here, and what the Chronicle prints on the front page.</small></label>
-              {!upcoming && (
-                <>
-                  <label class="mg-field">How the outcome was decided<textarea name="patch.outcome" maxlength="4000">{scenario.outcome}</textarea></label>
-                  <label class="mg-field">Epilogue<textarea name="patch.epilogue" maxlength="8000" class="tall">{scenario.epilogue}</textarea></label>
-                  <label class="mg-field check"><input type="checkbox" name="patch.battleOpen" checked={scenario.battleOpen} /> Open the battle narrative to those who fought</label>
-                </>
-              )}
+              {!upcoming && <label class="mg-field check"><input type="checkbox" name="patch.battleOpen" checked={scenario.battleOpen} /> Open the battle’s long version to those who fought</label>}
               <div class="mg-actions end"><button type="submit" class="mg-btn">Save the scenario</button></div>
             </form>
           </details>
@@ -433,10 +426,17 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         {(gm || (!upcoming && mayRetell)) && (
           <details class="mg-editor">
             <summary>The battle</summary>
-            {!upcoming && mayRetell && (
+            {(gm || (!upcoming && mayRetell)) && (
               <form class="mg-form" data-api="scenarios/battle" data-json={JSON.stringify({ scenarioId: scenario.id })}>
-                <label class="mg-field">The account<textarea name="battle" data-paragraphs class="tall" style="min-height: 22rem">{scenario.battle.join('\n\n')}</textarea><small>One paragraph per beat of the fight, a blank line between them. Who did what to whom, in the archivist's neutral past tense. The telling as it stands now is kept before yours replaces it.</small></label>
-                <div class="mg-actions end"><button type="submit" class="mg-btn">Set down this telling</button></div>
+                {gm && <label class="mg-field">The short version<textarea name="patch.summary" maxlength="1000">{summaryOf({ ...scenario, status: 'played' })}</textarea><small>Two or three sentences: what stands under the title here, and what the Chronicle prints on the front page.{upcoming && scenario.prologueAsSummary ? ' Until the game is played, the prologue stands in when this is empty.' : ''}</small></label>}
+                {!upcoming && mayRetell && <label class="mg-field">The long version<textarea name="battle" data-paragraphs class="tall" style="min-height: 22rem">{scenario.battle.join('\n\n')}</textarea><small>One paragraph per beat of the fight, a blank line between them. Who did what to whom, in the archivist's neutral past tense. The telling as it stands now is kept before yours replaces it.</small></label>}
+                {gm && !upcoming && (
+                  <>
+                    <label class="mg-field">How the outcome was decided<textarea name="patch.outcome" maxlength="4000">{scenario.outcome}</textarea></label>
+                    <label class="mg-field">Epilogue<textarea name="patch.epilogue" maxlength="8000" class="tall">{scenario.epilogue}</textarea></label>
+                  </>
+                )}
+                <div class="mg-actions end"><button type="submit" class="mg-btn">{gm && upcoming ? 'Save the short version' : 'Set down this telling'}</button></div>
               </form>
             )}
             {gm && (

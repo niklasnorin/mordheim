@@ -310,6 +310,29 @@ export async function writeBattle(actor: Actor, id: string, battle: string[]): P
   return (await getScenario(id))!;
 }
 
+export interface BattleReport {
+  /** The short version: what stands under the title and in the Chronicle. A game master's. */
+  summary?: string;
+  /** The long version, a paragraph per beat. Game masters, and those who fought once it is opened to them. */
+  battle?: string[];
+  /** How the outcome was decided, and the epilogue. A game master's. */
+  outcome?: string;
+  epilogue?: string;
+}
+
+/**
+ * The battle told in one go: the short version, the long version, how the outcome was decided and the epilogue. The
+ * long version follows `writeBattle` (its own permission, every telling kept); the rest are a game master's, and a
+ * player who sends them is refused before anything is written.
+ */
+export async function writeBattleReport(actor: Actor, id: string, report: BattleReport): Promise<Scenario> {
+  const { battle, ...rest } = report;
+  const patch = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined)) as ScenarioPatch;
+  if (Object.keys(patch).length) await updateScenario(actor, id, patch);
+  if (battle !== undefined) return writeBattle(actor, id, battle);
+  return requireScenario(id);
+}
+
 // ───────────────────────── each warband's own telling ─────────────────────────
 
 export interface PerspectivePatch { prologue?: string; epilogue?: string; highlights?: string[]; lowlights?: string[] }
