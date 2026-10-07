@@ -101,8 +101,8 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
           <li id={`point-${p.id}`} class:list={['poi-card', { pinned: pinned(p) && !!location!.map }]} data-point-card={p.id}>
             <span class="poi-num" aria-hidden="true"></span>
             {pinned(p) && location!.map
-              ? <button type="button" class="poi-head poi-select" data-select={p.id} aria-pressed="false" aria-label={`Show ${p.name} on the map`}><span class="poi-name">{p.name}</span>{p.kind && <span class="mg-chip poi-kind">{p.kind}</span>}</button>
-              : <span class="poi-head"><span class="poi-name">{p.name}</span>{p.kind && <span class="mg-chip poi-kind">{p.kind}</span>}</span>}
+              ? <button type="button" class="poi-head poi-select" data-select={p.id} aria-pressed="false" aria-label={`Show ${p.name} on the map`}><span class="poi-name">{p.name}</span></button>
+              : <span class="poi-head"><span class="poi-name">{p.name}</span></span>}
             {p.description && <p class="poi-text">{p.description}</p>}
             {(!(pinned(p) && location!.map) || here.some((s) => s.pointId === p.id)) && <p class="poi-foot">
               {!(pinned(p) && location!.map) && <span>Not on the map</span>}

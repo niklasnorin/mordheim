@@ -78,7 +78,6 @@
 .poi-list .poi-num { grid-row: 1 / span 3; color: var(--ink-dim); font: var(--text-meta)/1 var(--font-utility); text-align: center; padding-top: .35rem; }
 .poi-list .poi-num::before { counter-increment: poi; content: counter(poi, decimal-leading-zero); }
 .poi-list .poi-name { font: 1.15rem/1.2 'Pirata One', Georgia, serif; color: var(--parchment); }
-.poi-list .poi-kind { margin-left: .5rem; vertical-align: .15em; }
 .poi-list .poi-text { color: var(--ink); font-size: var(--text-ui); line-height: 1.6; }
 .poi-list .poi-foot { display: flex; gap: .4rem 1rem; flex-wrap: wrap; align-items: center; color: var(--ink-dim); font-size: var(--text-meta); font-style: italic; }
 .poi-list .poi-foot a { color: var(--gold); text-underline-offset: .2em; }
