@@ -473,10 +473,20 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
             <details class="mg-editor" id={`pen-${p.warbandId}`} open={!gm && speaksFor.length === 1}>
               <summary>{nameOf(p.warbandId)}: their telling</summary>
               <form class="mg-form" data-api="scenarios/perspective" data-json={JSON.stringify({ scenarioId: scenario!.id, warbandId: p.warbandId })}>
-                <label class="mg-field">Prologue<textarea name="patch.prologue" maxlength="8000">{p.prologue}</textarea><small>Why they came, from their own side of the street.</small></label>
+                <div class="telling-parts" role="group" aria-label="What their telling has">
+                  <label class="mg-field check"><input type="checkbox" data-telling-part={`prologue-${p.warbandId}`} checked={!!p.prologue.trim()} /> A prologue</label>
+                  {!upcoming && <label class="mg-field check"><input type="checkbox" data-telling-part={`epilogue-${p.warbandId}`} checked={!!p.epilogue.trim()} /> An epilogue</label>}
+                </div>
+                <div id={`prologue-${p.warbandId}`} hidden={!p.prologue.trim()}>
+                  <label class="mg-field">Prologue<textarea name="patch.prologue" maxlength="8000" disabled={!p.prologue.trim()}>{p.prologue}</textarea><small>Why they came, from their own side of the street.</small></label>
+                  <input type="hidden" name="patch.prologue" value="" disabled={!!p.prologue.trim()} data-telling-empty />
+                </div>
                 {!upcoming && (
                   <>
-                    <label class="mg-field">Epilogue<textarea name="patch.epilogue" maxlength="8000">{p.epilogue}</textarea></label>
+                    <div id={`epilogue-${p.warbandId}`} hidden={!p.epilogue.trim()}>
+                      <label class="mg-field">Epilogue<textarea name="patch.epilogue" maxlength="8000" disabled={!p.epilogue.trim()}>{p.epilogue}</textarea><small>How they left it, and what they carried away.</small></label>
+                      <input type="hidden" name="patch.epilogue" value="" disabled={!!p.epilogue.trim()} data-telling-empty />
+                    </div>
                     <label class="mg-field">Finest moments<textarea name="patch.highlights" data-list>{p.highlights.join('\n')}</textarea><small>One per line.</small></label>
                     <label class="mg-field">Darkest moments<textarea name="patch.lowlights" data-list>{p.lowlights.join('\n')}</textarea><small>One per line.</small></label>
                   </>
@@ -547,6 +557,21 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   const base = root.dataset.base ?? '';
   wireManage(root, base);
   wireLocations(root, base);
+  // a warband's telling: the prologue and the epilogue are written only when ticked. An unticked part is saved empty,
+  // but its words stay in the box until the page is saved, so ticking it again by mistake loses nothing.
+  root.addEventListener('change', (e) => {
+    const box = e.target as HTMLInputElement;
+    if (!box.matches('[data-telling-part]')) return;
+    const part = document.getElementById(box.dataset.tellingPart!);
+    if (!part) return;
+    part.hidden = !box.checked;
+    const text = part.querySelector<HTMLTextAreaElement>('textarea');
+    const empty = part.querySelector<HTMLInputElement>('[data-telling-empty]');
+    if (text) text.disabled = !box.checked;
+    if (empty) empty.disabled = box.checked;
+    if (box.checked) text?.focus();
+  });
+
   // a rulebook scenario sets its own win condition, so the field is only for a custom one
   for (const select of root.querySelectorAll<HTMLSelectElement>('select[name="patch.rulebookScenario"]')) {
     const form = select.closest('form');
@@ -907,6 +932,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   .brought-fields { display: grid; gap: .6rem; grid-template-columns: 10rem minmax(0, 1fr) minmax(0, 1fr); margin: .3rem 0 .3rem 2rem; }
   @media (max-width: 720px) { .brought-fields { grid-template-columns: 1fr; margin-left: 0; } }
   .ooa { padding-top: .5rem; }
+  .telling-parts { display: flex; flex-wrap: wrap; gap: 0 1.5rem; }
   .ooa-row { display: flex; justify-content: space-between; gap: .8rem; align-items: center; padding: .4rem 0; border-bottom: 1px solid var(--border); font-size: var(--text-ui); }
   .ooa-row b { color: var(--parchment); font-weight: normal; }
   .mg-revisions details summary { list-style: none; cursor: pointer; }
