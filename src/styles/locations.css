@@ -98,8 +98,8 @@
 
 /* the market's mood: a painting behind the page that comes up as the post is scrolled to, and goes as it is left */
 .loc-mood { position: fixed; inset: 0; z-index: -1; opacity: 0; transition: opacity 1.6s ease; pointer-events: none; }
-.loc-mood img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; filter: saturate(.7) brightness(.72); }
-.loc-mood::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #0b110f 0%, #0b110f70 28%, #0b110f55 55%, #0b110fd9 100%); }
+.loc-mood img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; filter: saturate(.65) brightness(.6); }
+.loc-mood::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #0b110f 0%, #0b110fb3 28%, #0b110f99 55%, #0b110fe6 100%); }
 .mg-page.is-market .loc-mood { opacity: 1; }
 .mg-page.is-market .stock caption, .mg-page.is-market .stock th { text-shadow: 0 1px 4px #000c; }
 
