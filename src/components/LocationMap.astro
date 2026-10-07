@@ -1,7 +1,8 @@
 ---
 /**
- * A location's map with its pins: the points of interest (a tap goes to the point's entry in the list), the battles
- * fought there (a tap opens the scenario), and, on a scenario's page, the one marker for that fight. As a picker,
+ * A location's map with its pins and their labels: the points of interest (a tap goes to the point's entry in the
+ * list, and a tap on the entry lights the pin), the battles fought there (a tap opens the scenario), and, on a
+ * scenario's page, the one marker for that fight. Two filters hide the places or the battles while the map is read. As a picker,
  * for a game master's form, the pins are buttons and a tap on the map sets the fight's spot; `src/lib/locations.ts`
  * wires it. Styles in `src/styles/locations.css`.
  */
@@ -55,6 +56,16 @@ const side = (p: MapPosition) => (p.y < 14 ? 'below' : '');
         </span>
       )}
     </div>
-    {(caption || Astro.slots.has('default')) && <figcaption class="lmap-caption">{caption}<slot /></figcaption>}
+    {(caption || Astro.slots.has('default') || (!picker && !quiet)) && (
+      <figcaption class="lmap-caption">
+        <span>{caption}<slot /></span>
+        {!picker && !quiet && (
+          <span class="lmap-filters" role="group" aria-label="What the map shows">
+            {points.length > 0 && <button type="button" class="lmap-filter poi" data-map-filter="points" aria-pressed="true"><i aria-hidden="true"></i> Places</button>}
+            {fights.length > 0 && <button type="button" class="lmap-filter fight" data-map-filter="fights" aria-pressed="true"><i aria-hidden="true"></i> Battles</button>}
+          </span>
+        )}
+      </figcaption>
+    )}
   </figure>
 )}

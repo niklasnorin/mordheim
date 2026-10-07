@@ -83,7 +83,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
     <section class="mg-section" id="map">
       <div class="mg-section-head"><h2 class="mg-h2">The map</h2>{location.map && <span class="mg-muted">{pins.length ? `${plural(pins.length, 'place')} marked` : 'Nothing marked yet'}{here.some((s) => fightPosition(s, location!)) ? `, ${plural(here.filter((s) => fightPosition(s, location!)).length, 'battle')} pinned` : ''}</span>}</div>
       {location.map ? (
-        <LocationMap location={location} scenarios={here} caption={pins.length ? 'Tap a gold pin to read about the place; a red one opens the battle fought there.' : 'No place is marked on it yet.'} />
+        <LocationMap location={location} scenarios={here} caption={pins.length ? 'A gold pin is a place: tap it to read about it below, or tap the place below to find it here. A red pin opens a battle.' : 'No place is marked on it yet.'} />
       ) : (
         <p class="mg-empty">No map of {location.name} has been drawn yet.{gm ? ' Upload one in the pen below; the places of interest are listed meanwhile.' : ' The places of interest are listed below.'}</p>
       )}
@@ -94,14 +94,16 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
       {location.points.length === 0 && <p class="mg-empty">No place has been marked yet.{gm ? ' Add the first in the pen.' : ''}</p>}
       <ol class="poi-list">
         {location.points.map((p) => (
-          <li id={`point-${p.id}`}>
+          <li id={`point-${p.id}`} class:list={['poi-card', { pinned: pinned(p) && !!location!.map }]} data-point-card={p.id}>
             <span class="poi-num" aria-hidden="true"></span>
-            <span class="poi-head"><span class="poi-name">{p.name}</span>{p.kind && <span class="mg-chip poi-kind">{p.kind}</span>}</span>
+            {pinned(p) && location!.map
+              ? <button type="button" class="poi-head poi-select" data-select={p.id} aria-pressed="false" aria-label={`Show ${p.name} on the map`}><span class="poi-name">{p.name}</span>{p.kind && <span class="mg-chip poi-kind">{p.kind}</span>}</button>
+              : <span class="poi-head"><span class="poi-name">{p.name}</span>{p.kind && <span class="mg-chip poi-kind">{p.kind}</span>}</span>}
             {p.description && <p class="poi-text">{p.description}</p>}
-            <p class="poi-foot">
-              {pinned(p) && location!.map ? <a href="#map" data-show-pin={p.id}>On the map</a> : <span>Not on the map</span>}
+            {(!(pinned(p) && location!.map) || here.some((s) => s.pointId === p.id)) && <p class="poi-foot">
+              {!(pinned(p) && location!.map) && <span>Not on the map</span>}
               {here.filter((s) => s.pointId === p.id).map((s) => <a href={`${base}/scenarios/${s.id}/`}>{s.status === 'upcoming' ? 'Upcoming here' : 'Fought here'}: {s.title}</a>)}
-            </p>
+            </p>}
             {gm && (
               <details class="poi-edit">
                 <summary aria-label={`Edit ${p.name}`}>Edit</summary>

@@ -22,9 +22,23 @@ import { ensureToast, postApi } from './manage';
 
 export function wireLocations(root: HTMLElement, base: string): void {
   for (const form of root.querySelectorAll<HTMLFormElement>('form')) if (form.querySelector('[data-map].is-picker')) wirePicker(form);
-  wireLitPins(root);
+  wireSelectedPlaces(root);
+  wireMapFilters(root);
   wireMapUploads(root, base);
   wireStockView(root);
+}
+
+/** The two filters under the map: places on or off, battles on or off, while the map is read. */
+function wireMapFilters(root: HTMLElement): void {
+  root.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-map-filter]');
+    if (!b) return;
+    const map = b.closest<HTMLElement>('[data-map]');
+    if (!map) return;
+    const on = b.getAttribute('aria-pressed') !== 'true';
+    b.setAttribute('aria-pressed', String(on));
+    map.classList.toggle(b.dataset.mapFilter === 'fights' ? 'hide-fights' : 'hide-points', !on);
+  });
 }
 
 /**
@@ -115,19 +129,32 @@ function wirePicker(form: HTMLFormElement): void {
   } else draw();
 }
 
-/** A point's entry in the list lights its pin on the map for a moment, so the two can be found from each other. */
-function wireLitPins(root: HTMLElement): void {
-  const light = (id: string) => {
-    for (const pin of root.querySelectorAll<HTMLElement>(`[data-pin="${CSS.escape(id)}"]`)) {
-      pin.classList.add('is-lit');
-      setTimeout(() => pin.classList.remove('is-lit'), 2400);
+/**
+ * A place's card and its pin are one thing seen twice: selecting the card lights the pin and brings the map into
+ * view, and a tap on the pin (which goes to the card) selects the card. One place is selected at a time.
+ */
+function wireSelectedPlaces(root: HTMLElement): void {
+  const cards = [...root.querySelectorAll<HTMLElement>('[data-point-card]')];
+  if (!cards.length) return;
+  const select = (id: string | null, showMap: boolean) => {
+    for (const c of cards) {
+      const on = c.dataset.pointCard === id;
+      c.classList.toggle('is-selected', on);
+      c.querySelector<HTMLButtonElement>('.poi-select')?.setAttribute('aria-pressed', String(on));
     }
+    for (const pin of root.querySelectorAll<HTMLElement>('[data-pin]')) pin.classList.toggle('is-lit', pin.dataset.pin === id);
+    if (showMap && id) root.querySelector<HTMLElement>('[data-map]:not(.is-picker)')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
   root.addEventListener('click', (e) => {
-    const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[data-show-pin]');
-    if (a) light(a.dataset.showPin ?? '');
+    const t = e.target as HTMLElement;
+    const button = t.closest<HTMLButtonElement>('.poi-select');
+    if (button) { select(button.getAttribute('aria-pressed') === 'true' ? null : button.dataset.select ?? null, true); return; }
+    // the card's quiet parts select it too; its links, forms and the pen are their own business
+    if (t.closest('a, button, details, form, input, select, textarea, label')) return;
+    const card = t.closest<HTMLElement>('[data-point-card].pinned');
+    if (card) select(card.dataset.pointCard ?? null, true);
   });
-  const fromHash = () => { const m = /^#point-(\d+)$/.exec(location.hash); if (m) light(m[1]); };
+  const fromHash = () => { const m = /^#point-(\d+)$/.exec(location.hash); if (m) select(m[1], false); };
   window.addEventListener('hashchange', fromHash);
   fromHash();
 }

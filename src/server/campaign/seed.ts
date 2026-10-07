@@ -34,12 +34,17 @@ export function ensureLocationsSeeded(): Promise<void> {
   return locationsSeeded;
 }
 
+/**
+ * Write the location fixtures if the table is empty. Two seeds may race (two cold starts, or the campaign's seed beside
+ * the locations' own), so a location's points are written only by the seed that wrote the location.
+ */
 export async function seedLocationsIfEmpty(): Promise<boolean> {
   const d = db();
   const [{ n }] = await d.select({ n: sql<number>`count(*)::int` }).from(locations);
   if (n > 0) return false;
   for (const [i, l] of seedLocations.entries()) {
-    await d.insert(locations).values({ id: l.id, name: l.name, region: l.region, description: l.description, map: l.map ?? null, banner: l.banner ?? null, bannerFocus: l.bannerFocus ?? '50% 50%', sort: i + 1 }).onConflictDoNothing();
+    const written = await d.insert(locations).values({ id: l.id, name: l.name, region: l.region, description: l.description, map: l.map ?? null, banner: l.banner ?? null, bannerFocus: l.bannerFocus ?? '50% 50%', sort: i + 1 }).onConflictDoNothing().returning({ id: locations.id });
+    if (!written.length) continue;
     for (const [j, p] of l.points.entries()) await d.insert(locationPoints).values({ locationId: l.id, name: p.name, kind: p.kind, description: p.description, x: p.x ?? null, y: p.y ?? null, sort: j + 1 });
   }
   return true;
@@ -59,7 +64,7 @@ export async function seedIfEmpty(): Promise<boolean> {
 /** Write every fixture. Only ever called on empty tables; `onConflictDoNothing` keeps a race harmless. */
 export async function seedCampaign(): Promise<void> {
   const d = db();
-  await seedLocationsIfEmpty();
+  await ensureLocationsSeeded();
   for (const [i, w] of seedWarbands.entries()) {
     await d.insert(warbands).values({
       id: w.id, name: w.name, type: w.type, sigil: w.sigil, crest: w.crest ?? null, player: w.player, rating: w.rating, wyrdstone: w.wyrdstone, gold: w.gold, lore: w.lore, sort: i + 1,

@@ -10,7 +10,7 @@ import { locations as locationFixtures } from '../../data/locations.ts';
 import { stockOf } from '../../campaign/trading.ts';
 import { fightPosition } from '../../campaign/model.ts';
 import { deleteDocument, getDocument, listDocuments, primeContent, saveDocument, documentRevisions } from '../content/curfew.ts';
-import { seedIfEmpty } from './seed.ts';
+import { seedIfEmpty, seedLocationsIfEmpty } from './seed.ts';
 import { carriedForward, scoresOf, summaryOf, tallyOf } from '../../campaign/model.ts';
 import { claimWarband as claimLedger, loadOwnLedger, releaseWarband as giveUp } from '../curfew/service.ts';
 import { LOCATIONS, OMENS, locationById } from '../../curfew/engine.ts';
@@ -523,4 +523,15 @@ test('the trading post: the chart as printed until the game master says otherwis
   l = await removeItem(gm, 'fussenbach', 'custom-eel-oil-2');
   assert.deepEqual(l.stock.filter((x) => x.custom).map((x) => x.itemId), ['custom-eel-oil']);
   assert.ok(!stockOf((await getLocation('mordheim'))!.stock).some((x) => x.changed.price || x.custom), 'another place’s post is untouched');
+});
+
+test('two seeds racing on an empty locations table write each place and its points once', async () => {
+  const { db } = await import('../db/client.ts');
+  const schema = await import('../db/schema.ts');
+  await db().delete(schema.locations);
+  const [a, b] = await Promise.all([seedLocationsIfEmpty(), seedLocationsIfEmpty()]);
+  assert.ok(a && b, 'both saw an empty table');
+  const list = await listLocations();
+  assert.deepEqual(list.map((l) => l.id), locationFixtures.map((l) => l.id));
+  assert.equal(list.find((l) => l.id === 'fussenbach')!.points.length, 12, 'the points are not doubled');
 });
