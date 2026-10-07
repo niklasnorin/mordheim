@@ -26,6 +26,17 @@ export function wireLocations(root: HTMLElement, base: string): void {
   wireMapFilters(root);
   wireMapUploads(root, base);
   wireStockView(root);
+  wireMood(root);
+}
+
+/** The market's painting comes up behind the page once the post is well into view, and fades as the reader leaves it. */
+function wireMood(root: HTMLElement): void {
+  const mood = root.querySelector<HTMLElement>('[data-mood-for]');
+  const post = mood && document.getElementById(mood.dataset.moodFor ?? '');
+  if (!mood || !post || !('IntersectionObserver' in window)) return;
+  // in view once its top has risen past the lower two fifths of the window, and out once it has scrolled away
+  const watcher = new IntersectionObserver((entries) => { for (const e of entries) root.classList.toggle('is-market', e.isIntersecting); }, { rootMargin: '0px 0px -40% 0px', threshold: 0 });
+  watcher.observe(post);
 }
 
 /** The two filters under the map: places on or off, battles on or off, while the map is read. */

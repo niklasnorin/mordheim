@@ -9,7 +9,7 @@ import ManageTop from '../../components/ManageTop.astro';
 import LocationMap from '../../components/LocationMap.astro';
 import '../../styles/manage.css';
 import '../../styles/locations.css';
-import { base } from '../../lib/site';
+import { asset, base } from '../../lib/site';
 import { formatImperial, imperialForDate } from '../../lib/calendar';
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm } from '../../server/roles';
@@ -46,12 +46,16 @@ const shown = gm ? lines : lines.filter((l) => l.available);
 const groups = byCategory(shown);
 const offered = lines.filter((l) => l.available).length;
 const pins = location.points.filter(pinned);
+// the post trades at the location's market, where one is marked, and takes its name
+const market = location.points.find((p) => /market/i.test(p.kind)) ?? location.points.find((p) => /market/i.test(p.name));
+const postTitle = market?.name ?? 'The trading post';
 const description = paragraphsOf(location.description);
 const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}`;
 ---
 
 <Base title={`${location.name} — Mordheim`} description={location.description.slice(0, 160)}>
   <main class="mg mg-page" id="main-content" data-base={base}>
+    <div class="loc-mood" aria-hidden="true" data-mood-for="post"><img src={asset('locations/market.jpg')} alt="" loading="lazy" decoding="async" /></div>
     <ManageTop crumbs={[{ label: 'Locations', href: `${base}/locations/` }, { label: location.name }]} viewer={viewer} />
 
     <div class:list={['mg-hero', 'loc-hero', { 'has-banner': !!location.banner }]}>
@@ -76,7 +80,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
       <a href="#map">The map</a>
       <a href="#places">Places of interest</a>
       <a href="#battles">Battles</a>
-      <a href="#post">Trading post</a>
+      <a href="#post">{market ? market.name : 'Trading post'}</a>
       {gm && <a href="#pen">The pen</a>}
     </nav>
 
@@ -151,7 +155,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
     </section>
 
     <section class="mg-section" id="post" data-view={gm ? 'player' : undefined}>
-      <div class="mg-section-head"><h2 class="mg-h2">The trading post</h2><span class="mg-muted">{plural(offered, 'item')} to be had. Prices in gold crowns; a rare item is found on that roll or better on two dice.</span></div>
+      <div class="mg-section-head"><h2 class="mg-h2">{postTitle}</h2><span class="mg-muted">{market ? 'The trading post. ' : ''}{plural(offered, 'item')} to be had. Prices in gold crowns; a rare item is found on that roll or better on two dice.</span></div>
       {gm && (
         <div class="stock-view" role="group" aria-label="How the post is shown">
           <span class="mg-muted">Shown as</span>
@@ -159,7 +163,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
           <button type="button" class="mg-btn ghost sm" data-stock-view="keeper" aria-pressed="false">The keeper’s desk</button>
         </div>
       )}
-      {gm && <p class="mg-note gm-only">The whole chart. Players see only what is to be had: common items unless withheld, rare ones once offered. Amend a line to change its price, its rarity or to leave a note; a line put back to the chart in every way forgets it was ever touched.</p>}
+      {gm && <p class="mg-note gm-only">The whole chart. Players see only what is to be had: common items unless withheld, rare ones once offered. Amend a line to change its price, its rarity or to leave a note; a line put back to the chart in every way forgets it was ever touched. {market ? `The post is named for ${market.name}, the place of interest of the kind Market.` : 'Mark a place of interest of the kind Market and the post takes its name.'}</p>}
       {gm && offered === 0 && <p class="mg-empty player-only">The post has nothing to sell.</p>}
       {gm && (
         <details class="mg-editor gm-only">
