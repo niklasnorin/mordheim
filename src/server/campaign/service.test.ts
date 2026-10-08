@@ -342,6 +342,63 @@ test('a warband’s story: its keeper writes chapters with their own pictures, i
   assert.ok(await getImage(picture), 'a picture a chapter shows is kept');
 });
 
+test('a warrior’s portrait: the keeper brings a picture, frames it, frames it again, and takes it down', async () => {
+  const { db } = await import('../db/client.ts');
+  const schema = await import('../db/schema.ts');
+  const { eq } = await import('drizzle-orm');
+  const { addChapter, getImage } = await import('./chapters.ts');
+  const { removePortrait, setPortrait, uploadPortraitSource } = await import('./portraits.ts');
+  const painter = actorOf('user-painter', 'Painter');
+  await db().insert(schema.user).values({ id: painter.id, name: painter.name, email: painter.email, emailVerified: true });
+  let w = await createWarband(painter, { name: 'The Gilded Brush', type: 'Middenheim' });
+  w = await addMember(painter, w.id, { name: 'Ottilie Farbe', rank: 'hero' });
+  w = await addMember(painter, w.id, { name: 'Bruno Pinsel' });
+  const [ottilie, bruno] = w.members;
+  assert.equal(ottilie.picture, undefined, 'no portrait until one is framed');
+
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]).toString('base64');
+  const webp = Buffer.from('RIFF\0\0\0\0WEBPVP8 ', 'latin1').toString('base64');
+  const crop = { x: 0.1, y: 0, w: 0.5, h: 1 };
+  await assert.rejects(uploadPortraitSource(stranger, ottilie.id, 'image/png', png), (e: unknown) => e instanceof LedgerError && e.status === 403, 'only the keeper or a game master');
+  await assert.rejects(uploadPortraitSource(painter, ottilie.id, 'image/gif', png), (e: unknown) => e instanceof LedgerError && e.status === 415);
+  const { id: first } = await uploadPortraitSource(painter, ottilie.id, 'image/png', png);
+  const { id: bruno1 } = await uploadPortraitSource(painter, bruno.id, 'image/png', png);
+  await assert.rejects(setPortrait(painter, ottilie.id, { sourceId: bruno1, crop, mime: 'image/webp', data: webp }), (e: unknown) => e instanceof LedgerError && e.status === 409, 'a warrior is framed only from their own picture');
+  await assert.rejects(setPortrait(painter, ottilie.id, { sourceId: first, crop: { ...crop, w: 0 }, mime: 'image/webp', data: webp }), (e: unknown) => e instanceof LedgerError && /framing/.test(e.message));
+  await assert.rejects(setPortrait(stranger, ottilie.id, { sourceId: first, crop, mime: 'image/webp', data: webp }), (e: unknown) => e instanceof LedgerError && e.status === 403);
+
+  w = await setPortrait(painter, ottilie.id, { sourceId: first, crop, mime: 'image/webp', data: webp });
+  const framed = w.members.find((m) => m.id === ottilie.id)!.picture!;
+  assert.deepEqual({ source: framed.source, crop: framed.crop }, { source: first, crop });
+  assert.equal((await getImage(framed.image))!.mime, 'image/webp', 'the framed portrait is served like any picture');
+  await assert.rejects(addChapter(painter, w.id, { title: 'Sitting', blocks: [{ kind: 'image', imageId: framed.image, align: 'left', size: 40, unit: '%', caption: '' }] }), (e: unknown) => e instanceof LedgerError && /not one of theirs/.test(e.message), 'a portrait is not a story picture');
+
+  // framed again from the same picture: the old portrait goes, the picture stays
+  w = await setPortrait(gm, ottilie.id, { sourceId: first, crop: { x: 0, y: 0.2, w: 1, h: 0.6 }, mime: 'image/webp', data: webp });
+  const reframed = w.members.find((m) => m.id === ottilie.id)!.picture!;
+  assert.notEqual(reframed.image, framed.image);
+  assert.equal(await getImage(framed.image), undefined, 'the old portrait is forgotten');
+  assert.ok(await getImage(first), 'the picture it was framed from is kept');
+
+  // a new picture: one brought and never framed lingers a day; the one replaced goes at once
+  const { id: abandoned } = await uploadPortraitSource(painter, ottilie.id, 'image/png', png);
+  await db().update(schema.images).set({ createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) }).where(eq(schema.images.id, abandoned));
+  const { id: second } = await uploadPortraitSource(painter, ottilie.id, 'image/png', png);
+  assert.equal(await getImage(abandoned), undefined, 'a picture never framed is swept after a day');
+  w = await setPortrait(painter, ottilie.id, { sourceId: second, crop, mime: 'image/webp', data: webp });
+  assert.equal(await getImage(first), undefined);
+  assert.equal(await getImage(reframed.image), undefined);
+  const kept = await db().select({ id: schema.images.id }).from(schema.images).where(eq(schema.images.memberId, ottilie.id));
+  assert.equal(kept.length, 2, 'the portrait and its picture, nothing else');
+  assert.ok(await getImage(bruno1), 'another warrior’s pictures are their own');
+
+  w = await removePortrait(painter, ottilie.id);
+  assert.equal(w.members.find((m) => m.id === ottilie.id)!.picture, undefined);
+  assert.equal((await db().select().from(schema.images).where(eq(schema.images.memberId, ottilie.id))).length, 0, 'taken down, every picture of it goes');
+  await removeMember(painter, bruno.id);
+  assert.equal(await getImage(bruno1), undefined, 'a warrior struck from the roll takes their pictures');
+});
+
 test('the supply cart at the table: sides, a turn’s end with the cart and the skaven die, the last round and one more', async () => {
   const { endTurn, setTurnLimit } = await import('./scenarios.ts');
   const s = await createScenario(gm, { title: 'The Supply Cart', playedOn: '2026-10-10', rulebookScenario: 'the supply cart', warbandIds: ['nordost', 'bitterbrow-expedition'] });

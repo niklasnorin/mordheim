@@ -189,6 +189,10 @@ export const members = pgTable(
     role: text('role').notNull().default(''),
     rank: text('rank', { enum: ['hero', 'henchman'] }).notNull().default('henchman'),
     portrait: text('portrait').notNull().default(''),
+    /** The keeper's picture of the warrior, as framed (`/images/<id>`), the picture it was framed from, and the framing (`PortraitCrop`). */
+    portraitImage: text('portrait_image'),
+    portraitSource: text('portrait_source'),
+    portraitCrop: jsonb('portrait_crop'),
     epithet: text('epithet').notNull().default(''),
     dead: boolean('dead').notNull().default(false),
     death: jsonb('death'),
@@ -226,9 +230,10 @@ export const warbandChapters = pgTable(
 
 /**
  * Pictures uploaded to the site, kept in the database and served at `/images/<id>`: a warband's story pictures
- * (`warband_id`) and a location's map (`location_id`), one or the other. `data` is base64, so it reads back the same
- * through Neon's HTTP driver and PGlite alike; the browser shrinks a picture before it is sent, so a row is a few
- * hundred kilobytes. A story picture no chapter shows is swept a day after it was uploaded; a map goes when replaced.
+ * (`warband_id`), a location's map (`location_id`) and a warrior's portrait (`member_id`), one of the three. `data` is
+ * base64, so it reads back the same through Neon's HTTP driver and PGlite alike; the browser shrinks a picture before
+ * it is sent, so a row is a few hundred kilobytes. A story picture no chapter shows is swept a day after it was
+ * uploaded; a map goes when replaced; a portrait, and the picture it was framed from, when the warrior is given another.
  */
 export const images = pgTable(
   'images',
@@ -236,13 +241,14 @@ export const images = pgTable(
     id: text('id').primaryKey(),
     warbandId: text('warband_id').references(() => warbands.id, { onDelete: 'cascade' }),
     locationId: text('location_id').references(() => locations.id, { onDelete: 'cascade' }),
+    memberId: text('member_id').references(() => members.id, { onDelete: 'cascade' }),
     mime: text('mime').notNull(),
     data: text('data').notNull(),
     bytes: integer('bytes').notNull(),
     uploadedBy: text('uploaded_by'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('images_warband_idx').on(t.warbandId)],
+  (t) => [index('images_warband_idx').on(t.warbandId), index('images_member_idx').on(t.memberId)],
 );
 
 /**

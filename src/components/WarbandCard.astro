@@ -1,6 +1,7 @@
 ---
 import { leaderOf, type Warband } from '../campaign/model';
 import Icon from './Icon.astro';
+import Portrait from './Portrait.astro';
 import { asset, base } from '../lib/site';
 
 interface Props {
@@ -36,9 +37,9 @@ const href = `${base}/warbands/${warband.id}/`;
       aria-haspopup="dialog"
       aria-controls="member-dialog"
     >
-      <span class="member-portrait" aria-hidden="true">
-        {leader.dead ? <Icon name="cross" size={16} /> : <Icon name="diamond" size={14} />}
-      </span>
+      {leader.picture
+        ? <span class="member-portrait member-picture" aria-hidden="true"><Portrait member={leader} /></span>
+        : <span class="member-portrait" aria-hidden="true">{leader.dead ? <Icon name="cross" size={16} /> : <Icon name="diamond" size={14} />}</span>}
       <span class="member-name">{leader.name}</span>
       <span class="member-role">{leader.role}</span>
       <span class="member-tag">
@@ -152,6 +153,7 @@ const href = `${base}/warbands/${warband.id}/`;
     margin-left: .7rem;
     text-align: center;
   }
+  .member-card .member-picture { --portrait-width: 3.6rem; margin: 0 0 .3rem .9rem; }
   .member-open { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: 1rem; border-top: 1px solid #343b2e80; padding-top: .55rem; color: var(--gold); font: var(--text-ui)/1.5 var(--font-utility); }
   .member-open :global(svg) { flex-shrink: 0; }
   .member-name {
@@ -191,6 +193,7 @@ const href = `${base}/warbands/${warband.id}/`;
     .warband-more { padding-inline: 1rem; }
     .member-card { padding: .9rem 3rem .9rem 1rem; }
     .member-card .member-portrait { display: none; }
+    .member-card .member-picture { display: block; --portrait-width: 2.7rem; margin-bottom: 0; }
     .member-open { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); padding: 0; border: 0; margin: 0; }
     .member-open > span { display: none; }
     .member-tag { margin-top: .2rem; }

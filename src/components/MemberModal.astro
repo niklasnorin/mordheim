@@ -4,6 +4,7 @@ import type { MemberChapter } from '../server/campaign/scenarios';
 import type { MemberNights } from '../curfew/story';
 import Icon from './Icon.astro';
 import WarriorStory from './WarriorStory.astro';
+import Portrait from './Portrait.astro';
 import { asset, base } from '../lib/site';
 
 interface Props {
@@ -41,11 +42,13 @@ const statNames = {
         return (
         <div class="profile" data-profile={`${wb.id}:${m.id}`} hidden>
           <div class="profile-header">
-            <span class="profile-portrait" aria-hidden="true">
-              {wb.crest ? (
-                <img src={asset(wb.crest)} alt="" width="120" height="140" loading="lazy" />
-              ) : wb.sigil}
-            </span>
+            {m.picture ? <Portrait member={m} class="profile-picture" /> : (
+              <span class="profile-portrait" aria-hidden="true">
+                {wb.crest ? (
+                  <img src={asset(wb.crest)} alt="" width="120" height="140" loading="lazy" />
+                ) : wb.sigil}
+              </span>
+            )}
             <div>
               <p class="profile-label">From the campaign archives · {m.rank}</p>
               <h3 id={`profile-title-${wb.id}-${m.id}`} tabindex="-1">{m.name}</h3>
@@ -124,9 +127,11 @@ const statNames = {
   .profile-epithet { color: var(--ink-dim); font-size: var(--text-ui); font-style: italic; margin: .25rem 0; }
   .profile-portrait { flex-shrink: 0; }
   .profile-portrait img { display: block; width: 70px; height: auto; }
+  .profile-header { --portrait-width: 96px; }
   @media (max-width: 540px) {
     .dialog-body { padding: 1.25rem 1rem 1.5rem; }
     .profile-portrait img { width: 48px; }
+    .profile-header { --portrait-width: 72px; }
   }
   .member-dialog::backdrop {
     background: rgba(5, 6, 8, 0.85);

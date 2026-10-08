@@ -9,6 +9,7 @@
 import { RULEBOOK_TALLIES, type RulebookScenario } from './rulebook.ts';
 import type { Side } from './house.ts';
 import type { StockEntry } from './trading.ts';
+import type { PortraitCrop } from './portrait.ts';
 
 export interface Statline {
   M: number; WS: number; BS: number; S: number; T: number; W: number; I: number; A: number; Ld: number;
@@ -37,6 +38,8 @@ export interface Member {
   rank: 'hero' | 'henchman';
   /** Two letters, drawn where there is no crest. */
   portrait: string;
+  /** The keeper's picture of them, framed; absent until one is uploaded. */
+  picture?: PortraitPicture;
   /** A relative clause without its subject: "Who Led Them South". */
   epithet: string;
   dead: boolean;
@@ -51,6 +54,12 @@ export interface Member {
   /** Roster order within the warband. */
   sort: number;
 }
+
+/**
+ * A warrior's portrait (see `portrait.ts`): `image` is the framed portrait every page shows at `/images/<image>`,
+ * `source` the picture it was framed from and `crop` the framing, kept so the keeper may frame it again.
+ */
+export interface PortraitPicture { image: string; source: string; crop: PortraitCrop }
 
 export interface Warband {
   id: string;

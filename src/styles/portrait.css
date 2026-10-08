@@ -1,0 +1,38 @@
+/* A warrior's portrait on the warband's page, and the sheet it is framed on (src/lib/portrait.ts). */
+
+/* the head of a warrior's record: the portrait beside the statline, or above it on a phone */
+.pt-head.pictured { display: grid; grid-template-columns: 10rem minmax(0, 1fr); gap: 1.2rem; align-items: start; margin-bottom: .6rem; }
+.pt-head.pictured > .portrait { --portrait-width: 100%; }
+.pt-sheet-side { min-width: 0; }
+.pt-sheet-side > .mg-statline:first-child { margin-top: 0; }
+.pt-likeness { --portrait-width: 100%; display: grid; gap: .5rem; min-width: 0; }
+.pt-acts { display: flex; flex-wrap: wrap; gap: 0 1rem; align-items: center; }
+.pt-acts .mg-link { min-height: 2.25rem; padding: .2rem 0; font-size: var(--text-meta); }
+.pt-acts .pt-down { color: var(--blood-bright); }
+.pt-acts small { font-style: italic; line-height: 1.45; }
+.pt-note { color: var(--blood-bright); }
+.pt-empty { display: grid; place-items: center; width: 100%; aspect-ratio: 3 / 4; border: 1px dashed var(--gold-dim); background: repeating-linear-gradient(135deg, transparent 0 8px, #b69a6208 8px 9px), #0d1210; color: var(--gold); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; text-align: center; padding: .5rem; cursor: pointer; transition: border-color .2s, color .2s; }
+.pt-empty:hover:not([disabled]), .pt-empty:focus-visible { border-color: var(--gold); color: var(--parchment); outline: none; }
+.pt-empty[disabled] { cursor: progress; opacity: .6; }
+@media (max-width: 640px) {
+  .pt-head.pictured { grid-template-columns: minmax(0, 1fr); gap: .8rem; }
+  .pt-head.pictured > .portrait { --portrait-width: 9rem; }
+  .pt-likeness { --portrait-width: 8rem; grid-template-columns: 8rem minmax(0, 1fr); align-items: end; gap: .9rem; }
+  .pt-acts { flex-direction: column; align-items: flex-start; }
+}
+
+/* the framing sheet: the picture under the frame, the rest of it dimmed around */
+.pt-dialog { width: min(30rem, calc(100% - 1.5rem)); max-height: calc(100dvh - 1.5rem); margin: auto; padding: 0; border: 1px solid var(--gold-dim); background: linear-gradient(160deg, var(--bg-panel2), var(--bg-panel)); color: var(--ink); box-shadow: 0 0 80px #000e; overflow: auto; overscroll-behavior: contain; }
+.pt-dialog::backdrop { background: rgba(5, 6, 8, .85); backdrop-filter: blur(3px); }
+.pt-sheet { display: grid; gap: .8rem; padding: 1.1rem 1.1rem 1.2rem; }
+.pt-sheet .mg-h3 { margin: 0; }
+.pt-how { margin-top: -.4rem; }
+.pt-stage { position: relative; overflow: hidden; padding: 1.4rem; background: #050605; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; outline: none; }
+.pt-stage.dragging { cursor: grabbing; }
+.pt-stage:focus-visible { box-shadow: inset 0 0 0 2px var(--gold); }
+.pt-frame { position: relative; width: min(100%, 18rem, calc((100dvh - 19rem) * .75)); min-width: 9rem; aspect-ratio: 3 / 4; margin: 0 auto; background: #0d1210; }
+.pt-img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; will-change: transform; }
+.pt-mask { position: absolute; inset: 0; outline: 1px solid var(--gold); box-shadow: 0 0 0 200vmax rgba(5, 6, 5, .72); pointer-events: none; }
+.pt-zoom input { width: 100%; min-height: var(--control-size); accent-color: var(--gold); padding: 0; border: 0; background: none; }
+.pt-error { color: var(--blood-bright); font-style: italic; }
+.pt-sheet .mg-actions { margin-top: 0; }

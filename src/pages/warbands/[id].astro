@@ -9,7 +9,9 @@ import ManageTop from '../../components/ManageTop.astro';
 import WarriorStory from '../../components/WarriorStory.astro';
 import WarbandChronicle from '../../components/WarbandChronicle.astro';
 import StoryChapters from '../../components/StoryChapters.astro';
+import Portrait from '../../components/Portrait.astro';
 import '../../styles/manage.css';
+import '../../styles/portrait.css';
 import { asset, base } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm, listUsers } from '../../server/roles';
@@ -106,17 +108,39 @@ const overview = paragraphsOf(warband?.lore ?? '');
                 <li>
                   <details class:list={['mg-warrior', { dead: m.dead }]} id={m.id}>
                     <summary>
-                      <span class="mg-num">{String(i + 1).padStart(2, '0')}</span>
+                      <span class="mg-num">{m.picture ? <Portrait member={m} width="2.4rem" /> : String(i + 1).padStart(2, '0')}</span>
                       <span><span class="mg-name">{m.name}</span><span class="mg-role">{m.role}{m.rank === 'hero' ? ' · hero' : ''}</span>{m.epithet && <span class="mg-tag">{m.epithet}</span>}</span>
                       <span class="mg-muted">{m.dead ? <span class="mg-chip blood">Fallen</span> : m.experience !== undefined ? `${m.experience} xp` : ''}</span>
                     </summary>
                     <div class="mg-body">
-                      <table class="mg-statline"><caption class="visually-hidden">{m.name}'s statline</caption>
-                        <thead><tr>{STAT_KEYS.map((k) => <th scope="col"><abbr title={STAT_NAMES[k]}>{k}</abbr></th>)}</tr></thead>
-                        <tbody><tr>{STAT_KEYS.map((k) => <td>{m.stats[k]}</td>)}</tr></tbody>
-                      </table>
-                      {m.skills.length > 0 && <><h4 class="mg-h3">Skills &amp; special rules</h4><ul class="mg-list">{m.skills.map((x) => <li>{x}</li>)}</ul></>}
-                      {m.injuries.length > 0 && <><h4 class="mg-h3">Old wounds</h4><ul class="mg-list">{m.injuries.map((x) => <li>{x}</li>)}</ul></>}
+                      <div class:list={['pt-head', { pictured: !!m.picture || canEdit }]}>
+                        {canEdit ? (
+                          <div class="pt-likeness" data-portrait-editor data-member={m.id} data-name={m.name.split(' ')[0]} data-picture={m.picture ? JSON.stringify(m.picture) : undefined}>
+                            {m.picture
+                              ? <Portrait member={m} alt={`Portrait of ${m.name}`} />
+                              : <button type="button" class="pt-empty" data-portrait-choose><span>Add a portrait</span></button>}
+                            <div class="pt-acts">
+                              {m.picture
+                                ? <>
+                                    <button type="button" class="mg-link" data-portrait-reframe>Frame it again</button>
+                                    <button type="button" class="mg-link" data-portrait-choose>Another picture</button>
+                                    <button type="button" class="mg-link pt-down" data-act="warbands/remove-portrait" data-body={JSON.stringify({ memberId: m.id })} data-confirm={`Take down ${m.name}’s portrait?`}>Take it down</button>
+                                  </>
+                                : <small class="mg-muted">Any picture will do: a photograph of the model, a painting, a sketch. You frame it next.</small>}
+                              <small class="pt-note" data-portrait-note role="alert" hidden></small>
+                            </div>
+                            <input type="file" accept="image/*" data-portrait-file hidden />
+                          </div>
+                        ) : m.picture && <Portrait member={m} alt={`Portrait of ${m.name}`} />}
+                        <div class="pt-sheet-side">
+                          <table class="mg-statline"><caption class="visually-hidden">{m.name}'s statline</caption>
+                            <thead><tr>{STAT_KEYS.map((k) => <th scope="col"><abbr title={STAT_NAMES[k]}>{k}</abbr></th>)}</tr></thead>
+                            <tbody><tr>{STAT_KEYS.map((k) => <td>{m.stats[k]}</td>)}</tr></tbody>
+                          </table>
+                          {m.skills.length > 0 && <><h4 class="mg-h3">Skills &amp; special rules</h4><ul class="mg-list">{m.skills.map((x) => <li>{x}</li>)}</ul></>}
+                          {m.injuries.length > 0 && <><h4 class="mg-h3">Old wounds</h4><ul class="mg-list">{m.injuries.map((x) => <li>{x}</li>)}</ul></>}
+                        </div>
+                      </div>
                       {m.lore.trim() && <><h4 class="mg-h3">Tale</h4><p class="mg-lede">{m.lore}</p></>}
                       <WarriorStory member={m} chapters={chapters} nights={nights[m.id]} warbands={roster} open />
                       {canEdit && (
@@ -273,8 +297,10 @@ const overview = paragraphsOf(warband?.lore ?? '');
 
 <script>
   import { wireManage } from '../../lib/manage';
+  import { wirePortraits } from '../../lib/portrait';
   const root = document.getElementById('main-content')!;
   wireManage(root, root.dataset.base ?? '');
+  wirePortraits(root, root.dataset.base ?? '');
   // One part of the page shows at a time, chosen by the address: a tab's own name (#roster), or anything inside a
   // part (#agnar, #record, #add-warrior, #chapter-3), which shows that part and opens or scrolls to the thing itself.
   const panes = [...root.querySelectorAll<HTMLElement>('[data-pane]')];

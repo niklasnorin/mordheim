@@ -1,0 +1,40 @@
+---
+/**
+ * A warrior's portrait, framed by their keeper, wherever it is shown: always the same shape (`PORTRAIT_RATIO`), its
+ * width set by the place that shows it (`.portrait` from a parent's `:global`, or `width`). Nothing when they have none.
+ */
+import type { Member } from '../campaign/model';
+import { PORTRAIT_SIZE } from '../campaign/portrait';
+import { base } from '../lib/site';
+
+interface Props {
+  member: Member;
+  /** Said to a screen reader; empty where the name is beside it already. */
+  alt?: string;
+  width?: string;
+  class?: string;
+}
+const { member, alt = '', width, class: className } = Astro.props;
+---
+
+{member.picture && (
+  <span class:list={['portrait', className, { fallen: member.dead }]} style={width ? `--portrait-width: ${width}` : undefined}>
+    <img src={`${base}/images/${member.picture.image}`} width={PORTRAIT_SIZE.width} height={PORTRAIT_SIZE.height} alt={alt} loading="lazy" decoding="async" />
+  </span>
+)}
+
+<style>
+  .portrait {
+    display: block;
+    flex: none;
+    width: var(--portrait-width, 6rem);
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    border: 1px solid var(--gold-dim);
+    background: #0d1210;
+    box-shadow: 0 6px 14px -6px #000c, inset 0 0 0 1px #0008;
+  }
+  .portrait img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .portrait.fallen { border-color: var(--blood); }
+  .portrait.fallen img { filter: grayscale(.85) sepia(.25) brightness(.85); }
+</style>

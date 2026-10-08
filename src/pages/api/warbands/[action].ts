@@ -6,6 +6,7 @@ import type { APIRoute } from 'astro';
 import { z } from 'zod';
 import { dispatch, route } from '../../../server/api';
 import { addChapter, IMAGE_TYPES, moveChapter, removeChapter, updateChapter, uploadImage } from '../../../server/campaign/chapters';
+import { removePortrait, setPortrait, uploadPortraitSource } from '../../../server/campaign/portraits';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, releaseWarband, removeMember, reorderMembers, updateMember, updateWarband } from '../../../server/campaign/roster';
 
 export const prerender = false;
@@ -25,6 +26,7 @@ const block = z.discriminatedUnion('kind', [
 ]);
 const chapterFields = { title: z.string().max(120), blocks: z.array(block).max(60) };
 const chapterId = z.number().int().positive();
+const crop = z.object({ x: z.number().min(-50).max(50), y: z.number().min(-50).max(50), w: z.number().positive().max(50), h: z.number().positive().max(50) });
 const warbandFields = { name: z.string().max(80), type: z.string().max(60), sigil: z.string().max(3), lore: z.string().max(4000), player: z.string().max(40), crest: z.string().max(120) };
 
 const routes = {
@@ -43,6 +45,10 @@ const routes = {
   'move-chapter': route(z.object({ chapterId, by: z.union([z.literal(-1), z.literal(1)]) }), (i, a) => moveChapter(a, i.chapterId, i.by).then((chapters) => ({ chapters }))),
   // base64 of a picture the browser has already shrunk; the service caps the decoded size
   'upload-image': route(z.object({ warbandId: id, mime: z.enum(IMAGE_TYPES), data: z.string().min(1).max(3_500_000) }), (i, a) => uploadImage(a, i.warbandId, i.mime, i.data)),
+  // a portrait: the picture to frame goes up first, then the portrait the browser framed from it, with the framing
+  'portrait-source': route(z.object({ memberId: id, mime: z.enum(IMAGE_TYPES), data: z.string().min(1).max(3_500_000) }), (i, a) => uploadPortraitSource(a, i.memberId, i.mime, i.data)),
+  portrait: route(z.object({ memberId: id, sourceId: z.uuid(), crop, mime: z.enum(IMAGE_TYPES), data: z.string().min(1).max(1_100_000) }), (i, a) => setPortrait(a, i.memberId, i).then((warband) => ({ warband }))),
+  'remove-portrait': route(z.object({ memberId: id }), (i, a) => removePortrait(a, i.memberId).then((warband) => ({ warband }))),
   reorder: route(z.object({ warbandId: id, order: z.array(id).max(60) }), (i, a) => reorderMembers(a, i.warbandId, i.order).then((warband) => ({ warband }))),
 };
 

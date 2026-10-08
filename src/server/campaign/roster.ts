@@ -11,6 +11,7 @@ import { curfewLedgers, members, scenarioMembers, scenarioWarbands, scenarios, u
 import { LedgerError } from '../../curfew/ledger.ts';
 import { type Roster } from '../../curfew/roster.ts';
 import { STAT_KEYS, slugify, type Death, type Member, type Statline, type Warband } from '../../campaign/model.ts';
+import type { PortraitCrop } from '../../campaign/portrait.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { ensureSeeded } from './seed.ts';
 
@@ -24,6 +25,7 @@ function memberOf(r: MemberRow): Member {
     id: r.id, warbandId: r.warbandId, name: r.name, role: r.role, rank: r.rank, portrait: r.portrait, epithet: r.epithet, dead: r.dead,
     death: (r.death as Death | null) ?? undefined, stats: r.stats as Statline, experience: r.experience ?? undefined,
     skills: (r.skills as string[]) ?? [], injuries: (r.injuries as string[]) ?? [], lore: r.lore, sort: r.sort,
+    picture: r.portraitImage && r.portraitSource && r.portraitCrop ? { image: r.portraitImage, source: r.portraitSource, crop: r.portraitCrop as PortraitCrop } : undefined,
   };
 }
 
@@ -239,7 +241,7 @@ function portraitFor(name: string): string {
 function deathOf(given: Partial<Death> | null | undefined, previous: Death | null): Death {
   return { date: clean(given?.date ?? previous?.date, 80), order: given?.order ?? previous?.order ?? Date.now(), epitaph: clean(given?.epitaph ?? previous?.epitaph, 200) };
 }
-async function touch(warbandId: string) { await db().update(warbands).set({ updatedAt: new Date(), version: sql`${warbands.version} + 1` }).where(eq(warbands.id, warbandId)); }
+export async function touch(warbandId: string) { await db().update(warbands).set({ updatedAt: new Date(), version: sql`${warbands.version} + 1` }).where(eq(warbands.id, warbandId)); }
 
 export async function updateMember(actor: Actor, memberId: string, patch: Partial<MemberInput>): Promise<Warband> {
   const rows = await db().select().from(members).where(eq(members.id, memberId)).limit(1);
