@@ -112,77 +112,81 @@ const overview = paragraphsOf(warband?.lore ?? '');
                       <span><span class="mg-name">{m.name}</span><span class="mg-role">{m.role}{m.rank === 'hero' ? ' · hero' : ''}</span>{m.epithet && <span class="mg-tag">{m.epithet}</span>}</span>
                       <span class="mg-muted">{m.dead ? <span class="mg-chip blood">Fallen</span> : m.experience !== undefined ? `${m.experience} xp` : ''}</span>
                     </summary>
-                    <div class="mg-body">
-                      <div class:list={['pt-head', { pictured: !!m.picture || canEdit }]}>
-                        {m.picture
-                          ? <Portrait member={m} alt={`Portrait of ${m.name}`} />
-                          : canEdit && (
-                            <div class="pt-likeness" data-portrait-editor data-member={m.id} data-name={m.name.split(' ')[0]}>
-                              <button type="button" class="pt-empty" data-portrait-choose><span>Add a portrait</span></button>
-                              <div class="pt-acts">
-                                <small class="mg-muted">Any picture will do: a photograph of the model, a painting, a sketch. You frame it next.</small>
-                                <small class="pt-note" data-portrait-note role="alert" hidden></small>
-                              </div>
-                              <input type="file" accept="image/*" data-portrait-file hidden />
-                            </div>
-                          )}
-                        <div class="pt-sheet-side">
-                          <table class="mg-statline"><caption class="visually-hidden">{m.name}'s statline</caption>
-                            <thead><tr>{STAT_KEYS.map((k) => <th scope="col"><abbr title={STAT_NAMES[k]}>{k}</abbr></th>)}</tr></thead>
-                            <tbody><tr>{STAT_KEYS.map((k) => <td>{m.stats[k]}</td>)}</tr></tbody>
-                          </table>
-                          {m.skills.length > 0 && <><h4 class="mg-h3">Skills &amp; special rules</h4><ul class="mg-list">{m.skills.map((x) => <li>{x}</li>)}</ul></>}
-                          {m.injuries.length > 0 && <><h4 class="mg-h3">Old wounds</h4><ul class="mg-list">{m.injuries.map((x) => <li>{x}</li>)}</ul></>}
-                        </div>
-                      </div>
-                      {m.lore.trim() && <><h4 class="mg-h3">Tale</h4><p class="mg-lede">{m.lore}</p></>}
-                      <WarriorStory member={m} chapters={chapters} nights={nights[m.id]} warbands={roster} />
-                      {canEdit && (
-                        <details class="mg-editor">
-                          <summary>Change {m.name.split(' ')[0]}</summary>
-                          <form class="mg-form" data-api="warbands/update-member" data-json={JSON.stringify({ memberId: m.id })}>
-                            {m.picture && (
-                              <fieldset class="mg-fieldset"><legend>Portrait</legend>
-                                <div class="pt-change" data-portrait-editor data-member={m.id} data-name={m.name.split(' ')[0]} data-picture={JSON.stringify(m.picture)}>
-                                  <Portrait member={m} width="4.5rem" />
+                    <div class:list={['mg-body', { 'pt-split': !!m.picture || canEdit }]}>
+                      {(m.picture || canEdit) && (
+                        <div class:list={['pt-side', { empty: !m.picture }]}>
+                          <div class="pt-side-hold">
+                            {m.picture
+                              ? <Portrait member={m} alt={`Portrait of ${m.name}`} framed />
+                              : (
+                                <div class="pt-likeness" data-portrait-editor data-member={m.id} data-name={m.name.split(' ')[0]}>
+                                  <button type="button" class="pt-empty" data-portrait-choose><span>Add a portrait</span></button>
                                   <div class="pt-acts">
-                                    <button type="button" class="mg-link" data-portrait-reframe>Frame it again</button>
-                                    <button type="button" class="mg-link" data-portrait-choose>Another picture</button>
-                                    <button type="button" class="mg-link pt-down" data-act="warbands/remove-portrait" data-body={JSON.stringify({ memberId: m.id })} data-confirm={`Take down ${m.name}’s portrait?`}>Take it down</button>
+                                    <small class="mg-muted">Any picture will do: a photograph of the model, a painting, a sketch. You frame it next.</small>
                                     <small class="pt-note" data-portrait-note role="alert" hidden></small>
                                   </div>
                                   <input type="file" accept="image/*" data-portrait-file hidden />
                                 </div>
-                                <small class="mg-muted pt-hint">A new framing is kept as soon as it is made; the rest waits for Save.</small>
-                              </fieldset>
-                            )}
-                            <div class="mg-two">
-                              <label class="mg-field">Name<input name="patch.name" required maxlength="80" value={m.name} /></label>
-                              <label class="mg-field">Role<input name="patch.role" maxlength="60" value={m.role} placeholder="Elder, Jaeger, Ogre…" /></label>
-                            </div>
-                            <div class="mg-two">
-                              <label class="mg-field">Rank<select name="patch.rank"><option value="hero" selected={m.rank === 'hero'}>Hero</option><option value="henchman" selected={m.rank === 'henchman'}>Henchman</option></select></label>
-                              <label class="mg-field">Experience<input name="patch.experience" type="number" min="0" max="999" value={m.experience ?? ''} data-nullable /></label>
-                            </div>
-                            <label class="mg-field">Epithet<input name="patch.epithet" maxlength="120" value={m.epithet} placeholder="Who Led Them South" /><small>As it would follow the name on a tombstone.</small></label>
-                            <fieldset class="mg-fieldset"><legend>Characteristics</legend>
-                              <div class="mg-stats">{STAT_KEYS.map((k) => <label>{k}<input name={`patch.stats.${k}`} type="number" min="0" max="10" value={m.stats[k]} inputmode="numeric" aria-label={STAT_NAMES[k]} /></label>)}</div>
-                            </fieldset>
-                            <label class="mg-field">Skills &amp; special rules<textarea name="patch.skills" data-list>{m.skills.join('\n')}</textarea><small>One per line. Prayers and spells go here too. Weapons and gear are not tracked.</small></label>
-                            <label class="mg-field">Old wounds<textarea name="patch.injuries" data-list>{m.injuries.join('\n')}</textarea><small>One per line, as rolled on the serious injury table.</small></label>
-                            <label class="mg-field">Tale<textarea name="patch.lore" maxlength="4000">{m.lore}</textarea></label>
-                            <label class="mg-field check"><input type="checkbox" name="patch.dead" checked={m.dead} /> Fallen</label>
-                            <div class="mg-two">
-                              <label class="mg-field">Laid to rest on<input name="patch.death.date" maxlength="80" value={m.death?.date ?? ''} placeholder="Marktag, 5th of Pflugzeit, 2004 IC" /></label>
-                              <label class="mg-field">Epitaph<input name="patch.death.epitaph" maxlength="200" value={m.death?.epitaph ?? ''} placeholder="As carved. Short." /></label>
-                            </div>
-                            <div class="mg-actions end">
-                              {chapters.length === 0 && <button type="button" class="mg-btn blood sm" data-act="warbands/remove-member" data-body={JSON.stringify({ memberId: m.id })} data-confirm={`Strike ${m.name} from the roll? They fought in no recorded battle, so nothing else remembers them.`}>Strike from the roll</button>}
-                              <button type="submit" class="mg-btn">Save {m.name.split(' ')[0]}</button>
-                            </div>
-                          </form>
-                        </details>
+                              )}
+                          </div>
+                        </div>
                       )}
+                      <div class="pt-main">
+                        <table class="mg-statline"><caption class="visually-hidden">{m.name}'s statline</caption>
+                          <thead><tr>{STAT_KEYS.map((k) => <th scope="col"><abbr title={STAT_NAMES[k]}>{k}</abbr></th>)}</tr></thead>
+                          <tbody><tr>{STAT_KEYS.map((k) => <td>{m.stats[k]}</td>)}</tr></tbody>
+                        </table>
+                        {m.skills.length > 0 && <><h4 class="mg-h3">Skills &amp; special rules</h4><ul class="mg-list">{m.skills.map((x) => <li>{x}</li>)}</ul></>}
+                        {m.injuries.length > 0 && <><h4 class="mg-h3">Old wounds</h4><ul class="mg-list">{m.injuries.map((x) => <li>{x}</li>)}</ul></>}
+                        {m.lore.trim() && <><h4 class="mg-h3">Tale</h4><p class="mg-lede">{m.lore}</p></>}
+                        <WarriorStory member={m} chapters={chapters} nights={nights[m.id]} warbands={roster} />
+                        {canEdit && (
+                          <details class="mg-editor">
+                            <summary>Change {m.name.split(' ')[0]}</summary>
+                            <form class="mg-form" data-api="warbands/update-member" data-json={JSON.stringify({ memberId: m.id })}>
+                              {m.picture && (
+                                <fieldset class="mg-fieldset"><legend>Portrait</legend>
+                                  <div class="pt-change" data-portrait-editor data-member={m.id} data-name={m.name.split(' ')[0]} data-picture={JSON.stringify(m.picture)}>
+                                    <Portrait member={m} width="4.5rem" />
+                                    <div class="pt-acts">
+                                      <button type="button" class="mg-link" data-portrait-reframe>Frame it again</button>
+                                      <button type="button" class="mg-link" data-portrait-choose>Another picture</button>
+                                      <button type="button" class="mg-link pt-down" data-act="warbands/remove-portrait" data-body={JSON.stringify({ memberId: m.id })} data-confirm={`Take down ${m.name}’s portrait?`}>Take it down</button>
+                                      <small class="pt-note" data-portrait-note role="alert" hidden></small>
+                                    </div>
+                                    <input type="file" accept="image/*" data-portrait-file hidden />
+                                  </div>
+                                  <small class="mg-muted pt-hint">A new framing is kept as soon as it is made; the rest waits for Save.</small>
+                                </fieldset>
+                              )}
+                              <div class="mg-two">
+                                <label class="mg-field">Name<input name="patch.name" required maxlength="80" value={m.name} /></label>
+                                <label class="mg-field">Role<input name="patch.role" maxlength="60" value={m.role} placeholder="Elder, Jaeger, Ogre…" /></label>
+                              </div>
+                              <div class="mg-two">
+                                <label class="mg-field">Rank<select name="patch.rank"><option value="hero" selected={m.rank === 'hero'}>Hero</option><option value="henchman" selected={m.rank === 'henchman'}>Henchman</option></select></label>
+                                <label class="mg-field">Experience<input name="patch.experience" type="number" min="0" max="999" value={m.experience ?? ''} data-nullable /></label>
+                              </div>
+                              <label class="mg-field">Epithet<input name="patch.epithet" maxlength="120" value={m.epithet} placeholder="Who Led Them South" /><small>As it would follow the name on a tombstone.</small></label>
+                              <fieldset class="mg-fieldset"><legend>Characteristics</legend>
+                                <div class="mg-stats">{STAT_KEYS.map((k) => <label>{k}<input name={`patch.stats.${k}`} type="number" min="0" max="10" value={m.stats[k]} inputmode="numeric" aria-label={STAT_NAMES[k]} /></label>)}</div>
+                              </fieldset>
+                              <label class="mg-field">Skills &amp; special rules<textarea name="patch.skills" data-list>{m.skills.join('\n')}</textarea><small>One per line. Prayers and spells go here too. Weapons and gear are not tracked.</small></label>
+                              <label class="mg-field">Old wounds<textarea name="patch.injuries" data-list>{m.injuries.join('\n')}</textarea><small>One per line, as rolled on the serious injury table.</small></label>
+                              <label class="mg-field">Tale<textarea name="patch.lore" maxlength="4000">{m.lore}</textarea></label>
+                              <label class="mg-field check"><input type="checkbox" name="patch.dead" checked={m.dead} /> Fallen</label>
+                              <div class="mg-two">
+                                <label class="mg-field">Laid to rest on<input name="patch.death.date" maxlength="80" value={m.death?.date ?? ''} placeholder="Marktag, 5th of Pflugzeit, 2004 IC" /></label>
+                                <label class="mg-field">Epitaph<input name="patch.death.epitaph" maxlength="200" value={m.death?.epitaph ?? ''} placeholder="As carved. Short." /></label>
+                              </div>
+                              <div class="mg-actions end">
+                                {chapters.length === 0 && <button type="button" class="mg-btn blood sm" data-act="warbands/remove-member" data-body={JSON.stringify({ memberId: m.id })} data-confirm={`Strike ${m.name} from the roll? They fought in no recorded battle, so nothing else remembers them.`}>Strike from the roll</button>}
+                                <button type="submit" class="mg-btn">Save {m.name.split(' ')[0]}</button>
+                              </div>
+                            </form>
+                          </details>
+                        )}
+                      </div>
                     </div>
                   </details>
                 </li>

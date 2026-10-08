@@ -41,7 +41,7 @@ const statNames = {
         return (
         <div class="profile" data-profile={`${wb.id}:${m.id}`} hidden>
           <div class="profile-header">
-            {m.picture ? <Portrait member={m} class="profile-picture" /> : (
+            {m.picture ? <Portrait member={m} class="profile-picture" framed /> : (
               <span class="profile-portrait" aria-hidden="true">
                 {wb.crest ? (
                   <img src={asset(wb.crest)} alt="" width="120" height="140" loading="lazy" />
@@ -126,11 +126,11 @@ const statNames = {
   .profile-epithet { color: var(--ink-dim); font-size: var(--text-ui); font-style: italic; margin: .25rem 0; }
   .profile-portrait { flex-shrink: 0; }
   .profile-portrait img { display: block; width: 70px; height: auto; }
-  .profile-header { --portrait-width: 96px; }
+  .profile-header { --portrait-width: 112px; --portrait-frame: 7px; }
   @media (max-width: 540px) {
     .dialog-body { padding: 1.25rem 1rem 1.5rem; }
     .profile-portrait img { width: 48px; }
-    .profile-header { --portrait-width: 72px; }
+    .profile-header { --portrait-width: 84px; --portrait-frame: 5px; }
   }
   .member-dialog::backdrop {
     background: rgba(5, 6, 8, 0.85);
