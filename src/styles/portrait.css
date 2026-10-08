@@ -26,6 +26,14 @@
   .pt-main { padding: .9rem .9rem 1.1rem; }
 }
 
+/* the roll, once any warrior on it has a portrait: each closed row leads with theirs, framed, or their number */
+.pt-roll .mg-warrior > summary { grid-template-columns: 5.25rem minmax(0, 1fr) auto; gap: 1rem; padding-block: .6rem; }
+.pt-roll .mg-num { --portrait-width: 100%; --portrait-frame: 5px; }
+@media (max-width: 540px) {
+  .pt-roll .mg-warrior > summary { grid-template-columns: 4.25rem minmax(0, 1fr) auto; gap: .8rem; }
+  .pt-roll .mg-num { --portrait-frame: 4px; }
+}
+
 /* in the Change drawer: the portrait small, what may be done to it beside */
 .pt-change { display: flex; gap: 1rem; align-items: center; }
 .pt-change .pt-acts { flex-direction: column; align-items: flex-start; }

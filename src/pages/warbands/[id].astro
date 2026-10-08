@@ -101,14 +101,14 @@ const overview = paragraphsOf(warband?.lore ?? '');
           </div>
           <p class="mg-muted wb-hint">{canEdit ? 'Open a warrior to read them, or to change them.' : 'Open a warrior to read their record.'}</p>
           {warband.members.length === 0 && <p class="mg-empty">No warriors yet. {canEdit ? 'Add the first below.' : 'The roll is blank.'}</p>}
-          <ul class="mg-roster">
+          <ul class:list={['mg-roster', { 'pt-roll': warband.members.some((m) => m.picture) }]}>
             {warband.members.map((m, i) => {
               const chapters = stories[m.id] ?? [];
               return (
                 <li>
                   <details class:list={['mg-warrior', { dead: m.dead }]} id={m.id}>
                     <summary>
-                      <span class="mg-num">{m.picture ? <Portrait member={m} width="2.4rem" /> : String(i + 1).padStart(2, '0')}</span>
+                      <span class="mg-num">{m.picture ? <Portrait member={m} framed /> : String(i + 1).padStart(2, '0')}</span>
                       <span><span class="mg-name">{m.name}</span><span class="mg-role">{m.role}{m.rank === 'hero' ? ' · hero' : ''}</span>{m.epithet && <span class="mg-tag">{m.epithet}</span>}</span>
                       <span class="mg-muted">{m.dead ? <span class="mg-chip blood">Fallen</span> : m.experience !== undefined ? `${m.experience} xp` : ''}</span>
                     </summary>
