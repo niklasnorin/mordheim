@@ -11,6 +11,10 @@
 .pt-acts .pt-down { color: var(--blood-bright); }
 .pt-acts small { font-style: italic; line-height: 1.45; }
 .pt-note { color: var(--blood-bright); }
+/* in the Change drawer: the portrait small, what may be done to it beside */
+.pt-change { display: flex; gap: 1rem; align-items: center; }
+.pt-change .pt-acts { flex-direction: column; align-items: flex-start; }
+.pt-hint { font-style: italic; }
 .pt-empty { display: grid; place-items: center; width: 100%; aspect-ratio: 3 / 4; border: 1px dashed var(--gold-dim); background: repeating-linear-gradient(135deg, transparent 0 8px, #b69a6208 8px 9px), #0d1210; color: var(--gold); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; text-align: center; padding: .5rem; cursor: pointer; transition: border-color .2s, color .2s; }
 .pt-empty:hover:not([disabled]), .pt-empty:focus-visible { border-color: var(--gold); color: var(--parchment); outline: none; }
 .pt-empty[disabled] { cursor: progress; opacity: .6; }

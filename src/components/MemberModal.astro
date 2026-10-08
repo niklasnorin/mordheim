@@ -38,7 +38,6 @@ const statNames = {
       wb.members.filter((m) => shown(m.id)).map((m) => {
         const story = getMemberStory(m.id);
         const curfew = nights[m.id];
-        const openStory = m.rank === 'hero' && (story.length > 0 || (curfew?.entries.length ?? 0) > 0);
         return (
         <div class="profile" data-profile={`${wb.id}:${m.id}`} hidden>
           <div class="profile-header">
@@ -98,7 +97,7 @@ const statNames = {
               </>
             )}
             <p class="profile-manage"><a href={`${base}/warbands/${wb.id}/#${m.id}`}>The full record, and the keeper's pen</a></p>
-            <WarriorStory member={m} chapters={story} nights={curfew} warbands={warbands} open={openStory} />
+            <WarriorStory member={m} chapters={story} nights={curfew} warbands={warbands} />
           </div>
         </div>
       ); })

@@ -1,8 +1,8 @@
 ---
 /**
- * A warrior's story, told the same way wherever it appears: what the taverns call them, what the battles and the
- * nights amount to, and the line itself — every battle and every run of nights in the order they happened, with
- * who they put out of action and who put them out. The home page's dialog and the warband's own page both use it.
+ * A warrior's story, told the same way wherever it appears: what the battles and the nights amount to, and the line
+ * itself, always unfolded — every battle and every run of nights in the order they happened, with who they put out of
+ * action and who put them out. The home page's dialog and the warband's own page both use it.
  */
 import type { Member, Warband } from '../campaign/model';
 import type { MemberChapter } from '../server/campaign/scenarios';
@@ -21,10 +21,8 @@ interface Props {
   nights?: MemberNights;
   /** Every warband, so whoever put them out of action can be named. */
   warbands: Warband[];
-  /** Whether the line starts unfolded. */
-  open?: boolean;
 }
-const { member: m, chapters, nights: curfew, warbands, open = false } = Astro.props;
+const { member: m, chapters, nights: curfew, warbands } = Astro.props;
 
 const first = m.name.split(' ')[0];
 const memberName = (id: string) => warbands.flatMap((w) => w.members).find((x) => x.id === id)?.name ?? id;
@@ -64,36 +62,23 @@ const rows = timeline();
 const nightCount = curfew?.entries.length ?? 0;
 const placesOf = (list: NightEntry[]) => [...new Set(list.map((e) => locationById(e.locationId).name))];
 const countOf = (n: number, one: string, many: string) => (n === 1 ? `One ${one}` : `${n} ${many}`);
+const nightsOut = curfew?.nightsOut ?? 0;
 ---
 
-{(chapters.length > 0 || took.length > 0 || fell.length > 0) && (
+{(chapters.length > 0 || took.length > 0 || fell.length > 0 || nightsOut > 0) && (
   <p class="story-tally">
     <b>{chapters.length}</b> {chapters.length === 1 ? 'battle' : 'battles'} fought
     {took.length > 0 && <> · <b>{took.length}</b> put out of action</>}
     {fell.length > 0 && <> · out of action <b>{fell.length}</b> {fell.length === 1 ? 'time' : 'times'}</>}
+    {nightsOut > 0 && <> · <b>{nightsOut}</b> {nightsOut === 1 ? 'night' : 'nights'} out after curfew</>}
   </p>
 )}
 
-{curfew && (curfew.nightsOut > 0 || curfew.epithet || curfew.marks.length > 0) && (
-  <div class="nights">
-    <h4>Nights in the City</h4>
-    <p class="nights-standing">
-      {curfew.epithet && <>The taverns call {first} <em>{first} {curfew.epithet}</em> now. </>}
-      {curfew.nightsOut > 0 && <>{curfew.nightsOut} {curfew.nightsOut === 1 ? 'night' : 'nights'} out between the battles{curfew.shards > 0 ? `, ${curfew.shards} ${curfew.shards === 1 ? 'shard' : 'shards'} of the green brought home` : ''}. Each is on the line below, folded between the battles; the whole ledger is at <a href={`${base}/curfew/`}>the Curfew</a>.</>}
-      {curfew.marks.length > 0 && <> Known for what {first} did at a crossroads: <em>{curfew.marks.map((k) => k.name).join('; ')}</em>.</>}
-    </p>
-  </div>
-)}
-
 {rows.length > 0 || (m.dead && m.death) ? (
-  <details class="storyline" data-story data-default-open={open ? 'true' : 'false'} open={open}>
-    <summary>
-      <span class="storyline-toggle">Follow their story <Icon name="arrow-down" size={14} /></span>
-    </summary>
+  <div class="storyline" data-story>
     {nightCount > 0 && (
       <div class="story-tools">
         <button type="button" class="story-fold" data-fold-nights aria-pressed="false">Show the nights</button>
-        <span class="story-tools-note">{countOf(nightCount, 'night is', 'nights are')} folded between the battles.</span>
       </div>
     )}
     <ol class="story-timeline">
@@ -161,7 +146,7 @@ const countOf = (n: number, one: string, many: string) => (n === 1 ? `One ${one}
         </li>
       )}
     </ol>
-  </details>
+  </div>
 ) : (
   <p class="story-empty">
     {m.dead ? 'Their tale has ended. No battles or nights have yet been recorded.' : 'The tale continues. No battles or nights have yet been recorded.'}
@@ -171,30 +156,8 @@ const countOf = (n: number, one: string, many: string) => (n === 1 ? `One ${one}
 <style>
   .story-tally { margin-top: 1.2rem; padding-top: .9rem; border-top: 1px solid var(--border); color: var(--ink-dim); font: var(--text-ui)/1.6 var(--font-utility); font-variant: small-caps; letter-spacing: .06em; }
   .story-tally b { color: var(--gold); font-weight: normal; font-variant-numeric: tabular-nums; }
-  .nights { margin-top: 1.2rem; padding-top: 1.1rem; border-top: 1px solid var(--border); }
-  .nights h4 { color: var(--gold); font-size: 1rem; margin-bottom: .4rem; font-variant: small-caps; letter-spacing: .06em; font-weight: normal; }
-  .nights-standing { color: var(--ink-dim); font-size: var(--text-body); margin-bottom: .8rem; }
-  .nights-standing em { color: var(--parchment); font-style: italic; }
-  .nights-standing a { color: var(--gold); text-underline-offset: .2em; }
   .story-empty { color: var(--ink-dim); border-top: 1px solid var(--border); margin-top: 1.5rem; padding-top: 1rem; font-size: var(--text-body); }
-  .storyline { margin-top: 1.4rem; border-top: 1px solid var(--border); padding-top: 1rem; }
-  .storyline summary { list-style: none; cursor: pointer; display: inline-block; }
-  .storyline summary::-webkit-details-marker { display: none; }
-  .storyline-toggle {
-    font-family: 'Pirata One', cursive;
-    font-size: 1.1rem;
-    letter-spacing: 0.06em;
-    color: var(--gold);
-    border: 1px solid var(--gold-dim);
-    padding: 0.45rem 1rem;
-    min-height: var(--control-size);
-    display: inline-block;
-    transition: all 0.25s;
-  }
-  .storyline-toggle :global(svg) { margin-left: .45rem; }
-  .storyline summary:hover .storyline-toggle,
-  .storyline summary:focus-visible .storyline-toggle { color: var(--parchment); border-color: var(--gold); background: rgba(184, 150, 62, 0.08); }
-  .storyline[open] .storyline-toggle { background: rgba(184, 150, 62, 0.1); color: var(--parchment); }
+  .storyline { margin-top: 1rem; }
   .dead-marker { color: var(--blood-bright); }
 </style>
 

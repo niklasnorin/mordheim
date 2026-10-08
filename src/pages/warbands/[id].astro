@@ -114,24 +114,18 @@ const overview = paragraphsOf(warband?.lore ?? '');
                     </summary>
                     <div class="mg-body">
                       <div class:list={['pt-head', { pictured: !!m.picture || canEdit }]}>
-                        {canEdit ? (
-                          <div class="pt-likeness" data-portrait-editor data-member={m.id} data-name={m.name.split(' ')[0]} data-picture={m.picture ? JSON.stringify(m.picture) : undefined}>
-                            {m.picture
-                              ? <Portrait member={m} alt={`Portrait of ${m.name}`} />
-                              : <button type="button" class="pt-empty" data-portrait-choose><span>Add a portrait</span></button>}
-                            <div class="pt-acts">
-                              {m.picture
-                                ? <>
-                                    <button type="button" class="mg-link" data-portrait-reframe>Frame it again</button>
-                                    <button type="button" class="mg-link" data-portrait-choose>Another picture</button>
-                                    <button type="button" class="mg-link pt-down" data-act="warbands/remove-portrait" data-body={JSON.stringify({ memberId: m.id })} data-confirm={`Take down ${m.name}’s portrait?`}>Take it down</button>
-                                  </>
-                                : <small class="mg-muted">Any picture will do: a photograph of the model, a painting, a sketch. You frame it next.</small>}
-                              <small class="pt-note" data-portrait-note role="alert" hidden></small>
+                        {m.picture
+                          ? <Portrait member={m} alt={`Portrait of ${m.name}`} />
+                          : canEdit && (
+                            <div class="pt-likeness" data-portrait-editor data-member={m.id} data-name={m.name.split(' ')[0]}>
+                              <button type="button" class="pt-empty" data-portrait-choose><span>Add a portrait</span></button>
+                              <div class="pt-acts">
+                                <small class="mg-muted">Any picture will do: a photograph of the model, a painting, a sketch. You frame it next.</small>
+                                <small class="pt-note" data-portrait-note role="alert" hidden></small>
+                              </div>
+                              <input type="file" accept="image/*" data-portrait-file hidden />
                             </div>
-                            <input type="file" accept="image/*" data-portrait-file hidden />
-                          </div>
-                        ) : m.picture && <Portrait member={m} alt={`Portrait of ${m.name}`} />}
+                          )}
                         <div class="pt-sheet-side">
                           <table class="mg-statline"><caption class="visually-hidden">{m.name}'s statline</caption>
                             <thead><tr>{STAT_KEYS.map((k) => <th scope="col"><abbr title={STAT_NAMES[k]}>{k}</abbr></th>)}</tr></thead>
@@ -142,11 +136,26 @@ const overview = paragraphsOf(warband?.lore ?? '');
                         </div>
                       </div>
                       {m.lore.trim() && <><h4 class="mg-h3">Tale</h4><p class="mg-lede">{m.lore}</p></>}
-                      <WarriorStory member={m} chapters={chapters} nights={nights[m.id]} warbands={roster} open />
+                      <WarriorStory member={m} chapters={chapters} nights={nights[m.id]} warbands={roster} />
                       {canEdit && (
                         <details class="mg-editor">
                           <summary>Change {m.name.split(' ')[0]}</summary>
                           <form class="mg-form" data-api="warbands/update-member" data-json={JSON.stringify({ memberId: m.id })}>
+                            {m.picture && (
+                              <fieldset class="mg-fieldset"><legend>Portrait</legend>
+                                <div class="pt-change" data-portrait-editor data-member={m.id} data-name={m.name.split(' ')[0]} data-picture={JSON.stringify(m.picture)}>
+                                  <Portrait member={m} width="4.5rem" />
+                                  <div class="pt-acts">
+                                    <button type="button" class="mg-link" data-portrait-reframe>Frame it again</button>
+                                    <button type="button" class="mg-link" data-portrait-choose>Another picture</button>
+                                    <button type="button" class="mg-link pt-down" data-act="warbands/remove-portrait" data-body={JSON.stringify({ memberId: m.id })} data-confirm={`Take down ${m.name}’s portrait?`}>Take it down</button>
+                                    <small class="pt-note" data-portrait-note role="alert" hidden></small>
+                                  </div>
+                                  <input type="file" accept="image/*" data-portrait-file hidden />
+                                </div>
+                                <small class="mg-muted pt-hint">A new framing is kept as soon as it is made; the rest waits for Save.</small>
+                              </fieldset>
+                            )}
                             <div class="mg-two">
                               <label class="mg-field">Name<input name="patch.name" required maxlength="80" value={m.name} /></label>
                               <label class="mg-field">Role<input name="patch.role" maxlength="60" value={m.role} placeholder="Elder, Jaeger, Ogre…" /></label>

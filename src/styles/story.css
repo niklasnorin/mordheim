@@ -12,10 +12,11 @@
 .nights-choice { margin: .35rem 0 .2rem; color: var(--ink); }
 .nights-choice-label { font: var(--text-meta)/1.6 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; color: var(--gold); margin-right: .35rem; }
 .nights-choice em { color: var(--parchment); }
-.story-tools { display: flex; align-items: baseline; gap: .8rem; flex-wrap: wrap; margin-top: 1.1rem; }
-.story-fold { background: none; border: 1px solid var(--border); color: var(--gold); font: var(--text-ui)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; padding: .45rem .8rem; min-height: var(--control-size); cursor: pointer; transition: all .2s; }
-.story-fold:hover, .story-fold:focus-visible { border-color: var(--gold); color: var(--parchment); }
-.story-fold[aria-pressed='true'] { background: rgba(184, 150, 62, 0.1); color: var(--parchment); border-color: var(--gold-dim); }
+.story-tools { display: flex; align-items: baseline; gap: .8rem; flex-wrap: wrap; margin-top: .6rem; }
+/* a quiet switch: a word in the margin, not a button that competes with the line */
+.story-fold { background: none; border: 0; padding: .3rem 0; min-height: 2.25rem; color: var(--ink-dim); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; text-decoration: underline dotted var(--gold-dim); text-underline-offset: .3em; cursor: pointer; transition: color .2s; }
+.story-fold:hover, .story-fold:focus-visible { color: var(--gold); }
+.story-fold[aria-pressed='true'] { color: var(--gold-dim); }
 .story-tools-note { font-size: var(--text-meta); font-style: italic; color: var(--ink-dim); }
 .story-nights-row { padding-bottom: 1.2rem; }
 .story-marker-night { color: var(--ink-dim); }
