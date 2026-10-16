@@ -7,9 +7,9 @@ test('the deck is the thirty Omens, each with a small effect in the voice', () =
   assert.equal(new Set(TAROT.map((c) => c.id)).size, 30, 'no card repeats');
   for (const c of TAROT) {
     assert.ok(c.image.startsWith('/curfew/omens/'), `${c.id} uses the Curfew’s picture`);
-    assert.ok(c.when.endsWith('.') && c.effect.endsWith('.'), `${c.id} is written in sentences`);
-    assert.ok(!/!/.test(c.when + c.effect), `${c.id} has no exclamation mark`);
-    assert.ok(!/'/.test(c.when + c.effect), `${c.id} uses typographic apostrophes`);
+    assert.ok(c.rule.endsWith('.') && c.flavour.endsWith('.'), `${c.id} is written in sentences`);
+    assert.ok(!/!/.test(c.rule + c.flavour), `${c.id} has no exclamation mark`);
+    assert.ok(!/'/.test(c.rule + c.flavour), `${c.id} uses typographic apostrophes`);
   }
   assert.ok(TAROT.some((c) => c.kind === 'bane') && TAROT.some((c) => c.kind === 'twist'), 'not every card is a boon');
   assert.equal(cardById('the-comet')?.only, 'first');

@@ -82,8 +82,9 @@
 .tc-show-inner[data-played='true'] .tc-card.big img { box-shadow: 0 0 0 2px var(--gold), 0 0 40px -6px var(--gold), 0 30px 60px -16px #000; }
 .tc-show-text { display: grid; gap: .35rem; text-align: center; }
 .tc-show-title { font: normal clamp(1.7rem, 7vw, 2.3rem)/1.1 'Pirata One', Georgia, serif; color: var(--parchment); letter-spacing: .02em; text-wrap: balance; }
-.tc-when { color: var(--gold); font: italic 1.05rem/1.4 'IM Fell English', Georgia, serif; }
-.tc-effect { color: var(--ink); font: 1.1rem/1.5 'IM Fell English', Georgia, serif; max-width: 36ch; margin: 0 auto; text-wrap: pretty; }
+/* the whole rule in plain parchment, then a line of flavour in the archive's italic */
+.tc-rule { color: var(--parchment); font: 1.1rem/1.5 'IM Fell English', Georgia, serif; max-width: 36ch; margin: 0 auto; text-wrap: pretty; }
+.tc-flavour { color: var(--ink-dim); font: italic 1rem/1.45 'IM Fell English', Georgia, serif; max-width: 34ch; margin: .2rem auto 0; text-wrap: pretty; }
 .tc-played-mark { color: var(--green-wyrd); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .22em; }
 .tc-show-actions { display: grid; gap: .6rem; }
 .tc-play[data-hour='not-yet'], .tc-play[data-hour='too-late'] { border-color: var(--border); color: var(--ink-dim); }

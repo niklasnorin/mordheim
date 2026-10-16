@@ -67,8 +67,8 @@ const signInHref = `${base}/signin/?next=${encodeURIComponent(`${base}/admin/tar
                 <div class="wh-tarot-text">
                   <div class="wh-tarot-kicker"><span class="wh-tarot-numeral">{c.numeral}</span><span class="wh-tarot-kind">{TAROT_KIND_LABEL[c.kind]}</span>{c.only && <span class="wh-tarot-hour">{HOUR_LABEL[c.only]}</span>}</div>
                   <h2 class="wh-h2">{c.title}</h2>
-                  <p class="wh-tarot-when">{c.when}</p>
-                  <p class="wh-tarot-effect">{c.effect}</p>
+                  <p class="wh-tarot-rule">{c.rule}</p>
+                  <p class="wh-tarot-flavour">{c.flavour}</p>
                 </div>
               </li>
             ))}
@@ -88,7 +88,7 @@ const signInHref = `${base}/signin/?next=${encodeURIComponent(`${base}/admin/tar
                 <tr class="wh-row"><th scope="row">The first turn only</th><td class="num">{timed.filter((c) => c.only === 'first').length}</td><td>{timed.filter((c) => c.only === 'first').map((c, i) => <>{i > 0 && ', '}<a href={`#card-${c.id}`}>{c.title}</a></>)}</td></tr>
                 <tr class="wh-row"><th scope="row">The last round only</th><td class="num">{timed.filter((c) => c.only === 'last').length}</td><td>{timed.filter((c) => c.only === 'last').map((c, i) => <>{i > 0 && ', '}<a href={`#card-${c.id}`}>{c.title}</a></>)}</td></tr>
                 <tr class="wh-row"><th scope="row">On the cards themselves</th><td class="num">2</td><td>{[DOOR_CARD, WALL_CARD].map((id, i) => <>{i > 0 && ', '}<a href={`#card-${id}`}>{TAROT.find((c) => c.id === id)!.title}</a></>)}</td></tr>
-                <tr class="wh-row"><th scope="row">After the game</th><td class="num">{TAROT.filter((c) => /after the game/i.test(c.effect)).length}</td><td>{TAROT.filter((c) => /after the game/i.test(c.effect)).map((c, i) => <>{i > 0 && ', '}<a href={`#card-${c.id}`}>{c.title}</a></>)}</td></tr>
+                <tr class="wh-row"><th scope="row">After the game</th><td class="num">{TAROT.filter((c) => /after the game/i.test(c.rule)).length}</td><td>{TAROT.filter((c) => /after the game/i.test(c.rule)).map((c, i) => <>{i > 0 && ', '}<a href={`#card-${c.id}`}>{c.title}</a></>)}</td></tr>
               </tbody>
             </table>
           </div>

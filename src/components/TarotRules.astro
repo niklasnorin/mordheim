@@ -29,7 +29,8 @@ const { folded = false } = Astro.props;
         <img src={`${base}${c.image}`} alt="" width="70" height="120" loading="lazy" decoding="async" />
         <div>
           <b>{c.numeral}. {c.title}</b> <small>{TAROT_KIND_LABEL[c.kind]}</small>
-          <p><i>{c.when}</i> {c.effect}</p>
+          <p>{c.rule}</p>
+          <p class="tarot-flavour">{c.flavour}</p>
         </div>
       </li>
     ))}
@@ -42,6 +43,6 @@ const { folded = false } = Astro.props;
   .tarot-list img { width: 3.4rem; height: auto; aspect-ratio: 7 / 12; object-fit: cover; border-radius: 4px; box-shadow: 0 6px 14px -6px #000c; }
   .tarot-list b { color: var(--parchment); font-weight: 600; }
   .tarot-list small { color: var(--ink-dim); font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; margin-left: .4rem; }
-  .tarot-list p { margin: .15rem 0 0; font-size: .95rem; }
-  .tarot-list i { color: var(--gold); }
+  .tarot-list p { margin: .15rem 0 0; font-size: .95rem; color: var(--parchment); }
+  .tarot-list .tarot-flavour { font-style: italic; color: var(--ink-dim); }
 </style>

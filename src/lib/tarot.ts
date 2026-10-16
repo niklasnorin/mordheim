@@ -222,8 +222,8 @@ export function mountTarot(root: HTMLElement, opts: TarotOptions): TarotMount {
     const text = h('div', { class: 'tc-show-text' },
       h('div', { class: 'tk-turn-label' }, `${card.numeral} · ${TAROT_KIND_LABEL[card.kind]}`),
       h('h2', { class: 'tc-show-title' }, card.title),
-      h('p', { class: 'tc-when' }, card.when),
-      h('p', { class: 'tc-effect' }, card.effect),
+      h('p', { class: 'tc-rule' }, card.rule),
+      h('p', { class: 'tc-flavour' }, card.flavour),
       held && may ? h('p', { class: 'tc-note' }, captionOf(card, held, s).text + (hour === 'now' ? '.' : ': the table may still allow it.')) : null,
     );
     const actions = h('div', { class: 'tc-show-actions' });
