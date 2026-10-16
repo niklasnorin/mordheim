@@ -18,6 +18,7 @@ import { listWarbands } from '../../server/campaign/roster';
 import { listLocations } from '../../server/campaign/locations';
 import { RULEBOOK_SCENARIOS, RULEBOOK_TALLIES, rulebookUrl } from '../../campaign/rulebook';
 import { HOUSE_SCENARIOS, SIDE_LABEL, houseScenario } from '../../campaign/house';
+import TarotRules from '../../components/TarotRules.astro';
 import { MEMBER_STATUSES, fightPosition, hasTurnLog, summaryOf, tallyOf, type CampaignLocation, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
 import { CAMPAIGN } from '../../curfew/engine';
 
@@ -159,6 +160,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         {house ? (scenario.customRules && (<><h3>Also in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>)) : scenario.customRules ? (<><h3>Rules in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>) : <p class="archive-note">{scenario.rulebookScenario ? <>Played as the rulebook has it{rulesUrl ? <>; <a href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules in full</a></> : null}.</> : 'The rules are still being written.'}</p>}
         {scenario.winCondition && !scenario.rulebookScenario && (<><h3>Win condition</h3><p>{scenario.winCondition}</p></>)}
         {house && (<><h3>In short</h3><p>{house.winCondition}</p></>)}
+        {scenario.tarot && <TarotRules folded />}
         {where?.map && whereAt && <LocationMap location={where} marker={whereAt} markerLabel={wherePoint?.name ?? scenario.title} quiet caption={`Where the fight is, on the map of ${where.name}.`} />}
       </section>
     )}
@@ -174,6 +176,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         </dl>
         {house && <details class="house-rules-fold"><summary>The rules as played</summary>{house.rules.map((r) => (<><h3>{r.heading}</h3><ul class="house-rules">{r.lines.map((l) => <li>{l}</li>)}</ul></>))}</details>}
         {scenario.customRules && (<><h3>{house ? 'Also in play' : 'Rules in play'}</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>)}
+        {scenario.tarot && <TarotRules folded={!upcoming} />}
         {!scenario.rulebookScenario && !scenario.winCondition && (
           <p class="archive-note">The chapter title is not a rulebook scenario name. Missing rules information is left unconfirmed rather than inferred from the story.</p>
         )}
@@ -392,6 +395,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
               </div>
               <label class="mg-field">What the tracker tallies<input name="patch.tally" maxlength="60" value={scenario.tally} placeholder={tallyOf({ tally: '', rulebookScenario: scenario.rulebookScenario }) || 'Nothing beyond the fallen'} /><small>What the battle tracker counts per warband besides who fell: shards on a Wyrdstone Hunt, warriors through on a Breakthrough. Empty means the rulebook scenario's own ({Object.entries(RULEBOOK_TALLIES).map(([k, v]) => `${k}: ${v!.toLowerCase()}`).join('; ')}), or none.</small></label>
               <label class="mg-field">Turns<input name="patch.turnLimit" type="number" min="1" max="99" inputmode="numeric" value={scenario.turnLimit ?? ''} data-nullable placeholder="Until it is decided" /><small>The game ends of itself after this many; the table may add another round in the tracker, time permitting. A campaign scenario sets its own when chosen.</small></label>
+              <label class="mg-field check"><input type="checkbox" name="patch.tarot" checked={scenario.tarot} /> The Tarot of the Damned is in play: each warband a hidden hand of three cards in the tracker, small boons and banes played at the table</label>
               <fieldset class="mg-fieldset"><legend>Where</legend>
                 <label class="mg-field">Place<select name="patch.locationId" data-nullable data-location-select><option value="" selected={!scenario.locationId}>Not said</option>{locations.map((l) => <option value={l.id} selected={l.id === scenario!.locationId}>{l.name}{l.region ? ` (${l.region})` : ''}</option>)}</select><small>One of <a class="mg-rules-link" href={`${base}/locations/`}>the campaign’s locations</a>. Tap its map where the fight is, or tap a marked place to set the fight there; the marker then follows the place if it is moved.</small></label>
                 <input type="number" name="patch.pointId" data-nullable data-point-input hidden value={scenario.pointId ?? ''} />

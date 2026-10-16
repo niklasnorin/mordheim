@@ -8,9 +8,10 @@
 import Base from '../../../layouts/Base.astro';
 import Icon from '../../../components/Icon.astro';
 import '../../../styles/tracker.css';
+import '../../../styles/tarot.css';
 import { base } from '../../../lib/site';
 import { hasDatabase } from '../../../server/db/client';
-import { getActor } from '../../../server/roles';
+import { getActor, isGm } from '../../../server/roles';
 import { getScenario, mayTrack } from '../../../server/campaign/scenarios';
 import { listWarbands } from '../../../server/campaign/roster';
 import { tallyOf, type Scenario, type Warband } from '../../../campaign/model';
@@ -34,9 +35,11 @@ if (!scenario) return Astro.redirect(`${base}/scenarios/`);
 const roster = scenario.warbands.map((p) => warbands.find((w) => w.id === p.warbandId)).filter((w): w is Warband => !!w).map((w) => ({
   id: w.id, name: w.name, members: w.members.map((m) => ({ id: m.id, name: m.name, role: m.role, dead: m.dead })),
 }));
-const state: TrackerState = { base, roster, may, scenario };
+// the Tarot's hands this phone holds: the keeper's own warband, every attending one for a game master; never the other side's
+const hands = scenario.tarot && viewer ? scenario.warbands.map((p) => warbands.find((w) => w.id === p.warbandId)).filter((w): w is Warband => !!w && (isGm(viewer) || w.ownerId === viewer.id)).map((w) => ({ id: w.id, name: w.name })) : [];
+const state: TrackerState = { base, roster, may, hands, scenario };
 const tally = tallyOf(scenario);
-const sub = [scenario.rulebookScenario ?? 'Custom scenario', roster.map((w) => w.name).join(' against ') || 'No warbands named', tally ? `counting ${tally.toLowerCase()}` : null].filter(Boolean).join(' · ');
+const sub = [scenario.rulebookScenario ?? 'Custom scenario', roster.map((w) => w.name).join(' against ') || 'No warbands named', tally ? `counting ${tally.toLowerCase()}` : null, scenario.tarot ? 'the Tarot in play' : null].filter(Boolean).join(' · ');
 ---
 
 <Base title={`${scenario.title}, at the table — Mordheim`} description={`The battle tracker for ${scenario.title}.`}>

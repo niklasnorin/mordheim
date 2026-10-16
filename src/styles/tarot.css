@@ -1,0 +1,97 @@
+/* ═══════════════════════════════════════════
+   The Tarot of the Damned at the table: a drawer under the thumb with the keeper's hand,
+   and the card held up large for the other side to read. The cards are the Curfew's Omens,
+   and they turn over the way the Omen does at dusk. On the tracker's palette (tracker.css).
+   ═══════════════════════════════════════════ */
+
+/* the button in the bar: a dot when cards have come that this phone has not seen */
+.tc-toggle { position: relative; }
+.tc-toggle[aria-expanded='true'] { border-color: var(--gold); color: var(--parchment); background: #1f2823; }
+.tc-toggle.has-new::after { content: ''; position: absolute; top: .4rem; right: .5rem; width: .5rem; height: .5rem; border-radius: 50%; background: var(--green-wyrd); box-shadow: 0 0 8px var(--green-wyrd); }
+.tk-bar[data-tarot='true'] .tk-bar-inner { grid-template-columns: repeat(4, 1fr); }
+
+/* the drawer: slid up from behind the bar, never over it */
+.tc-drawer { position: fixed; left: 0; right: 0; bottom: calc(5.4rem + env(safe-area-inset-bottom, 0px)); z-index: 19; max-width: 40rem; margin: 0 auto; max-height: min(72dvh, 44rem); overflow: auto; overscroll-behavior: contain; background: linear-gradient(160deg, #1b231d, #111915); border: 1px solid var(--gold-dim); border-bottom: 0; box-shadow: 0 -20px 60px -20px #000; animation: tc-rise .25s ease-out; }
+.tc-drawer[hidden] { display: none; }
+@keyframes tc-rise { from { transform: translateY(1.5rem); opacity: 0; } to { transform: none; opacity: 1; } }
+.tc-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem .5rem .4rem 1rem; }
+.tc-head-text { display: grid; gap: .2rem; min-width: 0; }
+.tc-head .tk-strike { margin: 0; }
+.tc-whose { color: var(--parchment); font: normal 1.25rem/1.2 'Pirata One', Georgia, serif; letter-spacing: .02em; }
+.tc-pick { font: var(--text-ui)/1.3 var(--font-utility); background: #0d1210; color: var(--parchment); border: 1px solid var(--border); padding: .4rem .6rem; min-height: var(--control-size); color-scheme: dark; }
+.tc-note { color: var(--ink-dim); font-style: italic; font-size: var(--text-ui); text-align: center; padding: .4rem 1rem .8rem; margin: 0; }
+
+/* the hand: three places, a card in each or an empty one waiting for the next turn */
+.tc-hand { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; padding: .3rem 1rem .6rem; }
+.tc-held { background: none; border: 0; padding: 0; display: grid; gap: .4rem; justify-items: center; cursor: pointer; touch-action: manipulation; color: inherit; min-width: 0; }
+.tc-held:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+.tc-caption { display: grid; gap: .1rem; justify-items: center; color: var(--ink-dim); font: var(--text-meta)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; text-align: center; }
+.tc-caption b { font: normal .95rem/1 'Cinzel', 'Pirata One', Georgia, serif; letter-spacing: .15em; color: var(--gold); }
+.tc-held[data-hour='not-yet'] .tc-face, .tc-held[data-hour='too-late'] .tc-face { filter: grayscale(.7) brightness(.55); }
+.tc-held[data-hour='too-late'] .tc-caption { color: var(--blood-bright); }
+.tc-slot { aspect-ratio: 7 / 12; border: 1px dashed var(--border); border-radius: 10px; display: grid; place-items: center; padding: .5rem; color: var(--ink-dim); font: var(--text-meta)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; text-align: center; background: #0d121033; }
+
+/* the card, and its turn: lifts off the table, turns with a little overshoot, settles; the same as the Omen's */
+.tc-card { position: relative; perspective: 1400px; width: 100%; }
+.tc-card-inner { position: relative; width: 100%; aspect-ratio: 7 / 12; transform-style: preserve-3d; }
+.tc-card.is-flipped .tc-card-inner { transform: rotateY(180deg); }
+.tc-card.is-revealing .tc-card-inner { animation: tc-reveal 1.5s cubic-bezier(0.22, 0.8, 0.28, 1) var(--d, 0s) forwards; }
+@keyframes tc-reveal {
+  0% { transform: translateY(0) rotateY(0) scale(1); }
+  30% { transform: translateY(-18px) rotateY(70deg) scale(1.05) rotateZ(-2deg); }
+  70% { transform: translateY(-10px) rotateY(196deg) scale(1.04) rotateZ(1.5deg); }
+  100% { transform: translateY(0) rotateY(180deg) scale(1) rotateZ(0); }
+}
+.tc-card.is-revealing::after { animation: tc-flare 1.5s ease-out var(--d, 0s) forwards; }
+@keyframes tc-flare { 0% { opacity: 0.4; transform: scale(1); } 45% { opacity: 1; transform: scale(1.25); } 100% { opacity: 0.6; transform: scale(1); } }
+.tc-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; backface-visibility: hidden; border-radius: 8px; box-shadow: 0 12px 28px -8px #000c; }
+.tc-card img.tc-face { transform: rotateY(180deg); }
+.tc-card::after { content: ''; position: absolute; inset: -8%; background: radial-gradient(ellipse, #b69a6222, transparent 60%); pointer-events: none; opacity: .6; z-index: -1; }
+
+/* the deck and the piles */
+.tc-foot { display: grid; gap: .3rem; padding: .2rem 1rem .6rem; border-top: 1px solid var(--border); }
+.tc-tally { display: flex; flex-wrap: wrap; justify-content: center; gap: .3rem 1.2rem; padding: .6rem 0 .2rem; color: var(--ink-dim); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .12em; }
+.tc-tally b { color: var(--parchment); font: normal 1.1rem/1 'Pirata One', Georgia, serif; letter-spacing: .03em; margin-right: .3rem; }
+.tc-spent > summary { cursor: pointer; color: var(--gold); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .12em; min-height: var(--control-size); display: flex; align-items: center; justify-content: center; }
+.tc-spent ul { list-style: none; padding: 0 0 .4rem; display: grid; gap: .2rem; }
+.tc-spent li { display: flex; justify-content: space-between; align-items: baseline; gap: .6rem; padding: .25rem 0; border-top: 1px solid #1c231f; }
+.tc-spent li[data-how='faded'] b { color: var(--ink-dim); }
+.tc-spent-card { background: none; border: 0; padding: 0; color: var(--parchment); font: inherit; cursor: pointer; text-align: left; min-height: 2rem; }
+.tc-spent-card b { font-weight: 600; }
+.tc-spent small { color: var(--ink-dim); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; flex-shrink: 0; }
+
+/* the card held up: the whole screen, so nothing of the hand shows around it */
+.tc-show { border: 0; padding: 0; margin: 0; width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; background: var(--bg); color: var(--ink); }
+.tc-show::backdrop { background: var(--bg); }
+.tc-show[open] { animation: tc-rise .22s ease-out; }
+.tc-show-inner { position: relative; max-width: 40rem; margin: 0 auto; min-height: 100dvh; display: grid; grid-template-rows: 1fr auto auto; gap: .9rem; padding: 1rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
+.tc-show-close { position: absolute; top: .5rem; right: .5rem; z-index: 2; margin: 0; }
+.tc-show .tc-card.big { width: auto; height: min(56dvh, 34rem); aspect-ratio: 7 / 12; margin: 1.5rem auto 0; align-self: center; }
+.tc-show .tc-card.big .tc-card-inner { height: 100%; aspect-ratio: auto; }
+.tc-show .tc-card.big img { border-radius: 12px; box-shadow: 0 30px 60px -16px #000; }
+.tc-show .tc-card.big::after { animation: tc-flicker 4s ease-in-out infinite; opacity: 1; background: radial-gradient(ellipse, #b69a6233, transparent 62%); }
+@keyframes tc-flicker { 0%, 100% { opacity: 0.7; } 40% { opacity: 1; } 60% { opacity: 0.6; } }
+.tc-show-inner[data-played='true'] .tc-card.big img { box-shadow: 0 0 0 2px var(--gold), 0 0 40px -6px var(--gold), 0 30px 60px -16px #000; }
+.tc-show-text { display: grid; gap: .35rem; text-align: center; }
+.tc-show-title { font: normal clamp(1.7rem, 7vw, 2.3rem)/1.1 'Pirata One', Georgia, serif; color: var(--parchment); letter-spacing: .02em; text-wrap: balance; }
+.tc-when { color: var(--gold); font: italic 1.05rem/1.4 'IM Fell English', Georgia, serif; }
+.tc-effect { color: var(--ink); font: 1.1rem/1.5 'IM Fell English', Georgia, serif; max-width: 36ch; margin: 0 auto; text-wrap: pretty; }
+.tc-played-mark { color: var(--green-wyrd); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .22em; }
+.tc-show-actions { display: grid; gap: .6rem; }
+.tc-play[data-hour='not-yet'], .tc-play[data-hour='too-late'] { border-color: var(--border); color: var(--ink-dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-drawer, .tc-show[open] { animation: none; }
+  .tc-card.is-revealing .tc-card-inner, .tc-card.is-revealing::after, .tc-show .tc-card.big::after { animation: none; }
+  .tc-card-inner, .tc-card.is-flipped .tc-card-inner { transform: none; }
+  .tc-card img { backface-visibility: visible; transition: opacity 0.7s ease; }
+  .tc-card img.tc-face { transform: none; opacity: 0; }
+  .tc-card.is-flipped img.tc-face { opacity: 1; }
+}
+
+@media (min-width: 40rem) {
+  .tc-hand { gap: 1rem; padding: .5rem 1.25rem .8rem; }
+  /* a window on a wide screen; the backdrop stays solid, so the hand behind it is never half seen */
+  .tc-show { width: min(100vw, 44rem); height: auto; max-height: 92dvh; margin: auto; border: 1px solid var(--gold-dim); }
+  .tc-show-inner { min-height: 0; }
+}

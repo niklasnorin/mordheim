@@ -6,6 +6,7 @@
  */
 import { scoresOf, tallyOf, type Scenario, type Warband } from '../campaign/model';
 import { SIDE_LABEL, houseScenario, rollBrings } from '../campaign/house';
+import { TAROT_KIND_LABEL, cardById } from '../campaign/tarot';
 
 interface Props { scenario: Scenario; warbands: Warband[] }
 const { scenario, warbands } = Astro.props;
@@ -23,13 +24,15 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
 const winners = scenario.warbands.filter((w) => w.result === 'victory').map((w) => nameOf(w.warbandId));
 const ending = winners.length ? `Victory to ${winners.join(' and ')}` : scenario.warbands.some((w) => w.result) ? 'A draw' : 'No result recorded';
 
-type Line = { turn: number | null; at: number; kind: 'out-of-action' | 'note' | 'score' | 'hold' | 'roll'; html: { lead: string; strong?: string; rest?: string }; who?: string; by?: string };
+type Line = { turn: number | null; at: number; kind: 'out-of-action' | 'note' | 'score' | 'hold' | 'roll' | 'card'; html: { lead: string; strong?: string; rest?: string }; who?: string; by?: string };
 const lines: Line[] = [
   ...scenario.outOfAction.map((o): Line => ({ turn: o.turn ?? null, at: o.id, kind: 'out-of-action', html: { lead: `${memberOf(o.attackerId)?.name ?? o.attackerId} put `, strong: o.target, rest: ` out of action${o.detail ? `: ${o.detail}` : ''}` }, who: memberOf(o.attackerId)?.warbandName })),
   ...scenario.events.map((e): Line => e.kind === 'hold'
     ? ({ turn: e.turn, at: e.id, kind: 'hold', html: { lead: `${house?.objective?.title ?? 'The objective'}: `, strong: e.warbandId ? `held by ${nameOf(e.warbandId)}` : 'held by nobody', rest: sideOf(e.warbandId) ? ` (${SIDE_LABEL[sideOf(e.warbandId)!].toLowerCase()})` : '' } })
     : e.kind === 'roll'
     ? ({ turn: e.turn, at: e.id, kind: 'roll', html: { lead: `${house?.endOfTurnRoll?.label ?? 'The roll'}: ${e.points}. `, strong: house && rollBrings(house, e.points) ? house.endOfTurnRoll!.happens : undefined, rest: house && rollBrings(house, e.points) ? '' : house?.endOfTurnRoll?.nothing ?? '' } })
+    : e.kind === 'card'
+    ? ({ turn: e.turn, at: e.id, kind: 'card', html: { lead: `${nameOf(e.warbandId)} showed `, strong: cardById(e.text) ? `${cardById(e.text)!.numeral}. ${cardById(e.text)!.title}` : 'a card of the Tarot', rest: cardById(e.text) ? `, ${TAROT_KIND_LABEL[cardById(e.text)!.kind].toLowerCase()}` : '' }, by: e.authorName })
     : e.kind === 'score'
     ? ({ turn: e.turn, at: e.id, kind: 'score', html: { lead: `${nameOf(e.warbandId)} `, strong: `${e.points > 0 ? '+' : '−'}${Math.abs(e.points)} ${tally || 'points'}`, rest: e.text ? ` — ${e.text}` : '' }, by: e.authorName })
     : ({ turn: e.turn, at: e.id, kind: 'note', html: { lead: e.text }, who: e.warbandId ? nameOf(e.warbandId) : undefined, by: e.authorName })),
@@ -49,7 +52,7 @@ const turns = [...new Set(lines.map((l) => l.turn))].sort((a, b) => (a ?? 1e9) -
         <ol>
           {lines.filter((l) => l.turn === t).sort((a, b) => a.at - b.at).map((l) => (
             <li class:list={['turn-log-line', l.kind]}>
-              <span class="turn-log-mark" aria-hidden="true">{l.kind === 'out-of-action' ? '†' : l.kind === 'score' ? '◆' : l.kind === 'hold' ? '▣' : l.kind === 'roll' ? '⚄' : '·'}</span>
+              <span class="turn-log-mark" aria-hidden="true">{l.kind === 'out-of-action' ? '†' : l.kind === 'score' ? '◆' : l.kind === 'hold' ? '▣' : l.kind === 'roll' ? '⚄' : l.kind === 'card' ? '✦' : '·'}</span>
               <span>{l.html.lead}{l.html.strong && <b>{l.html.strong}</b>}{l.html.rest}{(l.who || l.by) && <small class="turn-log-meta">{[l.who, l.by].filter(Boolean).join(' · ')}</small>}</span>
             </li>
           ))}
@@ -91,6 +94,7 @@ const turns = [...new Set(lines.map((l) => l.turn))].sort((a, b) => (a ?? 1e9) -
   .turn-log-mark { color: var(--gold-dim); text-align: center; }
   .turn-log-line.out-of-action .turn-log-mark { color: var(--blood-bright); }
   .turn-log-line.score .turn-log-mark { color: var(--gold); }
+  .turn-log-line.card .turn-log-mark { color: var(--parchment); }
   .turn-log-meta { display: block; color: var(--ink-dim); font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; margin-top: .15rem; }
   .turn-log-ending { margin-top: 2rem; padding: 1.5rem 1.25rem; text-align: center; border: 1px solid var(--gold-dim); background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); }
   .turn-log-ending .voice-label { margin-bottom: .5rem; }

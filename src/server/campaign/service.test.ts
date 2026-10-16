@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { actorOf, testDatabase } from '../testdb.ts';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, getWarband, listWarbands, loadRoster, releaseWarband, removeMember, updateMember, updateWarband, LedgerError } from './roster.ts';
 import { addEvent, addOutOfAction, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, reopenScenario, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writeBattleReport, writePerspective } from './scenarios.ts';
+import { loadHand, playCard } from './tarot.ts';
+import { HAND_SIZE, cardById } from '../../campaign/tarot.ts';
 import { articlesFor, createArticle, deleteArticle, listArticles, updateArticle } from './news.ts';
 import { addItem, addPoint, createLocation, deleteLocation, getLocation, listLocations, movePoint, removeBanner, removeItem, removeMap, removePoint, scenarioCounts, setStock, updateItem, updateLocation, updatePoint, uploadMap, uploadPicture } from './locations.ts';
 import { locations as locationFixtures } from '../../data/locations.ts';
@@ -238,6 +240,57 @@ test('the battle tracker: the table keeps the turn, the log and the tally; the r
   t = await markPlayed(gm, s.id, [{ warbandId: 'nordost', result: 'victory' }, { warbandId: 'bitterbrow-expedition', result: 'defeat' }]);
   assert.equal(t.turn, 2);
   assert.equal(t.events.length, 2);
+});
+
+test('the Tarot of the Damned: a hidden hand per warband, dealt at the table, fading and filling by the turn, a card shown to all', async () => {
+  const s = await createScenario(gm, { title: 'The Reading', playedOn: '2026-10-11', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  assert.equal(s.tarot, false, 'not in play unless the game master says so');
+  await assert.rejects(loadHand(niklas, s.id, 'nordost'), (e: unknown) => e instanceof LedgerError && /not in play/.test(e.message));
+  const on = await updateScenario(gm, s.id, { tarot: true });
+  assert.equal(on.tarot, true);
+  // the hand is the keeper's, or a game master's; never the other side's, never a stranger's
+  await assert.rejects(loadHand(rival, s.id, 'nordost'), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(loadHand(stranger, s.id, 'nordost'), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(loadHand(niklas, s.id, 'welling-rune'), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  let hand = await loadHand(niklas, s.id, 'nordost');
+  assert.equal(hand.hand.length, HAND_SIZE, 'dealt before the first turn');
+  assert.equal(hand.turn, 1);
+  assert.equal(hand.deckLeft, 27);
+  assert.deepEqual((await loadHand(gm, s.id, 'nordost')).hand, hand.hand, 'the game master sees the same hand');
+  const theirs = await loadHand(rival, s.id, 'bitterbrow-expedition');
+  assert.equal(theirs.hand.length, HAND_SIZE);
+  assert.notDeepEqual(theirs.hand.map((c) => c.id), hand.hand.map((c) => c.id), 'each warband has its own shuffle');
+  assert.ok(!(await getScenario(s.id))!.warbands.some((w) => 'tarot' in w), 'the scenario everyone reads carries no hand');
+  // a card played leaves the hand and is logged by its id, for the other side to see
+  const [first] = hand.hand;
+  await assert.rejects(playCard(rival, s.id, 'nordost', first.id), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(playCard(niklas, s.id, 'nordost', 'no-such-card'), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  await assert.rejects(playCard(niklas, s.id, 'nordost', theirs.hand[0].id === first.id ? theirs.hand[1].id : theirs.hand[0].id), (e: unknown) => e instanceof LedgerError && /not in your hand/.test(e.message));
+  const played = await playCard(niklas, s.id, 'nordost', first.id);
+  assert.equal(played.hand.hand.length, 2, 'not replaced until the next turn');
+  assert.deepEqual(played.hand.played, [{ id: first.id, turn: 1 }]);
+  const line = played.scenario.events.at(-1)!;
+  assert.equal(line.kind, 'card');
+  assert.equal(line.text, first.id);
+  assert.equal(line.warbandId, 'nordost');
+  assert.equal(line.turn, 1);
+  assert.ok(cardById(line.text), 'the log names a card of the deck');
+  await assert.rejects(playCard(niklas, s.id, 'nordost', first.id), (e: unknown) => e instanceof LedgerError && e.status === 409, 'a card is spent once');
+  // the turn moves on: the hand fills; two turns on, the opening hand has faded
+  await setTurn(niklas, s.id, 2);
+  hand = await loadHand(niklas, s.id, 'nordost');
+  assert.equal(hand.hand.length, 3);
+  assert.equal(hand.hand.at(-1)!.drawnOn, 2);
+  await setTurn(niklas, s.id, 3);
+  hand = await loadHand(niklas, s.id, 'nordost');
+  assert.equal(hand.faded.length, 2, 'the two unplayed cards of the opening hand faded');
+  assert.equal(hand.hand.length, 3);
+  assert.equal(hand.deckLeft, 24);
+  // the game called, the hand stands as it was and no card is played
+  await markPlayed(gm, s.id, [{ warbandId: 'nordost', result: 'draw' }, { warbandId: 'bitterbrow-expedition', result: 'draw' }]);
+  await setTurn(gm, s.id, 9);
+  assert.deepEqual((await loadHand(niklas, s.id, 'nordost')).hand, hand.hand);
+  await assert.rejects(playCard(niklas, s.id, 'nordost', hand.hand[0].id), (e: unknown) => e instanceof LedgerError && /already called/.test(e.message));
 });
 
 test('the summary swallows the Chronicle entry, and the notes swallow the loot', async () => {

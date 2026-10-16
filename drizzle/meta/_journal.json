@@ -99,6 +99,13 @@
       "when": 1791470728676,
       "tag": "0013_portraits",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792178012743,
+      "tag": "0014_tarot",
+      "breakpoints": true
     }
   ]
 }

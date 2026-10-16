@@ -6,6 +6,7 @@ import type { APIRoute } from 'astro';
 import { z } from 'zod';
 import { dispatch, route } from '../../../server/api';
 import { addEvent, addOutOfAction, chooseSides, createScenario, deleteScenario, endTurn, setTurnLimit, markPlayed, removeEvent, removeOutOfAction, reopenScenario, requireScenario, setBrought, setParticipants, setTurn, updateScenario, writeBattleReport, writePerspective } from '../../../server/campaign/scenarios';
+import { loadHand, playCard } from '../../../server/campaign/tarot';
 
 export const prerender = false;
 
@@ -16,7 +17,7 @@ const scenarioFields = {
   title: z.string().max(120), playedOn: day, rulebookScenario: z.string().max(80).nullable(), customRules: z.string().max(8000), prologue: z.string().max(8000), prologueAsSummary: z.boolean(), summary: z.string().max(1000),
   warbandIds: z.array(z.string().max(64)).max(20), winCondition: z.string().max(4000), chronicle: z.string().max(4000), outcome: z.string().max(4000), epilogue: z.string().max(8000),
   loot: paragraphs, campaignNotes: paragraphs, battleOpen: z.boolean(), tally: z.string().max(60),
-  turnLimit: z.number().int().min(1).max(99).nullable(), sides: z.record(z.string().max(64), z.enum(['attacker', 'defender', '']).nullable()),
+  turnLimit: z.number().int().min(1).max(99).nullable(), tarot: z.boolean(), sides: z.record(z.string().max(64), z.enum(['attacker', 'defender', '']).nullable()),
   locationId: z.string().max(64).nullable(), pointId: z.number().int().positive().nullable(), mapX: z.number().min(0).max(100).nullable(), mapY: z.number().min(0).max(100).nullable(),
 };
 const turn = z.number().int().min(0).max(99);
@@ -49,6 +50,9 @@ const routes = {
   sides: route(z.object({ scenarioId: id, sides: z.record(z.string().max(64), z.enum(['attacker', 'defender', '']).nullable()) }), (i, a) => wrap(chooseSides(a, i.scenarioId, i.sides))),
   'turn-limit': route(z.object({ scenarioId: id, turnLimit: z.number().int().min(1).max(99) }), (i, a) => wrap(setTurnLimit(a, i.scenarioId, i.turnLimit))),
   'remove-event': route(z.object({ scenarioId: id, id: z.number().int().positive() }), (i, a) => wrap(removeEvent(a, i.scenarioId, i.id))),
+  // the Tarot of the Damned: a warband's hidden hand, for its keeper alone, and a card shown to the table
+  hand: route(z.object({ scenarioId: id, warbandId: z.string().max(64) }), (i, a) => loadHand(a, i.scenarioId, i.warbandId).then((hand) => ({ hand }))),
+  play: route(z.object({ scenarioId: id, warbandId: z.string().max(64), cardId: z.string().max(64) }), (i, a) => playCard(a, i.scenarioId, i.warbandId, i.cardId)),
 };
 
 export const POST: APIRoute = ({ request, params }) => dispatch(routes, params.action, request, 'scenarios');

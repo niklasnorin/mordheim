@@ -36,7 +36,7 @@ function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mem
   return {
     id: r.id, sequence: r.sequence, status: r.status, title: r.title, playedOn: r.playedOn, rulebookScenario: r.rulebookScenario, customRules: r.customRules,
     winCondition: r.winCondition, summary: r.summary, chronicle: r.chronicle, outcome: r.outcome, prologue: r.prologue, prologueAsSummary: r.prologueAsSummary, battle: (r.battle as string[]) ?? [], epilogue: r.epilogue,
-    battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null, turn: r.turn, turnLimit: r.turnLimit, tally: r.tally,
+    battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null, turn: r.turn, turnLimit: r.turnLimit, tally: r.tally, tarot: r.tarot,
     locationId: r.locationId, pointId: r.pointId, mapX: r.mapX, mapY: r.mapY,
     warbands: parts.filter((p) => p.scenarioId === r.id).map((p): ScenarioWarband => ({
       scenarioId: p.scenarioId, warbandId: p.warbandId, result: p.result, side: p.side, prologue: p.prologue, epilogue: p.epilogue, accomplishments: p.accomplishments,
@@ -94,14 +94,15 @@ export async function revisionsOf(scenarioId: string): Promise<NarrativeRevision
 
 // ───────────────────────── who may ─────────────────────────
 
-async function row(id: string): Promise<Row> {
+/** The scenario's own row, or a refusal; for the services that change it. */
+export async function row(id: string): Promise<Row> {
   const rows = await db().select().from(scenarios).where(eq(scenarios.id, id)).limit(1);
   if (!rows.length) throw new LedgerError('No such scenario is in the archives.', 404);
   return rows[0];
 }
 function gmOnly(actor: Actor): void { if (!isGm(actor)) throw new LedgerError('Only a game master does that.', 403); }
 /** The warbands the actor speaks for at this scenario: their own if it attends; every attending one for a game master. */
-async function speaksFor(actor: Actor, scenarioId: string, warbandId: string): Promise<void> {
+export async function speaksFor(actor: Actor, scenarioId: string, warbandId: string): Promise<void> {
   const part = await db().select({ warbandId: scenarioWarbands.warbandId, ownerId: warbands.ownerId }).from(scenarioWarbands).innerJoin(warbands, eq(warbands.id, scenarioWarbands.warbandId)).where(and(eq(scenarioWarbands.scenarioId, scenarioId), eq(scenarioWarbands.warbandId, warbandId))).limit(1);
   if (!part.length) throw new LedgerError('That warband is not at this scenario.', 404);
   if (isGm(actor) || part[0].ownerId === actor.id) return;
@@ -123,6 +124,8 @@ export interface ScenarioInput {
   title: string; playedOn: string; rulebookScenario?: string | null; customRules?: string; prologue?: string; prologueAsSummary?: boolean; summary?: string; warbandIds?: string[];
   /** The turn the game ends after; a house scenario brings its own when none is given. */
   turnLimit?: number | null;
+  /** Whether the Tarot of the Damned is in play at the table (campaign/tarot.ts). */
+  tarot?: boolean;
   /** Where it is fought: a location of the campaign's, a point of interest there, a spot on its map. Null clears each. */
   locationId?: string | null; pointId?: number | null; mapX?: number | null; mapY?: number | null;
 }
@@ -189,7 +192,7 @@ export async function createScenario(actor: Actor, input: ScenarioInput): Promis
   while (taken.has(id)) id = `scenario-${String(seq).padStart(2, '0')}-${slugify(title)}-${k++}`;
   await d.insert(scenarios).values({
     id, sequence: seq, status: 'upcoming', title, playedOn: input.playedOn, rulebookScenario: rulebookOf(input.rulebookScenario), customRules: clean(input.customRules, 8000),
-    turnLimit: turnLimitOf(input.turnLimit) ?? houseScenario(input.rulebookScenario)?.turns ?? null,
+    turnLimit: turnLimitOf(input.turnLimit) ?? houseScenario(input.rulebookScenario)?.turns ?? null, tarot: !!input.tarot,
     prologue: clean(input.prologue, 8000), prologueAsSummary: input.prologueAsSummary ?? true, summary: clean(input.summary, 1000), createdBy: actor.id,
     ...(await whereOf(input)),
   });
@@ -222,6 +225,7 @@ export async function updateScenario(actor: Actor, id: string, patch: ScenarioPa
   if (patch.battleOpen !== undefined) set.battleOpen = !!patch.battleOpen;
   if (patch.puzzle !== undefined) set.puzzle = patch.puzzle ?? null;
   if (patch.tally !== undefined) set.tally = clean(patch.tally, 60);
+  if (patch.tarot !== undefined) set.tarot = !!patch.tarot;
   await db().update(scenarios).set(set).where(eq(scenarios.id, id));
   for (const [warbandId, given] of Object.entries(patch.sides ?? {})) {
     const side = given ? (SIDES.includes(given) ? given : null) : null;

@@ -137,8 +137,8 @@ export interface OutOfAction {
  * A house scenario's turn ends add two more (campaign/house.ts): `hold`, who held its objective at the end of the
  * turn (the warband, or none when nobody did), and `roll`, the die rolled at the end of the turn (in `points`).
  */
-export type EventKind = 'note' | 'score' | 'hold' | 'roll';
-export const EVENT_KINDS: EventKind[] = ['note', 'score', 'hold', 'roll'];
+export type EventKind = 'note' | 'score' | 'hold' | 'roll' | 'card';
+export const EVENT_KINDS: EventKind[] = ['note', 'score', 'hold', 'roll', 'card'];
 /** The kinds anyone at the table writes as a line of their own; the others come with the end of a turn. */
 export const LOGGED_KINDS: EventKind[] = ['note', 'score'];
 
@@ -212,6 +212,8 @@ export interface Scenario {
   turnLimit: number | null;
   /** What the scenario scores, as the game master named it; empty means the rulebook scenario's own tally, or none. See `tallyOf`. */
   tally: string;
+  /** Whether the Tarot of the Damned is in play: a hidden hand of cards per warband, played at the table (`campaign/tarot.ts`). */
+  tarot: boolean;
   /** Where it is fought: one of the campaign's locations, or null when not said. */
   locationId: string | null;
   /** A point of interest there, when the fight is at one; see `fightPosition` for where the marker goes. */

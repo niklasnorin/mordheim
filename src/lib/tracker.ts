@@ -8,6 +8,8 @@
  */
 import { SCENARIO_RESULTS, scoresOf, tallyOf, type OutOfAction, type Scenario, type ScenarioEvent, type ScenarioResult } from '../campaign/model';
 import { SIDES, SIDE_LABEL, houseScenario, inWords, resultsOf, rollBrings, turnEnds, verdictOf } from '../campaign/house';
+import { cardById } from '../campaign/tarot';
+import { CARD_ICON, mountTarot, type TarotMount } from './tarot';
 
 export interface TrackerRoster { id: string; name: string; members: { id: string; name: string; role: string; dead: boolean }[] }
 export interface TrackerState {
@@ -15,6 +17,8 @@ export interface TrackerState {
   roster: TrackerRoster[];
   /** Whether the viewer sits at the table and may write. */
   may: boolean;
+  /** The warbands whose Tarot hands this phone holds: the keeper's own, every attending one for a game master. Empty when the Tarot is not in play. */
+  hands: { id: string; name: string }[];
   scenario: Scenario;
 }
 
@@ -52,6 +56,7 @@ const ICON = {
   laurel: 'm3 6 3 13h12l3-13-6 5-3-8-3 8-6-5ZM6 16h12',
   cart: 'M3 15h14l2-7H6m-3 7V8h3m-1 11a2 2 0 1 0 4 0 2 2 0 1 0-4 0m8 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0',
   die: 'M5 5h14v14H5Zm4 4h.01M15 15h.01M12 12h.01',
+  card: CARD_ICON,
 };
 const RESULT_LABEL: Record<ScenarioResult, string> = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' };
 
@@ -110,6 +115,12 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     ));
   const sheet = h('dialog', { class: 'tk-sheet' });
   root.append(turnBox, holdBox, tallyBox, logBox, bar, sheet);
+  // the Tarot of the Damned: the keeper's hidden hand in a drawer, and any card held up to read from the log
+  const tarot: TarotMount | null = state.scenario.tarot ? mountTarot(root, {
+    base: state.base, scenarioId: state.scenario.id, hands: state.hands, scenario: () => state.scenario, toast,
+    onScenario: (s) => { state = { ...state, scenario: s }; render(); },
+  }) : null;
+  if (tarot?.button) { bar.dataset.tarot = 'true'; bar.querySelector('.tk-bar-inner')!.append(tarot.button); }
 
   // ───────────────────────── rendering ─────────────────────────
 
@@ -121,6 +132,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     renderLog(s);
     bar.dataset.may = String(state.may);
     bar.querySelector<HTMLButtonElement>('[data-open="score"]')!.hidden = !tallyOf(s);
+    tarot?.sync(s);
   }
 
   function renderTurn(s: Scenario): void {
@@ -288,12 +300,16 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     } else if (e.kind === 'score') {
       const sign = e.points > 0 ? '+' : '−';
       body.append(h('div', {}, h('b', {}, warbandName(e.warbandId)), ' ', h('span', { class: `points${e.points < 0 ? ' minus' : ''}` }, `${sign}${Math.abs(e.points)} ${tallyOf(state.scenario) || 'points'}`), e.text ? ` — ${e.text}` : ''));
+    } else if (e.kind === 'card') {
+      // a Tarot card shown to the table: named, and held up again to read from here
+      const card = cardById(e.text);
+      body.append(h('div', {}, h('b', {}, warbandName(e.warbandId)), ' showed ', card ? h('button', { type: 'button', class: 'tk-card-link', 'data-show-card': card.id }, `${card.numeral}. ${card.title}`) : h('b', {}, 'a card of the Tarot')));
     } else {
       body.append(h('div', {}, e.text));
     }
     body.append(h('div', { class: 'tk-line-meta' }, e.kind === 'note' && e.warbandId ? h('span', { class: 'tk-chip' }, warbandName(e.warbandId)) : null, e.authorName ? h('span', {}, e.authorName) : null));
     return h('div', { class: 'tk-line', 'data-kind': e.kind },
-      svg(e.kind === 'score' ? ICON.shard : e.kind === 'hold' ? ICON.cart : e.kind === 'roll' ? ICON.die : ICON.quill, 'tk-line-icon'),
+      svg(e.kind === 'score' ? ICON.shard : e.kind === 'hold' ? ICON.cart : e.kind === 'roll' ? ICON.die : e.kind === 'card' ? ICON.card : ICON.quill, 'tk-line-icon'),
       body,
       state.may ? h('button', { type: 'button', class: 'tk-strike', 'data-strike-event': String(e.id), 'aria-label': 'Strike this line' }, svg(ICON.close)) : h('span'),
     );
@@ -493,6 +509,8 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     const t = e.target as HTMLElement;
     const open = t.closest<HTMLButtonElement>('[data-open]');
     if (open) { openSheet(open.dataset.open as SheetKind); return; }
+    const card = t.closest<HTMLButtonElement>('[data-show-card]');
+    if (card) { tarot?.show(card.dataset.showCard!); return; }
     const pick = t.closest<HTMLButtonElement>('[data-pick-side]');
     if (pick) {
       // with two warbands, one side chosen settles the other

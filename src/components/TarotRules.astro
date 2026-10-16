@@ -1,0 +1,47 @@
+---
+/**
+ * The Tarot of the Damned as the scenario page prints it when it is in play: the rules of the hand, and the deck
+ * itself folded away, card by card, for anyone who wants to read ahead. The cards are `campaign/tarot.ts`.
+ */
+import { TAROT, TAROT_KIND_LABEL, TAROT_NAME, TAROT_RULES } from '../campaign/tarot';
+import { base } from '../lib/site';
+
+interface Props { /** Fold the rules away too, as on a played scenario's page. */ folded?: boolean }
+const { folded = false } = Astro.props;
+---
+
+{folded ? (
+  <details class="house-rules-fold tarot-rules">
+    <summary>{TAROT_NAME}, as played</summary>
+    <ul class="house-rules">{TAROT_RULES.map((l) => <li>{l}</li>)}</ul>
+  </details>
+) : (
+  <>
+    <h3>{TAROT_NAME}</h3>
+    <ul class="house-rules">{TAROT_RULES.map((l) => <li>{l}</li>)}</ul>
+  </>
+)}
+<details class="house-rules-fold tarot-deck">
+  <summary>The thirty cards</summary>
+  <ol class="tarot-list">
+    {TAROT.map((c) => (
+      <li>
+        <img src={`${base}${c.image}`} alt="" width="70" height="120" loading="lazy" decoding="async" />
+        <div>
+          <b>{c.numeral}. {c.title}</b> <small>{TAROT_KIND_LABEL[c.kind]}</small>
+          <p><i>{c.when}</i> {c.effect}</p>
+        </div>
+      </li>
+    ))}
+  </ol>
+</details>
+
+<style>
+  .tarot-list { list-style: none; padding: 0; display: grid; gap: .8rem; margin-top: .5rem; }
+  .tarot-list li { display: grid; grid-template-columns: 3.4rem 1fr; gap: .8rem; align-items: start; }
+  .tarot-list img { width: 3.4rem; height: auto; aspect-ratio: 7 / 12; object-fit: cover; border-radius: 4px; box-shadow: 0 6px 14px -6px #000c; }
+  .tarot-list b { color: var(--parchment); font-weight: 600; }
+  .tarot-list small { color: var(--ink-dim); font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; margin-left: .4rem; }
+  .tarot-list p { margin: .15rem 0 0; font-size: .95rem; }
+  .tarot-list i { color: var(--gold); }
+</style>

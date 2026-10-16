@@ -102,6 +102,9 @@
 .tk-roll-says { margin: 0; align-self: center; }
 .tk-roll-says[data-brings='true'] { color: var(--blood-bright); font-style: normal; }
 .tk-line[data-kind='hold'] .tk-line-icon { color: var(--gold); }
+.tk-line[data-kind='card'] .tk-line-icon { color: var(--parchment); }
+.tk-card-link { background: none; border: 0; padding: 0; color: var(--gold); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-decoration-color: var(--gold-dim); text-underline-offset: .15em; }
+.tk-card-link:hover { color: var(--parchment); }
 .tk-line[data-kind='roll'] .tk-line-icon { color: var(--ink-dim); }
 
 /* the log, latest turn first */

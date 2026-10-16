@@ -281,6 +281,8 @@ export const scenarios = pgTable('scenarios', {
   tally: text('tally').notNull().default(''),
   /** The turn after which the game ends of itself (a house scenario's own, or as the game master set it); null runs on. */
   turnLimit: integer('turn_limit'),
+  /** Whether the Tarot of the Damned is in play (campaign/tarot.ts): a hidden hand of cards per warband, in the tracker. */
+  tarot: boolean('tarot').notNull().default(false),
   /** Where it is fought: a location of the campaign's, a point of interest there, or a spot on the map (percent of its width and height). */
   locationId: text('location_id').references(() => locations.id, { onDelete: 'set null' }),
   pointId: integer('point_id').references(() => locationPoints.id, { onDelete: 'set null' }),
@@ -300,6 +302,8 @@ export const scenarioWarbands = pgTable(
     result: text('result', { enum: ['victory', 'defeat', 'draw'] }),
     /** Attacker or defender, in a scenario that has sides (campaign/house.ts); null otherwise. */
     side: text('side', { enum: ['attacker', 'defender'] }),
+    /** The warband's deck and hand of the Tarot of the Damned, whole as JSON (`TarotState`, campaign/tarot.ts); null until dealt. Hidden from the other side: never on the scenario everyone reads. */
+    tarot: jsonb('tarot'),
     prologue: text('prologue').notNull().default(''),
     epilogue: text('epilogue').notNull().default(''),
     accomplishments: text('accomplishments').notNull().default(''),
@@ -346,8 +350,9 @@ export const scenarioOutOfAction = pgTable(
 
 /**
  * The battle tracker's log: what the table noted turn by turn while the game was played. A `note` is anything
- * worth remembering, a `score` counts towards the scenario's tally for one warband. Out-of-action results are
- * not here: they go straight into `scenario_out_of_action` with their turn.
+ * worth remembering, a `score` counts towards the scenario's tally for one warband, a `card` is a Tarot card
+ * shown to the table (its id in `text`). Out-of-action results are not here: they go straight into
+ * `scenario_out_of_action` with their turn.
  */
 export const scenarioEvents = pgTable(
   'scenario_events',
@@ -355,7 +360,7 @@ export const scenarioEvents = pgTable(
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
     scenarioId: text('scenario_id').notNull().references(() => scenarios.id, { onDelete: 'cascade' }),
     turn: integer('turn').notNull(),
-    kind: text('kind', { enum: ['note', 'score', 'hold', 'roll'] }).notNull(),
+    kind: text('kind', { enum: ['note', 'score', 'hold', 'roll', 'card'] }).notNull(),
     warbandId: text('warband_id'),
     points: integer('points').notNull().default(0),
     text: text('text').notNull().default(''),
