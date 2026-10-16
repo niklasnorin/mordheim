@@ -1,0 +1,98 @@
+---
+import Base from '../../layouts/Base.astro';
+import '../../styles/curfew.css';
+import '../../styles/admin.css';
+import { base } from '../../lib/site';
+import { hasDatabase } from '../../server/db/client';
+import { admission } from '../../server/admin/guard';
+import { CARD_LASTS, HAND_SIZE, TAROT, TAROT_KIND_LABEL, TAROT_NAME, TAROT_RULES, type TarotKind } from '../../campaign/tarot';
+
+// The game master's view of the Tarot of the Damned: the deck card by card with what each does, and the hand's rules. Read from the rule itself; nothing here reads or writes a hand.
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const { viewer, gm } = ready ? await admission(Astro.request) : { viewer: null, gm: false };
+if (ready && !gm) Astro.response.status = viewer ? 403 : 401;
+
+const KINDS: TarotKind[] = ['boon', 'bane', 'twist'];
+const count = (k: TarotKind) => TAROT.filter((c) => c.kind === k).length;
+const timed = TAROT.filter((c) => c.only);
+const HOUR_LABEL = { first: 'The first turn only', last: 'The last round only' } as const;
+const signInHref = `${base}/signin/?next=${encodeURIComponent(`${base}/admin/tarot/`)}`;
+---
+
+<Base title="The Tarot — The Watch House" description="The Tarot of the Damned laid out for the game master: every card, what it does and when, and the rules of the hand.">
+  <Fragment slot="head">
+    <link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Barlow+Condensed:wght@600&display=swap" rel="stylesheet" />
+    <meta name="theme-color" content="#0e0d0c" />
+    <meta name="robots" content="noindex" />
+  </Fragment>
+
+  <main class="curfew wh" id="main-content" data-base={base}>
+    <header class="wh-top">
+      <a class="cf-back" href={`${base}/admin/`}>← The Watch House</a>
+      <a class="wh-wordmark" href={`${base}/admin/tarot/`}>The Tarot</a>
+      <div class="wh-top-right">
+        <span class="cf-nightline">Thirty cards, and what each does at the table</span>
+      </div>
+    </header>
+
+    {!ready && <div class="wh-gate"><h1>The ledgers are not open</h1><p>This deployment has no database yet. See the README for the Vercel setup.</p></div>}
+    {ready && !viewer && <div class="wh-gate"><h1>Who goes there?</h1><p>The Tarot is for the game master. <a href={signInHref}>Sign in</a>, and you are brought back here.</p></div>}
+    {ready && viewer && !gm && <div class="wh-gate"><h1>No admittance</h1><p>You are signed in as {viewer.name}, and that name is neither an admin's nor a game master's.</p></div>}
+
+    {gm && (
+      <>
+        <nav class="wh-nav" aria-label="Sections">
+          <a href="#hand">The hand</a>
+          <a href="#deck">The deck</a>
+          <a href="#hours">By the hour</a>
+          <a class="wh-nav-page" href={`${base}/admin/odds/`}>The Odds →</a>
+        </nav>
+
+        <section class="wh-section" id="hand" aria-labelledby="hand-title">
+          <h1 class="wh-h1" id="hand-title">{TAROT_NAME}</h1>
+          <p class="wh-muted">An optional rule, switched on per scenario in its form on the scenario page. The players see the deck folded away there, and their own hand in the battle tracker behind the Tarot button; this page is the whole of it in one place. A hand is <b>{HAND_SIZE}</b> cards, each good for <b>{CARD_LASTS}</b> turns; <b>{count('boon')}</b> boons, <b>{count('bane')}</b> banes and <b>{count('twist')}</b> twists in the deck, <b>{timed.length}</b> of them tied to an hour.</p>
+          <ul class="wh-tarot-rules">{TAROT_RULES.map((l) => <li>{l}</li>)}</ul>
+        </section>
+
+        <section class="wh-section" id="deck" aria-labelledby="deck-title">
+          <h1 class="wh-h1" id="deck-title">The deck</h1>
+          <p class="wh-muted">In the Omens' order. The pictures and titles are the Curfew's; the effects are a rule of the game, so code: <code>src/campaign/tarot.ts</code>. A change to a card is a commit with its test, and this page reads the result.</p>
+          <ol class="wh-tarot">
+            {TAROT.map((c) => (
+              <li class="wh-tarot-card" data-kind={c.kind} id={`card-${c.id}`}>
+                <img src={`${base}${c.image}`} alt="" width="1050" height="1800" loading="lazy" decoding="async" />
+                <div class="wh-tarot-text">
+                  <div class="wh-tarot-kicker"><span class="wh-tarot-numeral">{c.numeral}</span><span class="wh-tarot-kind">{TAROT_KIND_LABEL[c.kind]}</span>{c.only && <span class="wh-tarot-hour">{HOUR_LABEL[c.only]}</span>}</div>
+                  <h2 class="wh-h2">{c.title}</h2>
+                  <p class="wh-tarot-when">{c.when}</p>
+                  <p class="wh-tarot-effect">{c.effect}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section class="wh-section" id="hours" aria-labelledby="hours-title">
+          <h1 class="wh-h1" id="hours-title">By the hour</h1>
+          <p class="wh-muted">Which cards come into their own when. The tracker greys a card outside its hour and says so under it, but lets it be played: the table settles what the card does not say.</p>
+          <div class="wh-table-wrap" tabindex="0" role="region" aria-label="The cards by kind and hour">
+            <table class="wh-table">
+              <thead><tr><th scope="col">Kind</th><th scope="col" class="num">Cards</th><th scope="col">Which</th></tr></thead>
+              <tbody>
+                {KINDS.map((k) => (
+                  <tr class="wh-row"><th scope="row">{TAROT_KIND_LABEL[k]}</th><td class="num">{count(k)}</td><td>{TAROT.filter((c) => c.kind === k).map((c, i) => <>{i > 0 && ', '}<a href={`#card-${c.id}`}>{c.title}</a></>)}</td></tr>
+                ))}
+                <tr class="wh-row"><th scope="row">The first turn only</th><td class="num">{timed.filter((c) => c.only === 'first').length}</td><td>{timed.filter((c) => c.only === 'first').map((c, i) => <>{i > 0 && ', '}<a href={`#card-${c.id}`}>{c.title}</a></>)}</td></tr>
+                <tr class="wh-row"><th scope="row">The last round only</th><td class="num">{timed.filter((c) => c.only === 'last').length}</td><td>{timed.filter((c) => c.only === 'last').map((c, i) => <>{i > 0 && ', '}<a href={`#card-${c.id}`}>{c.title}</a></>)}</td></tr>
+                <tr class="wh-row"><th scope="row">After the game</th><td class="num">{TAROT.filter((c) => /after the game/i.test(c.effect)).length}</td><td>{TAROT.filter((c) => /after the game/i.test(c.effect)).map((c, i) => <>{i > 0 && ', '}<a href={`#card-${c.id}`}>{c.title}</a></>)}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </>
+    )}
+  </main>
+</Base>

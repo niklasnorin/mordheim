@@ -212,3 +212,21 @@
 .wh-revisions details summary { cursor: pointer; color: var(--bone-dim); }
 .wh-revisions pre { margin-top: 0.4rem; padding: 0.6rem 0.8rem; background: #080706; border: 1px solid var(--rule); font: 0.72rem/1.45 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; color: var(--bone-dim); max-height: 18rem; overflow: auto; }
 .wh-newplace { display: grid; gap: 0.6rem; padding: 1rem 1.1rem 1.1rem; border: 1px solid var(--rule); background: #14120f; margin-top: 1.5rem; }
+
+/* ── the Tarot: the deck laid out card by card ── */
+.wh-tarot-rules { max-width: 68ch; padding-left: 1.2rem; color: var(--bone-dim); display: grid; gap: 0.4rem; }
+.wh-tarot { list-style: none; padding: 0; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); }
+.wh-tarot-card { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.9rem; align-items: start; padding: 0.9rem; border: 1px solid var(--rule); background: #100e0c; scroll-margin-top: 4rem; }
+.wh-tarot-card[data-kind='bane'] { border-left: 3px solid var(--blood-bright, #c57865); }
+.wh-tarot-card[data-kind='boon'] { border-left: 3px solid var(--candle); }
+.wh-tarot-card[data-kind='twist'] { border-left: 3px solid var(--bone-dim); }
+.wh-tarot-card img { width: 100%; height: auto; aspect-ratio: 7 / 12; object-fit: cover; border-radius: 6px; box-shadow: 0 10px 24px -10px #000c; }
+.wh-tarot-text { min-width: 0; display: grid; gap: 0.3rem; }
+.wh-tarot-text .wh-h2 { margin-bottom: 0.1rem; font-size: 1.35rem; }
+.wh-tarot-kicker { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; align-items: baseline; font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.7rem; color: var(--bone-dim); }
+.wh-tarot-numeral { font-family: 'Cinzel', var(--label); letter-spacing: 0.2em; color: var(--candle); font-size: 0.85rem; }
+.wh-tarot-card[data-kind='bane'] .wh-tarot-kind { color: var(--blood-bright, #c57865); }
+.wh-tarot-hour { color: var(--bone); }
+.wh-tarot-when { font-style: italic; color: var(--candle); margin: 0; }
+.wh-tarot-effect { margin: 0; color: var(--bone); }
+.wh-table a { color: var(--candle); }
