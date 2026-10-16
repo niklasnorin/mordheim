@@ -12,6 +12,7 @@
  */
 import omensData from '../data/curfew/omens.json' with { type: 'json' };
 import { hashSeed, rng, shuffle } from '../lib/random.ts';
+import type { ScenarioEvent } from './model.ts';
 
 export const TAROT_NAME = 'The Tarot of the Damned';
 /** The hand is filled back up to this many at the start of every turn. */
@@ -60,12 +61,12 @@ const EFFECTS: Record<string, Effect> = {
   'sisters-candle': { kind: 'boon', when: 'When one of your warriors fails an armour save.', effect: 'Re-roll it. The candle was lit for them this morning; nobody knows by whom.' },
   'black-sails': { kind: 'bane', when: 'In your shooting phase.', effect: 'Name one hidden enemy warrior within 12″ of one of yours: they are hidden no longer. The raiders have been seen coming off the river before.' },
   'nameless-grave': { kind: 'bane', when: 'When an enemy rolls to wound one of your warriors.', effect: 'They roll at −1. The grave is dug, but not for this one.' },
-  'whispering-wall': { kind: 'boon', when: 'When an enemy shoots at one of your warriors in cover.', effect: 'The cover counts −2 instead of −1. The wall has learned to lean in.' },
+  'whispering-wall': { kind: 'boon', when: 'Any time.', effect: 'You see the other side’s hand, in your own, until the end of the next turn. Thin walls, and somebody on the other side of them talking in their sleep.' },
   'tower-on-the-rock': { kind: 'boon', when: 'In close combat, when one of your warriors stands higher than their attacker.', effect: 'They get +1 to their armour save this turn, a 6+ if they have none. Height is a kind of armour.' },
   'beggar-king': { kind: 'boon', when: 'When one of your henchmen takes a Leadership test.', effect: 'They use your leader’s Leadership, wherever he is. The beggar king lends a crown for the hour.' },
   'cracked-hourglass': { kind: 'boon', when: 'In your shooting phase.', effect: 'One of your warriors who ran this turn may shoot anyway, at −1. The hour had a little more in it than it should.' },
   'twin-moons': { kind: 'twist', when: 'At the start of any turn.', effect: 'Until the end of the turn, nobody may hide: both moons are out. Warriors already hidden stay so.' },
-  'sealed-door': { kind: 'boon', when: 'When an enemy charges one of your warriors who is inside a building or behind a wall.', effect: 'The charger is at −1 to hit in the first round of that combat. The door held, for a moment.' },
+  'sealed-door': { kind: 'boon', when: 'When the other side plays a bane against you.', effect: 'Their card is spent and does nothing. The door was bolted from the inside, and nobody will say by whom.' },
   'wyrd-lantern': { kind: 'boon', when: 'In your movement phase.', effect: 'One of your warriors in the open counts as in cover until the start of your next turn. The lantern throws a shadow that does not match.' },
   'carrion-crown': { kind: 'boon', when: 'When one of your warriors takes an enemy out of action.', effect: 'That warrior gains +1 Experience after the game. The crows have given a name.' },
   'the-ferryman': { kind: 'boon', only: 'last', when: 'In the last round only. Keep it face up.', effect: 'After the game, if one of your warriors rolls Dead on the serious injury table, re-roll it once; the second roll stands. The ferryman was busy elsewhere.' },
@@ -84,6 +85,11 @@ export const TAROT_BACK = '/curfew/omens/back.png';
 
 export function cardById(id: string): TarotCard | undefined { return TAROT.find((c) => c.id === id); }
 
+/** The card that opens the other side's hand to you, for as long as a card is good. */
+export const WALL_CARD = 'whispering-wall';
+/** The card that shuts a bane. */
+export const DOOR_CARD = 'sealed-door';
+
 /** The rules as the scenario page prints them. */
 export const TAROT_RULES: string[] = [
   `Every warband that fights has its own deck of the thirty cards: the Tarot the Curfew draws its Omens from, shuffled once for the game.`,
@@ -91,6 +97,7 @@ export const TAROT_RULES: string[] = [
   `A card is good for the turn it was drawn on and the next. At the start of the turn after, it fades; at the start of every turn the hand is filled back up to ${HAND_SIZE}.`,
   `Play a card when its moment comes, as the card says. Show it to the table: the tracker holds it up large, and the log records it. A card played is spent.`,
   `When the deck runs out, the cards played and faded are shuffled back in. A card that says to keep it face up stays on the table to the end.`,
+  `Two cards work on the cards themselves: The Sealed Door shuts a bane played against you, and The Whispering Wall shows you the other side’s hand, in your own, for as long as a card is good.`,
   `None of it is strong. A point on a roll, a re-roll, an inch. The table settles what the card does not say.`,
 ];
 
@@ -183,7 +190,20 @@ export function hourOf(card: Pick<TarotCard, 'only'>, tableTurn: number, turnLim
   return 'now';
 }
 
-/** What the hand's keeper is shown: their hand, what they have played and lost, and how deep the deck still is. */
+/**
+ * The last turn the Whispering Wall still listens for a warband, from the log: the card is good for the turn it was
+ * played on and the next, like any card. Null when it was never played, or has gone quiet.
+ */
+export function wallOpenUntil(events: Pick<ScenarioEvent, 'kind' | 'warbandId' | 'text' | 'turn'>[], warbandId: string, tableTurn: number): number | null {
+  const turn = handTurn(tableTurn);
+  const until = events.filter((e) => e.kind === 'card' && e.warbandId === warbandId && e.text === WALL_CARD).map((e) => e.turn + CARD_LASTS - 1).filter((t) => t >= turn);
+  return until.length ? Math.max(...until) : null;
+}
+
+/** Another warband's hand, seen through the wall. */
+export interface SeenHand { warbandId: string; hand: HeldCard[] }
+
+/** What the hand's keeper is shown: their hand, what they have played and lost, how deep the deck still is, and what the wall lets them see. */
 export interface TarotHand {
   warbandId: string;
   /** The turn the hand was reckoned against. */
@@ -192,6 +212,9 @@ export interface TarotHand {
   played: PlayedCard[];
   faded: FadedCard[];
   deckLeft: number;
+  /** The last turn the Whispering Wall still listens, and the other hands it shows; absent when it does not. */
+  wallUntil?: number | null;
+  through?: SeenHand[];
 }
 export function handOf(state: TarotState, tableTurn: number, warbandId: string): TarotHand {
   return { warbandId, turn: handTurn(tableTurn), hand: state.hand, played: state.played, faded: state.faded, deckLeft: state.deck.length };

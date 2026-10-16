@@ -1,11 +1,14 @@
 /** The campaign's record against a real Postgres (PGlite): the seed, the roster, the scenarios, the articles and the Curfew's content. */
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
+import { and, eq } from 'drizzle-orm';
 import { actorOf, testDatabase } from '../testdb.ts';
+import { db } from '../db/client.ts';
+import { scenarioWarbands } from '../db/schema.ts';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, getWarband, listWarbands, loadRoster, releaseWarband, removeMember, updateMember, updateWarband, LedgerError } from './roster.ts';
 import { addEvent, addOutOfAction, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, reopenScenario, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writeBattleReport, writePerspective } from './scenarios.ts';
 import { loadHand, playCard } from './tarot.ts';
-import { HAND_SIZE, cardById } from '../../campaign/tarot.ts';
+import { HAND_SIZE, WALL_CARD, cardById, coerceTarot } from '../../campaign/tarot.ts';
 import { articlesFor, createArticle, deleteArticle, listArticles, updateArticle } from './news.ts';
 import { addItem, addPoint, createLocation, deleteLocation, getLocation, listLocations, movePoint, removeBanner, removeItem, removeMap, removePoint, scenarioCounts, setStock, updateItem, updateLocation, updatePoint, uploadMap, uploadPicture } from './locations.ts';
 import { locations as locationFixtures } from '../../data/locations.ts';
@@ -286,6 +289,25 @@ test('the Tarot of the Damned: a hidden hand per warband, dealt at the table, fa
   assert.equal(hand.faded.length, 2, 'the two unplayed cards of the opening hand faded');
   assert.equal(hand.hand.length, 3);
   assert.equal(hand.deckLeft, 24);
+  // the Whispering Wall: played, the other side's hand is seen through it until the end of the next turn
+  assert.equal(hand.through, undefined, 'nothing is seen through the wall unbidden');
+  const mine = and(eq(scenarioWarbands.scenarioId, s.id), eq(scenarioWarbands.warbandId, 'nordost'));
+  const stored = coerceTarot((await db().select({ tarot: scenarioWarbands.tarot }).from(scenarioWarbands).where(mine))[0].tarot)!;
+  stored.hand[0] = { id: WALL_CARD, drawnOn: 3 };
+  stored.deck = stored.deck.filter((id) => id !== WALL_CARD);
+  await db().update(scenarioWarbands).set({ tarot: stored }).where(mine);
+  const wall = await playCard(niklas, s.id, 'nordost', WALL_CARD);
+  assert.equal(wall.hand.wallUntil, 4);
+  assert.deepEqual(wall.hand.through?.map((t) => t.warbandId), ['bitterbrow-expedition']);
+  assert.deepEqual(wall.hand.through![0].hand, (await loadHand(rival, s.id, 'bitterbrow-expedition')).hand, 'the hand seen is the hand they hold');
+  assert.equal((await loadHand(rival, s.id, 'bitterbrow-expedition')).through, undefined, 'the wall listens one way');
+  await setTurn(niklas, s.id, 4);
+  assert.equal((await loadHand(niklas, s.id, 'nordost')).wallUntil, 4, 'still listening the next turn');
+  await setTurn(niklas, s.id, 5);
+  const quiet = await loadHand(niklas, s.id, 'nordost');
+  assert.equal(quiet.wallUntil, undefined, 'quiet the turn after');
+  assert.equal(quiet.through, undefined);
+  hand = quiet;
   // the game called, the hand stands as it was and no card is played
   await markPlayed(gm, s.id, [{ warbandId: 'nordost', result: 'draw' }, { warbandId: 'bitterbrow-expedition', result: 'draw' }]);
   await setTurn(gm, s.id, 9);

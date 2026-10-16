@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CARD_LASTS, HAND_SIZE, TAROT, TAROT_RULES, cardById, coerceTarot, fadesAfter, handOf, holds, hourOf, newTarot, playTarot, reconcileTarot } from './tarot.ts';
+import { CARD_LASTS, DOOR_CARD, HAND_SIZE, TAROT, TAROT_RULES, WALL_CARD, cardById, coerceTarot, fadesAfter, handOf, holds, hourOf, newTarot, playTarot, reconcileTarot, wallOpenUntil } from './tarot.ts';
 
 test('the deck is the thirty Omens, each with a small effect in the voice', () => {
   assert.equal(TAROT.length, 30);
@@ -90,6 +90,19 @@ test('a card’s hour: the first turn, the last round, or any time', () => {
   assert.equal(hourOf({ only: 'last' }, 8, 7), 'now', 'another round is still the last');
   assert.equal(hourOf({ only: 'last' }, 2, null), 'now', 'with no limit the table knows when the end is');
   assert.equal(hourOf({}, 4, 7), 'now');
+});
+
+test('the Whispering Wall listens for the turn it is played on and the next; the Sealed Door is in the deck', () => {
+  assert.ok(cardById(WALL_CARD) && cardById(DOOR_CARD));
+  const line = (turn: number, warbandId = 'nordost', text = WALL_CARD) => ({ kind: 'card' as const, warbandId, text, turn });
+  assert.equal(wallOpenUntil([], 'nordost', 3), null);
+  assert.equal(wallOpenUntil([line(3)], 'nordost', 3), 3 + CARD_LASTS - 1);
+  assert.equal(wallOpenUntil([line(3)], 'nordost', 4), 4, 'still open the next turn');
+  assert.equal(wallOpenUntil([line(3)], 'nordost', 5), null, 'quiet the turn after');
+  assert.equal(wallOpenUntil([line(3)], 'bitterbrow-expedition', 3), null, 'only for the one who played it');
+  assert.equal(wallOpenUntil([line(3, 'nordost', DOOR_CARD)], 'nordost', 3), null, 'another card opens nothing');
+  assert.equal(wallOpenUntil([line(1), line(4)], 'nordost', 4), 5, 'played again, the later one counts');
+  assert.equal(wallOpenUntil([line(1)], 'nordost', 0), 2, 'before the first turn counts as the first');
 });
 
 test('a stored deck is read back whole, and rubbish is not a deck', () => {

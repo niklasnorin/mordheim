@@ -48,6 +48,14 @@
 .tc-card img.tc-face { transform: rotateY(180deg); }
 .tc-card::after { content: ''; position: absolute; inset: -8%; background: radial-gradient(ellipse, #b69a6222, transparent 60%); pointer-events: none; opacity: .6; z-index: -1; }
 
+/* through the wall: the other side's hands while the Whispering Wall listens */
+.tc-wall { border-top: 1px solid var(--border); padding: .5rem 0 .2rem; background: #0d121066; }
+.tc-wall-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: .2rem 1rem .3rem; }
+.tc-wall-until { color: var(--green-wyrd); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .12em; }
+.tc-wall-hand .tc-whose.small { font-size: 1.05rem; padding: .2rem 1rem 0; color: var(--ink-dim); }
+.tc-hand-seen .tc-card img { box-shadow: 0 0 0 1px var(--green-wyrd), 0 12px 28px -8px #000c; }
+.tc-hand-seen .tc-card::after { background: radial-gradient(ellipse, #8da97622, transparent 60%); }
+
 /* the deck and the piles */
 .tc-foot { display: grid; gap: .3rem; padding: .2rem 1rem .6rem; border-top: 1px solid var(--border); }
 .tc-tally { display: flex; flex-wrap: wrap; justify-content: center; gap: .3rem 1.2rem; padding: .6rem 0 .2rem; color: var(--ink-dim); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .12em; }

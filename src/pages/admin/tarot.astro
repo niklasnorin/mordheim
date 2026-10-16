@@ -5,7 +5,7 @@ import '../../styles/admin.css';
 import { base } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
 import { admission } from '../../server/admin/guard';
-import { CARD_LASTS, HAND_SIZE, TAROT, TAROT_KIND_LABEL, TAROT_NAME, TAROT_RULES, type TarotKind } from '../../campaign/tarot';
+import { CARD_LASTS, DOOR_CARD, HAND_SIZE, TAROT, TAROT_KIND_LABEL, TAROT_NAME, TAROT_RULES, WALL_CARD, type TarotKind } from '../../campaign/tarot';
 
 // The game master's view of the Tarot of the Damned: the deck card by card with what each does, and the hand's rules. Read from the rule itself; nothing here reads or writes a hand.
 export const prerender = false;
@@ -87,6 +87,7 @@ const signInHref = `${base}/signin/?next=${encodeURIComponent(`${base}/admin/tar
                 ))}
                 <tr class="wh-row"><th scope="row">The first turn only</th><td class="num">{timed.filter((c) => c.only === 'first').length}</td><td>{timed.filter((c) => c.only === 'first').map((c, i) => <>{i > 0 && ', '}<a href={`#card-${c.id}`}>{c.title}</a></>)}</td></tr>
                 <tr class="wh-row"><th scope="row">The last round only</th><td class="num">{timed.filter((c) => c.only === 'last').length}</td><td>{timed.filter((c) => c.only === 'last').map((c, i) => <>{i > 0 && ', '}<a href={`#card-${c.id}`}>{c.title}</a></>)}</td></tr>
+                <tr class="wh-row"><th scope="row">On the cards themselves</th><td class="num">2</td><td>{[DOOR_CARD, WALL_CARD].map((id, i) => <>{i > 0 && ', '}<a href={`#card-${id}`}>{TAROT.find((c) => c.id === id)!.title}</a></>)}</td></tr>
                 <tr class="wh-row"><th scope="row">After the game</th><td class="num">{TAROT.filter((c) => /after the game/i.test(c.effect)).length}</td><td>{TAROT.filter((c) => /after the game/i.test(c.effect)).map((c, i) => <>{i > 0 && ', '}<a href={`#card-${c.id}`}>{c.title}</a></>)}</td></tr>
               </tbody>
             </table>

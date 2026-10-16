@@ -11,7 +11,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
 import { scenarioEvents, scenarioWarbands, scenarios } from '../db/schema.ts';
 import { LedgerError } from '../../curfew/ledger.ts';
-import { cardById, coerceTarot, handOf, handTurn, holds, newTarot, playTarot, reconcileTarot, type TarotHand, type TarotState } from '../../campaign/tarot.ts';
+import { WALL_CARD, cardById, coerceTarot, handOf, handTurn, holds, newTarot, playTarot, reconcileTarot, wallOpenUntil, type TarotHand, type TarotState } from '../../campaign/tarot.ts';
 import type { Scenario } from '../../campaign/model.ts';
 import type { Actor } from '../roles.ts';
 import { getScenario, row, speaksFor } from './scenarios.ts';
@@ -53,10 +53,26 @@ async function reckoned(r: ScenarioRow, warbandId: string): Promise<TarotState> 
   throw new LedgerError('The cards would not settle. Try again.', 409);
 }
 
+/**
+ * The hand as the keeper sees it, with the other side's hands through the wall while the Whispering Wall listens:
+ * the log says when it was played, and the other hands are reckoned as they would be when their own keepers look.
+ */
+async function seen(r: ScenarioRow, warbandId: string, state: TarotState): Promise<TarotHand> {
+  const view = handOf(state, r.turn, warbandId);
+  const d = db();
+  const plays = await d.select({ kind: scenarioEvents.kind, warbandId: scenarioEvents.warbandId, text: scenarioEvents.text, turn: scenarioEvents.turn }).from(scenarioEvents).where(and(eq(scenarioEvents.scenarioId, r.id), eq(scenarioEvents.kind, 'card'), eq(scenarioEvents.warbandId, warbandId), eq(scenarioEvents.text, WALL_CARD)));
+  const until = wallOpenUntil(plays, warbandId, r.turn);
+  if (until === null) return view;
+  const others = (await d.select({ warbandId: scenarioWarbands.warbandId }).from(scenarioWarbands).where(eq(scenarioWarbands.scenarioId, r.id))).map((x) => x.warbandId).filter((id) => id !== warbandId);
+  const through = [];
+  for (const other of others) through.push({ warbandId: other, hand: (await reckoned(r, other)).hand });
+  return { ...view, wallUntil: until, through };
+}
+
 /** The keeper's hand, as of now. The warband's keeper, or a game master. */
 export async function loadHand(actor: Actor, scenarioId: string, warbandId: string): Promise<TarotHand> {
   const r = await inPlay(actor, scenarioId, warbandId);
-  return handOf(await reckoned(r, warbandId), r.turn, warbandId);
+  return seen(r, warbandId, await reckoned(r, warbandId));
 }
 
 /** Play a card from the hand: it leaves for the played pile, and the table's log says which card was shown, by whom. */
@@ -72,5 +88,5 @@ export async function playCard(actor: Actor, scenarioId: string, warbandId: stri
   const d = db();
   await d.insert(scenarioEvents).values({ scenarioId: r.id, turn: handTurn(r.turn), kind: 'card', warbandId, points: 0, text: card.id, authorId: actor.id, authorName: actor.name });
   await d.update(scenarios).set({ updatedAt: new Date() }).where(eq(scenarios.id, r.id));
-  return { hand: handOf(next, r.turn, warbandId), scenario: (await getScenario(r.id))! };
+  return { hand: await seen(r, warbandId, next), scenario: (await getScenario(r.id))! };
 }

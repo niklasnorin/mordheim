@@ -117,7 +117,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
   root.append(turnBox, holdBox, tallyBox, logBox, bar, sheet);
   // the Tarot of the Damned: the keeper's hidden hand in a drawer, and any card held up to read from the log
   const tarot: TarotMount | null = state.scenario.tarot ? mountTarot(root, {
-    base: state.base, scenarioId: state.scenario.id, hands: state.hands, scenario: () => state.scenario, toast,
+    base: state.base, scenarioId: state.scenario.id, hands: state.hands, names: Object.fromEntries(state.roster.map((w) => [w.id, w.name])), scenario: () => state.scenario, toast,
     onScenario: (s) => { state = { ...state, scenario: s }; render(); },
   }) : null;
   if (tarot?.button) { bar.dataset.tarot = 'true'; bar.querySelector('.tk-bar-inner')!.append(tarot.button); }

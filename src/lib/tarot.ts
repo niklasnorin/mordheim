@@ -14,6 +14,8 @@ export interface TarotOptions {
   scenarioId: string;
   /** The warbands whose hands this phone may hold: the keeper's own, every attending one for a game master. */
   hands: { id: string; name: string }[];
+  /** Every warband at the table by id, for the hands seen through the wall. */
+  names?: Record<string, string>;
   scenario: () => Scenario;
   toast: (text: string) => void;
   /** A play answers with the scenario as it now stands; the tracker takes it from here. */
@@ -129,6 +131,26 @@ export function mountTarot(root: HTMLElement, opts: TarotOptions): TarotMount {
         setTimeout(done, 1800 + 250 * i);
       }));
     }
+    // the Whispering Wall: the other side's hands, face up, for as long as the card listens
+    drawer.querySelector('.tc-wall')?.remove();
+    if (hand.through?.length) {
+      const wall = h('section', { class: 'tc-wall', 'aria-label': 'Through the wall' });
+      wall.append(h('div', { class: 'tc-wall-head' }, h('span', { class: 'tk-turn-label' }, 'Through the wall'), h('span', { class: 'tc-wall-until' }, hand.wallUntil !== null && hand.wallUntil !== undefined && hand.wallUntil > Math.max(1, s.turn) ? `listening until turn ${hand.wallUntil}` : 'listening until the end of this turn')));
+      for (const t of hand.through) {
+        const name = opts.names?.[t.warbandId] ?? t.warbandId;
+        const row = h('div', { class: 'tc-wall-hand' }, h('div', { class: 'tc-whose small' }, `${name}’s hand`));
+        const cards = h('div', { class: 'tc-hand tc-hand-seen', role: 'list' });
+        for (const held of t.hand) {
+          const card = cardById(held.id);
+          if (!card) continue;
+          cards.append(h('button', { type: 'button', class: 'tc-held', role: 'listitem', 'data-show': card.id, 'data-theirs': true, 'aria-label': `${name} holds ${card.title}. Read it` }, cardNode(card, 'is-flipped'), h('span', { class: 'tc-caption' }, h('b', {}, card.numeral), captionOf(card, held, s).text)));
+        }
+        if (!t.hand.length) cards.append(h('p', { class: 'tc-note' }, 'An empty hand.'));
+        row.append(cards);
+        wall.append(row);
+      }
+      handBox.after(wall);
+    }
     const spent = [...hand.played.map((p) => ({ ...p, how: 'played' as const })), ...hand.faded.map((f) => ({ id: f.id, turn: f.turn, how: 'faded' as const }))].sort((a, b) => a.turn - b.turn);
     const tally = h('div', { class: 'tc-tally' }, h('span', {}, h('b', {}, String(hand.deckLeft)), ' in the deck'), h('span', {}, h('b', {}, String(hand.played.length)), ' played'), h('span', {}, h('b', {}, String(hand.faded.length)), ' faded'));
     foot.append(tally);
@@ -179,7 +201,7 @@ export function mountTarot(root: HTMLElement, opts: TarotOptions): TarotMount {
     const t = e.target as HTMLElement;
     if (t.closest('[data-tarot-close]')) { close(); return; }
     const show = t.closest<HTMLElement>('[data-show]');
-    if (show) showCard(show.dataset.show!, hand?.hand.some((c) => c.id === show.dataset.show) ?? false);
+    if (show) showCard(show.dataset.show!, show.dataset.theirs === undefined && (hand?.hand.some((c) => c.id === show.dataset.show) ?? false));
   });
 
   // ───────────────────────── the card, held up ─────────────────────────
@@ -221,6 +243,7 @@ export function mountTarot(root: HTMLElement, opts: TarotOptions): TarotMount {
         // the card stays up for the other side to read; the hand behind it is already one card lighter
         dialog.querySelector('.tc-show-inner')!.setAttribute('data-played', 'true');
         text.prepend(h('div', { class: 'tc-played-mark' }, 'Played, and shown to the table'));
+        if (hand.through?.length) text.append(h('p', { class: 'tc-note' }, 'Their hand is in your drawer now, under yours.'));
         actions.replaceChildren(h('button', { type: 'button', class: 'tk-btn big', 'data-tarot-done': true }, 'Done'));
         renderDrawer();
         opts.onScenario(data.scenario as Scenario);
