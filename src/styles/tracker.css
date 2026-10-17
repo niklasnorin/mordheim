@@ -17,6 +17,9 @@
 .tk-title { font: normal clamp(1.35rem, 5.5vw, 1.9rem)/1.1 'Pirata One', Georgia, serif; color: var(--parchment); letter-spacing: .02em; overflow-wrap: anywhere; }
 .tk-sub { color: var(--ink-dim); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tk-live { width: .5rem; height: .5rem; border-radius: 50%; background: var(--gold-dim); flex-shrink: 0; transition: background .3s; }
+/* a phone's masthead: the way back, the title and the kind, nothing else */
+@media (max-width: 40rem) { .tk-sub-more, .tk-live, .tk-signin { display: none; } }
+.tk-watching-signin { display: block; margin-top: .4rem; color: var(--gold); font: var(--text-ui)/1.4 var(--font-utility); font-style: normal; text-transform: uppercase; letter-spacing: .1em; }
 .tk-live[data-on='true'] { background: var(--green-wyrd); box-shadow: 0 0 8px var(--green-wyrd); }
 
 /* the warbands at the table, in a row under the masthead, in the order they play; the one whose turn it is lit */

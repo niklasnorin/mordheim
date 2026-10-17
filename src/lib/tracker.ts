@@ -22,6 +22,8 @@ export interface TrackerState {
   may: boolean;
   /** The warbands whose Tarot hands this phone holds: the keeper's own, every attending one for a game master. Empty when the Tarot is not in play. */
   hands: { id: string; name: string }[];
+  /** Where to sign in, for a visitor who is not; null when signed in. */
+  signIn?: string | null;
   scenario: Scenario;
 }
 
@@ -383,7 +385,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     logBox.replaceChildren(h('div', { class: 'tk-log-head' }, h('span', {}, 'The log'), h('span', {}, `${lines.length} ${lines.length === 1 ? 'line' : 'lines'}`)));
     if (!lines.length) {
       logBox.append(h('p', { class: 'tk-empty' }, state.may ? 'Nothing logged yet. Who struck, who scored, what happened: it all goes here, by turn.' : 'Nothing has been logged yet.'));
-      if (!state.may) logBox.append(h('p', { class: 'tk-watching' }, 'You are watching. Only those whose warbands fight here may write.'));
+      if (!state.may) logBox.append(watching());
       return;
     }
     // latest turn first, so the thumb lands on what just happened; within a turn, in the order it was logged
@@ -397,7 +399,11 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       for (const l of mine) group.append(l.node);
       logBox.append(group);
     }
-    if (!state.may) logBox.append(h('p', { class: 'tk-watching' }, 'You are watching. Only those whose warbands fight here may write.'));
+    if (!state.may) logBox.append(watching());
+  }
+  /** The note for a visitor who may not write, with the way in for one who is not signed in. */
+  function watching(): HTMLElement {
+    return h('p', { class: 'tk-watching' }, 'You are watching. Only those whose warbands fight here may write.', state.signIn ? h('a', { class: 'tk-watching-signin', href: state.signIn }, 'Sign in') : null);
   }
 
   function fallenLine(o: OutOfAction): HTMLElement {
