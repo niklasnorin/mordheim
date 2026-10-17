@@ -543,6 +543,7 @@ export async function addEvent(actor: Actor, id: string, input: EventInput): Pro
   const text = clean(input.text, 500);
   let points = 0;
   if (input.kind === 'score') {
+    if (r.turn < 1) throw new LedgerError('The tally starts with the first turn.');
     if (!warbandId) throw new LedgerError('Say which warband scored.');
     if (!Number.isInteger(input.points) || input.points === 0 || Math.abs(input.points!) > 99) throw new LedgerError('Say how much was scored.');
     points = input.points!;

@@ -186,6 +186,8 @@ test('the battle tracker: the table keeps the turn, the log and the tally; the r
   assert.equal(await mayTrack(niklas, s.id), true, 'the keeper of an attending warband sits at the table');
   assert.equal(await mayTrack(stranger, s.id), false);
   assert.equal(await mayTrack(null, s.id), false);
+  // the tally starts with the first turn
+  await assert.rejects(addEvent(niklas, s.id, { kind: 'score', warbandId: 'nordost', points: 1 }), (e: unknown) => e instanceof LedgerError && /first turn/.test(e.message));
   // the turn: anyone at the table, never a stranger, never past the game
   await assert.rejects(setTurn(stranger, s.id, 1), (e: unknown) => e instanceof LedgerError && e.status === 403);
   await assert.rejects(setTurn(niklas, s.id, 100), LedgerError);

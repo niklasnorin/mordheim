@@ -154,7 +154,8 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     renderTally(s);
     renderLog(s);
     bar.dataset.may = String(state.may);
-    bar.querySelector<HTMLButtonElement>('[data-open="score"]')!.hidden = !tallyOf(s);
+    // the tally starts with the first turn: no scoring while the warbands are still deploying
+    bar.querySelector<HTMLButtonElement>('[data-open="score"]')!.hidden = !tallyOf(s) || s.turn === 0;
     tarot?.sync(s);
   }
 
@@ -204,7 +205,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       ) : null;
       const wanting = unsided.length ? 'Choose the sides to begin' : needOrder ? (s.warbands.length > 2 ? 'Set the order to begin' : 'Choose who starts to begin') : 'Begin: turn 1';
       put(turnBox,
-        h('div', {}, h('div', { class: 'tk-turn-label' }, 'Before the first turn'), h('p', { class: 'tk-turn-note' }, kind?.sides && live ? 'Choose who attacks and who defends, and the order of play, then begin. Anything logged now goes down as turn 1.' : 'The warbands are deploying. Anything logged now goes down as turn 1.')),
+        h('div', {}, h('div', { class: 'tk-turn-label' }, 'Before the first turn'), h('p', { class: 'tk-turn-note' }, kind?.sides && live ? 'Choose who attacks and who defends, and the order of play, then begin.' : 'The warbands are deploying.')),
         chooser,
         starter,
         live ? h('button', { type: 'button', class: 'tk-btn big wide tk-turn-begin', 'data-turn': '1', disabled: unsided.length > 0 || needOrder }, wanting) : null,
@@ -287,7 +288,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       tallyBox.append(h('div', { class: 'tk-score' },
         h('div', { class: 'tk-score-name' }, warbandName(warbandId)),
         h('div', { class: 'tk-score-total' }, String(points)),
-        state.may && s.status !== 'played' ? h('div', { class: 'tk-score-taps' },
+        state.may && s.status !== 'played' && s.turn > 0 ? h('div', { class: 'tk-score-taps' },
           h('button', { type: 'button', class: 'tk-btn', 'data-score': warbandId, 'data-points': '1', 'aria-label': `${warbandName(warbandId)}: one more` }, svg(ICON.plus)),
           h('button', { type: 'button', class: 'tk-btn ghost', 'data-score': warbandId, 'data-points': '-1', 'aria-label': `${warbandName(warbandId)}: one fewer` }, svg(ICON.minus)),
         ) : null,
