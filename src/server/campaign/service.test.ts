@@ -23,6 +23,7 @@ import { warbands as fixtures } from '../../data/warbands.ts';
 import { history } from '../../data/history.ts';
 import { setRole } from '../roles.ts';
 import { getSettings, setSetting } from './settings.ts';
+import { markdownParagraphs, renderMarkdown } from '../../lib/markdown.ts';
 
 const gm = actorOf('user-gm', 'Game Master', 'gm');
 const niklas = actorOf('user-niklas', 'Niklas');
@@ -688,4 +689,51 @@ test('the battle told in one go: the short and long versions, the outcome and th
   t = (await getScenario(s.id))!;
   assert.equal(t.summary, 'The kin held the bridge.', 'a refused report writes nothing');
   assert.deepEqual(t.battle, ['They met at the bridge.', 'Agnar held it.']);
+});
+
+test('long-form Markdown survives saving, reloading and revising every kind of prose', async () => {
+  const source = '    An order in the margin\n\n## At the gate\n\n- **Watch**\n  - Wait\n\n```text\n    1\n\n\n\n    2\n```\n\nA line  \nAnother line\n';
+  const warband = await createWarband(gm, { name: 'The Markdown Watch', type: 'Mercenaries', lore: source });
+  assert.equal(warband.lore, source);
+  assert.equal((await updateWarband(gm, warband.id, { lore: source })).lore, source);
+  let roll = await addMember(gm, warband.id, { name: 'The Scribe', lore: source });
+  const member = roll.members[0];
+  assert.equal(member.lore, source);
+  roll = await updateMember(gm, member.id, { lore: source });
+  assert.equal(roll.members[0].lore, source);
+
+  const { addChapter, listChapters, updateChapter } = await import('./chapters.ts');
+  let chapters = await addChapter(gm, warband.id, { title: 'The margin', blocks: [{ kind: 'text', text: source }] });
+  chapters = await updateChapter(gm, chapters[0].id, { blocks: [{ kind: 'text', text: source }] });
+  assert.deepEqual((await listChapters(warband.id))[0].blocks, [{ kind: 'text', text: source }]);
+
+  let location = await createLocation(gm, { name: 'The Written Gate', description: source });
+  assert.equal(location.description, source);
+  location = await updateLocation(gm, location.id, { description: source });
+  assert.equal(location.description, source);
+  location = await addPoint(gm, location.id, { name: 'The margin', description: source });
+  assert.equal(location.points[0].description, source);
+  location = await updatePoint(gm, location.points[0].id, { description: source });
+  assert.equal(location.points[0].description, source);
+
+  const article = await createArticle(gm, { headline: 'Orders Left in Margin', body: source });
+  assert.equal(article.body, source);
+  assert.equal((await updateArticle(gm, article.id, { body: source })).body, source);
+
+  let scenario = await createScenario(gm, { title: 'The Written Battle', playedOn: '2026-12-13', warbandIds: [warband.id], prologue: source, customRules: source, summary: source });
+  assert.equal(scenario.prologue, source);
+  assert.equal(scenario.customRules, source);
+  assert.equal(scenario.summary, source);
+  scenario = await updateScenario(gm, scenario.id, { prologue: source, customRules: source, winCondition: source, summary: source, outcome: source, epilogue: source });
+  for (const key of ['prologue', 'customRules', 'winCondition', 'summary', 'outcome', 'epilogue'] as const) assert.equal(scenario[key], source, key);
+  scenario = await writePerspective(gm, scenario.id, warband.id, { prologue: source, epilogue: source });
+  assert.equal(scenario.warbands[0].prologue, source);
+  assert.equal(scenario.warbands[0].epilogue, source);
+  scenario = await writeBattle(gm, scenario.id, markdownParagraphs(source));
+  assert.equal((await getScenario(scenario.id))!.battle.join('\n\n'), source);
+  assert.equal(renderMarkdown(scenario.battle.join('\n\n')), renderMarkdown(source));
+  await writeBattle(gm, scenario.id, ['A new telling.']);
+  assert.ok((await revisionsOf(scenario.id)).some((r) => r.battle.join('\n\n') === source), 'earlier tellings keep their Markdown');
+  scenario = await writeBattle(gm, scenario.id, [' \n ', '']);
+  assert.deepEqual(scenario.battle, [], 'a blank telling is still empty');
 });

@@ -10,6 +10,7 @@ import { RULEBOOK_TALLIES, type RulebookScenario } from './rulebook.ts';
 import type { Side } from './house.ts';
 import type { StockEntry } from './trading.ts';
 import type { PortraitCrop } from './portrait.ts';
+import { proseSource } from './prose.ts';
 
 export interface Statline {
   M: number; WS: number; BS: number; S: number; T: number; W: number; I: number; A: number; Ld: number;
@@ -369,7 +370,7 @@ export const IMAGE_UNITS: ImageUnit[] = ['%', 'px'];
 /** How large a picture may be set, so a typo cannot make one vanish or burst the page. */
 export const IMAGE_SIZE: Record<ImageUnit, { min: number; max: number; default: number }> = { '%': { min: 10, max: 100, default: 50 }, px: { min: 60, max: 1200, default: 320 } };
 
-/** Prose, in paragraphs separated by a blank line. */
+/** Markdown prose. */
 export interface ChapterText { kind: 'text'; text: string }
 /** A picture uploaded to the site (`/images/<imageId>`), placed, sized and captioned. */
 export interface ChapterImage { kind: 'image'; imageId: string; align: ImageAlign; size: number; unit: ImageUnit; caption: string }
@@ -394,13 +395,13 @@ export function paragraphsOf(text: string): string[] {
 }
 
 /**
- * A chapter's blocks as they may be kept: text trimmed and empty text dropped, a picture's size clamped to what its
+ * A chapter's blocks as they may be kept: Markdown whitespace kept and empty text dropped, a picture's size clamped to what its
  * unit allows, its alignment and unit one of the known ones, its caption trimmed.
  */
 export function normaliseBlocks(blocks: ChapterBlock[]): ChapterBlock[] {
   const out: ChapterBlock[] = [];
   for (const b of blocks) {
-    if (b.kind === 'text') { const text = b.text.replace(/\r\n/g, '\n').trim(); if (text) out.push({ kind: 'text', text }); continue; }
+    if (b.kind === 'text') { const text = proseSource(b.text, 20000); if (text) out.push({ kind: 'text', text }); continue; }
     const unit: ImageUnit = IMAGE_UNITS.includes(b.unit) ? b.unit : '%';
     const { min, max, default: fallback } = IMAGE_SIZE[unit];
     const size = Number.isFinite(b.size) ? Math.min(max, Math.max(min, Math.round(b.size))) : fallback;

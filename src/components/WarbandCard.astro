@@ -2,6 +2,7 @@
 import { leaderOf, type Warband } from '../campaign/model';
 import Icon from './Icon.astro';
 import Portrait from './Portrait.astro';
+import Markdown from './Markdown.astro';
 import { asset, base } from '../lib/site';
 
 interface Props {
@@ -26,7 +27,7 @@ const href = `${base}/warbands/${warband.id}/`;
     </div>
   </div>
   {warband.lore.trim()
-    ? <div class="warband-lore"><p>{warband.lore}</p></div>
+    ? <Markdown class="warband-lore" text={warband.lore} />
     : <div class="warband-lore warband-lore-empty"><p>Their overview is not written yet. <a href={`${base}/warbands/${warband.id}/#record`}>Write the overview <Icon name="arrow-up-right" size={14} /></a></p></div>}
   {leader && (
     <button
@@ -108,7 +109,7 @@ const href = `${base}/warbands/${warband.id}/`;
     border-bottom: 1px solid var(--border);
     font-size: var(--text-body);
   }
-  .warband-lore p { max-width: 72ch; }
+  .warband-lore :global(p) { max-width: 72ch; }
   .warband-lore-empty p { display: flex; align-items: center; gap: .5rem 1rem; flex-wrap: wrap; }
   .warband-lore-empty a { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; font-style: normal; color: var(--gold); font: var(--text-ui)/1.5 var(--font-utility); text-underline-offset: .2em; }
   .warband-lore-empty a:hover { color: var(--parchment); }

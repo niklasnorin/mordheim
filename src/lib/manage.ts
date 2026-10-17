@@ -9,7 +9,11 @@
  * arrays) merged over `data-json`. On success the page reloads, or follows `data-goto`; a refusal is shown as
  * written. Nothing is updated optimistically: the server's answer is the page.
  */
+import { wireMarkdownEditors } from './markdown-editor.ts';
+import { markdownParagraphs } from './markdown.ts';
+
 export function wireManage(root: HTMLElement, base: string): void {
+  wireMarkdownEditors(root);
   const toast = ensureToast();
   const post = (path: string, body: unknown) => postApi(base, path, body);
   const done = (el: HTMLElement, data: { message?: string }) => {
@@ -94,7 +98,7 @@ export function readForm(form: HTMLFormElement): Record<string, unknown> {
     if (el instanceof HTMLSelectElement && el.multiple) { set(name, [...el.selectedOptions].map((o) => o.value)); seen.add(name); continue; }
     if (el instanceof HTMLInputElement && el.type === 'number') { set(name, el.value === '' ? (el.dataset.nullable !== undefined ? null : 0) : Number(el.value)); seen.add(name); continue; }
     if (el.dataset.list !== undefined) { set(name, el.value.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)); seen.add(name); continue; }
-    if (el.dataset.paragraphs !== undefined) { set(name, el.value.split(/\n\s*\n/).map((s) => s.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean)); seen.add(name); continue; }
+    if (el.dataset.paragraphs !== undefined) { set(name, el.dataset.markdown !== undefined ? markdownParagraphs(el.value) : el.value.split(/\n\s*\n/).map((s) => s.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean)); seen.add(name); continue; }
     if (el.dataset.nullable !== undefined && el.value === '') { set(name, null); seen.add(name); continue; }
     set(name, el.value);
     seen.add(name);

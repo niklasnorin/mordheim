@@ -7,7 +7,8 @@
  * when it is pressed. The keeper (or a game master) gets a drawer under each chapter to change it, and one at the
  * end to write the next.
  */
-import { chapterNumeral, paragraphsOf, type StoryChapter } from '../campaign/model';
+import { chapterNumeral, type StoryChapter } from '../campaign/model';
+import Markdown from './Markdown.astro';
 import { base } from '../lib/site';
 
 interface Props {
@@ -28,7 +29,7 @@ const firstText = (c: StoryChapter) => c.blocks.findIndex((b) => b.kind === 'tex
       <h3 class="ch-title" id={`chapter-${c.id}-title`}>{c.title || `Chapter ${chapterNumeral(n + 1)}`}</h3>
       <div class="ch-body">
         {c.blocks.map((b, i) => b.kind === 'text'
-          ? paragraphsOf(b.text).map((p, j) => <p class:list={{ 'ch-first': i === firstText(c) && j === 0 }}>{p}</p>)
+          ? <Markdown text={b.text} initial={i === firstText(c)} />
           : (
             <figure class:list={['ch-fig', b.align]} style={`--w: ${b.size}${b.unit}`}>
               <button type="button" class="ch-zoom" data-zoom={imageUrl(b.imageId)} data-caption={b.caption} aria-label={b.caption ? `Enlarge the picture: ${b.caption}` : 'Enlarge the picture'}>
@@ -81,13 +82,14 @@ const firstText = (c: StoryChapter) => c.blocks.findIndex((b) => b.kind === 'tex
   .ch-title { text-align: center; font: normal clamp(1.9rem, 6vw, 2.6rem)/1.15 'Pirata One', Georgia, serif; color: var(--parchment); letter-spacing: .02em; margin-bottom: 1.6rem; text-wrap: balance; overflow-wrap: anywhere; }
   .ch-body { color: var(--ink); }
   .ch-body::after { content: ''; display: block; clear: both; }
-  .ch-body p { line-height: 1.9; margin-bottom: 1.1rem; hyphens: auto; }
-  .ch-body p:last-child { margin-bottom: 0; }
+  .ch-body :global(.markdown p) { line-height: 1.9; margin-bottom: 1.1rem; hyphens: auto; }
+  .ch-body :global(.markdown p:last-child) { margin-bottom: 0; }
+  .ch-body :global(.markdown + .markdown) { margin-top: 1.1rem; }
 
   /* the opening paragraph holds its initial, so a short one does not leave the next running round it */
-  .ch-first { display: flow-root; }
+  .ch-body :global(.markdown-initial > p:first-of-type) { display: flow-root; }
   /* the initial: a blackletter capital in a dark, double-ruled frame, lit like a candle behind dirty glass */
-  .ch-first::first-letter {
+  .ch-body :global(.markdown-initial > p:first-of-type)::first-letter {
     float: left;
     font-family: 'UnifrakturMaguntia', 'Pirata One', Georgia, serif;
     font-size: 4.4em;

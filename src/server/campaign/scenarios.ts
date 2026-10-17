@@ -18,6 +18,7 @@ import { locationPoints, locations, members, scenarioEvents, scenarioMembers, sc
 import { LedgerError } from '../../curfew/ledger.ts';
 import { LOGGED_KINDS, MEMBER_STATUSES, SCENARIO_RESULTS, positionOf, slugify, type EventKind, type MemberStatus, type NarrativeRevision, type OutOfAction, type Puzzle, type Scenario, type ScenarioEvent, type ScenarioMember, type ScenarioResult, type ScenarioWarband, type Statline } from '../../campaign/model.ts';
 import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook.ts';
+import { proseSource } from '../../campaign/prose.ts';
 import { HOUSE_SCENARIOS, SIDES, houseScenario, verdictOf, type Side } from '../../campaign/house.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { ensureLocationsSeeded, ensureSeeded } from './seed.ts';
@@ -191,9 +192,9 @@ export async function createScenario(actor: Actor, input: ScenarioInput): Promis
   let id = `scenario-${String(seq).padStart(2, '0')}-${slugify(title)}`, k = 2;
   while (taken.has(id)) id = `scenario-${String(seq).padStart(2, '0')}-${slugify(title)}-${k++}`;
   await d.insert(scenarios).values({
-    id, sequence: seq, status: 'upcoming', title, playedOn: input.playedOn, rulebookScenario: rulebookOf(input.rulebookScenario), customRules: clean(input.customRules, 8000),
+    id, sequence: seq, status: 'upcoming', title, playedOn: input.playedOn, rulebookScenario: rulebookOf(input.rulebookScenario), customRules: proseSource(input.customRules, 8000),
     turnLimit: turnLimitOf(input.turnLimit) ?? houseScenario(input.rulebookScenario)?.turns ?? null, tarot: !!input.tarot,
-    prologue: clean(input.prologue, 8000), prologueAsSummary: input.prologueAsSummary ?? true, summary: clean(input.summary, 1000), createdBy: actor.id,
+    prologue: proseSource(input.prologue, 8000), prologueAsSummary: input.prologueAsSummary ?? true, summary: proseSource(input.summary, 1000), createdBy: actor.id,
     ...(await whereOf(input)),
   });
   if (input.warbandIds?.length) await setParticipants(actor, id, input.warbandIds);
@@ -210,15 +211,15 @@ export async function updateScenario(actor: Actor, id: string, patch: ScenarioPa
   if (patch.turnLimit !== undefined) set.turnLimit = turnLimitOf(patch.turnLimit);
   // a house scenario brings its own length when it is chosen and none was set
   else if (patch.rulebookScenario !== undefined && (await row(id)).turnLimit === null) set.turnLimit = houseScenario(patch.rulebookScenario)?.turns ?? null;
-  if (patch.customRules !== undefined) set.customRules = clean(patch.customRules, 8000);
-  if (patch.winCondition !== undefined) set.winCondition = clean(patch.winCondition, 4000);
+  if (patch.customRules !== undefined) set.customRules = proseSource(patch.customRules, 8000);
+  if (patch.winCondition !== undefined) set.winCondition = proseSource(patch.winCondition, 4000);
   // the summary and the Chronicle's paragraph are one field now; saving it empties the older one
-  if (patch.summary !== undefined) { set.summary = clean(patch.summary, 1000); set.chronicle = ''; }
+  if (patch.summary !== undefined) { set.summary = proseSource(patch.summary, 1000); set.chronicle = ''; }
   else if (patch.chronicle !== undefined) set.chronicle = clean(patch.chronicle, 4000);
-  if (patch.outcome !== undefined) set.outcome = clean(patch.outcome, 4000);
-  if (patch.prologue !== undefined) set.prologue = clean(patch.prologue, 8000);
+  if (patch.outcome !== undefined) set.outcome = proseSource(patch.outcome, 4000);
+  if (patch.prologue !== undefined) set.prologue = proseSource(patch.prologue, 8000);
   if (patch.prologueAsSummary !== undefined) set.prologueAsSummary = !!patch.prologueAsSummary;
-  if (patch.epilogue !== undefined) set.epilogue = clean(patch.epilogue, 8000);
+  if (patch.epilogue !== undefined) set.epilogue = proseSource(patch.epilogue, 8000);
   // the loot and the lasting records are one list now; saving it empties the older one
   if (patch.campaignNotes !== undefined) { set.campaignNotes = paragraphs(patch.campaignNotes); set.loot = []; }
   else if (patch.loot !== undefined) set.loot = paragraphs(patch.loot);
@@ -304,7 +305,8 @@ export async function writeBattle(actor: Actor, id: string, battle: string[]): P
     const mine = await db().select({ id: scenarioWarbands.warbandId }).from(scenarioWarbands).innerJoin(warbands, eq(warbands.id, scenarioWarbands.warbandId)).where(and(eq(scenarioWarbands.scenarioId, id), eq(warbands.ownerId, actor.id))).limit(1);
     if (!mine.length) throw new LedgerError('Only those who fought may retell the battle.', 403);
   }
-  const next = paragraphs(battle);
+  // Empty pieces keep blank lines inside code when the telling is joined again.
+  const next = battle.some((s) => s.trim()) ? battle.slice(0, 60).map((s) => s.replace(/\r\n?/g, '\n').slice(0, 4000)) : [];
   const previous = (r.battle as string[]) ?? [];
   if (JSON.stringify(next) === JSON.stringify(previous)) return (await getScenario(id))!;
   const d = db();
@@ -344,8 +346,8 @@ export interface PerspectivePatch { prologue?: string; epilogue?: string; highli
 export async function writePerspective(actor: Actor, id: string, warbandId: string, patch: PerspectivePatch): Promise<Scenario> {
   await speaksFor(actor, id, warbandId);
   const set: Partial<typeof scenarioWarbands.$inferInsert> = {};
-  if (patch.prologue !== undefined) set.prologue = clean(patch.prologue, 8000);
-  if (patch.epilogue !== undefined) set.epilogue = clean(patch.epilogue, 8000);
+  if (patch.prologue !== undefined) set.prologue = proseSource(patch.prologue, 8000);
+  if (patch.epilogue !== undefined) set.epilogue = proseSource(patch.epilogue, 8000);
   if (patch.highlights !== undefined) set.highlights = paragraphs(patch.highlights, 12);
   if (patch.lowlights !== undefined) set.lowlights = paragraphs(patch.lowlights, 12);
   if (Object.keys(set).length) await db().update(scenarioWarbands).set(set).where(and(eq(scenarioWarbands.scenarioId, id), eq(scenarioWarbands.warbandId, warbandId)));

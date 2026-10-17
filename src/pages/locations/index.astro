@@ -5,6 +5,7 @@ import ManageTop from '../../components/ManageTop.astro';
 import '../../styles/manage.css';
 import '../../styles/locations.css';
 import { base } from '../../lib/site';
+import { markdownText } from '../../lib/markdown';
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm } from '../../server/roles';
 import { listLocations, scenarioCounts } from '../../server/campaign/locations';
@@ -44,7 +45,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
                 <span class="mg-sub">{l.region || 'The Empire'}</span>
                 <h3>{l.name}</h3>
                 <span class="mg-who"><span>{plural(fought[l.id] ?? 0, 'scenario')}</span><span>{plural(l.points.length, 'place')} of interest{pins ? `, ${pins} on the map` : ''}</span><span>{plural(stocked, 'item')} at the post</span></span>
-                {l.description && <p>{l.description.slice(0, 200)}{l.description.length > 200 ? '…' : ''}</p>}
+                {l.description && <p>{markdownText(l.description, 200)}</p>}
               </a>
             );
           })}
@@ -60,7 +61,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
             <label class="mg-field">Name<input name="name" required maxlength="80" placeholder="Kleinfeld" /><small>Its id is made from the name once, and never changes.</small></label>
             <label class="mg-field">Region<input name="region" maxlength="80" placeholder="Ostermark" /></label>
           </div>
-          <label class="mg-field">Description<textarea name="description" maxlength="8000" placeholder="What the place is, who holds it, what the warbands want there. The archivist's neutral voice."></textarea></label>
+          <label class="mg-field">Description<textarea name="description" data-markdown maxlength="8000" placeholder="What the place is, who holds it, what the warbands want there. The archivist's neutral voice."></textarea></label>
           <div class="mg-actions end"><span class="mg-note">The map, the places of interest and the trading post are set on its page.</span><button type="submit" class="mg-btn">Put it on the map</button></div>
         </form>
       </section>

@@ -1,6 +1,7 @@
 ---
 import { summaryOf, type Scenario, type Warband } from '../campaign/model';
 import Icon from './Icon.astro';
+import Markdown from './Markdown.astro';
 import { base } from '../lib/site';
 import { formatImperial, imperialForDate } from '../lib/calendar';
 
@@ -48,7 +49,7 @@ const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'U
           <span class="timeline-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
           <span class="timeline-date">{entry.date}</span>
           <h3><a href={getScenarioUrl(entry.scenarioId)}>{entry.title}</a></h3>
-          <p>{entry.body}</p>
+          <Markdown text={entry.body} />
           <a class="report-link" href={getScenarioUrl(entry.scenarioId)} aria-label={`Read battle report: ${entry.title}`}>
             Read battle report <Icon name="arrow-right" size={14} />
           </a>
@@ -142,12 +143,12 @@ const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'U
     margin: 0.6rem 0 0.7rem;
     font-weight: normal;
   }
-  .timeline-entry p {
+  .timeline-entry :global(.markdown) {
     font-size: var(--text-body);
     line-height: 1.85;
     color: #b8b9a9;
   }
-  .timeline-entry:first-child p::first-letter {
+  .timeline-entry:first-child :global(.markdown > p:first-of-type)::first-letter {
     float: left;
     margin: 0.1rem 0.5rem 0 0;
     padding: 0.2rem 0.4rem;
