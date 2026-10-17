@@ -1,6 +1,7 @@
 ---
 import { summaryOf, type Scenario, type Warband } from '../campaign/model';
 import Icon from './Icon.astro';
+import WarbandLabel from './WarbandLabel.astro';
 import { base } from '../lib/site';
 import { formatImperial, imperialForDate } from '../lib/calendar';
 
@@ -11,7 +12,7 @@ const imperial = (day: string) => formatImperial(imperialForDate(day));
 /** Newest battle first, as the Chronicle reads; the upcoming games stand above it. */
 const chronicle = scenarios.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence).map((s) => ({ scenarioId: s.id, date: imperial(s.playedOn), title: s.title, body: summaryOf(s) }));
 const upcoming = scenarios.filter((s) => s.status === 'upcoming');
-const nameOf = (id: string) => warbands.find((w) => w.id === id)?.name ?? id;
+const warbandOf = (id: string) => warbands.find((w) => w.id === id);
 const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(day + 'T12:00:00Z'));
 ---
 
@@ -26,7 +27,7 @@ const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'U
           <li>
             <a href={getScenarioUrl(s.id)}>{s.title}</a>
             <span class="upcoming-when">{imperial(s.playedOn)} <small>({realDay(s.playedOn)})</small></span>
-            {s.warbands.length > 0 && <span class="upcoming-who">{s.warbands.map((w) => nameOf(w.warbandId)).join(' against ')}</span>}
+            {s.warbands.length > 0 && <span class="upcoming-who">{s.warbands.map((w, i) => <>{i > 0 && ' against '}<WarbandLabel warband={warbandOf(w.warbandId)} fallback={w.warbandId} /></>)}</span>}
           </li>
         ))}
       </ul>

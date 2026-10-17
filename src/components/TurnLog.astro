@@ -7,6 +7,7 @@
 import { scoresOf, tallyOf, type Scenario, type Warband } from '../campaign/model';
 import { SIDE_LABEL, houseScenario, rollBrings } from '../campaign/house';
 import { TAROT_KIND_LABEL, cardById } from '../campaign/tarot';
+import WarbandLabel from './WarbandLabel.astro';
 
 interface Props { scenario: Scenario; warbands: Warband[] }
 const { scenario, warbands } = Astro.props;
@@ -68,7 +69,7 @@ const turns = [...new Set(lines.map((l) => l.turn))].sort((a, b) => (a ?? 1e9) -
             const score = scores.find((s) => s.warbandId === w.warbandId);
             return (
               <li class:list={[w.result ?? '']}>
-                <span class="turn-log-final-name">{nameOf(w.warbandId)}</span>
+                <span class="turn-log-final-name"><WarbandLabel warband={warbands.find((band) => band.id === w.warbandId)} fallback={w.warbandId} /></span>
                 {tally && score && <b class="turn-log-final-score">{score.points}<small>{tally.toLowerCase()}</small></b>}
                 <span class="turn-log-final-result">{w.result ? resultLabel[w.result] : 'No result'}</span>
               </li>

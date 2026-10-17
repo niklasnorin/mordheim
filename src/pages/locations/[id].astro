@@ -7,6 +7,7 @@
 import Base from '../../layouts/Base.astro';
 import ManageTop from '../../components/ManageTop.astro';
 import LocationMap from '../../components/LocationMap.astro';
+import WarbandLabel from '../../components/WarbandLabel.astro';
 import '../../styles/manage.css';
 import '../../styles/locations.css';
 import { asset, base } from '../../lib/site';
@@ -38,7 +39,7 @@ const gm = isGm(viewer);
 const here = scenarios.filter((s) => s.locationId === location!.id);
 const played = here.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence);
 const upcoming = here.filter((s) => s.status === 'upcoming');
-const nameOf = (id: string) => warbands.find((w) => w.id === id)?.name ?? id;
+const warbandOf = (id: string) => warbands.find((w) => w.id === id);
 const imperialOf = (day: string) => formatImperial(imperialForDate(day));
 const pointName = (id: number | null) => location!.points.find((p) => p.id === id)?.name;
 const lines = stockOf(location.stock);
@@ -147,7 +148,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
               <h3>{s.title}</h3>
               <span class="mg-date">{imperialOf(s.playedOn)}</span>
               {pointName(s.pointId) && <span class="mg-real">At {pointName(s.pointId)}</span>}
-              {s.warbands.length > 0 && <span class="mg-who">{s.warbands.map((w) => <span>{nameOf(w.warbandId)}</span>)}</span>}
+              {s.warbands.length > 0 && <span class="mg-who">{s.warbands.map((w) => <span><WarbandLabel warband={warbandOf(w.warbandId)} fallback={w.warbandId} /></span>)}</span>}
             </a>
           ))}
         </div>

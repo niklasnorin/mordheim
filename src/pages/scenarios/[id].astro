@@ -8,6 +8,8 @@ import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
 import TurnLog from '../../components/TurnLog.astro';
 import LocationMap from '../../components/LocationMap.astro';
+import WarbandLabel from '../../components/WarbandLabel.astro';
+import Portrait from '../../components/Portrait.astro';
 import '../../styles/manage.css';
 import { base } from '../../lib/site';
 import { formatImperial, imperialForDate } from '../../lib/calendar';
@@ -154,7 +156,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           <div><dt>{house ? 'Scenario' : 'Rulebook scenario'}</dt><dd>{house ? <>{house.name}<br /><small class="archive-note">one of the campaign’s own</small></> : scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'A custom scenario'}</dd></div>
           {scenario.turnLimit && <div><dt>Length</dt><dd>{scenario.turnLimit} turns{house ? <><br /><small class="archive-note">more if time permits</small></> : null}</dd></div>}
           {house?.sides && <div><dt>Sides</dt><dd>{sidesLine}</dd></div>}
-          <div><dt>Warbands</dt><dd>{scenario.warbands.length ? scenario.warbands.map((w) => nameOf(w.warbandId)).join(' against ') : 'To be named'}</dd></div>
+          <div><dt>Warbands</dt><dd>{scenario.warbands.length ? scenario.warbands.map((w, i) => <>{i > 0 && ' against '}<WarbandLabel warband={warbandOf(w.warbandId)} fallback={w.warbandId} /></>) : 'To be named'}</dd></div>
         </dl>
         {house && house.rules.map((r) => (<><h3>{r.heading}</h3><ul class="house-rules">{r.lines.map((l) => <li>{l}</li>)}</ul></>))}
         {house ? (scenario.customRules && (<><h3>Also in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>)) : scenario.customRules ? (<><h3>Rules in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>) : <p class="archive-note">{scenario.rulebookScenario ? <>Played as the rulebook has it{rulesUrl ? <>; <a href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules in full</a></> : null}.</> : 'The rules are still being written.'}</p>}
@@ -337,7 +339,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           return (
             <article id={w.warbandId} class="panel warband-summary">
               <p class:list={['voice-label', w.result ?? '']}>{w.result ? resultLabel[w.result] : upcoming ? 'Attending' : 'Fought'}</p>
-              <h3><a href={`${base}/warbands/${w.warbandId}/`}>{nameOf(w.warbandId)}</a></h3>
+              <h3><a href={`${base}/warbands/${w.warbandId}/`}><WarbandLabel warband={band} fallback={w.warbandId} /></a></h3>
               {band && <p class="archive-note">{band.type}{band.player ? `, kept by ${band.player}` : ''}{upcoming ? ` · ${band.members.filter((m) => !m.dead).length} living souls` : ''}</p>}
               {!upcoming && (
                 <>
@@ -352,8 +354,13 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                   const m = memberOf(member.memberId);
                   return (
                     <article id={`member-${member.memberId}`} class="member-record">
-                      <h5>{m?.name ?? member.memberId}</h5>
-                      <p class="member-meta">{m?.rank} · {m?.role}{!upcoming && <> · <span class:list={{ darkest: member.status !== 'active' }}>{statusLabel[member.status]}</span></>}</p>
+                      <div class="member-heading">
+                        {m?.picture && <Portrait member={m} width="3.75rem" />}
+                        <div>
+                          <h5>{m?.name ?? member.memberId}</h5>
+                          <p class="member-meta">{m?.rank} · {m?.role}{!upcoming && <> · <span class:list={{ darkest: member.status !== 'active' }}>{statusLabel[member.status]}</span></>}</p>
+                        </div>
+                      </div>
                       {member.experience != null && <p><strong>Experience:</strong> {member.experience}</p>}
                       {member.highlight.trim() && <p><strong class="finest">Finest moment:</strong> {member.highlight}</p>}
                       {member.lowlight.trim() && <p><strong class="darkest">Darkest moment:</strong> {member.lowlight}</p>}
@@ -397,7 +404,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
               <label class="mg-field">Turns<input name="patch.turnLimit" type="number" min="1" max="99" inputmode="numeric" value={scenario.turnLimit ?? ''} data-nullable placeholder="Until it is decided" /><small>The game ends of itself after this many; the table may add another round in the tracker, time permitting. A campaign scenario sets its own when chosen.</small></label>
               <label class="mg-field check"><input type="checkbox" name="patch.tarot" checked={scenario.tarot} /> The Tarot of the Damned is in play: each warband a hidden hand of three cards in the tracker, small boons and banes played at the table</label>
               <fieldset class="mg-fieldset"><legend>Where</legend>
-                <label class="mg-field">Place<select name="patch.locationId" data-nullable data-location-select><option value="" selected={!scenario.locationId}>Not said</option>{locations.map((l) => <option value={l.id} selected={l.id === scenario!.locationId}>{l.name}{l.region ? ` (${l.region})` : ''}</option>)}</select><small>One of <a class="mg-rules-link" href={`${base}/locations/`}>the campaign’s locations</a>. Tap its map where the fight is, or tap a marked place to set the fight there; the marker then follows the place if it is moved.</small></label>
+                <label class="mg-field">Place<select name="patch.locationId" data-nullable data-location-select><option value="" selected={!scenario.locationId}>Not said</option>{locations.map((l) => <option value={l.id} selected={l.id === scenario!.locationId}>{l.name}{l.region ? ` (${l.region})` : ''}</option>)}</select><small>Tap its map where the fight is, or tap a marked place to set the fight there.</small></label>
                 <input type="number" name="patch.pointId" data-nullable data-point-input hidden value={scenario.pointId ?? ''} />
                 {mapped.map((l) => <div data-picker-for={l.id} hidden={l.id !== scenario!.locationId}><LocationMap location={l} picker marker={l.id === scenario!.locationId ? whereAt : null} markerLabel="The fight" /></div>)}
                 <p class="mg-note" data-no-map hidden={!scenario.locationId || !!where?.map}>This place has no map yet, so the fight has no spot on one; it can be set once a map is uploaded.</p>
@@ -449,7 +456,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                 {upcoming ? (
                   <p class="mg-note">The game is called at the table: the tracker takes every warband's result and moves the scenario into the Chronicle.{scenario.warbands.length === 0 ? ' Name the warbands that fight first, under the scenario above.' : ''}</p>
                 ) : (
-                  <ul class="ending-list">{scenario.warbands.map((w) => <li><span>{nameOf(w.warbandId)}</span><b class={w.result ?? ''}>{w.result ? resultLabel[w.result] : 'No result'}</b></li>)}</ul>
+                  <ul class="ending-list">{scenario.warbands.map((w) => <li><span><WarbandLabel warband={warbandOf(w.warbandId)} fallback={w.warbandId} /></span><b class={w.result ?? ''}>{w.result ? resultLabel[w.result] : 'No result'}</b></li>)}</ul>
                 )}
                 <div class="mg-actions end">
                   {!upcoming && <button type="button" class="mg-btn ghost" data-act="scenarios/reopen" data-body={JSON.stringify({ scenarioId: scenario.id })} data-confirm="Lift this scenario out of the Chronicle and make it upcoming again? Everything written stays.">Reopen as upcoming</button>}
@@ -885,8 +892,10 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   .darkest, .defeat { color: var(--blood-bright); }
   .roster-title { border-top: 1px solid var(--gold-dim); padding-top: 1.5rem; }
   .member-record { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); scroll-margin-top: 2rem; }
+  .member-heading { display: flex; align-items: center; gap: .9rem; margin-bottom: 1rem; }
+  .member-heading > div { min-width: 0; overflow-wrap: anywhere; }
   .member-record h5 { font: 1.4rem/1.3 'Pirata One', Georgia, serif; color: var(--parchment); }
-  .member-meta { color: var(--ink-dim); font-size: .8rem; margin: .4rem 0 1rem; }
+  .member-meta { color: var(--ink-dim); font-size: .8rem; margin: .4rem 0 0; }
   .member-record strong { font-weight: normal; color: var(--gold); }
   .member-record strong.darkest { color: var(--blood-bright); }
   .member-record p { font-size: .95rem; }
