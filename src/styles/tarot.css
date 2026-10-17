@@ -5,26 +5,30 @@
    ═══════════════════════════════════════════ */
 
 /* the button in the bar: a dot when cards have come that this phone has not seen */
-.tc-toggle { position: relative; }
-.tc-toggle[aria-expanded='true'] { border-color: var(--gold); color: var(--parchment); background: #1f2823; }
+/* the Tarot's own feel: near black, where the rest of the bar is the panel green */
+.tk-bar .tk-btn.tc-toggle { position: relative; background: linear-gradient(150deg, #0c0d0d, #050606); border-color: #2a2622; color: var(--gold); }
+.tk-bar .tk-btn.tc-toggle:hover:not([disabled]) { background: linear-gradient(150deg, #141516, #0a0b0b); border-color: var(--gold-dim); color: var(--parchment); }
+.tk-bar .tk-btn.tc-toggle[aria-expanded='true'] { border-color: var(--gold-dim); color: var(--parchment); }
 .tc-toggle.has-new::after { content: ''; position: absolute; top: .4rem; right: .5rem; width: .5rem; height: .5rem; border-radius: 50%; background: var(--green-wyrd); box-shadow: 0 0 8px var(--green-wyrd); }
 .tk-bar[data-tarot='true'] .tk-bar-inner { grid-template-columns: repeat(4, 1fr); }
 
 /* the hand: the whole screen while it is open, so the cards and their rules get the room a phone has */
-.tc-drawer { position: fixed; inset: 0; z-index: 30; max-width: 44rem; margin: 0 auto; overflow: auto; overscroll-behavior: contain; background: linear-gradient(160deg, #1b231d, #111915); border-left: 1px solid var(--gold-dim); border-right: 1px solid var(--gold-dim); box-shadow: 0 0 60px -10px #000; animation: tc-rise .25s ease-out; padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); outline: none; }
+.tc-drawer { position: fixed; inset: 0; z-index: 30; max-width: 44rem; margin: 0 auto; overflow: auto; overscroll-behavior: contain; display: flex; flex-direction: column; justify-content: flex-end; background: linear-gradient(170deg, #0d0f0f, #050606 60%, #000); border-left: 1px solid #2a2622; border-right: 1px solid #2a2622; box-shadow: 0 0 60px -10px #000; animation: tc-rise .25s ease-out; padding-bottom: calc(6.2rem + env(safe-area-inset-bottom, 0px)); outline: none; }
+.tc-drawer > * { flex-shrink: 0; }
+/* while the hand is open the tracker's bar stays over it, near black, with only the Tarot button to be seen: now the way back */
+html.tc-open .tk-bar { z-index: 31; background: linear-gradient(transparent, #000 30%); }
+html.tc-open .tk-bar .tk-btn:not(.tc-toggle) { visibility: hidden; }
 html.tc-open, html.tc-open body { overflow: hidden; }
 .tc-drawer[hidden] { display: none; }
 @keyframes tc-rise { from { transform: translateY(1.5rem); opacity: 0; } to { transform: none; opacity: 1; } }
-.tc-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: calc(.7rem + env(safe-area-inset-top, 0px)) .5rem .4rem 1rem; position: sticky; top: 0; z-index: 2; background: linear-gradient(#1b231d 80%, transparent); }
+.tc-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: calc(.7rem + env(safe-area-inset-top, 0px)) 1rem .4rem; }
 .tc-head-text { display: grid; gap: .2rem; min-width: 0; }
-.tc-close { flex-shrink: 0; min-height: var(--control-size); padding: .5rem .9rem; }
-.tc-close svg { width: 1.1rem; height: 1.1rem; }
 .tc-whose { color: var(--parchment); font: normal 1.25rem/1.2 'Pirata One', Georgia, serif; letter-spacing: .02em; }
-.tc-pick { font: var(--text-ui)/1.3 var(--font-utility); background: #0d1210; color: var(--parchment); border: 1px solid var(--border); padding: .4rem .6rem; min-height: var(--control-size); color-scheme: dark; }
+.tc-pick { font: var(--text-ui)/1.3 var(--font-utility); background: #000; color: var(--parchment); border: 1px solid #2a2622; padding: .4rem .6rem; min-height: var(--control-size); color-scheme: dark; }
 .tc-note { color: var(--ink-dim); font-style: italic; font-size: var(--text-ui); text-align: center; padding: .4rem 1rem .8rem; margin: 0; }
 
 /* the hand: three places, a card in each or an empty one waiting for the next turn */
-.tc-hand { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; padding: .4rem 1rem .8rem; align-items: start; }
+.tc-hand { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; padding: .4rem 1rem .4rem; align-items: end; }
 .tc-held { background: none; border: 0; padding: 0; display: grid; gap: .4rem; justify-items: center; cursor: pointer; touch-action: manipulation; color: inherit; min-width: 0; }
 .tc-held:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
 .tc-caption { display: grid; gap: .25rem; justify-items: center; text-align: center; width: 100%; }
@@ -33,7 +37,7 @@ html.tc-open, html.tc-open body { overflow: hidden; }
 .tc-fade { color: var(--ink-dim); font: var(--text-meta)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; }
 .tc-held[data-hour='not-yet'] .tc-face, .tc-held[data-hour='too-late'] .tc-face { filter: grayscale(.7) brightness(.55); }
 .tc-held[data-hour='too-late'] .tc-fade { color: var(--blood-bright); }
-.tc-slot { aspect-ratio: 7 / 12; border: 1px dashed var(--border); border-radius: 10px; display: grid; place-items: center; padding: .5rem; color: var(--ink-dim); font: var(--text-meta)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; text-align: center; background: #0d121033; }
+.tc-slot { aspect-ratio: 7 / 12; border: 1px dashed #2a2622; border-radius: 10px; display: grid; place-items: center; padding: .5rem; color: var(--ink-dim); font: var(--text-meta)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; text-align: center; background: #0d121033; }
 
 /* the card, and its turn: lifts off the table, turns with a little overshoot, settles; the same as the Omen's */
 .tc-card { position: relative; perspective: 1400px; width: 100%; }
@@ -53,7 +57,7 @@ html.tc-open, html.tc-open body { overflow: hidden; }
 .tc-card::after { content: ''; position: absolute; inset: -8%; background: radial-gradient(ellipse, #b69a6222, transparent 60%); pointer-events: none; opacity: .6; z-index: -1; }
 
 /* through the wall: the other side's hands while the Whispering Wall listens */
-.tc-wall { border-top: 1px solid var(--border); padding: .5rem 0 .2rem; background: #0d121066; }
+.tc-wall { border-top: 1px solid #1c1a17; border-bottom: 1px solid #1c1a17; padding: .5rem 0 .2rem; background: #0a0b0b; }
 .tc-wall-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: .2rem 1rem .3rem; }
 .tc-wall-until { color: var(--green-wyrd); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .12em; }
 .tc-wall-hand .tc-whose.small { font-size: 1.05rem; padding: .2rem 1rem 0; color: var(--ink-dim); }
@@ -61,7 +65,7 @@ html.tc-open, html.tc-open body { overflow: hidden; }
 .tc-hand-seen .tc-card::after { background: radial-gradient(ellipse, #8da97622, transparent 60%); }
 
 /* the deck and the piles */
-.tc-foot { display: grid; gap: .3rem; padding: .2rem 1rem .6rem; border-top: 1px solid var(--border); }
+.tc-foot { display: grid; gap: .3rem; padding: .2rem 1rem 0; }
 .tc-tally { text-align: center; padding: .6rem 0 .2rem; color: var(--ink-dim); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .12em; }
 .tc-tally b { color: var(--parchment); font: normal 1.1rem/1 'Pirata One', Georgia, serif; letter-spacing: .03em; margin-right: .3rem; }
 

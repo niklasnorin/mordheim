@@ -72,7 +72,8 @@ export function mountTarot(root: HTMLElement, opts: TarotOptions): TarotMount {
 
   // ───────────────────────── the drawer ─────────────────────────
 
-  const button = opts.hands.length ? h('button', { type: 'button', class: 'tk-btn tc-toggle', 'aria-expanded': 'false', 'aria-controls': 'tarot-drawer' }, svg(CARD_ICON), 'Tarot') : null;
+  const label = h('span', {}, 'Tarot');
+  const button = opts.hands.length ? h('button', { type: 'button', class: 'tk-btn tc-toggle', 'aria-expanded': 'false', 'aria-controls': 'tarot-drawer' }, svg(CARD_ICON), label) : null;
   const drawer = h('aside', { class: 'tc-drawer', id: 'tarot-drawer', hidden: true, 'aria-label': 'Your hand of the Tarot', tabindex: '-1' });
   // the head is built once, so the close button keeps focus while the hand underneath is redrawn
   const head = h('div', { class: 'tc-head' },
@@ -82,11 +83,12 @@ export function mountTarot(root: HTMLElement, opts: TarotOptions): TarotMount {
         ? (() => { const sel = h('select', { class: 'tc-pick', 'aria-label': 'Whose hand' }); for (const w of opts.hands) sel.append(h('option', { value: w.id, selected: w.id === warbandId }, w.name)); sel.addEventListener('change', () => { warbandId = sel.value; hand = null; reckonedFor = ''; void load(); }); return sel; })()
         : h('div', { class: 'tc-whose' }, `${opts.hands[0]?.name ?? ''}’s hand`),
     ),
-    h('button', { type: 'button', class: 'tk-btn ghost tc-close', 'data-tarot-close': true, 'aria-label': 'Close the hand' }, svg(CLOSE), 'Close'),
   );
   const handBox = h('div', { class: 'tc-hand', role: 'list' });
   const foot = h('div', { class: 'tc-foot' });
-  drawer.append(head, handBox, foot);
+  // from the top down: the head, the other hands through the wall, the deck, then the hand nearest the thumb; the
+  // tracker's own bar stays over it all, with the Tarot button turned into the way back
+  drawer.append(head, foot, handBox);
   if (opts.hands.length) root.append(drawer);
 
   const seenKey = () => `tarot:seen:${opts.scenarioId}:${warbandId}`;
@@ -149,7 +151,7 @@ export function mountTarot(root: HTMLElement, opts: TarotOptions): TarotMount {
         row.append(cards);
         wall.append(row);
       }
-      handBox.after(wall);
+      head.after(wall);
     }
     foot.append(h('div', { class: 'tc-tally' }, h('b', {}, String(hand.deckLeft)), ` ${hand.deckLeft === 1 ? 'card' : 'cards'} left in the deck`));
     foot.append(h('p', { class: 'tc-note' }, 'Tap a card to read it, and to show it to the table.'));
@@ -181,14 +183,16 @@ export function mountTarot(root: HTMLElement, opts: TarotOptions): TarotMount {
     button?.setAttribute('aria-expanded', 'true');
     button?.classList.remove('has-new');
     document.documentElement.classList.add('tc-open');
+    label.textContent = 'Close';
     renderDrawer();
     if (!hand) void load();
-    drawer.querySelector<HTMLElement>('[data-tarot-close]')?.focus();
+    button?.focus();
   }
   function close(): void {
     drawer.hidden = true;
     button?.setAttribute('aria-expanded', 'false');
     document.documentElement.classList.remove('tc-open');
+    label.textContent = 'Tarot';
     button?.focus();
   }
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !drawer.hidden && !dialog.open) { e.preventDefault(); close(); } });
