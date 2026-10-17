@@ -2,6 +2,7 @@
 /** The scenarios: what is coming, what was fought. A game master sets up the next one here. */
 import Base from '../../layouts/Base.astro';
 import ManageTop from '../../components/ManageTop.astro';
+import ChronicleTimeline from '../../components/ChronicleTimeline.astro';
 import '../../styles/manage.css';
 import { base } from '../../lib/site';
 import { formatImperial, imperialForDate } from '../../lib/calendar';
@@ -24,12 +25,11 @@ let scenarios: Scenario[] = [], warbands: Warband[] = [], locations: CampaignLoc
 if (ready) { try { [scenarios, warbands, locations] = await Promise.all([listScenarios(), listWarbands(), listLocations()]); } catch (e) { console.error('[scenarios] unavailable', e); } }
 const gm = isGm(viewer);
 const upcoming = scenarios.filter((s) => s.status === 'upcoming');
-const played = scenarios.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence);
+const played = scenarios.filter((s) => s.status === 'played');
 const imperialOf = (day: string) => formatImperial(imperialForDate(day));
 const realOf = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(day + 'T12:00:00Z'));
 const nameOf = (id: string) => warbands.find((w) => w.id === id)?.name ?? id;
 const placeOf = (id: string | null) => locations.find((l) => l.id === id)?.name;
-const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
 const today = localDate();
 ---
 
@@ -86,17 +86,7 @@ const today = localDate();
     <section class="mg-section" id="played">
       <div class="mg-section-head"><h2 class="mg-h2">The Chronicle</h2>{played.length > 0 && <span class="mg-muted">{played.length} {played.length === 1 ? 'battle' : 'battles'} recorded, newest first</span>}</div>
       {played.length ? (
-        <div class="mg-cards">
-          {played.map((s) => (
-            <a class="mg-card" href={`${base}/scenarios/${s.id}/`}>
-              <span><span class="mg-chip gold">Scenario {String(s.sequence).padStart(2, '0')}</span> {s.rulebookScenario && <span class="mg-chip">{s.rulebookScenario}</span>} {placeOf(s.locationId) && <span class="mg-chip">{placeOf(s.locationId)}</span>}</span>
-              <h3>{s.title}</h3>
-              <span class="mg-date">{imperialOf(s.playedOn)}</span>
-              <span class="mg-who">{s.warbands.map((w) => <span>{nameOf(w.warbandId)}{w.result ? ` — ${resultLabel[w.result].toLowerCase()}` : ''}</span>)}</span>
-              {summaryOf(s) && <p>{summaryOf(s).slice(0, 220)}{summaryOf(s).length > 220 ? '…' : ''}</p>}
-            </a>
-          ))}
-        </div>
+        <ChronicleTimeline scenarios={played} warbands={warbands} locations={locations} detailed />
       ) : <p class="mg-empty">No battle has been recorded. The first page of the Chronicle is still blank.</p>}
     </section>
   </main>

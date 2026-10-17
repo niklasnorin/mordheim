@@ -1,6 +1,7 @@
 ---
-import { summaryOf, type Scenario, type Warband } from '../campaign/model';
+import type { Scenario, Warband } from '../campaign/model';
 import Icon from './Icon.astro';
+import ChronicleTimeline from './ChronicleTimeline.astro';
 import { base } from '../lib/site';
 import { formatImperial, imperialForDate } from '../lib/calendar';
 
@@ -8,8 +9,8 @@ interface Props { scenarios: Scenario[]; warbands: Warband[] }
 const { scenarios, warbands } = Astro.props;
 const getScenarioUrl = (id: string) => `${base}/scenarios/${id}/`;
 const imperial = (day: string) => formatImperial(imperialForDate(day));
-/** Newest battle first, as the Chronicle reads; the upcoming games stand above it. */
-const chronicle = scenarios.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence).map((s) => ({ scenarioId: s.id, date: imperial(s.playedOn), title: s.title, body: summaryOf(s) }));
+/** The battles, newest first and numbered by play order, in the shared timeline; the upcoming games stand above it. */
+const played = scenarios.filter((s) => s.status === 'played');
 const upcoming = scenarios.filter((s) => s.status === 'upcoming');
 const nameOf = (id: string) => warbands.find((w) => w.id === id)?.name ?? id;
 const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(day + 'T12:00:00Z'));
@@ -32,7 +33,7 @@ const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'U
       </ul>
     </div>
   )}
-  {chronicle.length === 0 ? (
+  {played.length === 0 ? (
     <div class="chronicle-empty empty-state">
     <p>
       No battle has yet been recorded. The first page of this chronicle is still blank, and the
@@ -41,21 +42,7 @@ const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'U
     <a href="#warbands">Meet the warbands</a>
     </div>
   ) : (
-  <div class="timeline">
-    {
-      chronicle.map((entry, index) => (
-        <div class="timeline-entry">
-          <span class="timeline-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-          <span class="timeline-date">{entry.date}</span>
-          <h3><a href={getScenarioUrl(entry.scenarioId)}>{entry.title}</a></h3>
-          <p>{entry.body}</p>
-          <a class="report-link" href={getScenarioUrl(entry.scenarioId)} aria-label={`Read battle report: ${entry.title}`}>
-            Read battle report <Icon name="arrow-right" size={14} />
-          </a>
-        </div>
-      ))
-    }
-  </div>
+  <ChronicleTimeline scenarios={played} warbands={warbands} />
   )}
 </section>
 
@@ -69,9 +56,6 @@ const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'U
   .upcoming-when { color: var(--gold); font-size: var(--text-ui); font-variant: small-caps; letter-spacing: .08em; }
   .upcoming-when small { color: var(--ink-dim); font-variant: normal; letter-spacing: 0; font-size: var(--text-meta); }
   .upcoming-who { color: var(--ink-dim); font-size: var(--text-ui); font-style: italic; }
-  h3 a { color: inherit; text-decoration: none; }
-  h3 a:hover { color: var(--gold); text-decoration: underline; }
-  .report-link { display: inline-flex; align-items: center; min-height: var(--control-size); gap: .4rem; margin-top: 1rem; color: var(--gold); text-underline-offset: .25em; }
   .chronicle-label {
     text-align: center;
     margin-bottom: 0.8rem;
@@ -84,85 +68,7 @@ const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'U
     max-width: 620px;
     margin: 0 auto;
   }
-  .timeline {
-    position: relative;
-    max-width: 860px;
-    margin: 0 auto;
-    padding-left: 3.4rem;
-  }
-  .timeline::before {
-    content: '';
-    position: absolute;
-    left: 1rem;
-    top: 1rem;
-    bottom: 0;
-    width: 1px;
-    background: linear-gradient(#b69a62, #514936 80%, transparent);
-  }
-  .timeline-entry {
-    position: relative;
-    margin-bottom: 1.4rem;
-    background: linear-gradient(110deg, rgba(182, 154, 98, 0.045), transparent 70%);
-    border-top: 1px solid #444636;
-    border-bottom: 1px solid rgba(182, 154, 98, 0.1);
-    padding: 1.6rem 4rem 1.8rem 1.6rem;
-  }
-  .timeline-entry::before {
-    content: '';
-    position: absolute;
-    left: -2.68rem;
-    top: 1.85rem;
-    width: 0.55rem;
-    height: 0.55rem;
-    background: #101715;
-    border: 1px solid #b69a62;
-    transform: rotate(45deg);
-    box-shadow: 0 0 0 5px #101715;
-  }
-  .timeline-entry:first-child::before { background: #b69a62; }
-  .timeline-number {
-    position: absolute;
-    right: 1.2rem;
-    top: 1.2rem;
-    color: #8e8060;
-    font: 1.8rem/1 Georgia, serif;
-    font-style: italic;
-  }
-  .timeline-date {
-    font-size: var(--text-ui);
-    color: #b69a62;
-    font-variant: small-caps;
-    letter-spacing: 0.12em;
-  }
-  .timeline-entry h3 {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: clamp(1.25rem, 2.4vw, 1.6rem);
-    line-height: 1.3;
-    color: #e7dcc5;
-    margin: 0.6rem 0 0.7rem;
-    font-weight: normal;
-  }
-  .timeline-entry p {
-    font-size: var(--text-body);
-    line-height: 1.85;
-    color: #b8b9a9;
-  }
-  .timeline-entry:first-child p::first-letter {
-    float: left;
-    margin: 0.1rem 0.5rem 0 0;
-    padding: 0.2rem 0.4rem;
-    border: 1px solid #695737;
-    color: #c5aa78;
-    background: #3b2421;
-    font: 2.2rem/1 'UnifrakturMaguntia', Georgia, serif;
-  }
   @media (max-width: 700px) {
-    .timeline { padding-left: 1.5rem; }
-    .timeline::before { left: 0.3rem; }
-    .timeline-entry { padding: 1.2rem 1rem; }
-    .timeline-entry::before { left: -1.48rem; top: 1.5rem; }
-    .timeline-number { position: static; float: right; font-size: 1.2rem; margin-left: 0.6rem; }
-    .timeline-date { letter-spacing: 0.04em; }
     .chronicle-label { letter-spacing: 0.1em; }
   }
 </style>

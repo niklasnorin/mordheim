@@ -1,0 +1,136 @@
+---
+/**
+ * The Chronicle's timeline of played battles, newest first, each numbered by its place in the campaign
+ * (the first battle fought is 01). The home page and the scenarios page both render it; `detailed` adds
+ * the archive's chips (rulebook scenario, place) and who fought with their results.
+ */
+import { summaryOf, type CampaignLocation, type Scenario, type Warband } from '../campaign/model';
+import Icon from './Icon.astro';
+import { base } from '../lib/site';
+import { formatImperial, imperialForDate } from '../lib/calendar';
+
+interface Props { scenarios: Scenario[]; warbands?: Warband[]; locations?: CampaignLocation[]; detailed?: boolean }
+const { scenarios, warbands = [], locations = [], detailed = false } = Astro.props;
+const getScenarioUrl = (id: string) => `${base}/scenarios/${id}/`;
+const imperial = (day: string) => formatImperial(imperialForDate(day));
+const nameOf = (id: string) => warbands.find((w) => w.id === id)?.name ?? id;
+const placeOf = (id: string | null) => locations.find((l) => l.id === id)?.name;
+const resultLabel = { victory: 'victory', defeat: 'defeat', draw: 'draw' } as const;
+const played = scenarios.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence);
+---
+
+<div class="timeline">
+  {
+    played.map((s) => (
+      <div class="timeline-entry">
+        <span class="timeline-number" aria-hidden="true">{String(s.sequence).padStart(2, '0')}</span>
+        <span class="timeline-date">{imperial(s.playedOn)}</span>
+        {detailed && (s.rulebookScenario || placeOf(s.locationId)) && (
+          <span class="timeline-chips">
+            {s.rulebookScenario && <span class="mg-chip">{s.rulebookScenario}</span>}
+            {placeOf(s.locationId) && <span class="mg-chip">{placeOf(s.locationId)}</span>}
+          </span>
+        )}
+        <h3><a href={getScenarioUrl(s.id)}>{s.title}</a></h3>
+        {detailed && s.warbands.length > 0 && (
+          <span class="timeline-who">{s.warbands.map((w) => <span>{nameOf(w.warbandId)}{w.result ? ` — ${resultLabel[w.result]}` : ''}</span>)}</span>
+        )}
+        {summaryOf(s) && <p>{summaryOf(s)}</p>}
+        <a class="report-link" href={getScenarioUrl(s.id)} aria-label={`Read battle report: ${s.title}`}>
+          Read battle report <Icon name="arrow-right" size={14} />
+        </a>
+      </div>
+    ))
+  }
+</div>
+
+<style>
+  h3 a { color: inherit; text-decoration: none; }
+  h3 a:hover { color: var(--gold); text-decoration: underline; }
+  .report-link { display: inline-flex; align-items: center; min-height: var(--control-size); gap: .4rem; margin-top: 1rem; color: var(--gold); text-underline-offset: .25em; }
+  .timeline {
+    position: relative;
+    max-width: 860px;
+    margin: 0 auto;
+    padding-left: 3.4rem;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 1rem;
+    top: 1rem;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(#b69a62, #514936 80%, transparent);
+  }
+  .timeline-entry {
+    position: relative;
+    margin-bottom: 1.4rem;
+    background: linear-gradient(110deg, rgba(182, 154, 98, 0.045), transparent 70%);
+    border-top: 1px solid #444636;
+    border-bottom: 1px solid rgba(182, 154, 98, 0.1);
+    padding: 1.6rem 4rem 1.8rem 1.6rem;
+  }
+  .timeline-entry::before {
+    content: '';
+    position: absolute;
+    left: -2.68rem;
+    top: 1.85rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    background: #101715;
+    border: 1px solid #b69a62;
+    transform: rotate(45deg);
+    box-shadow: 0 0 0 5px #101715;
+  }
+  .timeline-entry:first-child::before { background: #b69a62; }
+  .timeline-number {
+    position: absolute;
+    right: 1.2rem;
+    top: 1.2rem;
+    color: #8e8060;
+    font: 1.8rem/1 Georgia, serif;
+    font-style: italic;
+  }
+  .timeline-date {
+    font-size: var(--text-ui);
+    color: #b69a62;
+    font-variant: small-caps;
+    letter-spacing: 0.12em;
+  }
+  .timeline-chips { display: inline-flex; flex-wrap: wrap; gap: .3rem; margin-left: .6rem; vertical-align: middle; }
+  .timeline-chips .mg-chip { display: inline-block; padding: .15rem .55rem; border: 1px solid #444636; color: var(--ink-dim); font: var(--text-meta)/1.6 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; }
+  .timeline-entry h3 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+    line-height: 1.3;
+    color: #e7dcc5;
+    margin: 0.6rem 0 0.7rem;
+    font-weight: normal;
+  }
+  .timeline-who { display: flex; flex-wrap: wrap; gap: .4rem; margin: -0.3rem 0 0.7rem; color: var(--ink); font-size: var(--text-ui); font-style: italic; }
+  .timeline-who span + span::before { content: '·'; color: #75623f; margin-right: .4rem; font-style: normal; }
+  .timeline-entry p {
+    font-size: var(--text-body);
+    line-height: 1.85;
+    color: #b8b9a9;
+  }
+  .timeline-entry:first-child p::first-letter {
+    float: left;
+    margin: 0.1rem 0.5rem 0 0;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid #695737;
+    color: #c5aa78;
+    background: #3b2421;
+    font: 2.2rem/1 'UnifrakturMaguntia', Georgia, serif;
+  }
+  @media (max-width: 700px) {
+    .timeline { padding-left: 1.5rem; }
+    .timeline::before { left: 0.3rem; }
+    .timeline-entry { padding: 1.2rem 1rem; }
+    .timeline-entry::before { left: -1.48rem; top: 1.5rem; }
+    .timeline-number { position: static; float: right; font-size: 1.2rem; margin-left: 0.6rem; }
+    .timeline-date { letter-spacing: 0.04em; }
+    .timeline-chips { margin-left: 0; display: flex; margin-top: .4rem; }
+  }
+</style>
