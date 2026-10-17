@@ -84,6 +84,19 @@
 .tk-side-btn[data-side='attacker'][aria-pressed='true'] { border-color: var(--blood-bright); background: #2a1616; color: var(--blood-bright); }
 .tk-side-btn[data-side='defender'][aria-pressed='true'] { border-color: var(--gold); background: #24301f; color: var(--gold); }
 
+/* who starts, before the first turn */
+.tk-order-pick { display: flex; flex-wrap: wrap; gap: .4rem; }
+.tk-order-pick .tk-side-btn { flex: 1 1 auto; }
+.tk-side-btn[aria-pressed='true'], .tk-side-btn[data-pressed='true'] { border-color: var(--gold); background: #24301f; color: var(--gold); }
+/* whose turn it is, under the turn: the order of the round with the warband on now lit */
+.tk-order { list-style: none; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .4rem; margin-top: .25rem; }
+.tk-order li { display: grid; justify-items: center; gap: .1rem; padding: .5rem .5rem .45rem; border: 1px solid var(--border); border-top-width: 3px; background: #0f1512; color: var(--ink-dim); text-align: center; min-width: 0; }
+.tk-order li[data-now='true'] { border-color: var(--green-wyrd); background: linear-gradient(150deg, #1d2a1f, #141b17); color: var(--parchment); box-shadow: 0 0 18px -6px var(--green-wyrd); }
+.tk-order-name { font: var(--text-ui)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; overflow-wrap: anywhere; }
+.tk-order li small { color: var(--green-wyrd); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .18em; }
+.tk-next { display: grid; justify-items: center; gap: .05rem; }
+.tk-next small { font: var(--text-meta)/1.3 var(--font-utility); letter-spacing: .08em; color: var(--ink-dim); text-transform: none; max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* a house scenario's objective: the sides, who held it round by round, and what the rules make of it */
 .tk-hold { display: grid; gap: .6rem; padding-bottom: .9rem; }
 .tk-sides { list-style: none; padding: 0; display: grid; gap: .4rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); }

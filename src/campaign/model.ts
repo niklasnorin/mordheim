@@ -213,6 +213,9 @@ export interface Scenario {
   turn: number;
   /** The turn after which the game ends of itself, if it does; the table may add another, time permitting. */
   turnLimit: number | null;
+  /** The order the warbands take their turns in within a round, whoever starts first (`turnOrder` in `campaign/turns.ts`), and whose turn it is now; null before the first turn. */
+  order: string[];
+  active: string | null;
   /** What the scenario scores, as the game master named it; empty means the rulebook scenario's own tally, or none. See `tallyOf`. */
   tally: string;
   /** Something to hold, checked round by round or turn by turn, as the game master set it up; null when there is none. See `objectiveOf`. */

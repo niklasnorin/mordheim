@@ -11,6 +11,7 @@ import { SCENARIO_RESULTS, scoresOf, tallyOf, type OutOfAction, type Scenario, t
 import { SIDES, SIDE_LABEL, houseScenario, inWords, resultsOf, rollBrings, turnEnds, verdictOf } from '../campaign/house';
 import { checkLabel, checksOf, describeCheck, inSentence, objectiveOf, objectiveScores, objectiveSummary, perWarband, slotsFor, MOMENT_LABEL, type Check, type Objective, type Slot } from '../campaign/objective';
 import { cardById } from '../campaign/tarot';
+import { activeWarband, lastOfRound, starterChosen, turnOrder } from '../campaign/turns';
 import { CARD_ICON, mountTarot, type TarotMount } from './tarot';
 
 export interface TrackerRoster { id: string; name: string; members: { id: string; name: string; role: string; dead: boolean }[] }
@@ -170,10 +171,21 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
           h('div', { class: 'tk-choices' }, ...SIDES.map((side) => h('button', { type: 'button', class: 'tk-side-btn', 'data-side': side, 'data-pick-side': w.warbandId, 'aria-pressed': String(w.side === side) }, side === 'attacker' ? 'Attacks' : 'Defends'))),
         )),
       ) : null;
+      // and who starts: the first warband of every round, the rest following in the order they attend
+      const order = turnOrder(s), chosen = starterChosen(s), needStarter = s.warbands.length > 1 && !chosen;
+      const starter = s.warbands.length > 1 ? h('div', { class: 'tk-side-pick', role: 'group', 'aria-label': 'Who starts' },
+        h('div', { class: 'tk-turn-label' }, 'Who starts'),
+        h('div', { class: 'tk-order-pick' }, ...s.warbands.map((w) => live
+          ? h('button', { type: 'button', class: 'tk-side-btn', 'data-pick-starter': w.warbandId, 'aria-pressed': String(chosen && order[0] === w.warbandId) }, warbandName(w.warbandId))
+          : h('span', { class: 'tk-side-btn', 'data-pressed': String(chosen && order[0] === w.warbandId) }, warbandName(w.warbandId)))),
+        chosen ? h('p', { class: 'tk-turn-note' }, `${order.map(warbandName).join(', then ')}; so each round.`) : null,
+      ) : null;
+      const wanting = unsided.length ? 'Choose the sides to begin' : needStarter ? 'Choose who starts to begin' : 'Begin: turn 1';
       put(turnBox,
-        h('div', {}, h('div', { class: 'tk-turn-label' }, 'Before the first turn'), h('p', { class: 'tk-turn-note' }, kind?.sides && live ? 'Choose who attacks and who defends, then begin. Anything logged now goes down as turn 1.' : 'The warbands are deploying. Anything logged now goes down as turn 1.')),
+        h('div', {}, h('div', { class: 'tk-turn-label' }, 'Before the first turn'), h('p', { class: 'tk-turn-note' }, kind?.sides && live ? 'Choose who attacks and who defends, and who starts, then begin. Anything logged now goes down as turn 1.' : 'The warbands are deploying. Anything logged now goes down as turn 1.')),
         chooser,
-        live ? h('button', { type: 'button', class: 'tk-btn big wide tk-turn-begin', 'data-turn': '1', disabled: unsided.length > 0 }, unsided.length ? 'Choose the sides to begin' : 'Begin: turn 1') : null,
+        starter,
+        live ? h('button', { type: 'button', class: 'tk-btn big wide tk-turn-begin', 'data-turn': '1', disabled: unsided.length > 0 || needStarter }, wanting) : null,
       );
     } else {
       // a house scenario ends each turn with its own questions; any game with a limit stops at it, unless the table adds a round
@@ -182,18 +194,24 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       const ended = turnEnds(s.events).some((t) => t.turn === s.turn);
       const verdict = kind?.objective ? verdictOf(kind, s) : null;
       const last = limit !== null && s.turn >= limit && (!kind || ended);
+      // within the round, each warband's turn in order; after the last warband's, the round ends
+      const order = turnOrder(s), active = activeWarband(s), lastPlayer = lastOfRound(s);
+      const next = active && !lastPlayer ? order[order.indexOf(active) + 1] : null;
+      const firstPlayer = !active || order.indexOf(active) === 0;
       let forward: HTMLElement = h('span');
       // the rules have given the game away before its last turn: nothing more to end, only the game to call
       if (verdict?.over && verdict.winner && !last) forward = h('span');
+      else if (live && next) forward = h('button', { type: 'button', class: 'tk-btn big', 'data-step': 'forward' }, svg(ICON.plus), h('span', { class: 'tk-next' }, 'Next', h('small', {}, warbandName(next))));
       else if (live && last) forward = h('button', { type: 'button', class: 'tk-btn', 'data-limit': String(s.turn + 1) }, svg(ICON.plus), 'Another round');
       else if (live && kind) forward = h('button', { type: 'button', class: 'tk-btn big', 'data-open': 'end-turn' }, svg(ICON.plus), ended ? `Turn ${s.turn} again` : `End turn ${s.turn}`);
-      else if (live) forward = h('button', { type: 'button', class: 'tk-btn big', 'data-turn': String(s.turn + 1) }, svg(ICON.plus), 'Next turn');
+      else if (live) forward = h('button', { type: 'button', class: 'tk-btn big', 'data-step': 'forward' }, svg(ICON.plus), h('span', { class: 'tk-next' }, 'New round', h('small', {}, `turn ${s.turn + 1}`)));
       put(turnBox,
-        // back from turn 1 is back to before the game: the table is asked whether to start over
-        h('button', { type: 'button', class: 'tk-btn ghost tk-turn-back', ...(s.turn === 1 ? { 'data-open': 'reset' } : { 'data-turn': String(s.turn - 1) }), 'aria-label': s.turn === 1 ? 'Back to before the first turn' : 'Back a turn', hidden: !live }, svg(ICON.minus)),
+        // back from the first warband of turn 1 is back to before the game: the table is asked whether to start over
+        h('button', { type: 'button', class: 'tk-btn ghost tk-turn-back', ...(s.turn === 1 && firstPlayer ? { 'data-open': 'reset' } : { 'data-step': 'back' }), 'aria-label': s.turn === 1 && firstPlayer ? 'Back to before the first turn' : 'Back a turn', hidden: !live }, svg(ICON.minus)),
         h('div', { class: 'tk-turn-now' }, h('div', { class: 'tk-turn-label' }, 'Turn'), h('div', { class: 'tk-turn-number' }, String(s.turn), limit !== null ? h('small', {}, last ? `the last of ${limit}` : `of ${limit}`) : null)),
         forward,
       );
+      if (active) put(turnBox, h('ol', { class: 'tk-order tk-turn-span', 'aria-label': 'Whose turn it is' }, ...order.map((id) => h('li', { 'data-now': String(id === active), 'aria-current': id === active ? 'step' : undefined }, h('span', { class: 'tk-order-name' }, warbandName(id)), id === active ? h('small', {}, 'their turn') : null))));
       if (live && last) put(turnBox, h('p', { class: 'tk-turn-note tk-turn-span' }, 'The last round is played. Call the game, or play another round if time permits.'));
     }
     // the way out: calling the game is the table's, and it should never be hunted for
@@ -627,6 +645,20 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       const sides: Record<string, string> = { [warbandId]: side };
       if (s.warbands.length === 2) for (const w of s.warbands) if (w.warbandId !== warbandId) sides[w.warbandId] = side === 'attacker' ? 'defender' : 'attacker';
       await post('sides', { sides });
+      return;
+    }
+    const starter = t.closest<HTMLButtonElement>('[data-pick-starter]');
+    if (starter) { await post('starter', { warbandId: starter.dataset.pickStarter }); return; }
+    const stepTap = t.closest<HTMLButtonElement>('[data-step]');
+    if (stepTap) {
+      // leaving a warband's turn with its own check owed, or ending the round with any owed, is allowed but asked about
+      if (sheet.open) sheet.close();
+      const s = state.scenario, o = objectiveOf(s), active = activeWarband(s);
+      if (stepTap.dataset.step === 'forward' && o) {
+        const due = owed(s, o, s.turn).filter((sl) => lastOfRound(s) || sl.whose === active);
+        if (due.length && !confirm(`${o.name} has not been checked${lastOfRound(s) ? ` for turn ${s.turn}` : ` for ${warbandName(active)}’s turn`}. Move on anyway?`)) return;
+      }
+      await post('step', { direction: stepTap.dataset.step });
       return;
     }
     const more = t.closest<HTMLButtonElement>('[data-limit]');

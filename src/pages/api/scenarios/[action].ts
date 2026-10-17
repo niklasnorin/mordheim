@@ -5,7 +5,7 @@
 import type { APIRoute } from 'astro';
 import { z } from 'zod';
 import { dispatch, route } from '../../../server/api';
-import { addEvent, addOutOfAction, chooseSides, createScenario, deleteScenario, endTurn, setTurnLimit, markPlayed, recordCheck, removeEvent, removeOutOfAction, reopenScenario, requireScenario, resetGame, setBrought, setParticipants, setTurn, updateScenario, writeBattleReport, writePerspective } from '../../../server/campaign/scenarios';
+import { addEvent, addOutOfAction, chooseSides, chooseStarter, stepTurn, createScenario, deleteScenario, endTurn, setTurnLimit, markPlayed, recordCheck, removeEvent, removeOutOfAction, reopenScenario, requireScenario, resetGame, setBrought, setParticipants, setTurn, updateScenario, writeBattleReport, writePerspective } from '../../../server/campaign/scenarios';
 import { loadHand, playCard } from '../../../server/campaign/tarot';
 
 export const prerender = false;
@@ -47,6 +47,8 @@ const routes = {
   tracker: route(z.object({ scenarioId: id }), (i) => wrap(requireScenario(i.scenarioId))),
   turn: route(z.object({ scenarioId: id, turn }), (i, a) => wrap(setTurn(a, i.scenarioId, i.turn))),
   reset: route(z.object({ scenarioId: id }), (i, a) => wrap(resetGame(a, i.scenarioId))),
+  starter: route(z.object({ scenarioId: id, warbandId: z.string().max(64) }), (i, a) => wrap(chooseStarter(a, i.scenarioId, i.warbandId))),
+  step: route(z.object({ scenarioId: id, direction: z.enum(['forward', 'back']) }), (i, a) => wrap(stepTurn(a, i.scenarioId, i.direction))),
   event: route(z.object({ scenarioId: id, kind: z.enum(['note', 'score']), turn: turn.min(1).nullable().optional(), warbandId: z.string().max(64).nullable().optional(), points: z.number().int().min(-99).max(99).optional(), text: z.string().max(500).optional() }), (i, a) => wrap(addEvent(a, i.scenarioId, i))),
   'end-turn': route(z.object({ scenarioId: id, turn: turn.min(1), held: z.string().max(64).nullable().optional(), roll: z.number().int().min(1).max(20).nullable().optional() }), (i, a) => wrap(endTurn(a, i.scenarioId, i))),
   check: route(z.object({ scenarioId: id, turn: turn.min(1), whose: z.string().max(64).nullable().optional(), held: z.record(z.string().max(64), z.number().int().min(0).max(20)) }), (i, a) => wrap(recordCheck(a, i.scenarioId, i))),

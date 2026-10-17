@@ -6,7 +6,7 @@ import { actorOf, testDatabase } from '../testdb.ts';
 import { db } from '../db/client.ts';
 import { scenarioWarbands } from '../db/schema.ts';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, getWarband, listWarbands, loadRoster, releaseWarband, removeMember, updateMember, updateWarband, LedgerError } from './roster.ts';
-import { addEvent, addOutOfAction, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, reopenScenario, resetGame, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writeBattleReport, writePerspective } from './scenarios.ts';
+import { addEvent, addOutOfAction, chooseStarter, stepTurn, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, reopenScenario, resetGame, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writeBattleReport, writePerspective } from './scenarios.ts';
 import { loadHand, playCard } from './tarot.ts';
 import { HAND_SIZE, TAROT, WALL_CARD, cardById, coerceTarot } from '../../campaign/tarot.ts';
 import { articlesFor, createArticle, deleteArticle, listArticles, updateArticle } from './news.ts';
@@ -519,6 +519,37 @@ test('the supply cart at the table: sides, a turn’s end with the cart and the 
   assert.equal(now.turn, 8, 'another round, time permitting, moves the table on to it');
   await assert.rejects(setTurnLimit(gm, s.id, 5), (e: unknown) => e instanceof LedgerError && /turn 8/.test(e.message));
   await deleteScenario(gm, s.id);
+});
+
+test('whose turn it is: the table says who starts, then next goes warband by warband and round by round', async () => {
+  const s = await createScenario(gm, { title: 'The Order of Things', playedOn: '2026-10-12', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  assert.deepEqual(s.order, []);
+  assert.equal(s.active, null);
+  await assert.rejects(chooseStarter(stranger, s.id, 'nordost'), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(chooseStarter(niklas, s.id, 'welling-rune'), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  let t = await chooseStarter(rival, s.id, 'bitterbrow-expedition');
+  assert.deepEqual(t.order, ['bitterbrow-expedition', 'nordost']);
+  assert.equal(t.active, null, 'nobody is on before the first turn');
+  t = await setTurn(niklas, s.id, 1);
+  assert.equal(t.active, 'bitterbrow-expedition', 'the first turn begins with whoever starts');
+  t = await stepTurn(niklas, s.id, 'forward');
+  assert.deepEqual([t.turn, t.active], [1, 'nordost']);
+  t = await stepTurn(niklas, s.id, 'forward');
+  assert.deepEqual([t.turn, t.active], [2, 'bitterbrow-expedition'], 'after the last warband, a new round');
+  t = await stepTurn(niklas, s.id, 'back');
+  assert.deepEqual([t.turn, t.active], [1, 'nordost'], 'back the way it came');
+  t = await stepTurn(niklas, s.id, 'back');
+  assert.deepEqual([t.turn, t.active], [1, 'bitterbrow-expedition']);
+  await assert.rejects(stepTurn(niklas, s.id, 'back'), (e: unknown) => e instanceof LedgerError && /before the first turn/.test(e.message));
+  await assert.rejects(chooseStarter(niklas, s.id, 'nordost'), (e: unknown) => e instanceof LedgerError && /game master/.test(e.message), 'begun, who starts is a game master’s to change');
+  t = await chooseStarter(gm, s.id, 'nordost');
+  assert.deepEqual([t.order, t.active], [['nordost', 'bitterbrow-expedition'], 'nordost']);
+  t = await setTurn(gm, s.id, 4);
+  assert.equal(t.active, 'nordost', 'a round set by number begins with its first warband');
+  t = await resetGame(gm, s.id);
+  assert.deepEqual([t.turn, t.active, t.order], [0, null, ['nordost', 'bitterbrow-expedition']], 'starting over keeps who starts');
+  await markPlayed(gm, s.id, [{ warbandId: 'nordost', result: 'draw' }, { warbandId: 'bitterbrow-expedition', result: 'draw' }]);
+  await assert.rejects(stepTurn(gm, s.id, 'forward'), (e: unknown) => e instanceof LedgerError && /already called/.test(e.message));
 });
 
 test('the table chooses its sides before the first turn, and only a game master changes them after', async () => {

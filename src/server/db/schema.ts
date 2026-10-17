@@ -279,6 +279,9 @@ export const scenarios = pgTable('scenarios', {
   /** The battle tracker: the game turn the table is on (0 before the first), and what the scenario scores (empty: the rulebook's tally, or none). */
   turn: integer('turn').notNull().default(0),
   tally: text('tally').notNull().default(''),
+  /** The order the warbands take their turns in within a round (ids; whoever starts first, campaign/turns.ts), and the warband whose turn it is now; null before the first turn. */
+  order: jsonb('order').notNull().default([]),
+  active: text('active'),
   /** Something to hold in a custom scenario (`Objective`, campaign/objective.ts): its name, one or several, and when it is checked; null when there is none. */
   objective: jsonb('objective'),
   /** The turn after which the game ends of itself (a house scenario's own, or as the game master set it); null runs on. */

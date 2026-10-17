@@ -23,6 +23,7 @@ import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook.ts';
 import { proseSource } from '../../campaign/prose.ts';
 import { HOUSE_SCENARIOS, SIDES, houseScenario, verdictOf, type Side } from '../../campaign/house.ts';
 import { CHECK_MOMENTS, HOLD_KINDS, MAX_HELD, checkError, checkKey, coerceObjective, objectiveOf, perWarband, type CheckMoment, type HoldKind, type Objective } from '../../campaign/objective.ts';
+import { roundStart, startingWith, stepBack, stepForward } from '../../campaign/turns.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { ensureLocationsSeeded, ensureSeeded } from './seed.ts';
 
@@ -40,7 +41,7 @@ function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mem
   return {
     id: r.id, sequence: r.sequence, status: r.status, title: r.title, playedOn: r.playedOn, rulebookScenario: r.rulebookScenario, customRules: r.customRules,
     winCondition: r.winCondition, summary: r.summary, chronicle: r.chronicle, outcome: r.outcome, prologue: r.prologue, prologueAsSummary: r.prologueAsSummary, battle: (r.battle as string[]) ?? [], epilogue: r.epilogue,
-    battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null, turn: r.turn, turnLimit: r.turnLimit, tally: r.tally, objective: coerceObjective(r.objective), tarot: r.tarot,
+    battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null, turn: r.turn, turnLimit: r.turnLimit, tally: r.tally, order: Array.isArray(r.order) ? (r.order as unknown[]).filter((x): x is string => typeof x === 'string') : [], active: r.active, objective: coerceObjective(r.objective), tarot: r.tarot,
     locationId: r.locationId, pointId: r.pointId, mapX: r.mapX, mapY: r.mapY,
     warbands: parts.filter((p) => p.scenarioId === r.id).map((p): ScenarioWarband => ({
       scenarioId: p.scenarioId, warbandId: p.warbandId, result: p.result, side: p.side, prologue: p.prologue, epilogue: p.epilogue, accomplishments: p.accomplishments,
@@ -465,7 +466,39 @@ export async function setTurn(actor: Actor, id: string, turn: number): Promise<S
   await row(id);
   await tableOnly(actor, id);
   if (!Number.isInteger(turn) || turn < 0 || turn > MAX_TURN) throw new LedgerError('That is not a turn of this game.');
-  await db().update(scenarios).set({ turn, updatedAt: new Date() }).where(eq(scenarios.id, id));
+  // a round set by number begins with its first warband
+  const { active } = roundStart(await getScenario(id) as Scenario, turn);
+  await db().update(scenarios).set({ turn, active, updatedAt: new Date() }).where(eq(scenarios.id, id));
+  return (await getScenario(id))!;
+}
+
+/** Who starts: the table says so before the first turn, and the rest follow in the order they attend. A game master may change it later. */
+export async function chooseStarter(actor: Actor, id: string, warbandId: string): Promise<Scenario> {
+  const r = await row(id);
+  await tableOnly(actor, id);
+  if (r.status === 'played') throw new LedgerError('The game is already called.', 409);
+  if (r.turn > 0 && !isGm(actor)) throw new LedgerError('The game has begun; a game master changes who starts now.', 409);
+  const s = (await getScenario(id))!;
+  if (!s.warbands.some((w) => w.warbandId === warbandId)) throw new LedgerError('That warband is not at this scenario.', 404);
+  const order = startingWith(s, warbandId);
+  const active = r.turn > 0 ? order[0] : null;
+  await db().update(scenarios).set({ order, active, updatedAt: new Date() }).where(eq(scenarios.id, id));
+  return (await getScenario(id))!;
+}
+
+/**
+ * The table moves to the next warband's turn, or after the last warband's to a new round, or back the way it came.
+ * Back from the first warband of the first round is before the game, which is the reset's business, not this.
+ */
+export async function stepTurn(actor: Actor, id: string, direction: 'forward' | 'back'): Promise<Scenario> {
+  const r = await row(id);
+  await tableOnly(actor, id);
+  if (r.status === 'played') throw new LedgerError('The game is already called.', 409);
+  const s = (await getScenario(id))!;
+  const step = direction === 'forward' ? stepForward(s) : stepBack(s);
+  if (!step) throw new LedgerError('That is before the first turn.');
+  if (step.turn > MAX_TURN) throw new LedgerError('That is not a turn of this game.');
+  await db().update(scenarios).set({ turn: step.turn, active: step.active, updatedAt: new Date() }).where(eq(scenarios.id, id));
   return (await getScenario(id))!;
 }
 
@@ -484,7 +517,7 @@ export async function resetGame(actor: Actor, id: string): Promise<Scenario> {
   await d.delete(scenarioOutOfAction).where(eq(scenarioOutOfAction.scenarioId, id));
   await d.update(scenarioMembers).set({ status: 'active' }).where(and(eq(scenarioMembers.scenarioId, id), eq(scenarioMembers.status, 'injured')));
   await d.update(scenarioWarbands).set({ tarot: null }).where(eq(scenarioWarbands.scenarioId, id));
-  await d.update(scenarios).set({ turn: 0, updatedAt: new Date() }).where(eq(scenarios.id, id));
+  await d.update(scenarios).set({ turn: 0, active: null, updatedAt: new Date() }).where(eq(scenarios.id, id));
   return (await getScenario(id))!;
 }
 
@@ -566,7 +599,7 @@ export async function endTurn(actor: Actor, id: string, input: TurnEndInput): Pr
   const limit = now.turnLimit ?? kind.turns;
   const over = kind.objective ? verdictOf(kind, now).over : turn >= limit;
   const next = over || turn >= limit ? turn : turn + 1;
-  await d.update(scenarios).set({ turn: next, updatedAt: new Date() }).where(eq(scenarios.id, id));
+  await d.update(scenarios).set({ turn: next, active: roundStart(now, next).active, updatedAt: new Date() }).where(eq(scenarios.id, id));
   return (await getScenario(id))!;
 }
 
@@ -579,7 +612,9 @@ export async function setTurnLimit(actor: Actor, id: string, turnLimit: number):
   // the last turn already ended: another round means the table moves on to it
   const ended = (await db().select({ id: scenarioEvents.id }).from(scenarioEvents).where(and(eq(scenarioEvents.scenarioId, id), eq(scenarioEvents.turn, r.turn), inArray(scenarioEvents.kind, ['hold', 'roll']))).limit(1)).length > 0;
   const turn = ended && limit > r.turn && r.status !== 'played' ? r.turn + 1 : r.turn;
-  await db().update(scenarios).set({ turnLimit: limit, turn, updatedAt: new Date() }).where(eq(scenarios.id, id));
+  const set: Partial<typeof scenarios.$inferInsert> = { turnLimit: limit, turn, updatedAt: new Date() };
+  if (turn !== r.turn) set.active = roundStart((await getScenario(id))!, turn).active;
+  await db().update(scenarios).set(set).where(eq(scenarios.id, id));
   return (await getScenario(id))!;
 }
 
