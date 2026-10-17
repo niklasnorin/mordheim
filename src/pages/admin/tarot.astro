@@ -67,6 +67,7 @@ const signInHref = `${base}/signin/?next=${encodeURIComponent(`${base}/admin/tar
                 <div class="wh-tarot-text">
                   <div class="wh-tarot-kicker"><span class="wh-tarot-numeral">{c.numeral}</span><span class="wh-tarot-kind">{TAROT_KIND_LABEL[c.kind]}</span>{c.only && <span class="wh-tarot-hour">{HOUR_LABEL[c.only]}</span>}</div>
                   <h2 class="wh-h2">{c.title}</h2>
+                  <p class="wh-tarot-short">{c.short}</p>
                   <p class="wh-tarot-rule">{c.rule}</p>
                   <p class="wh-tarot-flavour">{c.flavour}</p>
                 </div>

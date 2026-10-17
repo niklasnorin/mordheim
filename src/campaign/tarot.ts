@@ -30,6 +30,8 @@ export interface TarotCard {
   title: string;
   image: string;
   kind: TarotKind;
+  /** The rule in a few words, no frills, for under the card in the hand: “+1 to wound, one roll”. */
+  short: string;
   /** The whole rule: when it may be played, and what it does. */
   rule: string;
   /** A line of flavour after the rule, in another voice. */
@@ -38,40 +40,40 @@ export interface TarotCard {
   only?: 'first' | 'last';
 }
 
-type Effect = Pick<TarotCard, 'kind' | 'rule' | 'flavour' | 'only'>;
+type Effect = Pick<TarotCard, 'short' | 'kind' | 'rule' | 'flavour' | 'only'>;
 
 /** What each card does, by the Omen's id. A rule of the game, so code; the picture and the title are the Omen's. */
 const EFFECTS: Record<string, Effect> = {
-  'ash-wind': { kind: 'boon', rule: 'In your movement phase, one of your warriors moves 1″ further this turn, walking, running or charging.', flavour: 'The wind covers the footfall.' },
-  'drowned-bell': { kind: 'bane', rule: 'When an enemy warrior takes a Leadership test, they take it at −1.', flavour: 'Something is tolling under the water, and it is not for you.' },
-  'hanged-merchant': { kind: 'boon', rule: 'Play at any time and keep it face up to the end. After the game, re-roll one of your exploration dice.', flavour: 'The merchant’s ledger had one more page in it.' },
-  'green-light-under-ash': { kind: 'boon', rule: 'In your recovery phase, one of your stunned warriors stands up as knocked down instead.', flavour: 'The green does that to a body, for a while.' },
-  'hammer-reversed': { kind: 'bane', rule: 'When an enemy prays or casts a spell, they roll at −1 to cast.', flavour: 'The hammer is turned the wrong way tonight.' },
-  'rat-kings-court': { kind: 'bane', rule: 'At the start of an enemy movement phase, name one enemy warrior: they may not run this turn.', flavour: 'Something in the gutters has hold of their heel.' },
-  'empty-cradle': { kind: 'boon', rule: 'When one of your warriors is taken out of action, they are not counted against you for rout tests this turn.', flavour: 'The warband has not noticed yet.' },
-  'lantern-bearer': { kind: 'boon', rule: 'In your shooting phase, one of your warriors ignores the −1 for shooting at a target in cover this turn.', flavour: 'The lantern found them.' },
-  'the-comet': { kind: 'boon', only: 'first', rule: 'In the first turn only. Every warrior of yours adds 1″ to their move this turn.', flavour: 'The sky lit the way in.' },
-  'broken-bell': { kind: 'boon', rule: 'When your warband fails a rout test, re-roll it. The second roll stands, whatever it says.', flavour: 'Nobody heard the bell the first time.' },
-  'fences-scales': { kind: 'bane', rule: 'When an enemy warrior picks up a shard, a relic or an objective, they drop it on a D6 roll of 1.', flavour: 'Everyone else saw where it fell.' },
-  'plague-doctor': { kind: 'boon', rule: 'When one of your warriors is taken out of action, play it and keep it face up. After the game, re-roll their serious injury once; the second roll stands.', flavour: 'The doctor’s fee is whatever is in their pockets.' },
-  'witch-hunter': { kind: 'boon', rule: 'When one of your warriors must take a Fear or an All Alone test, they pass it.', flavour: 'The witch hunter has seen worse than this, and said so.' },
-  'crooked-dice': { kind: 'boon', rule: 'After any one die roll of yours, re-roll it. The second result stands, even if it is worse.', flavour: 'Crooked cuts both ways.' },
-  'the-pit': { kind: 'bane', rule: 'When an enemy warrior climbs or jumps, they take the test at −1 Initiative.', flavour: 'The Pit is closer than it looks.' },
-  'drowned-quarter': { kind: 'twist', rule: 'At the start of any turn. Until the end of the turn, every shot over 12″ is at −1, yours and theirs.', flavour: 'The fog is up from the river.' },
-  'sisters-candle': { kind: 'boon', rule: 'When one of your warriors fails an armour save, re-roll it.', flavour: 'The candle was lit for them this morning; nobody knows by whom.' },
-  'black-sails': { kind: 'bane', rule: 'In your shooting phase, name one hidden enemy warrior within 12″ of one of yours: they are hidden no longer.', flavour: 'The raiders have been seen coming off the river before.' },
-  'nameless-grave': { kind: 'bane', rule: 'When an enemy rolls to wound one of your warriors, they roll at −1.', flavour: 'The grave is dug, but not for this one.' },
-  'whispering-wall': { kind: 'boon', rule: 'Play at any time. You see the other side’s hand, in your own, until the end of the next turn.', flavour: 'Thin walls, and somebody on the other side of them talking in their sleep.' },
-  'tower-on-the-rock': { kind: 'boon', rule: 'In close combat, when one of your warriors stands higher than their attacker, they get +1 to their armour save this turn, a 6+ if they have none.', flavour: 'Height is a kind of armour.' },
-  'beggar-king': { kind: 'boon', rule: 'When one of your henchmen takes a Leadership test, they use your leader’s Leadership, wherever he is.', flavour: 'The beggar king lends a crown for the hour.' },
-  'cracked-hourglass': { kind: 'boon', rule: 'In your shooting phase, one of your warriors who ran this turn may shoot anyway, at −1.', flavour: 'The hour had a little more in it than it should.' },
-  'twin-moons': { kind: 'twist', rule: 'At the start of any turn. Until the end of the turn, nobody may hide; warriors already hidden stay so.', flavour: 'Both moons are out.' },
-  'sealed-door': { kind: 'boon', rule: 'When the other side plays a bane against you, their card is spent and does nothing.', flavour: 'The door was bolted from the inside, and nobody will say by whom.' },
-  'wyrd-lantern': { kind: 'boon', rule: 'In your movement phase, one of your warriors in the open counts as in cover until the start of your next turn.', flavour: 'The lantern throws a shadow that does not match.' },
-  'carrion-crown': { kind: 'boon', rule: 'When one of your warriors takes an enemy out of action, that warrior gains +1 Experience after the game.', flavour: 'The crows have given a name.' },
-  'the-ferryman': { kind: 'boon', only: 'last', rule: 'In the last round only; keep it face up. After the game, if one of your warriors rolls Dead on the serious injury table, re-roll it once; the second roll stands.', flavour: 'The ferryman was busy elsewhere.' },
-  'bone-hand': { kind: 'boon', rule: 'When one of your warriors rolls to wound in close combat, +1 to one roll to wound.', flavour: 'The hand knows where the ribs part.' },
-  'last-candle': { kind: 'boon', only: 'last', rule: 'In the last round only. One of your warriors re-rolls one failed roll this round.', flavour: 'The last light goes where it is most needed.' },
+  'ash-wind': { short: '+1″ move for one model', kind: 'boon', rule: 'In your movement phase, one of your warriors moves 1″ further this turn, walking, running or charging.', flavour: 'The wind covers the footfall.' },
+  'drowned-bell': { short: 'Enemy Leadership test at −1', kind: 'bane', rule: 'When an enemy warrior takes a Leadership test, they take it at −1.', flavour: 'Something is tolling under the water, and it is not for you.' },
+  'hanged-merchant': { short: 'After the game: re-roll one exploration die', kind: 'boon', rule: 'Play at any time and keep it face up to the end. After the game, re-roll one of your exploration dice.', flavour: 'The merchant’s ledger had one more page in it.' },
+  'green-light-under-ash': { short: 'A stunned model gets up as knocked down', kind: 'boon', rule: 'In your recovery phase, one of your stunned warriors stands up as knocked down instead.', flavour: 'The green does that to a body, for a while.' },
+  'hammer-reversed': { short: 'Enemy casts or prays at −1', kind: 'bane', rule: 'When an enemy prays or casts a spell, they roll at −1 to cast.', flavour: 'The hammer is turned the wrong way tonight.' },
+  'rat-kings-court': { short: 'Pick an enemy model: it may not run this turn', kind: 'bane', rule: 'At the start of an enemy movement phase, name one enemy warrior: they may not run this turn.', flavour: 'Something in the gutters has hold of their heel.' },
+  'empty-cradle': { short: 'A model out of action does not count for rout this turn', kind: 'boon', rule: 'When one of your warriors is taken out of action, they are not counted against you for rout tests this turn.', flavour: 'The warband has not noticed yet.' },
+  'lantern-bearer': { short: 'One shooter ignores cover this turn', kind: 'boon', rule: 'In your shooting phase, one of your warriors ignores the −1 for shooting at a target in cover this turn.', flavour: 'The lantern found them.' },
+  'the-comet': { short: 'Turn 1 only: +1″ move for all your models', kind: 'boon', only: 'first', rule: 'In the first turn only. Every warrior of yours adds 1″ to their move this turn.', flavour: 'The sky lit the way in.' },
+  'broken-bell': { short: 'Re-roll a failed rout test', kind: 'boon', rule: 'When your warband fails a rout test, re-roll it. The second roll stands, whatever it says.', flavour: 'Nobody heard the bell the first time.' },
+  'fences-scales': { short: 'Enemy picking up a shard drops it on a 1', kind: 'bane', rule: 'When an enemy warrior picks up a shard, a relic or an objective, they drop it on a D6 roll of 1.', flavour: 'Everyone else saw where it fell.' },
+  'plague-doctor': { short: 'After the game: re-roll one serious injury', kind: 'boon', rule: 'When one of your warriors is taken out of action, play it and keep it face up. After the game, re-roll their serious injury once; the second roll stands.', flavour: 'The doctor’s fee is whatever is in their pockets.' },
+  'witch-hunter': { short: 'Pass a Fear or All Alone test', kind: 'boon', rule: 'When one of your warriors must take a Fear or an All Alone test, they pass it.', flavour: 'The witch hunter has seen worse than this, and said so.' },
+  'crooked-dice': { short: 'Re-roll one of your dice', kind: 'boon', rule: 'After any one die roll of yours, re-roll it. The second result stands, even if it is worse.', flavour: 'Crooked cuts both ways.' },
+  'the-pit': { short: 'Enemy climbs or jumps at −1 Initiative', kind: 'bane', rule: 'When an enemy warrior climbs or jumps, they take the test at −1 Initiative.', flavour: 'The Pit is closer than it looks.' },
+  'drowned-quarter': { short: 'This turn: all shots over 12″ at −1, both sides', kind: 'twist', rule: 'At the start of any turn. Until the end of the turn, every shot over 12″ is at −1, yours and theirs.', flavour: 'The fog is up from the river.' },
+  'sisters-candle': { short: 'Re-roll a failed armour save', kind: 'boon', rule: 'When one of your warriors fails an armour save, re-roll it.', flavour: 'The candle was lit for them this morning; nobody knows by whom.' },
+  'black-sails': { short: 'Pick a hidden enemy within 12″: no longer hidden', kind: 'bane', rule: 'In your shooting phase, name one hidden enemy warrior within 12″ of one of yours: they are hidden no longer.', flavour: 'The raiders have been seen coming off the river before.' },
+  'nameless-grave': { short: 'Enemy rolls to wound you at −1', kind: 'bane', rule: 'When an enemy rolls to wound one of your warriors, they roll at −1.', flavour: 'The grave is dug, but not for this one.' },
+  'whispering-wall': { short: 'See the other side’s hand until the end of next turn', kind: 'boon', rule: 'Play at any time. You see the other side’s hand, in your own, until the end of the next turn.', flavour: 'Thin walls, and somebody on the other side of them talking in their sleep.' },
+  'tower-on-the-rock': { short: '+1 armour save when higher than the attacker', kind: 'boon', rule: 'In close combat, when one of your warriors stands higher than their attacker, they get +1 to their armour save this turn, a 6+ if they have none.', flavour: 'Height is a kind of armour.' },
+  'beggar-king': { short: 'A henchman uses the leader’s Leadership for one test', kind: 'boon', rule: 'When one of your henchmen takes a Leadership test, they use your leader’s Leadership, wherever he is.', flavour: 'The beggar king lends a crown for the hour.' },
+  'cracked-hourglass': { short: 'A model that ran may still shoot, at −1', kind: 'boon', rule: 'In your shooting phase, one of your warriors who ran this turn may shoot anyway, at −1.', flavour: 'The hour had a little more in it than it should.' },
+  'twin-moons': { short: 'This turn: nobody may hide', kind: 'twist', rule: 'At the start of any turn. Until the end of the turn, nobody may hide; warriors already hidden stay so.', flavour: 'Both moons are out.' },
+  'sealed-door': { short: 'Cancel a bane played against you', kind: 'boon', rule: 'When the other side plays a bane against you, their card is spent and does nothing.', flavour: 'The door was bolted from the inside, and nobody will say by whom.' },
+  'wyrd-lantern': { short: 'One model in the open counts as in cover', kind: 'boon', rule: 'In your movement phase, one of your warriors in the open counts as in cover until the start of your next turn.', flavour: 'The lantern throws a shadow that does not match.' },
+  'carrion-crown': { short: '+1 Experience for a model that takes an enemy out', kind: 'boon', rule: 'When one of your warriors takes an enemy out of action, that warrior gains +1 Experience after the game.', flavour: 'The crows have given a name.' },
+  'the-ferryman': { short: 'Last round: after the game, re-roll a Dead result', kind: 'boon', only: 'last', rule: 'In the last round only; keep it face up. After the game, if one of your warriors rolls Dead on the serious injury table, re-roll it once; the second roll stands.', flavour: 'The ferryman was busy elsewhere.' },
+  'bone-hand': { short: '+1 to wound, one roll', kind: 'boon', rule: 'When one of your warriors rolls to wound in close combat, +1 to one roll to wound.', flavour: 'The hand knows where the ribs part.' },
+  'last-candle': { short: 'Last round: re-roll one failed roll', kind: 'boon', only: 'last', rule: 'In the last round only. One of your warriors re-rolls one failed roll this round.', flavour: 'The last light goes where it is most needed.' },
 };
 
 /** The deck, in the Omens' order: the built-in thirty, with their pictures, and what each does at the table. */

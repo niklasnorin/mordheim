@@ -9,7 +9,8 @@ test('the deck is the thirty Omens, each with a small effect in the voice', () =
     assert.ok(c.image.startsWith('/curfew/omens/'), `${c.id} uses the Curfew’s picture`);
     assert.ok(c.rule.endsWith('.') && c.flavour.endsWith('.'), `${c.id} is written in sentences`);
     assert.ok(!/!/.test(c.rule + c.flavour), `${c.id} has no exclamation mark`);
-    assert.ok(!/'/.test(c.rule + c.flavour), `${c.id} uses typographic apostrophes`);
+    assert.ok(!/'/.test(c.rule + c.flavour + c.short), `${c.id} uses typographic apostrophes`);
+    assert.ok(c.short.length > 0 && c.short.length <= 60 && !c.short.endsWith('.'), `${c.id} has a short rule in a few words`);
   }
   assert.ok(TAROT.some((c) => c.kind === 'bane') && TAROT.some((c) => c.kind === 'twist'), 'not every card is a boon');
   assert.equal(cardById('the-comet')?.only, 'first');
