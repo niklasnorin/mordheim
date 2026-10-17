@@ -635,7 +635,6 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
           img.src = photoUrl;
           says.textContent = `${ready.width} × ${ready.height}, ${(ready.picture.size / 1_000_000).toFixed(1)} MB`;
           submit.disabled = false;
-          form.querySelector<HTMLInputElement>('input[name="text"]')?.focus();
         } catch (err) {
           if (mine !== asked) return;
           picker.hidden = false; shown.hidden = true;
@@ -672,7 +671,8 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     }
     sheet.append(form);
     sheet.showModal();
-    (form.querySelector('select, textarea, input:not([type=radio]):not([type=number]):not([type=file])') as HTMLElement | null)?.focus();
+    // the photo sheet is for a thumb, not a keyboard: what it shows is typed only when the table taps the field
+    if (kind !== 'photo') (form.querySelector('select, textarea, input:not([type=radio]):not([type=number])') as HTMLElement | null)?.focus();
   }
 
   sheet.addEventListener('close', forgetPhoto);
