@@ -321,7 +321,8 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
 
   function renderTally(s: Scenario): void {
     tallyBox.replaceChildren();
-    const tally = tallyOf(s);
+    // something to hold is counted instead of a free tally, so there is one way to score
+    const tally = objectiveOf(s) ? '' : tallyOf(s);
     tallyBox.hidden = !tally;
     if (!tally) return;
     tallyBox.append(h('div', { class: 'tk-tally-head' }, h('span', {}, tally), h('span', {}, 'the tally')));
@@ -346,7 +347,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
   /** The checks a turn still owes. */
   const owed = (s: Scenario, o: Objective, turn: number) => turn < 1 ? [] : slotsFor(o, s.warbands.map((w) => w.warbandId), turn).filter((sl) => !checked(checksOf(s.events), sl));
   /** What a count shows: as it was told for this check, else nought for each warband counted, until the first tap writes it down. */
-  function draftOf(s: Scenario, o: Objective, sl: Slot): Record<string, number> {
+  function draftOf(s: Scenario, sl: Slot): Record<string, number> {
     const told = checked(checksOf(s.events), sl);
     if (told) return { ...told.held };
     const counted = sl.whose ? [sl.whose] : s.warbands.map((w) => w.warbandId);
@@ -372,7 +373,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       const row = h('div', { class: 'tk-held tk-span', 'data-now': String(!!sl) }, h('div', { class: 'tk-held-name' }, warbandName(w)), h('div', { class: 'tk-held-points', title: 'Points so far' }, String(points[w] ?? 0)));
       if (sl) {
         const told = checked(checks, sl);
-        const held = draftOf(s, o, sl);
+        const held = draftOf(s, sl);
         if (o.kind === 'one') {
           const holds = (held[w] ?? 0) > 0;
           row.append(h('button', { type: 'button', class: 'tk-side-btn tk-held-toggle', 'data-slot': slotId(sl), 'data-holder': holds ? '' : w, 'aria-pressed': String(holds) }, holds ? 'Holds it' : told ? 'Does not' : 'Holds it?'));
@@ -391,7 +392,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     const asked = due.filter((sl) => turnOrder(s).some((w) => slotFor(w) === sl));
     if (asked.length) objectiveBox.append(h('p', { class: 'tk-held-state tk-span' }, asked.map((sl) => {
       const told = checked(checks, sl);
-      const state = told ? 'counted' : o.kind === 'many' ? `${Object.values(draftOf(s, o, sl)).reduce((a, x) => a + x, 0)} of ${o.count} counted` : 'to check';
+      const state = told ? 'counted' : o.kind === 'many' ? `${Object.values(draftOf(s, sl)).reduce((a, x) => a + x, 0)} of ${o.count} counted` : 'to check';
       return `${sl.turn !== s.turn ? `turn ${sl.turn}, ` : ''}${checkLabel(sl, warbandName).toLowerCase()}: ${state}`;
     }).join(' · ')));
   }
@@ -779,7 +780,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       // every tap writes the count down, so there is one way to count and nothing to confirm
       const s = state.scenario, o = objectiveOf(s), sl = slots.get(hold.dataset.holdStep!);
       if (!o || !sl) return;
-      const held = { ...draftOf(s, o, sl) }, w = hold.dataset.warband!;
+      const held = { ...draftOf(s, sl) }, w = hold.dataset.warband!;
       held[w] = Math.max(0, Math.min(o.count, (held[w] ?? 0) + Number(hold.dataset.d)));
       if (Object.values(held).reduce((a, n) => a + n, 0) > o.count) return;
       await post('check', { turn: sl.turn, whose: sl.whose, held });
