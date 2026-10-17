@@ -16,6 +16,7 @@ import { getActor, isGm } from '../../../server/roles';
 import { getScenario, mayTrack } from '../../../server/campaign/scenarios';
 import { listWarbands } from '../../../server/campaign/roster';
 import { tallyOf, type Scenario, type Warband } from '../../../campaign/model';
+import { inSentence, objectiveOf } from '../../../campaign/objective';
 import type { TrackerState } from '../../../lib/tracker';
 
 export const prerender = false;
@@ -40,7 +41,8 @@ const roster = scenario.warbands.map((p) => warbands.find((w) => w.id === p.warb
 const hands = scenario.tarot && viewer ? scenario.warbands.map((p) => warbands.find((w) => w.id === p.warbandId)).filter((w): w is Warband => !!w && (isGm(viewer) || w.ownerId === viewer.id)).map((w) => ({ id: w.id, name: w.name })) : [];
 const state: TrackerState = { base, roster, may, hands, scenario };
 const tally = tallyOf(scenario);
-const sub = [tally ? `counting ${tally.toLowerCase()}` : null, scenario.tarot ? 'the Tarot in play' : null].filter(Boolean).join(' · ');
+const objective = objectiveOf(scenario);
+const sub = [tally ? `counting ${tally.toLowerCase()}` : null, objective ? `holding ${inSentence(objective.name)}` : null, scenario.tarot ? 'the Tarot in play' : null].filter(Boolean).join(' · ');
 ---
 
 <Base title={`${scenario.title}, at the table — Mordheim`} description={`The battle tracker for ${scenario.title}.`}>

@@ -279,6 +279,8 @@ export const scenarios = pgTable('scenarios', {
   /** The battle tracker: the game turn the table is on (0 before the first), and what the scenario scores (empty: the rulebook's tally, or none). */
   turn: integer('turn').notNull().default(0),
   tally: text('tally').notNull().default(''),
+  /** Something to hold in a custom scenario (`Objective`, campaign/objective.ts): its name, one or several, and when it is checked; null when there is none. */
+  objective: jsonb('objective'),
   /** The turn after which the game ends of itself (a house scenario's own, or as the game master set it); null runs on. */
   turnLimit: integer('turn_limit'),
   /** Whether the Tarot of the Damned is in play (campaign/tarot.ts): a hidden hand of cards per warband, in the tracker. */
@@ -351,7 +353,8 @@ export const scenarioOutOfAction = pgTable(
 /**
  * The battle tracker's log: what the table noted turn by turn while the game was played. A `note` is anything
  * worth remembering, a `score` counts towards the scenario's tally for one warband, a `card` is a Tarot card
- * shown to the table (its id in `text`). Out-of-action results are not here: they go straight into
+ * shown to the table (its id in `text`), and a `control` is how many of a custom scenario's objective one warband
+ * held at a check (the check's key in `text`, campaign/objective.ts). Out-of-action results are not here: they go straight into
  * `scenario_out_of_action` with their turn.
  */
 export const scenarioEvents = pgTable(
@@ -360,7 +363,7 @@ export const scenarioEvents = pgTable(
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
     scenarioId: text('scenario_id').notNull().references(() => scenarios.id, { onDelete: 'cascade' }),
     turn: integer('turn').notNull(),
-    kind: text('kind', { enum: ['note', 'score', 'hold', 'roll', 'card'] }).notNull(),
+    kind: text('kind', { enum: ['note', 'score', 'hold', 'roll', 'card', 'control'] }).notNull(),
     warbandId: text('warband_id'),
     points: integer('points').notNull().default(0),
     text: text('text').notNull().default(''),

@@ -737,3 +737,38 @@ test('long-form Markdown survives saving, reloading and revising every kind of p
   scenario = await writeBattle(gm, scenario.id, [' \n ', '']);
   assert.deepEqual(scenario.battle, [], 'a blank telling is still empty');
 });
+
+test('something to hold: the game master sets it up, the table checks it, a second telling replaces the first, a strike takes the check whole', async () => {
+  const { recordCheck } = await import('./scenarios.ts');
+  const { objectiveScores, objectiveOf } = await import('../../campaign/objective.ts');
+  await assert.rejects(createScenario(gm, { title: 'The Well', playedOn: '2026-10-13', objective: { name: 'Markers', kind: 'many', count: 1, when: 'round-end' } }), (e: unknown) => e instanceof LedgerError && /from 2/.test(e.message));
+  let s = await createScenario(gm, { title: 'The Well', playedOn: '2026-10-13', warbandIds: ['nordost', 'bitterbrow-expedition'], objective: { name: 'The well', kind: 'one', count: 9, when: 'round-end' } });
+  assert.deepEqual(s.objective, { name: 'The well', kind: 'one', count: 1, when: 'round-end' });
+
+  await assert.rejects(recordCheck(stranger, s.id, { turn: 1, held: { nordost: 1 } }), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(recordCheck(gm, s.id, { turn: 1, held: { nordost: 1, 'bitterbrow-expedition': 1 } }), (e: unknown) => e instanceof LedgerError && /Only one warband/.test(e.message));
+  await assert.rejects(recordCheck(gm, s.id, { turn: 1, held: { 'grey-hand': 1 } }), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  s = await recordCheck(gm, s.id, { turn: 1, held: { nordost: 1 } });
+  assert.deepEqual(s.events.filter((e) => e.kind === 'control').map((e) => [e.warbandId, e.points]).sort(), [['bitterbrow-expedition', 0], ['nordost', 1]], 'every warband is counted, nought included');
+  s = await recordCheck(gm, s.id, { turn: 1, held: {} });
+  assert.equal(s.events.filter((e) => e.kind === 'control').reduce((a, e) => a + e.points, 0), 0, 'held by nobody, told again, replaces the first telling');
+  s = await recordCheck(gm, s.id, { turn: 2, held: { 'bitterbrow-expedition': 1 } });
+  s = await recordCheck(gm, s.id, { turn: 3, held: { 'bitterbrow-expedition': 1 } });
+  assert.deepEqual(Object.fromEntries(objectiveScores(s).map((x) => [x.warbandId, x.points])), { nordost: 0, 'bitterbrow-expedition': 2 });
+  assert.equal(s.turn, 0, 'a check does not move the table');
+  s = await removeEvent(gm, s.id, s.events.find((e) => e.kind === 'control' && e.turn === 3)!.id);
+  assert.equal(s.events.filter((e) => e.kind === 'control' && e.turn === 3).length, 0, 'a strike takes every warband’s count of the check');
+
+  s = await updateScenario(gm, s.id, { objective: { name: 'Doors', kind: 'many', count: 3, when: 'turn-start' } });
+  await assert.rejects(recordCheck(gm, s.id, { turn: 1, held: { nordost: 2 } }), (e: unknown) => e instanceof LedgerError && /whose turn/.test(e.message));
+  await assert.rejects(recordCheck(gm, s.id, { turn: 1, whose: 'nordost', held: { nordost: 4 } }), (e: unknown) => e instanceof LedgerError && /only 3/.test(e.message));
+  s = await recordCheck(gm, s.id, { turn: 1, whose: 'nordost', held: { nordost: 2 } });
+  assert.deepEqual(s.events.filter((e) => e.kind === 'control' && e.text === 'turn-start:nordost').map((e) => [e.warbandId, e.points]), [['nordost', 2]], 'at a warband’s own turn only it is counted');
+
+  s = await updateScenario(gm, s.id, { rulebookScenario: 'The Supply Cart' });
+  assert.equal(objectiveOf(s), null, 'a campaign scenario brings its own rules');
+  await assert.rejects(recordCheck(gm, s.id, { turn: 1, whose: 'nordost', held: { nordost: 1 } }), (e: unknown) => e instanceof LedgerError && /nothing to hold/.test(e.message));
+  s = await updateScenario(gm, s.id, { rulebookScenario: null, objective: { name: '', kind: 'one', when: 'round-end' } });
+  assert.equal(s.objective, null, 'an empty name takes the objective away');
+  await deleteScenario(gm, s.id);
+});

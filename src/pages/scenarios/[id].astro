@@ -23,6 +23,7 @@ import { listLocations } from '../../server/campaign/locations';
 import { RULEBOOK_SCENARIOS, RULEBOOK_TALLIES, rulebookUrl } from '../../campaign/rulebook';
 import { HOUSE_SCENARIOS, SIDE_LABEL, houseScenario } from '../../campaign/house';
 import TarotRules from '../../components/TarotRules.astro';
+import { CHECK_MOMENTS, HOLD_KINDS, HOLD_KIND_LABEL, MAX_HELD, MOMENT_LABEL, objectiveOf, objectiveSummary } from '../../campaign/objective';
 import { MEMBER_STATUSES, fightPosition, hasTurnLog, summaryOf, tallyOf, type CampaignLocation, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
 import { CAMPAIGN } from '../../curfew/engine';
 
@@ -80,6 +81,8 @@ const summary = summaryOf(scenario);
 const rulesUrl = rulebookUrl(scenario.rulebookScenario);
 // a campaign scenario brings its rules from the code: printed here, and kept by the tracker
 const house = houseScenario(scenario.rulebookScenario);
+// something to hold, in a scenario that is not one of the campaign's own: checked in the tracker
+const objective = objectiveOf(scenario);
 const sidesLine = house?.sides ? (['attacker', 'defender'] as const).map((side) => { const names = scenario!.warbands.filter((w) => w.side === side).map((w) => nameOf(w.warbandId)); return `${SIDE_LABEL[side]}: ${names.length ? joined(names) : 'to be named'}`; }).join(' · ') : '';
 // A telling nobody has written is not printed at all.
 const prologues = scenario.warbands.filter((w) => w.prologue.trim());
@@ -158,6 +161,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           <div><dt>{house ? 'Scenario' : 'Rulebook scenario'}</dt><dd>{house ? <>{house.name}<br /><small class="archive-note">one of the campaign’s own</small></> : scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'A custom scenario'}</dd></div>
           {scenario.turnLimit && <div><dt>Length</dt><dd>{scenario.turnLimit} turns{house ? <><br /><small class="archive-note">more if time permits</small></> : null}</dd></div>}
           {house?.sides && <div><dt>Sides</dt><dd>{sidesLine}</dd></div>}
+          {objective && <div><dt>To hold</dt><dd>{objective.name}<br /><small class="archive-note">{objectiveSummary(objective)}</small></dd></div>}
           <div><dt>Warbands</dt><dd class="scenario-warbands">{scenario.warbands.length ? scenario.warbands.map((w) => <WarbandLabel warband={warbandOf(w.warbandId)} fallback={w.warbandId} />) : 'To be named'}</dd></div>
         </dl>
         {house && house.rules.map((r) => (<><h3>{r.heading}</h3><ul class="house-rules">{r.lines.map((l) => <li>{l}</li>)}</ul></>))}
@@ -176,6 +180,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           <div><dt>{house ? 'Scenario' : 'Rulebook scenario'}</dt><dd>{house ? house.name : scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'Custom scenario'}</dd></div>
           <div><dt>Where</dt><dd>{where ? <><a href={`${base}/locations/${where.id}/`}>{where.name}</a>{wherePoint && <><br /><small class="archive-note">at <a href={`${base}/locations/${where.id}/#point-${wherePoint.id}`}>{wherePoint.name}</a></small></>}</> : 'Not recorded'}</dd></div>
           {house?.sides && <div><dt>Sides</dt><dd>{sidesLine}</dd></div>}
+          {objective && <div><dt>To hold</dt><dd>{objective.name}<br /><small class="archive-note">{objectiveSummary(objective)}</small></dd></div>}
           {(house || scenario.winCondition || !scenario.rulebookScenario) && <div><dt>Win condition</dt><dd>{house ? house.winCondition : <Markdown text={scenario.winCondition || 'Not recorded'} />}</dd></div>}
         </dl>
         {house && <details class="house-rules-fold"><summary>The rules as played</summary>{house.rules.map((r) => (<><h3>{r.heading}</h3><ul class="house-rules">{r.lines.map((l) => <li>{l}</li>)}</ul></>))}</details>}
@@ -400,9 +405,15 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
               <label class="mg-field">Title<input name="patch.title" required maxlength="120" value={scenario.title} /></label>
               <div class="mg-two">
                 <label class="mg-field">Played on<input name="patch.playedOn" type="date" required value={scenario.playedOn} /><small>{imperial}</small></label>
-                <label class="mg-field">Scenario{<> <a class="mg-rules-link" href={rulesUrl ?? '#'} hidden={!rulesUrl} rel="noreferrer noopener" target="_blank">the rules <Icon name="arrow-up-right" size={12} /></a></>}<select name="patch.rulebookScenario" data-nullable><option value="" selected={!scenario.rulebookScenario}>Custom scenario</option><optgroup label="The campaign’s own">{HOUSE_SCENARIOS.map((h) => <option value={h.name} data-sides={String(h.sides)} selected={h.name === scenario!.rulebookScenario}>{h.name}</option>)}</optgroup><optgroup label="The rulebook">{RULEBOOK_SCENARIOS.map((r) => <option value={r} data-rulebook selected={r === scenario!.rulebookScenario}>{r}</option>)}</optgroup>{scenario.rulebookScenario && !house && !(RULEBOOK_SCENARIOS as readonly string[]).includes(scenario.rulebookScenario) && <option value={scenario.rulebookScenario} selected>{scenario.rulebookScenario}</option>}</select></label>
+                <label class="mg-field">Scenario{<> <a class="mg-rules-link" href={rulesUrl ?? '#'} hidden={!rulesUrl} rel="noreferrer noopener" target="_blank">the rules <Icon name="arrow-up-right" size={12} /></a></>}<select name="patch.rulebookScenario" data-nullable><option value="" selected={!scenario.rulebookScenario}>Custom scenario</option><optgroup label="The campaign’s own">{HOUSE_SCENARIOS.map((h) => <option value={h.name} data-house data-sides={String(h.sides)} selected={h.name === scenario!.rulebookScenario}>{h.name}</option>)}</optgroup><optgroup label="The rulebook">{RULEBOOK_SCENARIOS.map((r) => <option value={r} data-rulebook selected={r === scenario!.rulebookScenario}>{r}</option>)}</optgroup>{scenario.rulebookScenario && !house && !(RULEBOOK_SCENARIOS as readonly string[]).includes(scenario.rulebookScenario) && <option value={scenario.rulebookScenario} selected>{scenario.rulebookScenario}</option>}</select></label>
               </div>
               <label class="mg-field">What the tracker tallies<input name="patch.tally" maxlength="60" value={scenario.tally} placeholder={tallyOf({ tally: '', rulebookScenario: scenario.rulebookScenario }) || 'Nothing beyond the fallen'} /><small>What the battle tracker counts per warband besides who fell: shards on a Wyrdstone Hunt, warriors through on a Breakthrough. Empty means the rulebook scenario's own ({Object.entries(RULEBOOK_TALLIES).map(([k, v]) => `${k}: ${v!.toLowerCase()}`).join('; ')}), or none.</small></label>
+              <fieldset class="mg-fieldset" data-when-not-house hidden={!!house}><legend>Something to hold</legend>
+                <label class="mg-field">What it is called<input name="patch.objective.name" maxlength="60" value={scenario.objective?.name ?? ''} placeholder="The relic, objective markers" /><small>A relic, a banner, markers on the board. The battle tracker asks who holds it at each check and gives a point for each one held. Empty means nothing to hold.</small></label>
+                <div class="mg-field">How many there are<div class="mg-checks">{HOLD_KINDS.map((k) => <label class="mg-field check"><input type="radio" name="patch.objective.kind" value={k} checked={(scenario.objective?.kind ?? 'one') === k} data-objective-kind /> {HOLD_KIND_LABEL[k]}</label>)}</div></div>
+                <label class="mg-field" data-objective-count hidden={scenario.objective?.kind !== 'many'}>How many of them<input name="patch.objective.count" type="number" min="2" max={MAX_HELD} inputmode="numeric" data-nullable value={scenario.objective?.kind === 'many' ? scenario.objective.count : 3} /></label>
+                <label class="mg-field">When it is checked<select name="patch.objective.when">{CHECK_MOMENTS.map((m) => <option value={m} selected={(scenario.objective?.when ?? 'round-end') === m}>{MOMENT_LABEL[m]}</option>)}</select><small>A round is a turn of the tracker, in which every warband moves once. At a warband’s own turn, only that warband is counted.</small></label>
+              </fieldset>
               <label class="mg-field">Turns<input name="patch.turnLimit" type="number" min="1" max="99" inputmode="numeric" value={scenario.turnLimit ?? ''} data-nullable placeholder="Until it is decided" /><small>The game ends of itself after this many; the table may add another round in the tracker, time permitting. A campaign scenario sets its own when chosen.</small></label>
               <label class="mg-field check"><input type="checkbox" name="patch.tarot" checked={scenario.tarot} /> The Tarot of the Damned is in play: each warband a hidden hand of three cards in the tracker, small boons and banes played at the table</label>
               <fieldset class="mg-fieldset"><legend>Where</legend>
@@ -591,15 +602,26 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
     const field = form?.querySelector<HTMLElement>('[data-when-custom]');
     const link = form?.querySelector<HTMLAnchorElement>('.mg-rules-link');
     const sides = form?.querySelector<HTMLElement>('[data-when-sides]');
+    const holding = form?.querySelector<HTMLElement>('[data-when-not-house]');
     const follow = () => {
       const picked = select.selectedOptions[0];
       if (field) field.hidden = !!select.value;
       if (sides) sides.hidden = picked?.dataset.sides !== 'true';
+      // a campaign scenario brings its own objective
+      if (holding) holding.hidden = picked?.dataset.house !== undefined;
       const rulebook = picked?.dataset.rulebook !== undefined;
       if (link) { const slug = select.value.toLowerCase().replace(/[^a-z0-9]+/g, '-'); link.hidden = !rulebook; if (rulebook) link.href = `https://mordheimer.net/docs/campaigns/scenarios/mordheim-rulebook/${slug}`; }
     };
     select.addEventListener('change', follow);
     follow();
+  }
+
+  // how many of them is asked only when there are several
+  for (const form of root.querySelectorAll<HTMLFormElement>('form:has([data-objective-kind])')) {
+    const count = form.querySelector<HTMLElement>('[data-objective-count]');
+    form.addEventListener('change', (e) => {
+      if (count && (e.target as HTMLElement).matches('[data-objective-kind]')) count.hidden = (e.target as HTMLInputElement).value !== 'many';
+    });
   }
 
   // the muster: rows of warriors, each with whether they came and how they fared

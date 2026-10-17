@@ -1,12 +1,13 @@
 ---
 /**
- * The battle turn by turn, as the table logged it in the tracker: who struck whom, who scored, what happened.
+ * The battle turn by turn, as the table logged it in the tracker: who struck whom, who scored, who held what, what happened.
  * Read-only here; the tracker at /scenarios/<id>/battle/ is where it is written. Out-of-action results written up
  * afterwards, with no turn, close the list.
  */
 import { scoresOf, tallyOf, type Scenario, type Warband } from '../campaign/model';
 import { SIDE_LABEL, houseScenario, rollBrings } from '../campaign/house';
 import { TAROT_KIND_LABEL, cardById } from '../campaign/tarot';
+import { checksOf, describeCheck, objectiveOf, objectiveScores } from '../campaign/objective';
 import WarbandLabel from './WarbandLabel.astro';
 
 interface Props { scenario: Scenario; warbands: Warband[] }
@@ -19,16 +20,20 @@ const tally = tallyOf(scenario);
 const house = houseScenario(scenario.rulebookScenario);
 const sideOf = (id: string | null | undefined) => scenario.warbands.find((w) => w.warbandId === id)?.side;
 const scores = scoresOf(scenario);
+const objective = objectiveOf(scenario);
+const held = objectiveScores(scenario);
 const played = scenario.status === 'played';
 const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
 // how it ended, in one line: who won, or that nobody did
 const winners = scenario.warbands.filter((w) => w.result === 'victory').map((w) => nameOf(w.warbandId));
 const ending = winners.length ? `Victory to ${winners.join(' and ')}` : scenario.warbands.some((w) => w.result) ? 'A draw' : 'No result recorded';
 
-type Line = { turn: number | null; at: number; kind: 'out-of-action' | 'note' | 'score' | 'hold' | 'roll' | 'card'; html: { lead: string; strong?: string; rest?: string }; who?: string; by?: string };
+type Line = { turn: number | null; at: number; kind: 'out-of-action' | 'note' | 'score' | 'hold' | 'roll' | 'card' | 'control'; html: { lead: string; strong?: string; rest?: string }; who?: string; by?: string };
 const lines: Line[] = [
   ...scenario.outOfAction.map((o): Line => ({ turn: o.turn ?? null, at: o.id, kind: 'out-of-action', html: { lead: `${memberOf(o.attackerId)?.name ?? o.attackerId} put `, strong: o.target, rest: ` out of action${o.detail ? `: ${o.detail}` : ''}` }, who: memberOf(o.attackerId)?.warbandName })),
-  ...scenario.events.map((e): Line => e.kind === 'hold'
+  // a check of the objective is one line, however many warbands it counted
+  ...checksOf(scenario.events).map((c): Line => ({ turn: c.turn, at: c.ids[0], kind: 'control', html: describeCheck(objective, c, nameOf), by: c.authorName })),
+  ...scenario.events.filter((e) => e.kind !== 'control').map((e): Line => e.kind === 'hold'
     ? ({ turn: e.turn, at: e.id, kind: 'hold', html: { lead: `${house?.objective?.title ?? 'The objective'}: `, strong: e.warbandId ? `held by ${nameOf(e.warbandId)}` : 'held by nobody', rest: sideOf(e.warbandId) ? ` (${SIDE_LABEL[sideOf(e.warbandId)!].toLowerCase()})` : '' } })
     : e.kind === 'roll'
     ? ({ turn: e.turn, at: e.id, kind: 'roll', html: { lead: `${house?.endOfTurnRoll?.label ?? 'The roll'}: ${e.points}. `, strong: house && rollBrings(house, e.points) ? house.endOfTurnRoll!.happens : undefined, rest: house && rollBrings(house, e.points) ? '' : house?.endOfTurnRoll?.nothing ?? '' } })
@@ -47,13 +52,16 @@ const turns = [...new Set(lines.map((l) => l.turn))].sort((a, b) => (a ?? 1e9) -
     {!played && tally && scores.length > 0 && (
       <p class="turn-log-tally"><span class="voice-label">{tally} so far</span> {scores.map((s) => `${nameOf(s.warbandId)} ${s.points}`).join(' · ')}</p>
     )}
+    {!played && objective && held.length > 0 && (
+      <p class="turn-log-tally"><span class="voice-label">{objective.name} so far</span> {held.map((s) => `${nameOf(s.warbandId)} ${s.points}`).join(' · ')}</p>
+    )}
     {turns.map((t) => (
       <section class="turn-log-turn" aria-label={t === null ? 'Written up afterwards' : `Turn ${t}`}>
         <h3>{t === null ? <small>Written up afterwards</small> : `Turn ${t}`}</h3>
         <ol>
           {lines.filter((l) => l.turn === t).sort((a, b) => a.at - b.at).map((l) => (
             <li class:list={['turn-log-line', l.kind]}>
-              <span class="turn-log-mark" aria-hidden="true">{l.kind === 'out-of-action' ? '†' : l.kind === 'score' ? '◆' : l.kind === 'hold' ? '▣' : l.kind === 'roll' ? '⚄' : l.kind === 'card' ? '✦' : '·'}</span>
+              <span class="turn-log-mark" aria-hidden="true">{l.kind === 'out-of-action' ? '†' : l.kind === 'score' ? '◆' : l.kind === 'hold' ? '▣' : l.kind === 'roll' ? '⚄' : l.kind === 'card' ? '✦' : l.kind === 'control' ? '⚑' : '·'}</span>
               <span>{l.html.lead}{l.html.strong && <b>{l.html.strong}</b>}{l.html.rest}{(l.who || l.by) && <small class="turn-log-meta">{[l.who, l.by].filter(Boolean).join(' · ')}</small>}</span>
             </li>
           ))}
@@ -67,10 +75,12 @@ const turns = [...new Set(lines.map((l) => l.turn))].sort((a, b) => (a ?? 1e9) -
         <ul class="turn-log-final">
           {scenario.warbands.map((w) => {
             const score = scores.find((s) => s.warbandId === w.warbandId);
+            const holding = held.find((s) => s.warbandId === w.warbandId);
             return (
               <li class:list={[w.result ?? '']}>
                 <span class="turn-log-final-name"><WarbandLabel warband={warbands.find((band) => band.id === w.warbandId)} fallback={w.warbandId} /></span>
                 {tally && score && <b class="turn-log-final-score">{score.points}<small>{tally.toLowerCase()}</small></b>}
+                {objective && holding && <b class="turn-log-final-score">{holding.points}<small>{objective.name.toLowerCase()}</small></b>}
                 <span class="turn-log-final-result">{w.result ? resultLabel[w.result] : 'No result'}</span>
               </li>
             );
@@ -96,6 +106,7 @@ const turns = [...new Set(lines.map((l) => l.turn))].sort((a, b) => (a ?? 1e9) -
   .turn-log-line.out-of-action .turn-log-mark { color: var(--blood-bright); }
   .turn-log-line.score .turn-log-mark { color: var(--gold); }
   .turn-log-line.card .turn-log-mark { color: var(--parchment); }
+  .turn-log-line.control .turn-log-mark { color: var(--green-wyrd); }
   .turn-log-meta { display: block; color: var(--ink-dim); font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; margin-top: .15rem; }
   .turn-log-ending { margin-top: 2rem; padding: 1.5rem 1.25rem; text-align: center; border: 1px solid var(--gold-dim); background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); }
   .turn-log-ending .voice-label { margin-bottom: .5rem; }

@@ -8,6 +8,7 @@
  */
 import { RULEBOOK_TALLIES, type RulebookScenario } from './rulebook.ts';
 import type { Side } from './house.ts';
+import type { Objective } from './objective.ts';
 import type { StockEntry } from './trading.ts';
 import type { PortraitCrop } from './portrait.ts';
 import { proseSource } from './prose.ts';
@@ -137,9 +138,10 @@ export interface OutOfAction {
  * What the tracker logs besides takedowns: a note is anything worth remembering, a score counts towards the tally.
  * A house scenario's turn ends add two more (campaign/house.ts): `hold`, who held its objective at the end of the
  * turn (the warband, or none when nobody did), and `roll`, the die rolled at the end of the turn (in `points`).
+ * A custom scenario's objective adds `control` (campaign/objective.ts): how many of it one warband held at a check.
  */
-export type EventKind = 'note' | 'score' | 'hold' | 'roll' | 'card';
-export const EVENT_KINDS: EventKind[] = ['note', 'score', 'hold', 'roll', 'card'];
+export type EventKind = 'note' | 'score' | 'hold' | 'roll' | 'card' | 'control';
+export const EVENT_KINDS: EventKind[] = ['note', 'score', 'hold', 'roll', 'card', 'control'];
 /** The kinds anyone at the table writes as a line of their own; the others come with the end of a turn. */
 export const LOGGED_KINDS: EventKind[] = ['note', 'score'];
 
@@ -150,7 +152,7 @@ export interface ScenarioEvent {
   turn: number;
   kind: EventKind;
   warbandId?: string | null;
-  /** Towards the tally; zero for a note. */
+  /** Towards the tally, or how many a warband held at a check; zero for a note. */
   points: number;
   text: string;
   authorName: string;
@@ -213,6 +215,8 @@ export interface Scenario {
   turnLimit: number | null;
   /** What the scenario scores, as the game master named it; empty means the rulebook scenario's own tally, or none. See `tallyOf`. */
   tally: string;
+  /** Something to hold, checked round by round or turn by turn, as the game master set it up; null when there is none. See `objectiveOf`. */
+  objective: Objective | null;
   /** Whether the Tarot of the Damned is in play: a hidden hand of cards per warband, played at the table (`campaign/tarot.ts`). */
   tarot: boolean;
   /** Where it is fought: one of the campaign's locations, or null when not said. */

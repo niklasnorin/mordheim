@@ -57,6 +57,24 @@
 .tk-score-taps { grid-area: taps; display: flex; gap: .4rem; }
 .tk-score-taps .tk-btn { min-width: var(--control-size); padding: .3rem .6rem; }
 
+/* something to hold: the points, and the checks the turn asks for, each a card answered with a tap or a count */
+.tk-span { grid-column: 1 / -1; }
+.tk-objective .tk-note { margin: 0; }
+.tk-objective .tk-score { grid-template-areas: 'name total'; }
+.tk-check { display: grid; gap: .55rem; padding: .7rem .8rem; border: 1px solid var(--green-wyrd); border-left-width: 3px; background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); }
+.tk-check[data-told='true'] { border-color: var(--border); border-left-color: var(--gold-dim); }
+.tk-check-head { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; color: var(--parchment); font: normal 1.1rem/1.25 'Pirata One', Georgia, serif; letter-spacing: .03em; }
+.tk-check-head small { color: var(--green-wyrd); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .16em; flex-shrink: 0; }
+.tk-check[data-told='true'] .tk-check-head small { color: var(--ink-dim); }
+.tk-check-ask { color: var(--ink); font-style: italic; margin: 0; }
+.tk-check-taps { display: flex; flex-wrap: wrap; gap: .4rem; }
+.tk-check-taps .tk-side-btn { flex: 1 1 auto; }
+.tk-check-taps .tk-side-btn[aria-pressed='true'] { border-color: var(--gold); background: #24301f; color: var(--gold); }
+.tk-check-row { display: grid; grid-template-columns: 1fr minmax(9rem, 11rem); align-items: center; gap: .75rem; }
+.tk-check-name { color: var(--parchment); font: var(--text-ui)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; overflow-wrap: anywhere; min-width: 0; }
+.tk-check-count { display: grid; place-items: center; min-height: var(--control-size); border: 1px solid var(--border); background: #0d1210; color: var(--parchment); font: 1.4rem/1 var(--font-utility); font-variant-numeric: tabular-nums; }
+.tk-line[data-kind='control'] .tk-line-icon { color: var(--green-wyrd); }
+
 /* choosing sides before the first turn */
 .tk-side-pick { display: grid; gap: .5rem; padding: .25rem 0 .5rem; }
 .tk-side-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem .75rem; flex-wrap: wrap; padding: .5rem .7rem; background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); border: 1px solid var(--border); }
