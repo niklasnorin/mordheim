@@ -161,10 +161,10 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           <div><dt>Warbands</dt><dd>{scenario.warbands.length ? scenario.warbands.map((w, i) => <>{i > 0 && ' against '}<WarbandLabel warband={warbandOf(w.warbandId)} fallback={w.warbandId} /></>) : 'To be named'}</dd></div>
         </dl>
         {house && house.rules.map((r) => (<><h3>{r.heading}</h3><ul class="house-rules">{r.lines.map((l) => <li>{l}</li>)}</ul></>))}
-        {house ? (scenario.customRules && (<><h3>Also in play</h3><Markdown text={scenario.customRules} /></>)) : scenario.customRules ? (<><h3>Rules in play</h3><Markdown text={scenario.customRules} /></>) : <p class="archive-note">{scenario.rulebookScenario ? <>Played as the rulebook has it{rulesUrl ? <>; <a href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules in full</a></> : null}.</> : 'The rules are still being written.'}</p>}
+        {house ? (scenario.customRules && (<><h3>Also in play</h3><Markdown text={scenario.customRules} /></>)) : scenario.customRules ? (<><h3>Rules in play</h3><Markdown text={scenario.customRules} /></>) : <p class="archive-note rulebook-note">{scenario.rulebookScenario ? <>Scenario played as the rulebook has it{rulesUrl ? <>; <a href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules in full</a></> : null}.</> : 'The rules are still being written.'}</p>}
         {scenario.winCondition && !scenario.rulebookScenario && (<><h3>Win condition</h3><Markdown text={scenario.winCondition} /></>)}
         {house && (<><h3>In short</h3><p>{house.winCondition}</p></>)}
-        {scenario.tarot && <TarotRules folded />}
+        {scenario.tarot && <div class="tarot-section"><TarotRules /></div>}
         {where?.map && whereAt && <LocationMap location={where} marker={whereAt} markerLabel={wherePoint?.name ?? scenario.title} quiet caption={`Where the fight is, on the map of ${where.name}.`} />}
       </section>
     )}
@@ -180,7 +180,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         </dl>
         {house && <details class="house-rules-fold"><summary>The rules as played</summary>{house.rules.map((r) => (<><h3>{r.heading}</h3><ul class="house-rules">{r.lines.map((l) => <li>{l}</li>)}</ul></>))}</details>}
         {scenario.customRules && (<><h3>{house ? 'Also in play' : 'Rules in play'}</h3><Markdown text={scenario.customRules} /></>)}
-        {scenario.tarot && <TarotRules folded={!upcoming} />}
+        {scenario.tarot && <div class="tarot-section"><TarotRules /></div>}
         {!scenario.rulebookScenario && !scenario.winCondition && (
           <p class="archive-note">The chapter title is not a rulebook scenario name. Missing rules information is left unconfirmed rather than inferred from the story.</p>
         )}
@@ -882,6 +882,8 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   dt { color: var(--ink-dim); font-size: .8rem; }
   dd { color: var(--parchment); }
   .archive-note { font-size: .9rem; color: var(--ink-dim); }
+  .rulebook-note { margin-bottom: 1.5rem; }
+  .tarot-section { margin-top: 1.5rem; }
   .neutral { max-width: 760px; margin: 0 auto 2rem; text-align: center; }
   .perspectives, .warband-summaries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; align-items: start; }
   .perspectives { align-items: stretch; }

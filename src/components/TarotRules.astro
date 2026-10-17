@@ -1,28 +1,20 @@
 ---
 /**
- * The Tarot of the Damned as the scenario page prints it when it is in play: the rules of the hand, and the deck
- * itself folded away, card by card, for anyone who wants to read ahead. The cards are `campaign/tarot.ts`.
+ * The Tarot of the Damned as the scenario page prints it when it is in play: a short notice, with the rules of
+ * the hand and the deck folded away for anyone who wants to read ahead. The cards are `campaign/tarot.ts`.
  */
 import { TAROT, TAROT_KIND_LABEL, TAROT_NAME, TAROT_RULES } from '../campaign/tarot';
 import { base } from '../lib/site';
-
-interface Props { /** Fold the rules away too, as on a played scenario's page. */ folded?: boolean }
-const { folded = false } = Astro.props;
 ---
 
-{folded ? (
-  <details class="house-rules-fold tarot-rules">
-    <summary>{TAROT_NAME}, as played</summary>
-    <ul class="house-rules">{TAROT_RULES.map((l) => <li>{l}</li>)}</ul>
-  </details>
-) : (
-  <>
-    <h3>{TAROT_NAME}</h3>
-    <ul class="house-rules">{TAROT_RULES.map((l) => <li>{l}</li>)}</ul>
-  </>
-)}
+<h3>Tarot of the Damned</h3>
+<p class="tarot-notice">{TAROT_NAME} is in play this scenario.</p>
+<details class="house-rules-fold tarot-rules">
+  <summary>The full rules</summary>
+  <ul class="house-rules">{TAROT_RULES.map((l) => <li>{l}</li>)}</ul>
+</details>
 <details class="house-rules-fold tarot-deck">
-  <summary>The thirty cards</summary>
+  <summary>The deck</summary>
   <ol class="tarot-list">
     {TAROT.map((c) => (
       <li>
@@ -38,6 +30,10 @@ const { folded = false } = Astro.props;
 </details>
 
 <style>
+  .tarot-notice { margin-bottom: 1.5rem; }
+  .tarot-rules .house-rules { list-style: none; padding: 0; display: grid; gap: .45rem; }
+  .tarot-rules .house-rules li { position: relative; padding-left: 1.1rem; }
+  .tarot-rules .house-rules li::before { content: ''; position: absolute; left: 0; top: .7em; width: .35rem; height: .35rem; background: var(--gold-dim); transform: rotate(45deg); }
   .tarot-list { list-style: none; padding: 0; display: grid; gap: .8rem; margin-top: .5rem; }
   .tarot-list li { display: grid; grid-template-columns: 3.4rem 1fr; gap: .8rem; align-items: start; }
   .tarot-list img { width: 3.4rem; height: auto; aspect-ratio: 7 / 12; object-fit: cover; border-radius: 4px; box-shadow: 0 6px 14px -6px #000c; }
