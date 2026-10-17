@@ -12,6 +12,7 @@ import { LedgerError } from '../../curfew/ledger.ts';
 import { type Roster } from '../../curfew/roster.ts';
 import { STAT_KEYS, slugify, type Death, type Member, type Statline, type Warband } from '../../campaign/model.ts';
 import type { PortraitCrop } from '../../campaign/portrait.ts';
+import { proseSource } from '../../campaign/prose.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { ensureSeeded } from './seed.ts';
 
@@ -121,7 +122,7 @@ export async function createWarband(actor: Actor, input: WarbandInput): Promise<
   const [{ n }] = await d.select({ n: sql<number>`coalesce(max(${warbands.sort}), 0)::int` }).from(warbands);
   await d.insert(warbands).values({
     id, name, type, sigil: sigilFor(name, input.sigil), ownerId: isGm(actor) ? null : actor.id, player: isGm(actor) ? clean(input.player, 40) : actor.name,
-    lore: clean(input.lore, 4000), sort: n + 1,
+    lore: proseSource(input.lore, 4000), sort: n + 1,
   });
   return (await getWarband(id))!;
 }
@@ -135,7 +136,7 @@ export async function updateWarband(actor: Actor, id: string, patch: WarbandPatc
   if (patch.name !== undefined) { const name = clean(patch.name, 80); if (!name) throw new LedgerError('The warband needs a name.'); set.name = name; }
   if (patch.type !== undefined) { const type = clean(patch.type, 60); if (!type) throw new LedgerError('Say what kind of warband they are.'); set.type = type; }
   if (patch.sigil !== undefined) set.sigil = sigilFor(patch.name ?? w.name, patch.sigil);
-  if (patch.lore !== undefined) set.lore = clean(patch.lore, 4000);
+  if (patch.lore !== undefined) set.lore = proseSource(patch.lore, 4000);
   if (patch.player !== undefined && isGm(actor)) set.player = clean(patch.player, 40);
   if (patch.crest !== undefined && isGm(actor)) set.crest = clean(patch.crest, 120) || null;
   await db().update(warbands).set(set).where(eq(warbands.id, id));
@@ -227,7 +228,7 @@ export async function addMember(actor: Actor, warbandId: string, input: MemberIn
   await d.insert(members).values({
     id, warbandId, name, role: clean(input.role, 60), rank: input.rank === 'hero' ? 'hero' : 'henchman', portrait: portraitFor(name), epithet: clean(input.epithet, 120),
     stats: statlineOf(input.stats), experience: input.experience == null ? null : bounded(input.experience, 0, 999, 'Experience'),
-    skills: lines(input.skills), injuries: lines(input.injuries), lore: clean(input.lore, 4000), sort: n + 1,
+    skills: lines(input.skills), injuries: lines(input.injuries), lore: proseSource(input.lore, 4000), sort: n + 1,
     dead: !!input.dead, death: input.dead ? deathOf(input.death, null) : null,
   });
   await touch(warbandId);
@@ -258,7 +259,7 @@ export async function updateMember(actor: Actor, memberId: string, patch: Partia
   if (patch.experience !== undefined) set.experience = patch.experience == null ? null : bounded(patch.experience, 0, 999, 'Experience');
   if (patch.skills !== undefined) set.skills = lines(patch.skills);
   if (patch.injuries !== undefined) set.injuries = lines(patch.injuries);
-  if (patch.lore !== undefined) set.lore = clean(patch.lore, 4000);
+  if (patch.lore !== undefined) set.lore = proseSource(patch.lore, 4000);
   if (patch.dead !== undefined) { set.dead = patch.dead; set.death = patch.dead ? deathOf(patch.death, m.death as Death | null) : null; }
   else if (patch.death !== undefined && m.dead) set.death = deathOf(patch.death, m.death as Death | null);
   await db().update(members).set(set).where(eq(members.id, memberId));

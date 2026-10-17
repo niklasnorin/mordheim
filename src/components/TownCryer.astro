@@ -1,5 +1,6 @@
 ---
 import Icon from './Icon.astro';
+import Markdown from './Markdown.astro';
 import type { NewsArticle } from '../campaign/model';
 import { type PrintedDispatch } from '../server/curfew/service';
 import { bylineFor } from '../curfew/cryer';
@@ -51,13 +52,13 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
         article.notice ? (
           <div class="cryer-notice">
             <strong>{article.headline}</strong>
-            {article.body}
+            <Markdown text={article.body} />
           </div>
         ) : (
           <article class="cryer-article">
             <h3>{article.headline}</h3>
             {article.byline && <div class="byline">{article.byline}</div>}
-            <p>{article.body}</p>
+            <Markdown text={article.body} />
           </article>
         )
       )
@@ -199,13 +200,13 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
     margin-bottom: 0.4rem;
     color: #4a3a22;
   }
-  .cryer-article p {
+  .cryer-article :global(p) {
     font-size: var(--text-body);
     line-height: 1.8;
     text-align: justify;
     hyphens: auto;
   }
-  .cryer-article p::first-letter {
+  .cryer-article > p::first-letter, .cryer-article :global(.markdown > p:first-of-type)::first-letter {
     font-family: 'UnifrakturMaguntia', cursive;
     font-size: 2.2em;
     float: left;
@@ -222,7 +223,7 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
     margin-bottom: 1.6rem;
     break-inside: avoid;
   }
-  .cryer-notice strong {
+  .cryer-notice > strong {
     display: block;
     font-variant: small-caps;
     letter-spacing: 0.15em;
@@ -308,7 +309,7 @@ const Settlement = place.settlement.charAt(0).toUpperCase() + place.settlement.s
     .cryer-engraving { width: 44px; height: 36px; margin: 0; flex-shrink: 0; }
     .cryer-issue { text-align: right; }
     .cryer-edition { letter-spacing: 0.04em; }
-    .cryer-article p { text-align: left; }
+    .cryer-article :global(p) { text-align: left; }
   }
 </style>
 

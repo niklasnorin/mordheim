@@ -8,16 +8,18 @@ import Base from '../../layouts/Base.astro';
 import ManageTop from '../../components/ManageTop.astro';
 import LocationMap from '../../components/LocationMap.astro';
 import WarbandLabel from '../../components/WarbandLabel.astro';
+import Markdown from '../../components/Markdown.astro';
 import '../../styles/manage.css';
 import '../../styles/locations.css';
 import { asset, base } from '../../lib/site';
+import { markdownText } from '../../lib/markdown';
 import { formatImperial, imperialForDate } from '../../lib/calendar';
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm } from '../../server/roles';
 import { listLocations } from '../../server/campaign/locations';
 import { listScenarios } from '../../server/campaign/scenarios';
 import { listWarbands } from '../../server/campaign/roster';
-import { fightPosition, paragraphsOf, pinned, type CampaignLocation, type Scenario, type Warband } from '../../campaign/model';
+import { fightPosition, pinned, type CampaignLocation, type Scenario, type Warband } from '../../campaign/model';
 import { TRADE_CATEGORIES, byCategory, priceLabel, rarityLabel, stockOf } from '../../campaign/trading';
 
 export const prerender = false;
@@ -50,11 +52,10 @@ const pins = location.points.filter(pinned);
 // the post trades at the location's market, where one is marked, and takes its name
 const market = location.points.find((p) => /market/i.test(p.kind)) ?? location.points.find((p) => /market/i.test(p.name));
 const postTitle = market?.name ?? 'The trading post';
-const description = paragraphsOf(location.description);
 const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}`;
 ---
 
-<Base title={`${location.name} — Mordheim`} description={location.description.slice(0, 160)}>
+<Base title={`${location.name} — Mordheim`} description={markdownText(location.description, 160)}>
   <main class="mg mg-page" id="main-content" data-base={base}>
     <div class="loc-mood" aria-hidden="true" data-mood-for="post"><img src={asset('locations/market.jpg')} alt="" loading="lazy" decoding="async" /></div>
     <ManageTop crumbs={[{ label: 'Locations', href: `${base}/locations/` }, { label: location.name }]} viewer={viewer} />
@@ -74,7 +75,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
           <h1 class="mg-h1">{location.name}</h1>
         </div>
       )}
-      {description.length > 0 ? <div class="mg-lede loc-lede">{description.map((p) => <p>{p}</p>)}</div> : <p class="mg-lede">{gm ? 'Nothing has been written about this place yet. The pen is at the foot of the page.' : 'Nothing has been written about this place yet.'}</p>}
+      {location.description.trim() ? <Markdown class="mg-lede loc-lede" text={location.description} /> : <p class="mg-lede">{gm ? 'Nothing has been written about this place yet. The pen is at the foot of the page.' : 'Nothing has been written about this place yet.'}</p>}
     </div>
 
     <nav class="loc-tabs" aria-label="The location">
@@ -104,7 +105,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
             {pinned(p) && location!.map
               ? <button type="button" class="poi-head poi-select" data-select={p.id} aria-pressed="false" aria-label={`Show ${p.name} on the map`}><span class="poi-name">{p.name}</span></button>
               : <span class="poi-head"><span class="poi-name">{p.name}</span></span>}
-            {p.description && <p class="poi-text">{p.description}</p>}
+            {p.description && <Markdown class="poi-text" text={p.description} />}
             {(!(pinned(p) && location!.map) || here.some((s) => s.pointId === p.id)) && <p class="poi-foot">
               {!(pinned(p) && location!.map) && <span>Not on the map</span>}
               {here.filter((s) => s.pointId === p.id).map((s) => <a href={`${base}/scenarios/${s.id}/`}>{s.status === 'upcoming' ? 'Upcoming here' : 'Fought here'}: {s.title}</a>)}
@@ -117,7 +118,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
                     <label class="mg-field">Name<input name="patch.name" required maxlength="80" value={p.name} /></label>
                     <label class="mg-field">Kind<input name="patch.kind" maxlength="40" value={p.kind} placeholder="Tavern, bridge, shrine" /></label>
                   </div>
-                  <label class="mg-field">Description<textarea name="patch.description" maxlength="2000">{p.description}</textarea></label>
+                  <label class="mg-field">Description<textarea name="patch.description" data-markdown maxlength="2000">{p.description}</textarea></label>
                   {location!.map && <LocationMap location={location!} picker marker={pinned(p) ? { x: p.x, y: p.y } : null} markerLabel={p.name} caption="Tap the map where it stands." />}
                   <div class="loc-spot">
                     <label class="mg-field">Across<input name="patch.x" type="number" min="0" max="100" step="0.1" inputmode="decimal" data-nullable data-x-input value={p.x ?? ''} placeholder="%" /></label>
@@ -270,7 +271,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
               <label class="mg-field">Name<input name="patch.name" required maxlength="80" value={location.name} /><small>Its id, {location.id}, stays whatever the name becomes.</small></label>
               <label class="mg-field">Region<input name="patch.region" maxlength="80" value={location.region} placeholder="Ostermark" /></label>
             </div>
-            <label class="mg-field">Description<textarea name="patch.description" maxlength="8000" class="tall">{location.description}</textarea><small>What the place is, who holds it, what the warbands want there. A blank line starts a new paragraph.</small></label>
+            <label class="mg-field">Description<textarea name="patch.description" data-markdown maxlength="8000" class="tall">{location.description}</textarea><small>What the place is, who holds it, what the warbands want there. A blank line starts a new paragraph.</small></label>
             <div class="mg-actions end"><button type="submit" class="mg-btn">Save the place</button></div>
           </form>
         </details>
@@ -306,7 +307,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
               <label class="mg-field">Name<input name="point.name" required maxlength="80" placeholder="The Cracked Flagon" /></label>
               <label class="mg-field">Kind<input name="point.kind" maxlength="40" placeholder="Tavern, bridge, shrine" /></label>
             </div>
-            <label class="mg-field">Description<textarea name="point.description" maxlength="2000" placeholder="What it is and why it matters, in two or three sentences. Hint at its plots; never tell them."></textarea></label>
+            <label class="mg-field">Description<textarea name="point.description" data-markdown maxlength="2000" placeholder="What it is and why it matters, in two or three sentences. Hint at its plots; never tell them."></textarea></label>
             {location.map ? <LocationMap location={location} picker caption="Tap the map where it stands, or leave it unmarked for a place the map does not show." /> : <p class="mg-note">With no map, the place is listed and not pinned. Its position can be set once a map is uploaded.</p>}
             <div class="loc-spot">
               <label class="mg-field">Across<input name="point.x" type="number" min="0" max="100" step="0.1" inputmode="decimal" data-nullable data-x-input placeholder="%" /></label>

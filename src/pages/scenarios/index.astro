@@ -5,6 +5,7 @@ import ManageTop from '../../components/ManageTop.astro';
 import WarbandLabel from '../../components/WarbandLabel.astro';
 import '../../styles/manage.css';
 import { base } from '../../lib/site';
+import { markdownText } from '../../lib/markdown';
 import { formatImperial, imperialForDate } from '../../lib/calendar';
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm } from '../../server/roles';
@@ -55,7 +56,7 @@ const today = localDate();
               <span class="mg-date">{imperialOf(s.playedOn)}</span>
               <span class="mg-real">{realOf(s.playedOn)}{s.playedOn < today ? ' · not yet marked played' : ''}</span>
               {s.warbands.length > 0 ? <span class="mg-who">{s.warbands.map((w) => <span><WarbandLabel warband={warbandOf(w.warbandId)} fallback={w.warbandId} /></span>)}</span> : <p>No warbands named yet.</p>}
-              {summaryOf(s) && <p>{summaryOf(s).slice(0, 180)}{summaryOf(s).length > 180 ? '…' : ''}</p>}
+              {summaryOf(s) && <p>{markdownText(summaryOf(s), 180)}</p>}
             </a>
           ))}
         </div>
@@ -76,8 +77,8 @@ const today = localDate();
             <div class="mg-checks">{warbands.map((w) => <label class="mg-field check"><input type="checkbox" name="warbandIds" value={w.id} data-array /> {w.name} <span class="mg-muted">({w.type})</span></label>)}</div>
             {warbands.length === 0 && <p class="mg-note">No warbands are registered yet.</p>}
           </fieldset>
-          <label class="mg-field">Custom and special rules<textarea name="customRules" maxlength="8000" placeholder="House rules, the special-rule roll, what the objective buildings are, how long it lasts."></textarea></label>
-          <label class="mg-field">Prologue<textarea name="prologue" maxlength="8000" class="tall" placeholder="Where the fight is, what brought the warbands there, what is at stake. Neutral, past tense, as the archivist writes."></textarea></label>
+          <label class="mg-field">Custom and special rules<textarea name="customRules" data-markdown maxlength="8000" placeholder="House rules, the special-rule roll, what the objective buildings are, how long it lasts."></textarea></label>
+          <label class="mg-field">Prologue<textarea name="prologue" data-markdown maxlength="8000" class="tall" placeholder="Where the fight is, what brought the warbands there, what is at stake. Neutral, past tense, as the archivist writes."></textarea></label>
           <label class="mg-field check"><input type="checkbox" name="prologueAsSummary" checked /> Print the prologue under the title until the game is played</label>
           <div class="mg-actions end"><button type="submit" class="mg-btn">Announce the scenario</button></div>
         </form>
@@ -94,7 +95,7 @@ const today = localDate();
               <h3>{s.title}</h3>
               <span class="mg-date">{imperialOf(s.playedOn)}</span>
               <span class="mg-who">{s.warbands.map((w) => <span><WarbandLabel warband={warbandOf(w.warbandId)} fallback={w.warbandId} />{w.result ? ` — ${resultLabel[w.result].toLowerCase()}` : ''}</span>)}</span>
-              {summaryOf(s) && <p>{summaryOf(s).slice(0, 220)}{summaryOf(s).length > 220 ? '…' : ''}</p>}
+              {summaryOf(s) && <p>{markdownText(summaryOf(s), 220)}</p>}
             </a>
           ))}
         </div>

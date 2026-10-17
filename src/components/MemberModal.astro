@@ -5,6 +5,7 @@ import type { MemberNights } from '../curfew/story';
 import Icon from './Icon.astro';
 import WarriorStory from './WarriorStory.astro';
 import Portrait from './Portrait.astro';
+import Markdown from './Markdown.astro';
 import { asset, base } from '../lib/site';
 
 interface Props {
@@ -93,7 +94,7 @@ const statNames = {
             {m.lore.trim() && (
               <>
                 <h4>Tale</h4>
-                <p class="profile-lore">{m.lore}</p>
+                <Markdown class="profile-lore" text={m.lore} />
               </>
             )}
             <p class="profile-manage"><a href={`${base}/warbands/${wb.id}/#${m.id}`}>The full record, and the keeper's pen</a></p>

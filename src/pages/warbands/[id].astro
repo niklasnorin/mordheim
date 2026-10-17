@@ -10,16 +10,18 @@ import WarriorStory from '../../components/WarriorStory.astro';
 import WarbandChronicle from '../../components/WarbandChronicle.astro';
 import StoryChapters from '../../components/StoryChapters.astro';
 import Portrait from '../../components/Portrait.astro';
+import Markdown from '../../components/Markdown.astro';
 import '../../styles/manage.css';
 import '../../styles/portrait.css';
 import { asset, base } from '../../lib/site';
+import { markdownText } from '../../lib/markdown';
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm, listUsers } from '../../server/roles';
 import { getWarband, listWarbands } from '../../server/campaign/roster';
 import { listScenarios, memberStories, type MemberChapter } from '../../server/campaign/scenarios';
 import { curfewStory, todayFor } from '../../server/curfew/service';
 import { primeContent } from '../../server/content/curfew';
-import { STAT_KEYS, STAT_NAMES, paragraphsOf, type Scenario, type StoryChapter, type Warband } from '../../campaign/model';
+import { STAT_KEYS, STAT_NAMES, type Scenario, type StoryChapter, type Warband } from '../../campaign/model';
 import { listChapters } from '../../server/campaign/chapters';
 import type { MemberNights } from '../../curfew/story';
 
@@ -54,10 +56,10 @@ const canEdit = owner || gm;
 const mayClaim = !!viewer && !!warband && !warband.ownerId;
 // The keeper's business sits at the foot of the page, under the roll and the chronicle; the links at the top reach it.
 const hasPen = canEdit || mayClaim;
-const overview = paragraphsOf(warband?.lore ?? '');
+const overview = warband?.lore.trim() ?? '';
 ---
 
-<Base title={warband ? `${warband.name} — Mordheim` : 'No such warband — Mordheim'} description={warband?.lore.slice(0, 160)}>
+<Base title={warband ? `${warband.name} — Mordheim` : 'No such warband — Mordheim'} description={warband ? markdownText(warband.lore, 160) : undefined}>
   <main class="mg mg-page" id="main-content" data-base={base}>
     <ManageTop crumbs={[{ label: 'Warbands', href: `${base}/warbands/` }, { label: warband?.name ?? 'Unknown' }]} viewer={viewer} />
 
@@ -85,7 +87,7 @@ const overview = paragraphsOf(warband?.lore ?? '');
         <section class="mg-section wb-pane" id="overview" data-pane>
           <div class="mg-section-head"><h2 class="mg-h2">Warband overview</h2><span class="mg-muted">For the other players: who they are and what they want.</span></div>
           {overview.length > 0
-            ? <div class="wb-overview">{overview.map((p) => <p>{p}</p>)}</div>
+            ? <Markdown class="wb-overview" text={warband.lore} />
             : <p class="mg-empty">{canEdit ? 'No overview yet. Write a paragraph the other players can read, in the keeper’s pen.' : 'No overview has been written yet.'}</p>}
           {canEdit && <div class="mg-actions"><a class="mg-btn ghost" href="#record">{overview.length > 0 ? 'Change the overview' : 'Write the overview'}</a></div>}
         </section>
@@ -138,7 +140,7 @@ const overview = paragraphsOf(warband?.lore ?? '');
                         </table>
                         {m.skills.length > 0 && <><h4 class="mg-h3">Skills &amp; special rules</h4><ul class="mg-list">{m.skills.map((x) => <li>{x}</li>)}</ul></>}
                         {m.injuries.length > 0 && <><h4 class="mg-h3">Old wounds</h4><ul class="mg-list">{m.injuries.map((x) => <li>{x}</li>)}</ul></>}
-                        {m.lore.trim() && <><h4 class="mg-h3">Tale</h4><p class="mg-lede">{m.lore}</p></>}
+                        {m.lore.trim() && <><h4 class="mg-h3">Tale</h4><Markdown class="mg-lede" text={m.lore} /></>}
                         <WarriorStory member={m} chapters={chapters} nights={nights[m.id]} warbands={roster} />
                         {canEdit && (
                           <details class="mg-editor">
@@ -173,7 +175,7 @@ const overview = paragraphsOf(warband?.lore ?? '');
                               </fieldset>
                               <label class="mg-field">Skills &amp; special rules<textarea name="patch.skills" data-list>{m.skills.join('\n')}</textarea><small>One per line. Prayers and spells go here too. Weapons and gear are not tracked.</small></label>
                               <label class="mg-field">Old wounds<textarea name="patch.injuries" data-list>{m.injuries.join('\n')}</textarea><small>One per line, as rolled on the serious injury table.</small></label>
-                              <label class="mg-field">Tale<textarea name="patch.lore" maxlength="4000">{m.lore}</textarea></label>
+                              <label class="mg-field">Tale<textarea name="patch.lore" data-markdown maxlength="4000">{m.lore}</textarea></label>
                               <label class="mg-field check"><input type="checkbox" name="patch.dead" checked={m.dead} /> Fallen</label>
                               <div class="mg-two">
                                 <label class="mg-field">Laid to rest on<input name="patch.death.date" maxlength="80" value={m.death?.date ?? ''} placeholder="Marktag, 5th of Pflugzeit, 2004 IC" /></label>
@@ -209,7 +211,7 @@ const overview = paragraphsOf(warband?.lore ?? '');
                   <div class="mg-stats">{STAT_KEYS.map((k) => <label>{k}<input name={`member.stats.${k}`} type="number" min="0" max="10" value={{ M: 4, WS: 3, BS: 3, S: 3, T: 3, W: 1, I: 3, A: 1, Ld: 7 }[k]} inputmode="numeric" aria-label={STAT_NAMES[k]} /></label>)}</div>
                 </fieldset>
                 <label class="mg-field">Skills &amp; special rules<textarea name="member.skills" data-list></textarea><small>One per line.</small></label>
-                <label class="mg-field">Tale<textarea name="member.lore" maxlength="4000" placeholder="Two to four sentences: who they are through habit, and one physical or historical detail."></textarea></label>
+                <label class="mg-field">Tale<textarea name="member.lore" data-markdown maxlength="4000" placeholder="Two to four sentences: who they are through habit, and one physical or historical detail."></textarea></label>
                 <div class="mg-actions end"><button type="submit" class="mg-btn">Enter them on the roll</button></div>
               </form>
             </details>
@@ -239,7 +241,7 @@ const overview = paragraphsOf(warband?.lore ?? '');
                     <label class="mg-field">Name<input name="patch.name" required maxlength="80" value={warband.name} /></label>
                     <label class="mg-field">Kind<input name="patch.type" required maxlength="60" value={warband.type} /></label>
                   </div>
-                  <label class="mg-field">Warband overview<textarea name="patch.lore" maxlength="4000" class="tall">{warband.lore}</textarea><small>A paragraph for the other players: where they are from, what drove them to the city, what they want. No stats, no rules. It is what the home page shows. Their full story is written chapter by chapter under Their story.</small></label>
+                  <label class="mg-field">Warband overview<textarea name="patch.lore" data-markdown maxlength="4000" class="tall">{warband.lore}</textarea><small>A paragraph for the other players: where they are from, what drove them to the city, what they want. No stats, no rules. It is what the home page shows. Their full story is written chapter by chapter under Their story.</small></label>
                   <p class="mg-note">Battles and victories are counted from the recorded scenarios.</p>
                   {gm && (
                     <div class="mg-two">
@@ -297,8 +299,8 @@ const overview = paragraphsOf(warband?.lore ?? '');
   @media (max-width: 640px) { .wb-tabs { padding-right: 3.5rem; } }
   .wb-pane { margin-top: 1.6rem; scroll-margin-top: 4rem; }
   .wb-overview { max-width: 68ch; }
-  .wb-overview p { color: var(--ink-dim); font-style: italic; line-height: 1.8; }
-  .wb-overview p + p { margin-top: 1rem; }
+  .wb-overview { color: var(--ink-dim); font-style: italic; line-height: 1.8; }
+  .wb-overview :global(p + p) { margin-top: 1rem; }
   .wb-hint { margin: -.25rem 0 .75rem; }
   /* the add drawer reads as a row of the roll waiting to be filled */
   .wb-add { margin-top: .5rem; border-style: dashed; border-color: var(--gold-dim); background: transparent; }

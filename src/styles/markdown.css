@@ -1,0 +1,28 @@
+.markdown { min-width: 0; overflow-wrap: anywhere; text-transform: none; letter-spacing: normal; }
+.markdown > :where(p, ul, ol, blockquote, pre, hr) { margin-block: 0 1em; }
+.markdown > :last-child { margin-bottom: 0; }
+.markdown :where(ul, ol) { padding-inline-start: 1.5em; }
+.markdown ul { list-style: disc; }
+.markdown ol { list-style: decimal; }
+.markdown li + li { margin-top: .25em; }
+.markdown :where(h1, h2, h3, h4, h5, h6) { font-family: Georgia, 'Times New Roman', serif; font-weight: 600; line-height: 1.3; color: inherit; margin-block: 1.2em .5em; text-align: start; letter-spacing: normal; }
+.markdown h1 { font-size: 1.6em; }
+.markdown h2 { font-size: 1.4em; }
+.markdown h3 { font-size: 1.2em; }
+.markdown :where(h4, h5, h6) { font-size: 1em; }
+.markdown > :first-child { margin-top: 0; }
+.markdown a { color: inherit; text-decoration: underline; text-underline-offset: .2em; }
+.markdown a:hover { text-decoration-thickness: 2px; }
+.markdown blockquote { border-inline-start: 3px solid currentColor; padding-inline-start: 1em; font-style: italic; }
+.markdown pre { overflow-x: auto; padding: .8em 1em; border: 1px solid currentColor; white-space: pre; }
+.markdown code { font-family: ui-monospace, monospace; font-size: .85em; }
+.markdown :not(pre) > code { padding: .1em .25em; background: #8882; }
+.markdown img { max-width: 100%; height: auto; }
+.markdown hr { border: 0; border-top: 1px solid currentColor; opacity: .4; }
+
+.md-field { display: grid; gap: .4rem; min-width: 0; }
+.md-field:has(> [hidden]) { display: none; }
+.md-tools { min-width: 0; }
+.md-help { display: block; font: var(--text-meta)/1.6 var(--font-utility); color: var(--ink-dim); text-transform: none; letter-spacing: normal; }
+.md-preview > summary { cursor: pointer; color: var(--gold); font: var(--text-ui)/1.5 var(--font-utility); min-height: var(--control-size); display: flex; align-items: center; text-transform: none; letter-spacing: normal; }
+.md-preview > .markdown { padding: .8rem 1rem; border: 1px solid var(--border); color: var(--ink); font: var(--text-body)/1.8 'IM Fell English', Georgia, serif; }

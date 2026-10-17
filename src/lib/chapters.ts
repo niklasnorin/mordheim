@@ -6,6 +6,7 @@
  * middle, at a width in per cent of the column or in pixels. Saving reloads the page on the chapter.
  */
 import { ensureToast, postApi } from './manage';
+import { wireMarkdownField } from './markdown-editor';
 import { IMAGE_SIZE, type ChapterBlock, type ChapterImage, type ImageAlign, type ImageUnit } from '../campaign/model';
 
 interface Draft { id?: number; title: string; blocks: ChapterBlock[] }
@@ -91,7 +92,9 @@ export function wireChapterEditors(root: HTMLElement, base: string): void {
         const area = h('textarea', { class: 'ce-text', rows: '8', maxlength: '20000', placeholder: 'Leave a blank line between paragraphs. The first letter of the chapter is drawn large.', 'aria-label': 'Prose' });
         area.value = b.text;
         area.oninput = () => { b.text = area.value; };
-        return h('li', { class: 'ce-block' }, tools(i, 'Prose'), area);
+        const card = h('li', { class: 'ce-block' }, tools(i, 'Prose'), area);
+        wireMarkdownField(area);
+        return card;
       }
       return h('li', { class: 'ce-block ce-image' }, tools(i, 'Picture'), imageFields(b, i));
     }
