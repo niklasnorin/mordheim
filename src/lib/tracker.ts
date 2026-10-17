@@ -187,7 +187,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
         )),
       ) : null;
       // and the order of the round, a tap at a time: who starts, then who follows; a tap on a placed warband undoes from there
-      const order = turnOrder(s), chosen = placed(s), complete = orderComplete(s), needOrder = s.warbands.length > 1 && !complete;
+      const chosen = placed(s), complete = orderComplete(s), needOrder = s.warbands.length > 1 && !complete;
       const ordinal = (n: number) => ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'][n] ?? `${n + 1}th`;
       const starter = s.warbands.length > 1 ? h('div', { class: 'tk-side-pick', role: 'group', 'aria-label': s.warbands.length > 2 ? 'The order of play' : 'Who starts' },
         h('div', { class: 'tk-turn-label' }, s.warbands.length > 2 ? 'The order of play' : 'Who starts'),
@@ -198,7 +198,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
             ? h('button', { type: 'button', class: 'tk-side-btn', 'data-pick-order': w.warbandId, 'aria-pressed': String(at >= 0), 'aria-label': `${warbandName(w.warbandId)}${at >= 0 ? `, ${ordinal(at)}; tap to undo from here` : ', tap to place next'}` }, ...label)
             : h('span', { class: 'tk-side-btn', 'data-pressed': String(at >= 0) }, ...label);
         })),
-        h('p', { class: 'tk-turn-note' }, complete ? `${order.map(warbandName).join(', then ')}; so each round.` : s.warbands.length > 2 ? 'Tap them in the order they play; a tap on one placed undoes it and those after.' : 'Tap the warband that starts; the other follows.'),
+        complete ? null : h('p', { class: 'tk-turn-note tk-order-hint' }, s.warbands.length > 2 ? 'Tap them in the order they play; a tap on one placed undoes from there.' : 'Tap the warband that starts.'),
       ) : null;
       const wanting = unsided.length ? 'Choose the sides to begin' : needOrder ? (s.warbands.length > 2 ? 'Set the order to begin' : 'Choose who starts to begin') : 'Begin: turn 1';
       put(turnBox,
