@@ -28,7 +28,10 @@ html.tc-open, html.tc-open body { overflow: hidden; }
 .tc-note { color: var(--ink-dim); font-style: italic; font-size: var(--text-ui); text-align: center; padding: .4rem 1rem .8rem; margin: 0; }
 
 /* the hand: three places, a card in each or an empty one waiting for the next turn */
-.tc-hand { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; padding: .4rem 1rem .4rem; align-items: end; }
+.tc-hand { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; padding: .6rem 1rem .4rem; align-items: start; }
+/* a hand, fanned: the outer cards lean out a few degrees from the bottom edge, the captions stay level */
+.tc-hand > :nth-child(1) .tc-card, .tc-hand > .tc-slot:nth-child(1) { transform: rotate(-4deg); transform-origin: 50% 110%; }
+.tc-hand > :nth-child(3) .tc-card, .tc-hand > .tc-slot:nth-child(3) { transform: rotate(4deg); transform-origin: 50% 110%; }
 .tc-held { background: none; border: 0; padding: 0; display: grid; gap: .4rem; justify-items: center; cursor: pointer; touch-action: manipulation; color: inherit; min-width: 0; }
 .tc-held:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
 .tc-caption { display: grid; gap: .25rem; justify-items: center; text-align: center; width: 100%; }

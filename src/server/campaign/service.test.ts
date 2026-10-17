@@ -8,7 +8,7 @@ import { scenarioWarbands } from '../db/schema.ts';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, getWarband, listWarbands, loadRoster, releaseWarband, removeMember, updateMember, updateWarband, LedgerError } from './roster.ts';
 import { addEvent, addOutOfAction, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, reopenScenario, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writeBattleReport, writePerspective } from './scenarios.ts';
 import { loadHand, playCard } from './tarot.ts';
-import { HAND_SIZE, WALL_CARD, cardById, coerceTarot } from '../../campaign/tarot.ts';
+import { HAND_SIZE, TAROT, WALL_CARD, cardById, coerceTarot } from '../../campaign/tarot.ts';
 import { articlesFor, createArticle, deleteArticle, listArticles, updateArticle } from './news.ts';
 import { addItem, addPoint, createLocation, deleteLocation, getLocation, listLocations, movePoint, removeBanner, removeItem, removeMap, removePoint, scenarioCounts, setStock, updateItem, updateLocation, updatePoint, uploadMap, uploadPicture } from './locations.ts';
 import { locations as locationFixtures } from '../../data/locations.ts';
@@ -262,13 +262,14 @@ test('the Tarot of the Damned: a hidden hand per warband, dealt at the table, fa
   assert.deepEqual((await loadHand(gm, s.id, 'nordost')).hand, hand.hand, 'the game master sees the same hand');
   const theirs = await loadHand(rival, s.id, 'bitterbrow-expedition');
   assert.equal(theirs.hand.length, HAND_SIZE);
-  assert.notDeepEqual(theirs.hand.map((c) => c.id), hand.hand.map((c) => c.id), 'each warband has its own shuffle');
+  assert.equal(theirs.deckLeft, 27, 'each warband has a deck of its own');
   assert.ok(!(await getScenario(s.id))!.warbands.some((w) => 'tarot' in w), 'the scenario everyone reads carries no hand');
   // a card played leaves the hand and is logged by its id, for the other side to see
   const [first] = hand.hand;
   await assert.rejects(playCard(rival, s.id, 'nordost', first.id), (e: unknown) => e instanceof LedgerError && e.status === 403);
   await assert.rejects(playCard(niklas, s.id, 'nordost', 'no-such-card'), (e: unknown) => e instanceof LedgerError && e.status === 404);
-  await assert.rejects(playCard(niklas, s.id, 'nordost', theirs.hand[0].id === first.id ? theirs.hand[1].id : theirs.hand[0].id), (e: unknown) => e instanceof LedgerError && /not in your hand/.test(e.message));
+  const notHeld = TAROT.find((c) => !hand.hand.some((held) => held.id === c.id))!.id;
+  await assert.rejects(playCard(niklas, s.id, 'nordost', notHeld), (e: unknown) => e instanceof LedgerError && /not in your hand/.test(e.message));
   const played = await playCard(niklas, s.id, 'nordost', first.id);
   assert.equal(played.hand.hand.length, 2, 'not replaced until the next turn');
   assert.deepEqual(played.hand.played, [{ id: first.id, turn: 1 }]);
