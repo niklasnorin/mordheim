@@ -129,8 +129,23 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
 
   // ───────────────────────── rendering ─────────────────────────
 
+  /** The row of warbands under the masthead: in the order they play, the one whose turn it is lit. */
+  function renderBands(s: Scenario): void {
+    const bands = root.querySelector<HTMLElement>('.tk-bands');
+    if (!bands) return;
+    const active = s.status === 'played' ? null : activeWarband(s);
+    for (const id of turnOrder(s)) {
+      const li = bands.querySelector<HTMLElement>(`li[data-warband="${CSS.escape(id)}"]`);
+      if (!li) continue;
+      li.dataset.now = String(id === active);
+      if (id === active) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+      bands.append(li);
+    }
+  }
+
   function render(): void {
     const s = state.scenario;
+    renderBands(s);
     renderTurn(s);
     renderHold(s);
     renderObjective(s);
@@ -216,7 +231,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
         h('div', { class: 'tk-turn-now' }, h('div', { class: 'tk-turn-label' }, 'Turn'), h('div', { class: 'tk-turn-number' }, String(s.turn), limit !== null ? h('small', {}, last ? `the last of ${limit}` : `of ${limit}`) : null)),
         forward,
       );
-      if (active) put(turnBox, h('ol', { class: 'tk-order tk-turn-span', 'aria-label': 'Whose turn it is' }, ...order.map((id) => h('li', { 'data-now': String(id === active), 'aria-current': id === active ? 'step' : undefined }, h('span', { class: 'tk-order-name' }, warbandName(id)), id === active ? h('small', {}, 'their turn') : null))));
+
       if (live && last) put(turnBox, h('p', { class: 'tk-turn-note tk-turn-span' }, 'The last round is played. Call the game, or play another round if time permits.'));
     }
     // the way out: calling the game is the table's, and it should never be hunted for

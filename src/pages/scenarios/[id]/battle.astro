@@ -51,11 +51,16 @@ const sub = [tally ? `counting ${tally.toLowerCase()}` : null, objective ? `hold
       <a class="tk-back" href={`${base}/scenarios/${scenario.id}/`} aria-label="Back to the scenario"><Icon name="arrow-left" size={16} /> <span>Scenario</span></a>
       <div class="tk-heading">
         <h1 class="tk-title">{scenario.title}</h1>
-        <p class="tk-sub">{scenario.rulebookScenario ?? 'Custom scenario'} · {roster.length ? roster.map((w, i) => <>{i > 0 && ' against '}<WarbandLabel warband={warbands.find((band) => band.id === w.id)} fallback={w.id} /></>) : 'No warbands named'}{sub && ` · ${sub}`}</p>
+        <p class="tk-sub">{[scenario.rulebookScenario ?? 'Custom scenario', sub].filter(Boolean).join(' · ')}</p>
       </div>
       {ready && !viewer && <a class="tk-back tk-signin" href={`${base}/signin/?next=${encodeURIComponent(Astro.url.pathname)}`}>Sign in</a>}
       <span class="tk-live" data-on="true" title="Following the table" aria-hidden="true"></span>
     </header>
+    <!-- the warbands at the table in a row, in the order they play, without their "The" to fit a phone; the client lights whose turn it is and keeps the order -->
+    <ol class="tk-bands" aria-label="The warbands at the table">
+      {roster.map((w) => { const band = warbands.find((b) => b.id === w.id); return <li data-warband={w.id} data-now="false"><WarbandLabel warband={band && { ...band, name: band.name.replace(/^The /i, '') }} fallback={w.id} /></li>; })}
+      {!roster.length && <li class="tk-bands-none">No warbands named</li>}
+    </ol>
     <noscript><p class="tk-empty">The tracker needs JavaScript. The log so far is on the scenario's page.</p></noscript>
     <script type="application/json" id="tracker-state" set:html={JSON.stringify(state).replace(/</g, '\\u003c')} />
   </main>
