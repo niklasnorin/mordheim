@@ -6,8 +6,9 @@ import { actorOf, testDatabase } from '../testdb.ts';
 import { db } from '../db/client.ts';
 import { scenarioWarbands } from '../db/schema.ts';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, getWarband, listWarbands, loadRoster, releaseWarband, removeMember, updateMember, updateWarband, LedgerError } from './roster.ts';
-import { addEvent, addOutOfAction, pickTurnOrder, stepTurn, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, reopenScenario, resetGame, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writeBattleReport, writePerspective } from './scenarios.ts';
+import { PHOTO_MAX_BYTES, PREVIEW_MAX_BYTES, addEvent, addOutOfAction, addPhoto, pickTurnOrder, stepTurn, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, reopenScenario, resetGame, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writeBattleReport, writePerspective } from './scenarios.ts';
 import { loadHand, playCard } from './tarot.ts';
+import { getImage } from './chapters.ts';
 import { HAND_SIZE, TAROT, WALL_CARD, cardById, coerceTarot } from '../../campaign/tarot.ts';
 import { articlesFor, createArticle, deleteArticle, listArticles, updateArticle } from './news.ts';
 import { addItem, addPoint, createLocation, deleteLocation, getLocation, listLocations, movePoint, removeBanner, removeItem, removeMap, removePoint, scenarioCounts, setStock, updateItem, updateLocation, updatePoint, uploadMap, uploadPicture } from './locations.ts';
@@ -826,4 +827,49 @@ test('something to hold: the game master sets it up, the table checks it, a seco
   s = await updateScenario(gm, s.id, { rulebookScenario: null, objective: { name: '', kind: 'one', when: 'round-end' } });
   assert.equal(s.objective, null, 'an empty name takes the objective away');
   await deleteScenario(gm, s.id);
+});
+
+test('pictures at the table: kept large with a small one for the log, by the turn, struck with their line and gone when the game starts over', async () => {
+  let s = await createScenario(gm, { title: 'The Snapshot', playedOn: '2026-10-17', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  // a JPEG by its first bytes, which is all the server checks; the browser has done the rest
+  const jpeg = (n: number) => ({ mime: 'image/jpeg', bytes: Uint8Array.from({ length: n }, (_, i) => [0xff, 0xd8, 0xff][i] ?? i % 251) });
+  const shot = { picture: jpeg(3_000_000), preview: jpeg(200_000) };
+  await assert.rejects(addPhoto(stranger, s.id, shot), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(addPhoto(niklas, s.id, { ...shot, picture: { mime: 'image/svg+xml', bytes: new TextEncoder().encode('<svg/>') } }), (e: unknown) => e instanceof LedgerError && e.status === 415);
+  await assert.rejects(addPhoto(niklas, s.id, { ...shot, picture: { mime: 'image/png', bytes: jpeg(100).bytes } }), (e: unknown) => e instanceof LedgerError && e.status === 415, 'the bytes must be what they claim');
+  await assert.rejects(addPhoto(niklas, s.id, { ...shot, picture: jpeg(PHOTO_MAX_BYTES + 1) }), (e: unknown) => e instanceof LedgerError && e.status === 413);
+  await assert.rejects(addPhoto(niklas, s.id, { ...shot, preview: jpeg(PREVIEW_MAX_BYTES + 1) }), (e: unknown) => e instanceof LedgerError && e.status === 413);
+  await assert.rejects(addPhoto(niklas, s.id, { ...shot, warbandId: 'welling-rune' }), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  s = await setTurn(niklas, s.id, 2);
+  s = await addPhoto(niklas, s.id, { ...shot, warbandId: 'nordost', text: '  The wall, before the charge.  ' });
+  const line = s.events.at(-1)!;
+  assert.equal(line.kind, 'photo');
+  assert.equal(line.turn, 2, 'it goes down at the turn the table is on');
+  assert.equal(line.text, 'The wall, before the charge.');
+  assert.equal(line.warbandId, 'nordost');
+  const kept = await getImage(line.photo!.image), small = await getImage(line.photo!.preview);
+  assert.equal(kept!.bytes.length, 3_000_000, 'the picture is kept as large as it came');
+  assert.equal(small!.bytes.length, 200_000);
+  assert.equal(kept!.mime, 'image/jpeg');
+  s = await addPhoto(gm, s.id, { ...shot, turn: 1 });
+  assert.deepEqual(s.events.map((e) => e.turn), [1, 2], 'the log reads in turn order');
+  assert.equal(s.events[0].warbandId, null, 'nobody’s picture is the table’s');
+  // struck: the one who took it, or a game master, and its pictures go with it
+  await assert.rejects(removeEvent(stranger, s.id, line.id), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  s = await removeEvent(niklas, s.id, line.id);
+  assert.equal(s.events.filter((e) => e.kind === 'photo').length, 1);
+  assert.equal(await getImage(line.photo!.image), undefined, 'the picture is gone');
+  assert.equal(await getImage(line.photo!.preview), undefined);
+  // the game called, the table may still put a picture in the report; started over, every picture goes
+  const other = s.events[0].photo!;
+  s = await resetGame(gm, s.id);
+  assert.equal(s.events.length, 0);
+  assert.equal(await getImage(other.image), undefined, 'starting over takes the pictures');
+  s = await markPlayed(gm, s.id, [{ warbandId: 'nordost', result: 'draw' }, { warbandId: 'bitterbrow-expedition', result: 'draw' }]);
+  s = await addPhoto(niklas, s.id, shot);
+  assert.equal(s.events.at(-1)!.turn, 1, 'a game never begun takes turn 1');
+  const last = s.events.at(-1)!.photo!;
+  await reopenScenario(gm, s.id);
+  await deleteScenario(gm, s.id);
+  assert.equal(await getImage(last.image), undefined, 'a scenario takes its pictures with it');
 });

@@ -120,6 +120,13 @@
       "when": 1792225480381,
       "tag": "0016_turn-order",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792226680516,
+      "tag": "0017_battle-photos",
+      "breakpoints": true
     }
   ]
 }

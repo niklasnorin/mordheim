@@ -1,5 +1,5 @@
 /**
- * A picture from a warband's story, served from the database. An id never changes what it points at, so the
+ * A picture kept on the site (a story's, a map, a portrait, one taken at the table), served from the database. An id never changes what it points at, so the
  * answer is cached for a year; the headers keep a browser from reading the bytes as anything but the image they are.
  */
 import type { APIRoute } from 'astro';

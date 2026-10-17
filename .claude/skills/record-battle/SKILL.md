@@ -11,7 +11,7 @@ The record lives in the database and is written on the site: a game master at `/
 
 ## 1. Gather what was recorded, and only that
 
-If the table used the **battle tracker** (`/scenarios/<id>/battle/`, opened from the scenario page during the game), much of this is already in the record: the turn the game ran to, the tally per warband, the out-of-action results with their turns, and the notes and scores logged turn by turn. The scenario page prints it under **Turn by turn**; treat it as the table's own account. Anything the tracker did not see still comes from the players.
+If the table used the **battle tracker** (`/scenarios/<id>/battle/`, opened from the scenario page during the game), much of this is already in the record: the turn the game ran to, the tally per warband, the out-of-action results with their turns, and the notes, scores and pictures logged turn by turn. The scenario page prints it under **Turn by turn**; treat it as the table's own account. Anything the tracker did not see still comes from the players.
 
 From the players' accounts, app exports, photos or notes: the warbands that fought, the real date, the rulebook scenario and its win condition, who won and by what positions, confirmed out-of-action results, serious injuries and deaths, experience and advances, treasury totals afterwards, loot and exploration, and anything left unresolved. Where a fact was not recorded, the record says so ("was not recorded"; the rulebook field left as custom). Never infer a takedown from a hit, a bow notch or a fall. Never guess a rule from the narrative.
 

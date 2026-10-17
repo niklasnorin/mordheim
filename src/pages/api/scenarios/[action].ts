@@ -5,7 +5,7 @@
 import type { APIRoute } from 'astro';
 import { z } from 'zod';
 import { dispatch, route } from '../../../server/api';
-import { addEvent, addOutOfAction, chooseSides, pickTurnOrder, stepTurn, createScenario, deleteScenario, endTurn, setTurnLimit, markPlayed, recordCheck, removeEvent, removeOutOfAction, reopenScenario, requireScenario, resetGame, setBrought, setParticipants, setTurn, updateScenario, writeBattleReport, writePerspective } from '../../../server/campaign/scenarios';
+import { addEvent, addOutOfAction, addPhoto, chooseSides, pickTurnOrder, stepTurn, createScenario, deleteScenario, endTurn, setTurnLimit, markPlayed, recordCheck, removeEvent, removeOutOfAction, reopenScenario, requireScenario, resetGame, setBrought, setParticipants, setTurn, updateScenario, writeBattleReport, writePerspective } from '../../../server/campaign/scenarios';
 import { loadHand, playCard } from '../../../server/campaign/tarot';
 
 export const prerender = false;
@@ -22,6 +22,9 @@ const scenarioFields = {
   locationId: z.string().max(64).nullable(), pointId: z.number().int().positive().nullable(), mapX: z.number().min(0).max(100).nullable(), mapY: z.number().min(0).max(100).nullable(),
 };
 const turn = z.number().int().min(0).max(99);
+// a picture taken at the table comes as a form, the picture and its preview as files beside the fields
+const file = z.instanceof(Blob).refine((b) => b.size > 0 && b.size <= 4_500_000);
+const fileOf = async (b: Blob) => ({ mime: b.type, bytes: new Uint8Array(await b.arrayBuffer()) });
 const wrap = (p: Promise<unknown>) => p.then((scenario) => ({ scenario }));
 
 const routes = {
@@ -54,6 +57,8 @@ const routes = {
   check: route(z.object({ scenarioId: id, turn: turn.min(1), whose: z.string().max(64).nullable().optional(), held: z.record(z.string().max(64), z.number().int().min(0).max(20)) }), (i, a) => wrap(recordCheck(a, i.scenarioId, i))),
   sides: route(z.object({ scenarioId: id, sides: z.record(z.string().max(64), z.enum(['attacker', 'defender', '']).nullable()) }), (i, a) => wrap(chooseSides(a, i.scenarioId, i.sides))),
   'turn-limit': route(z.object({ scenarioId: id, turnLimit: z.number().int().min(1).max(99) }), (i, a) => wrap(setTurnLimit(a, i.scenarioId, i.turnLimit))),
+  photo: route(z.object({ scenarioId: id, turn: z.coerce.number().int().min(1).max(99).optional(), warbandId: z.string().max(64).optional(), text: z.string().max(500).optional(), picture: file, preview: file }),
+    async (i, a) => wrap(addPhoto(a, i.scenarioId, { turn: i.turn, warbandId: i.warbandId, text: i.text, picture: await fileOf(i.picture), preview: await fileOf(i.preview) }))),
   'remove-event': route(z.object({ scenarioId: id, id: z.number().int().positive() }), (i, a) => wrap(removeEvent(a, i.scenarioId, i.id))),
   // the Tarot of the Damned: a warband's hidden hand, for its keeper alone, and a card shown to the table
   hand: route(z.object({ scenarioId: id, warbandId: z.string().max(64) }), (i, a) => loadHand(a, i.scenarioId, i.warbandId).then((hand) => ({ hand }))),

@@ -139,9 +139,10 @@ export interface OutOfAction {
  * A house scenario's turn ends add two more (campaign/house.ts): `hold`, who held its objective at the end of the
  * turn (the warband, or none when nobody did), and `roll`, the die rolled at the end of the turn (in `points`).
  * A custom scenario's objective adds `control` (campaign/objective.ts): how many of it one warband held at a check.
+ * A `photo` is a picture taken at the table, with what it shows in `text`.
  */
-export type EventKind = 'note' | 'score' | 'hold' | 'roll' | 'card' | 'control';
-export const EVENT_KINDS: EventKind[] = ['note', 'score', 'hold', 'roll', 'card', 'control'];
+export type EventKind = 'note' | 'score' | 'hold' | 'roll' | 'card' | 'control' | 'photo';
+export const EVENT_KINDS: EventKind[] = ['note', 'score', 'hold', 'roll', 'card', 'control', 'photo'];
 /** The kinds anyone at the table writes as a line of their own; the others come with the end of a turn. */
 export const LOGGED_KINDS: EventKind[] = ['note', 'score'];
 
@@ -155,6 +156,8 @@ export interface ScenarioEvent {
   /** Towards the tally, or how many a warband held at a check; zero for a note. */
   points: number;
   text: string;
+  /** A photo's pictures, served at `/images/<id>`: as it was taken, and the small one the log shows. */
+  photo?: { image: string; preview: string } | null;
   authorName: string;
   createdAt: Date;
 }

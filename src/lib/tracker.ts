@@ -6,6 +6,8 @@
  * page is visible it asks the server every few seconds whether another phone has written something. Nothing is
  * updated optimistically: the server's answer is the table. A custom scenario's objective (campaign/objective.ts) is
  * checked from its own panel, a tap for one of it and a count for several, and each check is one line of the log.
+ * The camera puts a picture in the log, taken there and then or chosen from the phone's library: it is made ready
+ * here at high resolution (lib/photo.ts) and goes up as a form, the one request that is not JSON.
  */
 import { SCENARIO_RESULTS, scoresOf, tallyOf, type OutOfAction, type Scenario, type ScenarioEvent, type ScenarioResult } from '../campaign/model';
 import { SIDES, SIDE_LABEL, houseScenario, inWords, resultsOf, rollBrings, turnEnds, verdictOf } from '../campaign/house';
@@ -13,6 +15,7 @@ import { checkLabel, checksOf, describeCheck, inSentence, objectiveOf, objective
 import { cardById } from '../campaign/tarot';
 import { activeWarband, lastOfRound, orderComplete, placed, turnOrder } from '../campaign/turns';
 import { CARD_ICON, mountTarot, type TarotMount } from './tarot';
+import { preparePhoto, type Photo } from './photo';
 
 export interface TrackerRoster { id: string; name: string; members: { id: string; name: string; role: string; dead: boolean }[] }
 export interface TrackerState {
@@ -61,6 +64,8 @@ const ICON = {
   die: 'M5 5h14v14H5Zm4 4h.01M15 15h.01M12 12h.01',
   flag: 'M5 21V4m0 0h12l-2.5 4L17 12H5',
   card: CARD_ICON,
+  camera: 'M4 8h3l2-3h6l2 3h3v11H4Zm8 8.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z',
+  library: 'M4 5h16v14H4Zm0 10 4.5-4.5 4 4 2.5-2.5L20 17m-5-8h.01',
 };
 const RESULT_LABEL: Record<ScenarioResult, string> = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' };
 
@@ -71,6 +76,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
   const warbandName = (id: string | null | undefined) => state.roster.find((w) => w.id === id)?.name ?? id ?? '';
   const memberOf = (id: string) => state.roster.flatMap((w) => w.members.map((m) => ({ ...m, warbandId: w.id }))).find((m) => m.id === id);
   const memberName = (id: string) => memberOf(id)?.name ?? id;
+  const imageUrl = (id: string) => `${state.base}/images/${id}`;
   const attending = () => state.scenario.warbands.map((p) => state.roster.find((w) => w.id === p.warbandId)).filter((w): w is TrackerRoster => !!w);
 
   // ───────────────────────── talking to the server ─────────────────────────
@@ -83,6 +89,35 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       const res = await fetch(api(action), { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ scenarioId: state.scenario.id, ...body }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? 'The city did not answer. Try again.');
+      state = { ...state, scenario: data.scenario as Scenario };
+      render();
+      return true;
+    } catch (e) {
+      toast((e as Error).message);
+      return false;
+    } finally { busy = false; root.removeAttribute('aria-busy'); }
+  }
+  /** Send a form, for a picture: as `post`, but with the share of it sent so far told to `progress` as it goes up. */
+  async function upload(action: string, body: FormData, progress: (sent: number) => void): Promise<boolean> {
+    if (busy) return false;
+    busy = true; root.setAttribute('aria-busy', 'true');
+    body.set('scenarioId', state.scenario.id);
+    try {
+      const data = await new Promise<{ scenario?: Scenario; error?: string }>((ok, fail) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', api(action).href);
+        xhr.withCredentials = true;
+        xhr.responseType = 'json';
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) progress(e.loaded / e.total); };
+        xhr.onload = () => {
+          const answer = (xhr.response ?? {}) as { scenario?: Scenario; error?: string };
+          if (xhr.status === 413) fail(new Error('That picture is too large to send. Try another.'));
+          else if (xhr.status < 200 || xhr.status >= 300) fail(new Error(answer.error ?? 'The city did not answer. Try again.'));
+          else ok(answer);
+        };
+        xhr.onerror = () => fail(new Error('The picture did not reach the city. Try again.'));
+        xhr.send(body);
+      });
       state = { ...state, scenario: data.scenario as Scenario };
       render();
       return true;
@@ -115,7 +150,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
   const bar = h('nav', { class: 'tk-bar', 'aria-label': 'Log something', 'data-may': String(state.may) },
     h('div', { class: 'tk-bar-inner' },
       h('button', { type: 'button', class: 'tk-btn', 'data-open': 'out-of-action' }, svg(ICON.fallen), 'Out of action'),
-      h('button', { type: 'button', class: 'tk-btn', 'data-open': 'score' }, svg(ICON.shard), 'Score'),
+      h('button', { type: 'button', class: 'tk-btn tk-camera', 'data-open': 'photo', 'aria-label': 'A picture for the battle report', title: 'A picture for the battle report' }, svg(ICON.camera)),
       h('button', { type: 'button', class: 'tk-btn', 'data-open': 'note' }, svg(ICON.quill), 'Note'),
     ));
   const sheet = h('dialog', { class: 'tk-sheet' });
@@ -137,7 +172,6 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     renderTally(s);
     renderLog(s);
     bar.dataset.may = String(state.may);
-    bar.querySelector<HTMLButtonElement>('[data-open="score"]')!.hidden = !tallyOf(s);
     tarot?.sync(s);
   }
 
@@ -423,14 +457,18 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       // a Tarot card shown to the table: named, and held up again to read from here
       const card = cardById(e.text);
       body.append(h('div', {}, h('b', {}, warbandName(e.warbandId)), ' showed ', card ? h('button', { type: 'button', class: 'tk-card-link', 'data-show-card': card.id }, `${card.numeral}. ${card.title}`) : h('b', {}, 'a card of the Tarot')));
+    } else if (e.kind === 'photo') {
+      // the small one in the log, the picture itself a tap away
+      if (e.photo) body.append(h('a', { class: 'tk-photo', href: imageUrl(e.photo.image), target: '_blank', rel: 'noopener', 'aria-label': `The picture${e.text ? `: ${e.text}` : ''}, at full size` }, h('img', { src: imageUrl(e.photo.preview), alt: e.text || 'A picture from the table', loading: 'lazy', decoding: 'async' })));
+      if (e.text) body.append(h('div', {}, e.text));
     } else {
       body.append(h('div', {}, e.text));
     }
-    body.append(h('div', { class: 'tk-line-meta' }, e.kind === 'note' && e.warbandId ? h('span', { class: 'tk-chip' }, warbandName(e.warbandId)) : null, e.authorName ? h('span', {}, e.authorName) : null));
+    body.append(h('div', { class: 'tk-line-meta' }, (e.kind === 'note' || e.kind === 'photo') && e.warbandId ? h('span', { class: 'tk-chip' }, warbandName(e.warbandId)) : null, e.authorName ? h('span', {}, e.authorName) : null));
     return h('div', { class: 'tk-line', 'data-kind': e.kind },
-      svg(e.kind === 'score' ? ICON.shard : e.kind === 'hold' ? ICON.cart : e.kind === 'roll' ? ICON.die : e.kind === 'card' ? ICON.card : ICON.quill, 'tk-line-icon'),
+      svg(e.kind === 'score' ? ICON.shard : e.kind === 'hold' ? ICON.cart : e.kind === 'roll' ? ICON.die : e.kind === 'card' ? ICON.card : e.kind === 'photo' ? ICON.camera : ICON.quill, 'tk-line-icon'),
       body,
-      state.may ? h('button', { type: 'button', class: 'tk-strike', 'data-strike-event': String(e.id), 'aria-label': 'Strike this line' }, svg(ICON.close)) : h('span'),
+      state.may ? h('button', { type: 'button', class: 'tk-strike', 'data-strike-event': String(e.id), 'aria-label': e.kind === 'photo' ? 'Strike this picture' : 'Strike this line' }, svg(ICON.close)) : h('span'),
     );
   }
 
@@ -456,7 +494,10 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     return sel;
   };
 
-  type SheetKind = 'out-of-action' | 'score' | 'note' | 'wrap-up' | 'end-turn' | 'reset';
+  type SheetKind = 'out-of-action' | 'photo' | 'note' | 'wrap-up' | 'end-turn' | 'reset';
+  /** The picture the photo sheet has made ready, and the address its preview is shown from while the sheet is open. */
+  let photo: Photo | null = null, photoUrl = '';
+  const forgetPhoto = () => { if (photoUrl) URL.revokeObjectURL(photoUrl); photo = null; photoUrl = ''; };
   /** What the tally says, when it decides anything: the one warband ahead wins, the rest lose. Otherwise nothing is presumed. */
   function suggestedResults(s: Scenario): Record<string, ScenarioResult> {
     const out: Record<string, ScenarioResult> = {};
@@ -553,24 +594,53 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
         h('label', { class: 'tk-field' }, 'How', h('input', { name: 'detail', maxlength: '1000', placeholder: 'From the rooftop; the crossbow.' }), h('small', {}, 'Optional. Only what was seen at the table.')),
         h('div', { class: 'tk-actions' }, turnField(), h('button', { type: 'submit', class: 'tk-btn blood' }, 'Record it')),
       );
-    } else if (kind === 'score') {
-      const tally = tallyOf(state.scenario) || 'Points';
-      const count = h('input', { type: 'number', name: 'points', min: '-99', max: '99', value: '1', inputmode: 'numeric', required: true });
-      const step = (d: number) => h('button', { type: 'button', class: 'tk-btn ghost', 'aria-label': d > 0 ? 'More' : 'Fewer', 'data-step': String(d) }, svg(d > 0 ? ICON.plus : ICON.minus));
-      form.append(
-        h('div', { class: 'tk-sheet-head' }, h('h2', {}, tally), closeButton()),
-        h('div', { class: 'tk-field' }, 'Who scored', warbandChoices('warbandId')),
-        h('div', { class: 'tk-field' }, 'How many', h('div', { class: 'tk-stepper' }, step(-1), count, step(1)), h('small', {}, 'A minus takes back what was lost again.')),
-        h('label', { class: 'tk-field' }, 'How', h('input', { name: 'text', maxlength: '500', placeholder: 'Two from the fountain.' }), h('small', {}, 'Optional.')),
-        h('div', { class: 'tk-actions' }, turnField(), h('button', { type: 'submit', class: 'tk-btn' }, 'Score it')),
-      );
-      form.addEventListener('click', (e) => {
-        const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-step]');
-        if (!b) return;
-        let v = (Number(count.value) || 0) + Number(b.dataset.step);
-        if (v === 0) v += Number(b.dataset.step);
-        count.value = String(Math.max(-99, Math.min(99, v)));
+    } else if (kind === 'photo') {
+      // taken there and then, or chosen from the library; made ready here, then a line and a turn, as a note has
+      const pick = (label: string, icon: string, capture: boolean) => h('label', { class: `tk-btn big tk-pick${capture ? '' : ' ghost'}` }, svg(icon), label,
+        h('input', { type: 'file', accept: 'image/*', ...(capture ? { capture: 'environment' } : {}), 'data-photo-file': true }));
+      const picker = h('div', { class: 'tk-pick-row' }, pick('Take one', ICON.camera, true), pick('From the library', ICON.library, false));
+      const img = h('img', { alt: 'The picture as it will go in' });
+      const says = h('p', { class: 'tk-note tk-photo-says', 'aria-live': 'polite' });
+      const again = h('button', { type: 'button', class: 'tk-btn ghost', 'data-photo-again': true }, 'Choose another');
+      const shown = h('figure', { class: 'tk-photo-ready', hidden: true }, img, h('figcaption', { class: 'tk-row' }, says, again));
+      const sending = h('progress', { class: 'tk-photo-progress', max: '1', value: '0', hidden: true });
+      const submit = h('button', { type: 'submit', class: 'tk-btn', disabled: true }, svg(ICON.camera), 'Put it in the report');
+      forgetPhoto();
+      let asked = 0;
+      form.addEventListener('change', async (e) => {
+        const input = (e.target as HTMLElement).closest<HTMLInputElement>('[data-photo-file]');
+        const file = input?.files?.[0];
+        if (!input || !file) return;
+        input.value = '';
+        const mine = ++asked;
+        forgetPhoto();
+        submit.disabled = true;
+        picker.hidden = true; shown.hidden = false; img.removeAttribute('src');
+        says.textContent = 'Making it ready…';
+        try {
+          const ready = await preparePhoto(file);
+          if (mine !== asked || !sheet.open) return;
+          photo = ready; photoUrl = URL.createObjectURL(ready.preview);
+          img.src = photoUrl;
+          says.textContent = `${ready.width} × ${ready.height}, ${(ready.picture.size / 1_000_000).toFixed(1)} MB`;
+          submit.disabled = false;
+          form.querySelector<HTMLInputElement>('input[name="text"]')?.focus();
+        } catch (err) {
+          if (mine !== asked) return;
+          picker.hidden = false; shown.hidden = true;
+          toast((err as Error).message);
+        }
       });
+      again.addEventListener('click', () => { asked++; forgetPhoto(); submit.disabled = true; shown.hidden = true; picker.hidden = false; });
+      form.append(
+        h('div', { class: 'tk-sheet-head' }, h('h2', {}, 'A picture'), closeButton()),
+        picker,
+        shown,
+        h('label', { class: 'tk-field' }, 'What it shows', h('input', { name: 'text', maxlength: '500', placeholder: 'The wall, before the charge.' }), h('small', {}, 'Optional. It goes in the battle report under its turn; a tap there opens it large.')),
+        h('div', { class: 'tk-field' }, 'Whose', warbandChoices('warbandId', 'The table')),
+        sending,
+        h('div', { class: 'tk-actions' }, turnField(), submit),
+      );
     } else {
       const text = h('textarea', { name: 'text', maxlength: '500', required: true, placeholder: 'What happened, in a line.' });
       const quick = h('div', { class: 'tk-quick' });
@@ -591,9 +661,10 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     }
     sheet.append(form);
     sheet.showModal();
-    (form.querySelector('select, textarea, input:not([type=radio]):not([type=number])') as HTMLElement | null)?.focus();
+    (form.querySelector('select, textarea, input:not([type=radio]):not([type=number]):not([type=file])') as HTMLElement | null)?.focus();
   }
 
+  sheet.addEventListener('close', forgetPhoto);
   sheet.addEventListener('click', (e) => {
     if ((e.target as HTMLElement).closest('[data-close]')) { sheet.close(); return; }
     // a tap on the backdrop closes the sheet; the dialog's own box swallows the rest
@@ -627,8 +698,18 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     } else if (kind === 'out-of-action') {
       const targetId = String(data.get('targetId') ?? '');
       ok = await post('out-of-action', { attackerId: data.get('attackerId'), targetId: targetId && targetId !== '@other' ? targetId : null, target: targetId === '@other' ? data.get('target') : '', detail: data.get('detail') ?? '', turn });
-    } else if (kind === 'score') {
-      ok = await post('event', { kind: 'score', warbandId: data.get('warbandId') || null, points: Number(data.get('points')), text: data.get('text') ?? '', turn });
+    } else if (kind === 'photo') {
+      if (!photo) { toast('Take a picture, or choose one, first.'); button.disabled = false; button.removeAttribute('aria-busy'); return; }
+      const sending = form.querySelector<HTMLProgressElement>('.tk-photo-progress')!;
+      sending.hidden = false; sending.value = 0;
+      const body = new FormData();
+      body.set('turn', String(turn));
+      body.set('warbandId', String(data.get('warbandId') ?? ''));
+      body.set('text', String(data.get('text') ?? '').trim());
+      body.set('picture', photo.picture, photo.picture.type === 'image/webp' ? 'picture.webp' : 'picture.jpg');
+      body.set('preview', photo.preview, photo.preview.type === 'image/webp' ? 'preview.webp' : 'preview.jpg');
+      ok = await upload('photo', body, (sent) => { sending.value = sent; });
+      if (!ok) sending.hidden = true;
     } else {
       ok = await post('event', { kind: 'note', warbandId: data.get('warbandId') || null, text: data.get('text') ?? '', turn });
     }

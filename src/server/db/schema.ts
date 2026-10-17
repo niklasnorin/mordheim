@@ -230,10 +230,12 @@ export const warbandChapters = pgTable(
 
 /**
  * Pictures uploaded to the site, kept in the database and served at `/images/<id>`: a warband's story pictures
- * (`warband_id`), a location's map (`location_id`) and a warrior's portrait (`member_id`), one of the three. `data` is
- * base64, so it reads back the same through Neon's HTTP driver and PGlite alike; the browser shrinks a picture before
- * it is sent, so a row is a few hundred kilobytes. A story picture no chapter shows is swept a day after it was
- * uploaded; a map goes when replaced; a portrait, and the picture it was framed from, when the warrior is given another.
+ * (`warband_id`), a location's map (`location_id`), a warrior's portrait (`member_id`) and a picture taken at the table
+ * during a battle (`scenario_id`), one of the four. `data` is base64, so it reads back the same through Neon's HTTP
+ * driver and PGlite alike; the browser shrinks a picture before it is sent, so a row is a few hundred kilobytes, or a
+ * few megabytes for a battle's picture, which is kept at high resolution beside a small one for the log. A story
+ * picture no chapter shows is swept a day after it was uploaded; a map goes when replaced; a portrait, and the picture
+ * it was framed from, when the warrior is given another; a battle's pictures with their line of the log.
  */
 export const images = pgTable(
   'images',
@@ -242,13 +244,14 @@ export const images = pgTable(
     warbandId: text('warband_id').references(() => warbands.id, { onDelete: 'cascade' }),
     locationId: text('location_id').references(() => locations.id, { onDelete: 'cascade' }),
     memberId: text('member_id').references(() => members.id, { onDelete: 'cascade' }),
+    scenarioId: text('scenario_id').references(() => scenarios.id, { onDelete: 'cascade' }),
     mime: text('mime').notNull(),
     data: text('data').notNull(),
     bytes: integer('bytes').notNull(),
     uploadedBy: text('uploaded_by'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('images_warband_idx').on(t.warbandId), index('images_member_idx').on(t.memberId)],
+  (t) => [index('images_warband_idx').on(t.warbandId), index('images_member_idx').on(t.memberId), index('images_scenario_idx').on(t.scenarioId)],
 );
 
 /**
@@ -356,9 +359,10 @@ export const scenarioOutOfAction = pgTable(
 /**
  * The battle tracker's log: what the table noted turn by turn while the game was played. A `note` is anything
  * worth remembering, a `score` counts towards the scenario's tally for one warband, a `card` is a Tarot card
- * shown to the table (its id in `text`), and a `control` is how many of a custom scenario's objective one warband
- * held at a check (the check's key in `text`, campaign/objective.ts). Out-of-action results are not here: they go straight into
- * `scenario_out_of_action` with their turn.
+ * shown to the table (its id in `text`), a `control` is how many of a custom scenario's objective one warband
+ * held at a check (the check's key in `text`, campaign/objective.ts), and a `photo` is a picture taken at the table
+ * (`image_id` as it was taken, `preview_id` the small one the log shows, what it shows in `text`). Out-of-action
+ * results are not here: they go straight into `scenario_out_of_action` with their turn.
  */
 export const scenarioEvents = pgTable(
   'scenario_events',
@@ -366,10 +370,12 @@ export const scenarioEvents = pgTable(
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
     scenarioId: text('scenario_id').notNull().references(() => scenarios.id, { onDelete: 'cascade' }),
     turn: integer('turn').notNull(),
-    kind: text('kind', { enum: ['note', 'score', 'hold', 'roll', 'card', 'control'] }).notNull(),
+    kind: text('kind', { enum: ['note', 'score', 'hold', 'roll', 'card', 'control', 'photo'] }).notNull(),
     warbandId: text('warband_id'),
     points: integer('points').notNull().default(0),
     text: text('text').notNull().default(''),
+    imageId: text('image_id').references(() => images.id, { onDelete: 'cascade' }),
+    previewId: text('preview_id').references(() => images.id, { onDelete: 'cascade' }),
     authorId: text('author_id'),
     authorName: text('author_name').notNull().default(''),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

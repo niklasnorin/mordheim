@@ -1,7 +1,7 @@
 ---
 /**
- * The battle turn by turn, as the table logged it in the tracker: who struck whom, who scored, who held what, what happened.
- * Read-only here; the tracker at /scenarios/<id>/battle/ is where it is written. Out-of-action results written up
+ * The battle turn by turn, as the table logged it in the tracker: who struck whom, who scored, who held what, what happened,
+ * and the pictures taken at the table, each shown small and opening as large as it was taken. Read-only here; the tracker at /scenarios/<id>/battle/ is where it is written. Out-of-action results written up
  * afterwards, with no turn, close the list.
  */
 import { scoresOf, tallyOf, type Scenario, type Warband } from '../campaign/model';
@@ -9,6 +9,7 @@ import { SIDE_LABEL, houseScenario, rollBrings } from '../campaign/house';
 import { TAROT_KIND_LABEL, cardById } from '../campaign/tarot';
 import { checksOf, describeCheck, objectiveOf, objectiveScores } from '../campaign/objective';
 import WarbandLabel from './WarbandLabel.astro';
+import { base } from '../lib/site';
 
 interface Props { scenario: Scenario; warbands: Warband[] }
 const { scenario, warbands } = Astro.props;
@@ -28,7 +29,7 @@ const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as co
 const winners = scenario.warbands.filter((w) => w.result === 'victory').map((w) => nameOf(w.warbandId));
 const ending = winners.length ? `Victory to ${winners.join(' and ')}` : scenario.warbands.some((w) => w.result) ? 'A draw' : 'No result recorded';
 
-type Line = { turn: number | null; at: number; kind: 'out-of-action' | 'note' | 'score' | 'hold' | 'roll' | 'card' | 'control'; html: { lead: string; strong?: string; rest?: string }; who?: string; by?: string };
+type Line = { turn: number | null; at: number; kind: 'out-of-action' | 'note' | 'score' | 'hold' | 'roll' | 'card' | 'control' | 'photo'; html: { lead: string; strong?: string; rest?: string }; who?: string; by?: string; photo?: { image: string; preview: string } | null };
 const lines: Line[] = [
   ...scenario.outOfAction.map((o): Line => ({ turn: o.turn ?? null, at: o.id, kind: 'out-of-action', html: { lead: `${memberOf(o.attackerId)?.name ?? o.attackerId} put `, strong: o.target, rest: ` out of action${o.detail ? `: ${o.detail}` : ''}` }, who: memberOf(o.attackerId)?.warbandName })),
   // a check of the objective is one line, however many warbands it counted
@@ -41,6 +42,8 @@ const lines: Line[] = [
     ? ({ turn: e.turn, at: e.id, kind: 'card', html: { lead: `${nameOf(e.warbandId)} showed `, strong: cardById(e.text) ? `${cardById(e.text)!.numeral}. ${cardById(e.text)!.title}` : 'a card of the Tarot', rest: cardById(e.text) ? `, ${TAROT_KIND_LABEL[cardById(e.text)!.kind].toLowerCase()}` : '' }, by: e.authorName })
     : e.kind === 'score'
     ? ({ turn: e.turn, at: e.id, kind: 'score', html: { lead: `${nameOf(e.warbandId)} `, strong: `${e.points > 0 ? '+' : '−'}${Math.abs(e.points)} ${tally || 'points'}`, rest: e.text ? ` — ${e.text}` : '' }, by: e.authorName })
+    : e.kind === 'photo'
+    ? ({ turn: e.turn, at: e.id, kind: 'photo', html: { lead: e.text }, photo: e.photo, who: e.warbandId ? nameOf(e.warbandId) : undefined, by: e.authorName })
     : ({ turn: e.turn, at: e.id, kind: 'note', html: { lead: e.text }, who: e.warbandId ? nameOf(e.warbandId) : undefined, by: e.authorName })),
 ];
 // oldest turn first here: the archive reads forwards
@@ -61,8 +64,12 @@ const turns = [...new Set(lines.map((l) => l.turn))].sort((a, b) => (a ?? 1e9) -
         <ol>
           {lines.filter((l) => l.turn === t).sort((a, b) => a.at - b.at).map((l) => (
             <li class:list={['turn-log-line', l.kind]}>
-              <span class="turn-log-mark" aria-hidden="true">{l.kind === 'out-of-action' ? '†' : l.kind === 'score' ? '◆' : l.kind === 'hold' ? '▣' : l.kind === 'roll' ? '⚄' : l.kind === 'card' ? '✦' : l.kind === 'control' ? '⚑' : '·'}</span>
-              <span>{l.html.lead}{l.html.strong && <b>{l.html.strong}</b>}{l.html.rest}{(l.who || l.by) && <small class="turn-log-meta">{[l.who, l.by].filter(Boolean).join(' · ')}</small>}</span>
+              <span class="turn-log-mark" aria-hidden="true">{l.kind === 'out-of-action' ? '†' : l.kind === 'score' ? '◆' : l.kind === 'hold' ? '▣' : l.kind === 'roll' ? '⚄' : l.kind === 'card' ? '✦' : l.kind === 'control' ? '⚑' : l.kind === 'photo' ? '◉' : '·'}</span>
+              <span>{l.photo && (
+                <a class="turn-log-photo" href={`${base}/images/${l.photo.image}`} target="_blank" rel="noopener" aria-label={`The picture${l.html.lead ? `: ${l.html.lead}` : ''}, at full size`}>
+                  <img src={`${base}/images/${l.photo.preview}`} alt={l.html.lead || 'A picture from the table'} loading="lazy" decoding="async" />
+                </a>
+              )}{l.html.lead}{l.html.strong && <b>{l.html.strong}</b>}{l.html.rest}{(l.who || l.by) && <small class="turn-log-meta">{[l.who, l.by].filter(Boolean).join(' · ')}</small>}</span>
             </li>
           ))}
         </ol>
@@ -107,6 +114,10 @@ const turns = [...new Set(lines.map((l) => l.turn))].sort((a, b) => (a ?? 1e9) -
   .turn-log-line.score .turn-log-mark { color: var(--gold); }
   .turn-log-line.card .turn-log-mark { color: var(--parchment); }
   .turn-log-line.control .turn-log-mark { color: var(--green-wyrd); }
+  .turn-log-line.photo .turn-log-mark { color: var(--parchment); }
+  .turn-log-photo { display: block; width: fit-content; max-width: 100%; margin: .2rem 0 .4rem; border: 1px solid var(--border); background: var(--bg-panel); }
+  .turn-log-photo:hover, .turn-log-photo:focus-visible { border-color: var(--gold-dim); }
+  .turn-log-photo img { display: block; max-width: 100%; max-height: 28rem; height: auto; }
   .turn-log-meta { display: block; color: var(--ink-dim); font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; margin-top: .15rem; }
   .turn-log-ending { margin-top: 2rem; padding: 1.5rem 1.25rem; text-align: center; border: 1px solid var(--gold-dim); background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); }
   .turn-log-ending .voice-label { margin-bottom: .5rem; }

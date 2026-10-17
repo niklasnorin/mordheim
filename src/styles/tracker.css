@@ -138,6 +138,11 @@
 .tk-card-link { background: none; border: 0; padding: 0; color: var(--gold); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-decoration-color: var(--gold-dim); text-underline-offset: .15em; }
 .tk-card-link:hover { color: var(--parchment); }
 .tk-line[data-kind='roll'] .tk-line-icon { color: var(--ink-dim); }
+/* a picture from the table: the small one in the log, the picture itself a tap away */
+.tk-line[data-kind='photo'] .tk-line-icon { color: var(--parchment); }
+.tk-photo { display: block; width: fit-content; max-width: 100%; margin: .15rem 0 .35rem; border: 1px solid var(--border); background: #0d1210; }
+.tk-photo:hover, .tk-photo:focus-visible { border-color: var(--gold-dim); }
+.tk-photo img { display: block; max-width: 100%; max-height: 22rem; height: auto; }
 
 /* the log, latest turn first */
 .tk-log { flex: 1; padding-top: .5rem; border-top: 1px solid var(--border); }
@@ -181,6 +186,7 @@
 .tk-bar .tk-btn { flex-direction: column; gap: .2rem; padding: .5rem .3rem; min-height: 3.6rem; background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); font-size: var(--text-meta); letter-spacing: .08em; }
 .tk-bar .tk-btn[data-open='out-of-action'] { color: var(--blood-bright); border-color: #5a2323; }
 .tk-bar .tk-btn[data-open='out-of-action']:hover { border-color: var(--blood); }
+.tk-bar .tk-camera svg { width: 1.7rem; height: 1.7rem; }
 .tk-bar[data-may='false'] { display: none; }
 .tk-watching { text-align: center; color: var(--ink-dim); font-style: italic; padding: 1rem 0; }
 
@@ -209,6 +215,16 @@
 .tk-choices input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: 2px; }
 .tk-quick { display: flex; flex-wrap: wrap; gap: .4rem; }
 .tk-quick .tk-btn { min-height: 2.25rem; padding: .3rem .75rem; font-size: var(--text-meta); text-transform: none; letter-spacing: .02em; font-style: italic; }
+/* the photo sheet: two ways to a picture, each a whole button over its file input, then the picture as it will go in */
+.tk-pick-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.tk-pick { position: relative; overflow: hidden; flex-direction: column; min-height: 6.5rem; text-align: center; }
+.tk-pick svg { width: 1.9rem; height: 1.9rem; }
+.tk-pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.tk-pick:focus-within { outline: 2px solid var(--gold); outline-offset: 2px; }
+.tk-photo-ready { display: grid; gap: .5rem; margin: 0; }
+.tk-photo-ready img { display: block; width: 100%; min-height: 8rem; max-height: 42dvh; object-fit: contain; background: #0d1210; border: 1px solid var(--border); }
+.tk-photo-says { margin: 0; }
+.tk-photo-progress { width: 100%; height: .5rem; accent-color: var(--gold); }
 /* the stepper: a number between two big taps */
 .tk-stepper { display: grid; grid-template-columns: var(--control-size) 1fr var(--control-size); gap: .4rem; align-items: center; }
 .tk-stepper input { text-align: center; font: 1.4rem/1.4 var(--font-utility); background: #0d1210; color: var(--parchment); border: 1px solid var(--border); min-height: var(--control-size); width: 100%; -moz-appearance: textfield; }

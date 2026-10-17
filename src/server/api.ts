@@ -15,6 +15,18 @@ export function route<S extends z.ZodTypeAny>(schema: S, handle: Handler<S>, rol
 
 const allows = (actor: Actor, role: Role) => (role === 'admin' ? isAdmin(actor) : role === 'gm' ? isGm(actor) : true);
 
+/**
+ * The order as sent: JSON, or a form when it carries a picture too large to wrap in JSON. A form's fields are strings
+ * and its files `File`s, for the route's schema to coerce; a field sent empty is left out, as JSON would leave it.
+ */
+async function bodyOf(request: Request): Promise<unknown> {
+  if (!/^multipart\/form-data\b/i.test(request.headers.get('content-type') ?? '')) return request.json();
+  const form = await request.formData();
+  const out: Record<string, FormDataEntryValue> = {};
+  for (const [k, v] of form) if (v !== '') out[k] = v;
+  return out;
+}
+
 /** Run a routing table for a request; `action` is the path segment. */
 export async function dispatch(routes: Record<string, Route<z.ZodTypeAny>>, action: string | undefined, request: Request, log: string): Promise<Response> {
   if (!hasDatabase()) return json({ error: 'The ledgers are not open on this deployment.' }, 503);
@@ -25,7 +37,7 @@ export async function dispatch(routes: Record<string, Route<z.ZodTypeAny>>, acti
   if (!actor) return json({ error: 'Sign in first.' }, 401);
   if (!allows(actor, r.role ?? 'player')) return json({ error: r.role === 'admin' ? 'That is for the admin alone.' : 'That is for a game master.' }, 403);
   let body: unknown;
-  try { body = await request.json(); } catch { return json({ error: 'The order could not be read.' }, 400); }
+  try { body = await bodyOf(request); } catch { return json({ error: 'The order could not be read.' }, 400); }
   const parsed = r.schema.safeParse(body ?? {});
   if (!parsed.success) return json({ error: 'The order could not be read.' }, 400);
   try {

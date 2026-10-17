@@ -12,11 +12,12 @@
  * attends, or a game master) advances the turn, notes what happened, scores towards the scenario's tally and
  * records who put whom out of action, tagged with the turn. The out-of-action results are the record's own rows. A
  * custom scenario may have something to hold (campaign/objective.ts), which the table checks round by round or turn
- * by turn.
+ * by turn. The table may also take pictures of the game, kept at high resolution with a small one for the log, and
+ * printed in the battle report by the turn they were taken in.
  */
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { locationPoints, locations, members, scenarioEvents, scenarioMembers, scenarioOutOfAction, scenarioRevisions, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
+import { images, locationPoints, locations, members, scenarioEvents, scenarioMembers, scenarioOutOfAction, scenarioRevisions, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
 import { LedgerError } from '../../curfew/ledger.ts';
 import { LOGGED_KINDS, MEMBER_STATUSES, SCENARIO_RESULTS, positionOf, slugify, type EventKind, type MemberStatus, type NarrativeRevision, type OutOfAction, type Puzzle, type Scenario, type ScenarioEvent, type ScenarioMember, type ScenarioResult, type ScenarioWarband, type Statline } from '../../campaign/model.ts';
 import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook.ts';
@@ -25,6 +26,7 @@ import { HOUSE_SCENARIOS, SIDES, houseScenario, verdictOf, type Side } from '../
 import { CHECK_MOMENTS, HOLD_KINDS, MAX_HELD, checkError, checkKey, coerceObjective, objectiveOf, perWarband, type CheckMoment, type HoldKind, type Objective } from '../../campaign/objective.ts';
 import { pickOrder, roundStart, stepBack, stepForward } from '../../campaign/turns.ts';
 import { isGm, type Actor } from '../roles.ts';
+import { looksLike, type ImageType } from './chapters.ts';
 import { ensureLocationsSeeded, ensureSeeded } from './seed.ts';
 
 export { LedgerError };
@@ -51,7 +53,7 @@ function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mem
       })),
     })),
     outOfAction: ooa.filter((o) => o.scenarioId === r.id).map((o): OutOfAction => ({ id: o.id, scenarioId: o.scenarioId, attackerId: o.attackerId, targetId: o.targetId, target: o.target, detail: o.detail, turn: o.turn })),
-    events: events.filter((e) => e.scenarioId === r.id).map((e): ScenarioEvent => ({ id: e.id, scenarioId: e.scenarioId, turn: e.turn, kind: e.kind, warbandId: e.warbandId, points: e.points, text: e.text, authorName: e.authorName, createdAt: e.createdAt })),
+    events: events.filter((e) => e.scenarioId === r.id).map((e): ScenarioEvent => ({ id: e.id, scenarioId: e.scenarioId, turn: e.turn, kind: e.kind, warbandId: e.warbandId, points: e.points, text: e.text, photo: e.imageId && e.previewId ? { image: e.imageId, preview: e.previewId } : null, authorName: e.authorName, createdAt: e.createdAt })),
     createdBy: r.createdBy, createdAt: r.createdAt, updatedAt: r.updatedAt,
   };
 }
@@ -508,7 +510,7 @@ export async function stepTurn(actor: Actor, id: string, direction: 'forward' | 
 
 /**
  * The game started over: the table goes back to before the first turn and the record of this game goes with it. The
- * log, the takedowns logged at the table and the Tarot's hands are wiped; a warrior marked out of action by one is
+ * log, its pictures, the takedowns logged at the table and the Tarot's hands are wiped; a warrior marked out of action by one is
  * whole again; the sides, the length and what the players wrote beforehand stay. Anyone at the table may, while the
  * game is not yet called.
  */
@@ -518,6 +520,7 @@ export async function resetGame(actor: Actor, id: string): Promise<Scenario> {
   if (r.status === 'played') throw new LedgerError('The game is already called.', 409);
   const d = db();
   await d.delete(scenarioEvents).where(eq(scenarioEvents.scenarioId, id));
+  await d.delete(images).where(eq(images.scenarioId, id));
   await d.delete(scenarioOutOfAction).where(eq(scenarioOutOfAction.scenarioId, id));
   await d.update(scenarioMembers).set({ status: 'active' }).where(and(eq(scenarioMembers.scenarioId, id), eq(scenarioMembers.status, 'injured')));
   await d.update(scenarioWarbands).set({ tarot: null }).where(eq(scenarioWarbands.scenarioId, id));
@@ -552,7 +555,57 @@ export async function addEvent(actor: Actor, id: string, input: EventInput): Pro
   return (await getScenario(id))!;
 }
 
-/** Strike a line from the log: the one who wrote it, or a game master. A check of the objective goes whole, every warband's count with it. */
+/** A picture as it came to the server: its type as the browser said, and its bytes. */
+export interface PhotoFile { mime: string; bytes: Uint8Array }
+export interface PhotoInput { turn?: number | null; warbandId?: string | null; text?: string; picture: PhotoFile; preview: PhotoFile }
+
+/**
+ * The largest picture taken at the table that is kept. The browser keeps it as large as it can under this (the
+ * longest side up to 4096 pixels), since the picture and its preview must go up in one request and come back down
+ * in one answer, and a Vercel function takes and gives no more than 4.5 MB.
+ */
+export const PHOTO_MAX_BYTES = 3_900_000;
+/** The small one the log and the battle report show, a click away from the picture itself. */
+export const PREVIEW_MAX_BYTES = 450_000;
+
+const PHOTO_TYPES: ImageType[] = ['image/jpeg', 'image/png', 'image/webp'];
+
+function photoBytes(file: PhotoFile, max: number): { mime: ImageType; data: string; bytes: number } {
+  const mime = file.mime as ImageType;
+  if (!PHOTO_TYPES.includes(mime)) throw new LedgerError('That file is not a picture the page can show. Use a JPEG, PNG or WebP.', 415);
+  if (!file.bytes.length) throw new LedgerError('That picture came through empty. Try again.');
+  if (file.bytes.length > max) throw new LedgerError('That picture is too large, even shrunk. Try another.', 413);
+  if (!looksLike(mime, file.bytes)) throw new LedgerError('That file is not a picture the page can show. Use a JPEG, PNG or WebP.', 415);
+  return { mime, data: Buffer.from(file.bytes).toString('base64'), bytes: file.bytes.length };
+}
+
+/**
+ * A picture taken at the table, put in the log for the battle report: the picture as large as it was kept, a small
+ * one to show, what it shows (optional) and whose it is (optional, the table's when nobody's). The turn defaults to
+ * the one the table is on. Anyone at the table may, during the game and after it is called.
+ */
+export async function addPhoto(actor: Actor, id: string, input: PhotoInput): Promise<Scenario> {
+  const r = await row(id);
+  await tableOnly(actor, id);
+  const turn = turnOf(input.turn, Math.max(1, r.turn))!;
+  const d = db();
+  const warbandId = input.warbandId ? input.warbandId : null;
+  if (warbandId) {
+    const attends = await d.select({ warbandId: scenarioWarbands.warbandId }).from(scenarioWarbands).where(and(eq(scenarioWarbands.scenarioId, id), eq(scenarioWarbands.warbandId, warbandId))).limit(1);
+    if (!attends.length) throw new LedgerError('That warband is not at this scenario.', 404);
+  }
+  const picture = photoBytes(input.picture, PHOTO_MAX_BYTES), preview = photoBytes(input.preview, PREVIEW_MAX_BYTES);
+  const imageId = crypto.randomUUID(), previewId = crypto.randomUUID();
+  await d.insert(images).values([
+    { id: imageId, scenarioId: id, ...picture, uploadedBy: actor.id },
+    { id: previewId, scenarioId: id, ...preview, uploadedBy: actor.id },
+  ]);
+  await d.insert(scenarioEvents).values({ scenarioId: id, turn, kind: 'photo', warbandId, points: 0, text: clean(input.text, 500), imageId, previewId, authorId: actor.id, authorName: actor.name });
+  await d.update(scenarios).set({ updatedAt: new Date() }).where(eq(scenarios.id, id));
+  return (await getScenario(id))!;
+}
+
+/** Strike a line from the log: the one who wrote it, or a game master. A check of the objective goes whole, every warband's count with it; a photo takes its pictures. */
 export async function removeEvent(actor: Actor, id: string, eventId: number): Promise<Scenario> {
   await row(id);
   const d = db();
@@ -562,6 +615,9 @@ export async function removeEvent(actor: Actor, id: string, eventId: number): Pr
   const e = rows[0];
   if (e.kind === 'control') await d.delete(scenarioEvents).where(and(eq(scenarioEvents.scenarioId, id), eq(scenarioEvents.turn, e.turn), eq(scenarioEvents.kind, 'control'), eq(scenarioEvents.text, e.text)));
   else await d.delete(scenarioEvents).where(eq(scenarioEvents.id, eventId));
+  // a photo's pictures go with its line
+  const shots = [e.imageId, e.previewId].filter((x): x is string => !!x);
+  if (shots.length) await d.delete(images).where(and(eq(images.scenarioId, id), inArray(images.id, shots)));
   await d.update(scenarios).set({ updatedAt: new Date() }).where(eq(scenarios.id, id));
   return (await getScenario(id))!;
 }
