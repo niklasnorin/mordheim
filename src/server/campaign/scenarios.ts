@@ -23,7 +23,7 @@ import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook.ts';
 import { proseSource } from '../../campaign/prose.ts';
 import { HOUSE_SCENARIOS, SIDES, houseScenario, verdictOf, type Side } from '../../campaign/house.ts';
 import { CHECK_MOMENTS, HOLD_KINDS, MAX_HELD, checkError, checkKey, coerceObjective, objectiveOf, perWarband, type CheckMoment, type HoldKind, type Objective } from '../../campaign/objective.ts';
-import { roundStart, startingWith, stepBack, stepForward } from '../../campaign/turns.ts';
+import { pickOrder, roundStart, stepBack, stepForward } from '../../campaign/turns.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { ensureLocationsSeeded, ensureSeeded } from './seed.ts';
 
@@ -472,16 +472,20 @@ export async function setTurn(actor: Actor, id: string, turn: number): Promise<S
   return (await getScenario(id))!;
 }
 
-/** Who starts: the table says so before the first turn, and the rest follow in the order they attend. A game master may change it later. */
-export async function chooseStarter(actor: Actor, id: string, warbandId: string): Promise<Scenario> {
+/**
+ * The order of the round, picked a tap at a time before the first turn (campaign/turns.ts `pickOrder`): who starts,
+ * then who follows; a warband tapped again is taken out from there. A game master may change it once the game has begun.
+ */
+export async function pickTurnOrder(actor: Actor, id: string, warbandId: string): Promise<Scenario> {
   const r = await row(id);
   await tableOnly(actor, id);
   if (r.status === 'played') throw new LedgerError('The game is already called.', 409);
-  if (r.turn > 0 && !isGm(actor)) throw new LedgerError('The game has begun; a game master changes who starts now.', 409);
+  if (r.turn > 0 && !isGm(actor)) throw new LedgerError('The game has begun; a game master changes the order now.', 409);
   const s = (await getScenario(id))!;
   if (!s.warbands.some((w) => w.warbandId === warbandId)) throw new LedgerError('That warband is not at this scenario.', 404);
-  const order = startingWith(s, warbandId);
-  const active = r.turn > 0 ? order[0] : null;
+  const order = pickOrder(s, warbandId);
+  // the warband on now keeps its turn if it is still in the order; else the round starts again with the first
+  const active = r.turn > 0 ? (r.active && order.includes(r.active) ? r.active : roundStart({ ...s, order }, r.turn).active) : null;
   await db().update(scenarios).set({ order, active, updatedAt: new Date() }).where(eq(scenarios.id, id));
   return (await getScenario(id))!;
 }

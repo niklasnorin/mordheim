@@ -86,7 +86,8 @@
 
 /* who starts, before the first turn */
 .tk-order-pick { display: flex; flex-wrap: wrap; gap: .4rem; }
-.tk-order-pick .tk-side-btn { flex: 1 1 auto; }
+.tk-order-pick .tk-side-btn { flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: .6rem; }
+.tk-ordinal { font: normal 1.05rem/1 'Pirata One', Georgia, serif; letter-spacing: .03em; color: var(--green-wyrd); }
 .tk-side-btn[aria-pressed='true'], .tk-side-btn[data-pressed='true'] { border-color: var(--gold); background: #24301f; color: var(--gold); }
 /* whose turn it is, under the turn: the order of the round with the warband on now lit */
 .tk-order { list-style: none; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .4rem; margin-top: .25rem; }

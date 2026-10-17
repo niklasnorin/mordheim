@@ -11,7 +11,7 @@ import { SCENARIO_RESULTS, scoresOf, tallyOf, type OutOfAction, type Scenario, t
 import { SIDES, SIDE_LABEL, houseScenario, inWords, resultsOf, rollBrings, turnEnds, verdictOf } from '../campaign/house';
 import { checkLabel, checksOf, describeCheck, inSentence, objectiveOf, objectiveScores, objectiveSummary, perWarband, slotsFor, MOMENT_LABEL, type Check, type Objective, type Slot } from '../campaign/objective';
 import { cardById } from '../campaign/tarot';
-import { activeWarband, lastOfRound, starterChosen, turnOrder } from '../campaign/turns';
+import { activeWarband, lastOfRound, orderComplete, placed, turnOrder } from '../campaign/turns';
 import { CARD_ICON, mountTarot, type TarotMount } from './tarot';
 
 export interface TrackerRoster { id: string; name: string; members: { id: string; name: string; role: string; dead: boolean }[] }
@@ -171,21 +171,26 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
           h('div', { class: 'tk-choices' }, ...SIDES.map((side) => h('button', { type: 'button', class: 'tk-side-btn', 'data-side': side, 'data-pick-side': w.warbandId, 'aria-pressed': String(w.side === side) }, side === 'attacker' ? 'Attacks' : 'Defends'))),
         )),
       ) : null;
-      // and who starts: the first warband of every round, the rest following in the order they attend
-      const order = turnOrder(s), chosen = starterChosen(s), needStarter = s.warbands.length > 1 && !chosen;
-      const starter = s.warbands.length > 1 ? h('div', { class: 'tk-side-pick', role: 'group', 'aria-label': 'Who starts' },
-        h('div', { class: 'tk-turn-label' }, 'Who starts'),
-        h('div', { class: 'tk-order-pick' }, ...s.warbands.map((w) => live
-          ? h('button', { type: 'button', class: 'tk-side-btn', 'data-pick-starter': w.warbandId, 'aria-pressed': String(chosen && order[0] === w.warbandId) }, warbandName(w.warbandId))
-          : h('span', { class: 'tk-side-btn', 'data-pressed': String(chosen && order[0] === w.warbandId) }, warbandName(w.warbandId)))),
-        chosen ? h('p', { class: 'tk-turn-note' }, `${order.map(warbandName).join(', then ')}; so each round.`) : null,
+      // and the order of the round, a tap at a time: who starts, then who follows; a tap on a placed warband undoes from there
+      const order = turnOrder(s), chosen = placed(s), complete = orderComplete(s), needOrder = s.warbands.length > 1 && !complete;
+      const ordinal = (n: number) => ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'][n] ?? `${n + 1}th`;
+      const starter = s.warbands.length > 1 ? h('div', { class: 'tk-side-pick', role: 'group', 'aria-label': s.warbands.length > 2 ? 'The order of play' : 'Who starts' },
+        h('div', { class: 'tk-turn-label' }, s.warbands.length > 2 ? 'The order of play' : 'Who starts'),
+        h('div', { class: 'tk-order-pick' }, ...s.warbands.map((w) => {
+          const at = chosen.indexOf(w.warbandId);
+          const label = [h('span', {}, warbandName(w.warbandId)), at >= 0 ? h('b', { class: 'tk-ordinal' }, ordinal(at)) : null];
+          return live
+            ? h('button', { type: 'button', class: 'tk-side-btn', 'data-pick-order': w.warbandId, 'aria-pressed': String(at >= 0), 'aria-label': `${warbandName(w.warbandId)}${at >= 0 ? `, ${ordinal(at)}; tap to undo from here` : ', tap to place next'}` }, ...label)
+            : h('span', { class: 'tk-side-btn', 'data-pressed': String(at >= 0) }, ...label);
+        })),
+        h('p', { class: 'tk-turn-note' }, complete ? `${order.map(warbandName).join(', then ')}; so each round.` : s.warbands.length > 2 ? 'Tap them in the order they play; a tap on one placed undoes it and those after.' : 'Tap the warband that starts; the other follows.'),
       ) : null;
-      const wanting = unsided.length ? 'Choose the sides to begin' : needStarter ? 'Choose who starts to begin' : 'Begin: turn 1';
+      const wanting = unsided.length ? 'Choose the sides to begin' : needOrder ? (s.warbands.length > 2 ? 'Set the order to begin' : 'Choose who starts to begin') : 'Begin: turn 1';
       put(turnBox,
-        h('div', {}, h('div', { class: 'tk-turn-label' }, 'Before the first turn'), h('p', { class: 'tk-turn-note' }, kind?.sides && live ? 'Choose who attacks and who defends, and who starts, then begin. Anything logged now goes down as turn 1.' : 'The warbands are deploying. Anything logged now goes down as turn 1.')),
+        h('div', {}, h('div', { class: 'tk-turn-label' }, 'Before the first turn'), h('p', { class: 'tk-turn-note' }, kind?.sides && live ? 'Choose who attacks and who defends, and the order of play, then begin. Anything logged now goes down as turn 1.' : 'The warbands are deploying. Anything logged now goes down as turn 1.')),
         chooser,
         starter,
-        live ? h('button', { type: 'button', class: 'tk-btn big wide tk-turn-begin', 'data-turn': '1', disabled: unsided.length > 0 || needStarter }, wanting) : null,
+        live ? h('button', { type: 'button', class: 'tk-btn big wide tk-turn-begin', 'data-turn': '1', disabled: unsided.length > 0 || needOrder }, wanting) : null,
       );
     } else {
       // a house scenario ends each turn with its own questions; any game with a limit stops at it, unless the table adds a round
@@ -647,8 +652,8 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       await post('sides', { sides });
       return;
     }
-    const starter = t.closest<HTMLButtonElement>('[data-pick-starter]');
-    if (starter) { await post('starter', { warbandId: starter.dataset.pickStarter }); return; }
+    const place = t.closest<HTMLButtonElement>('[data-pick-order]');
+    if (place) { await post('order', { warbandId: place.dataset.pickOrder }); return; }
     const stepTap = t.closest<HTMLButtonElement>('[data-step]');
     if (stepTap) {
       // leaving a warband's turn with its own check owed, or ending the round with any owed, is allowed but asked about

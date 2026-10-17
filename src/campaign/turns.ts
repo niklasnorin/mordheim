@@ -2,7 +2,7 @@
  * Whose turn it is: the order the warbands take their turns in within a round, and the warband on now.
  *
  * A round is a turn of the tracker (`Scenario.turn`), in which every warband moves once. Before the first turn the
- * table says who starts; the rest follow in the order they attend. `Scenario.order` keeps that, `Scenario.active` the
+ * table sets the order, a tap at a time; a warband not placed follows the placed ones as it attends. `Scenario.order` keeps that, `Scenario.active` the
  * warband whose turn it is. "Next" moves to the next warband in the order; after the last, a new round begins with
  * the first again, which is where the scoring, the Tarot's hands and a house scenario's end-of-turn sheet live.
  *
@@ -19,15 +19,29 @@ export function turnOrder(s: Pick<Turns, 'order' | 'warbands'>): string[] {
   return [...chosen, ...attending.filter((id) => !chosen.includes(id))];
 }
 
-/** The order with one warband starting: it first, the rest as they attend. */
-export function startingWith(s: Pick<Turns, 'order' | 'warbands'>, starter: string): string[] {
-  const order = turnOrder(s);
-  if (!order.includes(starter)) throw new Error('That warband is not at this scenario.');
-  return [starter, ...order.filter((id) => id !== starter)];
+/** The order as chosen so far: only the warbands placed, in their places. */
+export const placed = (s: Pick<Turns, 'order' | 'warbands'>): string[] => s.order.filter((id) => s.warbands.some((w) => w.warbandId === id));
+
+/**
+ * The table picks the order a tap at a time: a warband not yet placed goes next; one already placed is taken out
+ * again, and everything after it with it, so a slip is undone from where it was made. When only one warband is left
+ * unplaced it takes the last place of itself, so three warbands are ordered with two taps; with two at the table a tap
+ * simply says who starts.
+ */
+export function pickOrder(s: Pick<Turns, 'order' | 'warbands'>, warbandId: string): string[] {
+  const attending = s.warbands.map((w) => w.warbandId);
+  if (!attending.includes(warbandId)) throw new Error('That warband is not at this scenario.');
+  // two at the table: the one tapped starts, whatever was chosen before; undoing would only give the same order back
+  if (attending.length === 2) return [warbandId, ...attending.filter((id) => id !== warbandId)];
+  const chosen = placed(s);
+  const at = chosen.indexOf(warbandId);
+  const next = at >= 0 ? chosen.slice(0, at) : [...chosen, warbandId];
+  const left = attending.filter((id) => !next.includes(id));
+  return left.length === 1 ? [...next, left[0]] : next;
 }
 
-/** Whether the table has said who starts. */
-export const starterChosen = (s: Pick<Turns, 'order' | 'warbands'>): boolean => s.order.some((id) => s.warbands.some((w) => w.warbandId === id));
+/** Whether every warband at the table has its place in the order. */
+export const orderComplete = (s: Pick<Turns, 'order' | 'warbands'>): boolean => s.warbands.length > 0 && s.warbands.every((w) => s.order.includes(w.warbandId));
 
 /** The warband whose turn it is: the one on record when it is still at the table, else the first in the order. Null before the first turn. */
 export function activeWarband(s: Turns): string | null {
