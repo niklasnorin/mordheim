@@ -5,7 +5,9 @@
  * and the scenario; every action posts to `/api/scenarios/<action>` and re-renders from the answer, and while the
  * page is visible it asks the server every few seconds whether another phone has written something. Nothing is
  * updated optimistically: the server's answer is the table. A custom scenario's objective (campaign/objective.ts) is
- * checked from its own panel, a tap for one of it and a count for several, and each check is one line of the log.
+ * checked from its own panel, a tap for one of it and a count for several, and each check is one line of the log;
+ * a check at the end of the round pops up in the sheet once New round has moved the table on, or before the game is
+ * called on the last round.
  * The camera puts a picture in the log, taken there and then or chosen from the phone's library: it is made ready
  * here at high resolution (lib/photo.ts) and goes up as a form, the one request that is not JSON.
  */
@@ -195,6 +197,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     renderTurn(s);
     renderHold(s);
     renderObjective(s);
+    if (sheetCheck && sheet.open) fillCheck();
     renderTally(s);
     renderLog(s);
     bar.dataset.may = String(state.may);
@@ -363,31 +366,14 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     const live = state.may && s.status !== 'played';
     const checks = checksOf(s.events);
     objectiveBox.append(h('div', { class: 'tk-tally-head' }, h('span', {}, o.name), h('span', {}, `${o.kind === 'many' ? `${o.count} of them · ` : ''}${MOMENT_LABEL[o.when].replace(/^At the /, '')}`)));
-    const due = live && s.turn > 0 ? [...owed(s, o, s.turn - 1), ...slotsFor(o, s.warbands.map((w) => w.warbandId), s.turn)] : [];
+    // the end of a round is counted once the next has begun (it pops up then), so it is asked here only on the last round
+    const now = o.when === 'round-end' && !lastRound(s) ? [] : slotsFor(o, s.warbands.map((w) => w.warbandId), s.turn);
+    const due = live && s.turn > 0 ? [...owed(s, o, s.turn - 1), ...now] : [];
     for (const sl of due) slots.set(slotId(sl), sl);
     const active = activeWarband(s);
     const slotFor = (w: string) => due.find((sl) => sl.whose === null) ?? due.find((sl) => sl.whose === w && (sl.turn < s.turn || w === active));
     const points = Object.fromEntries(objectiveScores(s).map((x) => [x.warbandId, x.points]));
-    for (const w of turnOrder(s)) {
-      const sl = slotFor(w);
-      const row = h('div', { class: 'tk-held tk-span', 'data-now': String(!!sl) }, h('div', { class: 'tk-held-name' }, warbandName(w)), h('div', { class: 'tk-held-points', title: 'Points so far' }, String(points[w] ?? 0)));
-      if (sl) {
-        const told = checked(checks, sl);
-        const held = draftOf(s, sl);
-        if (o.kind === 'one') {
-          const holds = (held[w] ?? 0) > 0;
-          row.append(h('button', { type: 'button', class: 'tk-side-btn tk-held-toggle', 'data-slot': slotId(sl), 'data-holder': holds ? '' : w, 'aria-pressed': String(holds) }, holds ? 'Holds it' : told ? 'Does not' : 'Holds it?'));
-        } else {
-          const n = held[w] ?? 0, total = Object.values(held).reduce((a, x) => a + x, 0);
-          row.append(h('div', { class: 'tk-stepper tk-held-stepper' },
-            h('button', { type: 'button', class: 'tk-btn ghost', 'data-hold-step': slotId(sl), 'data-warband': w, 'data-d': '-1', disabled: n <= 0, 'aria-label': `${warbandName(w)}: one fewer` }, svg(ICON.minus)),
-            h('output', { class: 'tk-check-count', 'aria-live': 'polite' }, String(n)),
-            h('button', { type: 'button', class: 'tk-btn ghost', 'data-hold-step': slotId(sl), 'data-warband': w, 'data-d': '1', disabled: n >= o.count || total >= o.count, 'aria-label': `${warbandName(w)}: one more` }, svg(ICON.plus)),
-          ));
-        }
-      }
-      objectiveBox.append(row);
-    }
+    for (const w of turnOrder(s)) objectiveBox.append(heldRow(s, o, w, slotFor(w), checks, points));
     // where the checks stand, for the ones answered here: the round's, or the turn of the warband that is on or owes one
     const asked = due.filter((sl) => turnOrder(s).some((w) => slotFor(w) === sl));
     if (asked.length) objectiveBox.append(h('p', { class: 'tk-held-state tk-span' }, asked.map((sl) => {
@@ -395,6 +381,66 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       const state = told ? 'counted' : o.kind === 'many' ? `${Object.values(draftOf(s, sl)).reduce((a, x) => a + x, 0)} of ${o.count} counted` : 'to check';
       return `${sl.turn !== s.turn ? `turn ${sl.turn}, ` : ''}${checkLabel(sl, warbandName).toLowerCase()}: ${state}`;
     }).join(' · ')));
+  }
+
+  /** One warband's row: its points so far and, when a check is on, the one control that answers it, written down at every tap. */
+  function heldRow(s: Scenario, o: Objective, w: string, sl: Slot | undefined, checks: Check[], points: Record<string, number>): HTMLElement {
+    const row = h('div', { class: 'tk-held tk-span', 'data-now': String(!!sl) }, h('div', { class: 'tk-held-name' }, warbandName(w)), h('div', { class: 'tk-held-points', title: 'Points so far' }, String(points[w] ?? 0)));
+    if (!sl) return row;
+    const told = checked(checks, sl);
+    const held = draftOf(s, sl);
+    if (o.kind === 'one') {
+      const holds = (held[w] ?? 0) > 0;
+      row.append(h('button', { type: 'button', class: 'tk-side-btn tk-held-toggle', 'data-slot': slotId(sl), 'data-holder': holds ? '' : w, 'aria-pressed': String(holds) }, holds ? 'Holds it' : told ? 'Does not' : 'Holds it?'));
+    } else {
+      const n = held[w] ?? 0, total = Object.values(held).reduce((a, x) => a + x, 0);
+      row.append(h('div', { class: 'tk-stepper tk-held-stepper' },
+        h('button', { type: 'button', class: 'tk-btn ghost', 'data-hold-step': slotId(sl), 'data-warband': w, 'data-d': '-1', disabled: n <= 0, 'aria-label': `${warbandName(w)}: one fewer` }, svg(ICON.minus)),
+        h('output', { class: 'tk-check-count', 'aria-live': 'polite' }, String(n)),
+        h('button', { type: 'button', class: 'tk-btn ghost', 'data-hold-step': slotId(sl), 'data-warband': w, 'data-d': '1', disabled: n >= o.count || total >= o.count, 'aria-label': `${warbandName(w)}: one more` }, svg(ICON.plus)),
+      ));
+    }
+    return row;
+  }
+
+  /** Whether the table is on its last round, so no new round will bring the round's end check up. */
+  const lastRound = (s: Scenario) => s.turnLimit !== null && s.turn >= s.turnLimit;
+  /** The end-of-round check the round the table is on still owes, when the objective is checked then. */
+  const roundEndOwed = (s: Scenario, o: Objective | null) => o?.when === 'round-end' && s.status !== 'played' && s.turn > 0 ? owed(s, o, s.turn)[0] : undefined;
+
+  /** The end-of-round check held up in the sheet, and what follows once it is counted: the game called, or nothing. */
+  let sheetCheck: { slot: Slot; then: 'wrap-up' | null } | null = null;
+  function openCheck(sl: Slot, then: 'wrap-up' | null): void {
+    sheetCheck = { slot: sl, then };
+    fillCheck();
+    if (!sheet.open) sheet.showModal();
+  }
+  function fillCheck(): void {
+    const s = state.scenario, o = objectiveOf(s);
+    if (!o || !sheetCheck) return;
+    const { slot: sl, then } = sheetCheck;
+    slots.set(slotId(sl), sl);
+    const checks = checksOf(s.events), told = checked(checks, sl);
+    const points = Object.fromEntries(objectiveScores(s).map((x) => [x.warbandId, x.points]));
+    const name = inSentence(o.name);
+    sheet.replaceChildren(h('form', { method: 'dialog', 'data-kind': 'check' },
+      h('div', { class: 'tk-sheet-head' }, h('h2', {}, `End of round ${sl.turn}`), closeButton()),
+      h('p', { class: 'tk-note' }, then === 'wrap-up' ? `The last count before the game is called: ${o.kind === 'one' ? `who holds ${name}?` : `how many each holds.`}` : `Round ${sl.turn} is over. ${o.kind === 'one' ? `Who held ${name} as it ended?` : `How many did each hold as it ended?`}`),
+      ...turnOrder(s).map((w) => heldRow(s, o, w, sl, checks, points)),
+      h('div', { class: 'tk-actions' },
+        o.kind === 'one'
+          ? h('button', { type: 'button', class: 'tk-btn ghost', 'data-slot': slotId(sl), 'data-holder': '', 'aria-pressed': String(!!told && !Object.values(told.held).some((n) => n > 0)) }, 'Nobody holds it')
+          : h('button', { type: 'button', class: 'tk-btn', 'data-check-done': slotId(sl) }, svg(ICON.flag), then === 'wrap-up' ? 'Counted: call the game' : 'Counted'),
+      ),
+    ));
+  }
+  sheet.addEventListener('close', () => { sheetCheck = null; });
+  /** After a tap in the sheet: one of it is answered by the tap, so the sheet closes and the game is called if that was next. */
+  function checkAnswered(sl: Slot, done: boolean): void {
+    if (!sheetCheck || slotId(sheetCheck.slot) !== slotId(sl) || !done) return;
+    const then = sheetCheck.then;
+    sheet.close();
+    if (then) openSheet(then);
   }
 
 
@@ -732,7 +778,12 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
   root.addEventListener('click', async (e) => {
     const t = e.target as HTMLElement;
     const open = t.closest<HTMLButtonElement>('[data-open]');
-    if (open) { openSheet(open.dataset.open as SheetKind); return; }
+    if (open) {
+      // the round the game ends on is counted before the game is called
+      const due = open.dataset.open === 'wrap-up' && state.may ? roundEndOwed(state.scenario, objectiveOf(state.scenario)) : undefined;
+      if (due) openCheck(due, 'wrap-up'); else openSheet(open.dataset.open as SheetKind);
+      return;
+    }
     const card = t.closest<HTMLButtonElement>('[data-show-card]');
     if (card) { tarot?.show(card.dataset.showCard!); return; }
     const pick = t.closest<HTMLButtonElement>('[data-pick-side]');
@@ -751,11 +802,14 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       // leaving a warband's turn with its own check owed, or ending the round with any owed, is allowed but asked about
       if (sheet.open) sheet.close();
       const s = state.scenario, o = objectiveOf(s), active = activeWarband(s);
+      // the end of the round is counted once the new round has begun, in the sheet, so it is not asked about here
+      const ending = stepTap.dataset.step === 'forward' && lastOfRound(s) ? roundEndOwed(s, o) : undefined;
       if (stepTap.dataset.step === 'forward' && o) {
-        const due = owed(s, o, s.turn).filter((sl) => lastOfRound(s) || sl.whose === active);
+        const due = owed(s, o, s.turn).filter((sl) => (lastOfRound(s) || sl.whose === active) && sl.key !== ending?.key);
         if (due.length && !confirm(`${o.name} has not been checked${lastOfRound(s) ? ` for turn ${s.turn}` : ` for ${warbandName(active)}’s turn`}. Move on anyway?`)) return;
       }
-      await post('step', { direction: stepTap.dataset.step });
+      const moved = await post('step', { direction: stepTap.dataset.step });
+      if (moved && ending && state.scenario.turn > ending.turn && owed(state.scenario, o!, ending.turn).length) openCheck(ending, null);
       return;
     }
     const more = t.closest<HTMLButtonElement>('[data-limit]');
@@ -772,7 +826,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     const holder = t.closest<HTMLButtonElement>('[data-holder]');
     if (holder) {
       const sl = slots.get(holder.dataset.slot!);
-      if (sl) await post('check', { turn: sl.turn, whose: sl.whose, held: holder.dataset.holder ? { [holder.dataset.holder]: 1 } : {} });
+      if (sl && await post('check', { turn: sl.turn, whose: sl.whose, held: holder.dataset.holder ? { [holder.dataset.holder]: 1 } : {} })) checkAnswered(sl, true);
       return;
     }
     const hold = t.closest<HTMLButtonElement>('[data-hold-step]');
@@ -784,6 +838,14 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       held[w] = Math.max(0, Math.min(o.count, (held[w] ?? 0) + Number(hold.dataset.d)));
       if (Object.values(held).reduce((a, n) => a + n, 0) > o.count) return;
       await post('check', { turn: sl.turn, whose: sl.whose, held });
+      return;
+    }
+    const done = t.closest<HTMLButtonElement>('[data-check-done]');
+    if (done) {
+      // several things are written down at every tap; untouched, the count stands at nought for everyone
+      const s = state.scenario, sl = slots.get(done.dataset.checkDone!);
+      if (!sl) return;
+      if (checked(checksOf(s.events), sl) || await post('check', { turn: sl.turn, whose: sl.whose, held: draftOf(s, sl) })) checkAnswered(sl, true);
       return;
     }
     const score = t.closest<HTMLButtonElement>('[data-score]');
