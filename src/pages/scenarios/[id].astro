@@ -158,7 +158,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           <div><dt>{house ? 'Scenario' : 'Rulebook scenario'}</dt><dd>{house ? <>{house.name}<br /><small class="archive-note">one of the campaign’s own</small></> : scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'A custom scenario'}</dd></div>
           {scenario.turnLimit && <div><dt>Length</dt><dd>{scenario.turnLimit} turns{house ? <><br /><small class="archive-note">more if time permits</small></> : null}</dd></div>}
           {house?.sides && <div><dt>Sides</dt><dd>{sidesLine}</dd></div>}
-          <div><dt>Warbands</dt><dd>{scenario.warbands.length ? scenario.warbands.map((w, i) => <>{i > 0 && ' against '}<WarbandLabel warband={warbandOf(w.warbandId)} fallback={w.warbandId} /></>) : 'To be named'}</dd></div>
+          <div><dt>Warbands</dt><dd class="scenario-warbands">{scenario.warbands.length ? scenario.warbands.map((w) => <WarbandLabel warband={warbandOf(w.warbandId)} fallback={w.warbandId} />) : 'To be named'}</dd></div>
         </dl>
         {house && house.rules.map((r) => (<><h3>{r.heading}</h3><ul class="house-rules">{r.lines.map((l) => <li>{l}</li>)}</ul></>))}
         {house ? (scenario.customRules && (<><h3>Also in play</h3><Markdown text={scenario.customRules} /></>)) : scenario.customRules ? (<><h3>Rules in play</h3><Markdown text={scenario.customRules} /></>) : <p class="archive-note rulebook-note">{scenario.rulebookScenario ? <>Scenario played as the rulebook has it{rulesUrl ? <>; <a href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules in full</a></> : null}.</> : 'The rules are still being written.'}</p>}
@@ -879,6 +879,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   .house-rules-fold { margin: .5rem 0 1rem; }
   .house-rules-fold > summary { cursor: pointer; color: var(--gold); min-height: var(--control-size); display: flex; align-items: center; }
   .outcome-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+  .scenario-warbands { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
   dt { color: var(--ink-dim); font-size: .8rem; }
   dd { color: var(--parchment); }
   .archive-note { font-size: .9rem; color: var(--ink-dim); }
