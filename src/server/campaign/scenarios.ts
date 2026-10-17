@@ -450,6 +450,25 @@ export async function setTurn(actor: Actor, id: string, turn: number): Promise<S
   return (await getScenario(id))!;
 }
 
+/**
+ * The game started over: the table goes back to before the first turn and the record of this game goes with it. The
+ * log, the takedowns logged at the table and the Tarot's hands are wiped; a warrior marked out of action by one is
+ * whole again; the sides, the length and what the players wrote beforehand stay. Anyone at the table may, while the
+ * game is not yet called.
+ */
+export async function resetGame(actor: Actor, id: string): Promise<Scenario> {
+  const r = await row(id);
+  await tableOnly(actor, id);
+  if (r.status === 'played') throw new LedgerError('The game is already called.', 409);
+  const d = db();
+  await d.delete(scenarioEvents).where(eq(scenarioEvents.scenarioId, id));
+  await d.delete(scenarioOutOfAction).where(eq(scenarioOutOfAction.scenarioId, id));
+  await d.update(scenarioMembers).set({ status: 'active' }).where(and(eq(scenarioMembers.scenarioId, id), eq(scenarioMembers.status, 'injured')));
+  await d.update(scenarioWarbands).set({ tarot: null }).where(eq(scenarioWarbands.scenarioId, id));
+  await d.update(scenarios).set({ turn: 0, updatedAt: new Date() }).where(eq(scenarios.id, id));
+  return (await getScenario(id))!;
+}
+
 export interface EventInput { kind: EventKind; turn?: number | null; warbandId?: string | null; points?: number; text?: string }
 
 /**

@@ -6,7 +6,7 @@ import { actorOf, testDatabase } from '../testdb.ts';
 import { db } from '../db/client.ts';
 import { scenarioWarbands } from '../db/schema.ts';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, getWarband, listWarbands, loadRoster, releaseWarband, removeMember, updateMember, updateWarband, LedgerError } from './roster.ts';
-import { addEvent, addOutOfAction, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, reopenScenario, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writeBattleReport, writePerspective } from './scenarios.ts';
+import { addEvent, addOutOfAction, createScenario, deleteScenario, getScenario, listScenarios, markPlayed, mayTrack, memberStories, removeEvent, removeOutOfAction, reopenScenario, resetGame, revisionsOf, setBrought, setParticipants, setTurn, updateScenario, writeBattle, writeBattleReport, writePerspective } from './scenarios.ts';
 import { loadHand, playCard } from './tarot.ts';
 import { HAND_SIZE, TAROT, WALL_CARD, cardById, coerceTarot } from '../../campaign/tarot.ts';
 import { articlesFor, createArticle, deleteArticle, listArticles, updateArticle } from './news.ts';
@@ -309,8 +309,24 @@ test('the Tarot of the Damned: a hidden hand per warband, dealt at the table, fa
   assert.equal(quiet.wallUntil, undefined, 'quiet the turn after');
   assert.equal(quiet.through, undefined);
   hand = quiet;
+  // the game started over: the turn, the log, the takedowns and the hands all go; a fresh deal follows
+  await addEvent(niklas, s.id, { kind: 'note', text: 'Agnar on the roof.' });
+  await addOutOfAction(rival, s.id, { attackerId: 'jorgrim', targetId: 'agnar', turn: 5 });
+  await assert.rejects(resetGame(stranger, s.id), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  const over = await resetGame(niklas, s.id);
+  assert.equal(over.turn, 0);
+  assert.equal(over.events.length, 0, 'the card plays and the note are struck');
+  assert.equal(over.outOfAction.length, 0);
+  assert.equal(over.warbands.flatMap((w) => w.members).find((m) => m.memberId === 'agnar')?.status, 'active', 'the one who fell is whole again');
+  const fresh = await loadHand(niklas, s.id, 'nordost');
+  assert.equal(fresh.hand.length, HAND_SIZE);
+  assert.equal(fresh.deckLeft, 27, 'a fresh deck');
+  assert.deepEqual(fresh.played, []);
+  assert.equal(fresh.through, undefined, 'the wall is quiet again');
+  hand = fresh;
   // the game called, the hand stands as it was and no card is played
   await markPlayed(gm, s.id, [{ warbandId: 'nordost', result: 'draw' }, { warbandId: 'bitterbrow-expedition', result: 'draw' }]);
+  await assert.rejects(resetGame(gm, s.id), (e: unknown) => e instanceof LedgerError && /already called/.test(e.message));
   await setTurn(gm, s.id, 9);
   assert.deepEqual((await loadHand(niklas, s.id, 'nordost')).hand, hand.hand);
   await assert.rejects(playCard(niklas, s.id, 'nordost', hand.hand[0].id), (e: unknown) => e instanceof LedgerError && /already called/.test(e.message));

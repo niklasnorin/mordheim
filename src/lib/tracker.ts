@@ -184,7 +184,8 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       else if (live && kind) forward = h('button', { type: 'button', class: 'tk-btn big', 'data-open': 'end-turn' }, svg(ICON.plus), ended ? `Turn ${s.turn} again` : `End turn ${s.turn}`);
       else if (live) forward = h('button', { type: 'button', class: 'tk-btn big', 'data-turn': String(s.turn + 1) }, svg(ICON.plus), 'Next turn');
       put(turnBox,
-        h('button', { type: 'button', class: 'tk-btn ghost tk-turn-back', 'data-turn': String(s.turn - 1), 'aria-label': 'Back a turn', hidden: !live }, svg(ICON.minus)),
+        // back from turn 1 is back to before the game: the table is asked whether to start over
+        h('button', { type: 'button', class: 'tk-btn ghost tk-turn-back', ...(s.turn === 1 ? { 'data-open': 'reset' } : { 'data-turn': String(s.turn - 1) }), 'aria-label': s.turn === 1 ? 'Back to before the first turn' : 'Back a turn', hidden: !live }, svg(ICON.minus)),
         h('div', { class: 'tk-turn-now' }, h('div', { class: 'tk-turn-label' }, 'Turn'), h('div', { class: 'tk-turn-number' }, String(s.turn), limit !== null ? h('small', {}, last ? `the last of ${limit}` : `of ${limit}`) : null)),
         forward,
       );
@@ -337,7 +338,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     return sel;
   };
 
-  type SheetKind = 'out-of-action' | 'score' | 'note' | 'wrap-up' | 'end-turn';
+  type SheetKind = 'out-of-action' | 'score' | 'note' | 'wrap-up' | 'end-turn' | 'reset';
   /** What the tally says, when it decides anything: the one warband ahead wins, the rest lose. Otherwise nothing is presumed. */
   function suggestedResults(s: Scenario): Record<string, ScenarioResult> {
     const out: Record<string, ScenarioResult> = {};
@@ -356,7 +357,18 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
   function openSheet(kind: SheetKind): void {
     sheet.replaceChildren();
     const form = h('form', { method: 'dialog', 'data-kind': kind });
-    if (kind === 'wrap-up') {
+    if (kind === 'reset') {
+      const s = state.scenario;
+      const lines = s.events.length + s.outOfAction.length;
+      form.append(
+        h('div', { class: 'tk-sheet-head' }, h('h2', {}, 'Back to before the first turn'), closeButton()),
+        h('p', { class: 'tk-note' }, `Only the turn goes back, and ${lines ? `the ${lines} ${lines === 1 ? 'line' : 'lines'} logged` : 'nothing logged'} ${lines === 1 ? 'stays' : 'stay'} as ${lines === 1 ? 'it is' : 'they are'}${s.tarot ? ', the hands dealt with it' : ''}. Or the game starts over: the log and the takedowns are struck${s.tarot ? ', and the Tarot is dealt afresh' : ''}. The sides and the length stay.`),
+        h('div', { class: 'tk-actions' },
+          h('button', { type: 'button', class: 'tk-btn ghost', 'data-turn': '0' }, 'Only the turn'),
+          h('button', { type: 'submit', class: 'tk-btn blood' }, 'Start the game over'),
+        ),
+      );
+    } else if (kind === 'wrap-up') {
       const s = state.scenario;
       const given = suggestedResults(s);
       form.append(h('div', { class: 'tk-sheet-head' }, h('h2', {}, s.status === 'played' ? 'How it ended' : 'The game is done'), closeButton()));
@@ -478,7 +490,9 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     const button = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
     button.disabled = true; button.setAttribute('aria-busy', 'true');
     let ok = false;
-    if (kind === 'wrap-up') {
+    if (kind === 'reset') {
+      ok = await post('reset', {});
+    } else if (kind === 'wrap-up') {
       const results = state.scenario.warbands.map((w) => ({ warbandId: w.warbandId, result: String(data.get(`result.${w.warbandId}`) ?? '') }));
       if (results.some((r) => !r.result)) { toast('Every warband that fought needs a result.'); button.disabled = false; button.removeAttribute('aria-busy'); return; }
       const calling = state.scenario.status !== 'played';
@@ -523,7 +537,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     const more = t.closest<HTMLButtonElement>('[data-limit]');
     if (more) { await post('turn-limit', { turnLimit: Number(more.dataset.limit) }); return; }
     const turn = t.closest<HTMLButtonElement>('[data-turn]');
-    if (turn) { await post('turn', { turn: Number(turn.dataset.turn) }); return; }
+    if (turn) { if (sheet.open) sheet.close(); await post('turn', { turn: Number(turn.dataset.turn) }); return; }
     const score = t.closest<HTMLButtonElement>('[data-score]');
     if (score) { await post('event', { kind: 'score', warbandId: score.dataset.score, points: Number(score.dataset.points), turn: Math.max(1, state.scenario.turn) }); return; }
     const strikeEvent = t.closest<HTMLButtonElement>('[data-strike-event]');
