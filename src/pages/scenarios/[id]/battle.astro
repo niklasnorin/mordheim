@@ -52,7 +52,7 @@ const sub = [tally ? `counting ${tally.toLowerCase()}` : null, objective ? `hold
       <a class="tk-back" href={`${base}/scenarios/${scenario.id}/`} aria-label="Back to the scenario"><Icon name="arrow-left" size={16} /> <span>Scenario</span></a>
       <div class="tk-heading">
         <h1 class="tk-title">{scenario.title}</h1>
-        <p class="tk-sub"><span class="tk-sub-kind">{scenario.rulebookScenario ?? 'Custom scenario'}</span>{sub && <span class="tk-sub-more"> · {sub}</span>}</p>
+        <p class="tk-sub"><span class="tk-sub-kind">{scenario.rulebookScenario ?? 'Custom scenario'}</span><span class="tk-round"></span>{sub && <span class="tk-sub-more"> · {sub}</span>}</p>
       </div>
       {ready && !viewer && <a class="tk-back tk-signin" href={`${base}/signin/?next=${encodeURIComponent(Astro.url.pathname)}`}>Sign in</a>}
       <span class="tk-live" data-on="true" title="Following the table" aria-hidden="true"></span>
