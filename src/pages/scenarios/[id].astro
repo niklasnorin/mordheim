@@ -8,8 +8,12 @@ import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
 import TurnLog from '../../components/TurnLog.astro';
 import LocationMap from '../../components/LocationMap.astro';
+import WarbandLabel from '../../components/WarbandLabel.astro';
+import Portrait from '../../components/Portrait.astro';
+import Markdown from '../../components/Markdown.astro';
 import '../../styles/manage.css';
 import { base } from '../../lib/site';
+import { markdownText } from '../../lib/markdown';
 import { formatImperial, imperialForDate } from '../../lib/calendar';
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm } from '../../server/roles';
@@ -19,6 +23,7 @@ import { listLocations } from '../../server/campaign/locations';
 import { RULEBOOK_SCENARIOS, RULEBOOK_TALLIES, rulebookUrl } from '../../campaign/rulebook';
 import { HOUSE_SCENARIOS, SIDE_LABEL, houseScenario } from '../../campaign/house';
 import TarotRules from '../../components/TarotRules.astro';
+import { CHECK_MOMENTS, HOLD_KINDS, HOLD_KIND_LABEL, MAX_HELD, MOMENT_LABEL, objectiveOf, objectiveSummary } from '../../campaign/objective';
 import { MEMBER_STATUSES, fightPosition, hasTurnLog, summaryOf, tallyOf, type CampaignLocation, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
 import { CAMPAIGN } from '../../curfew/engine';
 
@@ -76,6 +81,8 @@ const summary = summaryOf(scenario);
 const rulesUrl = rulebookUrl(scenario.rulebookScenario);
 // a campaign scenario brings its rules from the code: printed here, and kept by the tracker
 const house = houseScenario(scenario.rulebookScenario);
+// something to hold, in a scenario that is not one of the campaign's own: checked in the tracker
+const objective = objectiveOf(scenario);
 const sidesLine = house?.sides ? (['attacker', 'defender'] as const).map((side) => { const names = scenario!.warbands.filter((w) => w.side === side).map((w) => nameOf(w.warbandId)); return `${SIDE_LABEL[side]}: ${names.length ? joined(names) : 'to be named'}`; }).join(' · ') : '';
 // A telling nobody has written is not printed at all.
 const prologues = scenario.warbands.filter((w) => w.prologue.trim());
@@ -88,7 +95,7 @@ const mapped = locations.filter((l) => l.map);
 const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'key', Candle: 'candle', Anchor: 'anchor', Crown: 'crown', Moon: 'moon' };
 ---
 
-<Base title={`${scenario.title} — Mordheim`} description={summary.slice(0, 160)}>
+<Base title={`${scenario.title} — Mordheim`} description={markdownText(summary, 160)}>
   <main id="main-content" class="battle-report mg" data-base={base}>
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a href={home}>Mordheim</a><span aria-hidden="true">/</span>
@@ -104,7 +111,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         <p class="section-kicker">{imperial}</p>
       )}
       <h1>{scenario.title}</h1>
-      {summary && <p class="summary">{summary}</p>}
+      {summary && <Markdown class="summary" text={summary} />}
       {upcoming && atTable && (
         <p class="tracker-call">
           <a class="mg-btn" href={trackerUrl}><Icon name="swords" size={16} /> {scenario.turn > 0 ? `At the table: turn ${scenario.turn}` : 'Open the battle tracker'}</a>
@@ -119,7 +126,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         <h2 id="verdict-title" class="verdict-winner">{winners.length ? joined(winners.map((w) => nameOf(w.warbandId))) : 'A draw'}</h2>
         {rest.length > 0 && <p class="verdict-field">{winners.length ? 'over' : 'between'} {joined(rest.map((w) => nameOf(w.warbandId)))}</p>}
         <h3 class="verdict-how">How the outcome was decided</h3>
-        <p>{scenario.outcome || 'Not recorded.'}</p>
+        <Markdown text={scenario.outcome || 'Not recorded.'} />
       </section>
     )}
 
@@ -154,13 +161,14 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           <div><dt>{house ? 'Scenario' : 'Rulebook scenario'}</dt><dd>{house ? <>{house.name}<br /><small class="archive-note">one of the campaign’s own</small></> : scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'A custom scenario'}</dd></div>
           {scenario.turnLimit && <div><dt>Length</dt><dd>{scenario.turnLimit} turns{house ? <><br /><small class="archive-note">more if time permits</small></> : null}</dd></div>}
           {house?.sides && <div><dt>Sides</dt><dd>{sidesLine}</dd></div>}
-          <div><dt>Warbands</dt><dd>{scenario.warbands.length ? scenario.warbands.map((w) => nameOf(w.warbandId)).join(' against ') : 'To be named'}</dd></div>
+          {objective && <div><dt>To hold</dt><dd>{objective.name}<br /><small class="archive-note">{objectiveSummary(objective)}</small></dd></div>}
+          <div><dt>Warbands</dt><dd class="scenario-warbands">{scenario.warbands.length ? scenario.warbands.map((w) => <WarbandLabel warband={warbandOf(w.warbandId)} fallback={w.warbandId} />) : 'To be named'}</dd></div>
         </dl>
         {house && house.rules.map((r) => (<><h3>{r.heading}</h3><ul class="house-rules">{r.lines.map((l) => <li>{l}</li>)}</ul></>))}
-        {house ? (scenario.customRules && (<><h3>Also in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>)) : scenario.customRules ? (<><h3>Rules in play</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>) : <p class="archive-note">{scenario.rulebookScenario ? <>Played as the rulebook has it{rulesUrl ? <>; <a href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules in full</a></> : null}.</> : 'The rules are still being written.'}</p>}
-        {scenario.winCondition && !scenario.rulebookScenario && (<><h3>Win condition</h3><p>{scenario.winCondition}</p></>)}
+        {house ? (scenario.customRules && (<><h3>Also in play</h3><Markdown text={scenario.customRules} /></>)) : scenario.customRules ? (<><h3>Rules in play</h3><Markdown text={scenario.customRules} /></>) : <p class="archive-note rulebook-note">{scenario.rulebookScenario ? <>Scenario played as the rulebook has it{rulesUrl ? <>; <a href={rulesUrl} rel="noreferrer noopener" target="_blank">the rules in full</a></> : null}.</> : 'The rules are still being written.'}</p>}
+        {scenario.winCondition && !scenario.rulebookScenario && (<><h3>Win condition</h3><Markdown text={scenario.winCondition} /></>)}
         {house && (<><h3>In short</h3><p>{house.winCondition}</p></>)}
-        {scenario.tarot && <TarotRules folded />}
+        {scenario.tarot && <div class="tarot-section"><TarotRules /></div>}
         {where?.map && whereAt && <LocationMap location={where} marker={whereAt} markerLabel={wherePoint?.name ?? scenario.title} quiet caption={`Where the fight is, on the map of ${where.name}.`} />}
       </section>
     )}
@@ -172,11 +180,12 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           <div><dt>{house ? 'Scenario' : 'Rulebook scenario'}</dt><dd>{house ? house.name : scenario.rulebookScenario ? rulesUrl ? <a href={rulesUrl} rel="noreferrer noopener" target="_blank">{scenario.rulebookScenario} <Icon name="arrow-up-right" size={13} /></a> : scenario.rulebookScenario : 'Custom scenario'}</dd></div>
           <div><dt>Where</dt><dd>{where ? <><a href={`${base}/locations/${where.id}/`}>{where.name}</a>{wherePoint && <><br /><small class="archive-note">at <a href={`${base}/locations/${where.id}/#point-${wherePoint.id}`}>{wherePoint.name}</a></small></>}</> : 'Not recorded'}</dd></div>
           {house?.sides && <div><dt>Sides</dt><dd>{sidesLine}</dd></div>}
-          {(house || scenario.winCondition || !scenario.rulebookScenario) && <div><dt>Win condition</dt><dd>{house ? house.winCondition : scenario.winCondition || 'Not recorded'}</dd></div>}
+          {objective && <div><dt>To hold</dt><dd>{objective.name}<br /><small class="archive-note">{objectiveSummary(objective)}</small></dd></div>}
+          {(house || scenario.winCondition || !scenario.rulebookScenario) && <div><dt>Win condition</dt><dd>{house ? house.winCondition : <Markdown text={scenario.winCondition || 'Not recorded'} />}</dd></div>}
         </dl>
         {house && <details class="house-rules-fold"><summary>The rules as played</summary>{house.rules.map((r) => (<><h3>{r.heading}</h3><ul class="house-rules">{r.lines.map((l) => <li>{l}</li>)}</ul></>))}</details>}
-        {scenario.customRules && (<><h3>{house ? 'Also in play' : 'Rules in play'}</h3>{scenario.customRules.split(/\n\s*\n/).map((p) => <p>{p}</p>)}</>)}
-        {scenario.tarot && <TarotRules folded={!upcoming} />}
+        {scenario.customRules && (<><h3>{house ? 'Also in play' : 'Rules in play'}</h3><Markdown text={scenario.customRules} /></>)}
+        {scenario.tarot && <div class="tarot-section"><TarotRules /></div>}
         {!scenario.rulebookScenario && !scenario.winCondition && (
           <p class="archive-note">The chapter title is not a rulebook scenario name. Missing rules information is left unconfirmed rather than inferred from the story.</p>
         )}
@@ -187,14 +196,14 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
     <section id="prologue">
       <p class="section-kicker">Before the first blow</p>
       <h2 class="section-title">Prologue</h2>
-      <p class="neutral">{scenario.prologue || (upcoming ? 'The game master has not yet set the scene.' : 'Not recorded.')}</p>
+      <Markdown class="neutral" text={scenario.prologue || (upcoming ? 'The game master has not yet set the scene.' : 'Not recorded.')} />
       {prologues.length > 0 && (
         <div class="perspectives">
           {prologues.map((w) => (
             <article class="panel perspective">
               <p class="voice-label">From their perspective</p>
               <h3>{nameOf(w.warbandId)}</h3>
-              <p>{w.prologue}</p>
+              <Markdown class="perspective-prose" text={w.prologue} />
             </article>
           ))}
         </div>
@@ -215,7 +224,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         <section id="battle" class="battle-narrative">
           <p class="section-kicker">An account of blood &amp; wyrdstone</p>
           <h2 class="section-title">The battle</h2>
-          {scenario.battle.length ? scenario.battle.map((paragraph) => <p>{paragraph}</p>) : <p class="neutral archive-note">The battle has not been told yet.</p>}
+          {scenario.battle.length ? <Markdown class="battle-prose" text={scenario.battle.join('\n\n')} /> : <p class="neutral archive-note">The battle has not been told yet.</p>}
           {takedowns.length > 0 && (
             <div id="out-of-action" class="takedowns">
               <h3>Out of action</h3>
@@ -240,14 +249,14 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
         <section id="epilogue">
           <p class="section-kicker">When the fighting ends</p>
           <h2 class="section-title">Epilogue</h2>
-          <p class="neutral">{scenario.epilogue || 'Not recorded.'}</p>
+          <Markdown class="neutral" text={scenario.epilogue || 'Not recorded.'} />
           {epilogues.length > 0 && (
             <div class="perspectives">
               {epilogues.map((w) => (
                 <article class="panel perspective">
                   <p class="voice-label">From their perspective</p>
                   <h3>{nameOf(w.warbandId)}</h3>
-                  <p>{w.epilogue}</p>
+                  <Markdown class="perspective-prose" text={w.epilogue} />
                 </article>
               ))}
             </div>
@@ -337,7 +346,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
           return (
             <article id={w.warbandId} class="panel warband-summary">
               <p class:list={['voice-label', w.result ?? '']}>{w.result ? resultLabel[w.result] : upcoming ? 'Attending' : 'Fought'}</p>
-              <h3><a href={`${base}/warbands/${w.warbandId}/`}>{nameOf(w.warbandId)}</a></h3>
+              <h3><a href={`${base}/warbands/${w.warbandId}/`}><WarbandLabel warband={band} fallback={w.warbandId} /></a></h3>
               {band && <p class="archive-note">{band.type}{band.player ? `, kept by ${band.player}` : ''}{upcoming ? ` · ${band.members.filter((m) => !m.dead).length} living souls` : ''}</p>}
               {!upcoming && (
                 <>
@@ -352,8 +361,13 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                   const m = memberOf(member.memberId);
                   return (
                     <article id={`member-${member.memberId}`} class="member-record">
-                      <h5>{m?.name ?? member.memberId}</h5>
-                      <p class="member-meta">{m?.rank} · {m?.role}{!upcoming && <> · <span class:list={{ darkest: member.status !== 'active' }}>{statusLabel[member.status]}</span></>}</p>
+                      <div class="member-heading">
+                        {m?.picture && <Portrait member={m} width="3.75rem" />}
+                        <div>
+                          <h5>{m?.name ?? member.memberId}</h5>
+                          <p class="member-meta">{m?.rank} · {m?.role}{!upcoming && <> · <span class:list={{ darkest: member.status !== 'active' }}>{statusLabel[member.status]}</span></>}</p>
+                        </div>
+                      </div>
                       {member.experience != null && <p><strong>Experience:</strong> {member.experience}</p>}
                       {member.highlight.trim() && <p><strong class="finest">Finest moment:</strong> {member.highlight}</p>}
                       {member.lowlight.trim() && <p><strong class="darkest">Darkest moment:</strong> {member.lowlight}</p>}
@@ -391,13 +405,19 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
               <label class="mg-field">Title<input name="patch.title" required maxlength="120" value={scenario.title} /></label>
               <div class="mg-two">
                 <label class="mg-field">Played on<input name="patch.playedOn" type="date" required value={scenario.playedOn} /><small>{imperial}</small></label>
-                <label class="mg-field">Scenario{<> <a class="mg-rules-link" href={rulesUrl ?? '#'} hidden={!rulesUrl} rel="noreferrer noopener" target="_blank">the rules <Icon name="arrow-up-right" size={12} /></a></>}<select name="patch.rulebookScenario" data-nullable><option value="" selected={!scenario.rulebookScenario}>Custom scenario</option><optgroup label="The campaign’s own">{HOUSE_SCENARIOS.map((h) => <option value={h.name} data-sides={String(h.sides)} selected={h.name === scenario!.rulebookScenario}>{h.name}</option>)}</optgroup><optgroup label="The rulebook">{RULEBOOK_SCENARIOS.map((r) => <option value={r} data-rulebook selected={r === scenario!.rulebookScenario}>{r}</option>)}</optgroup>{scenario.rulebookScenario && !house && !(RULEBOOK_SCENARIOS as readonly string[]).includes(scenario.rulebookScenario) && <option value={scenario.rulebookScenario} selected>{scenario.rulebookScenario}</option>}</select></label>
+                <label class="mg-field">Scenario{<> <a class="mg-rules-link" href={rulesUrl ?? '#'} hidden={!rulesUrl} rel="noreferrer noopener" target="_blank">the rules <Icon name="arrow-up-right" size={12} /></a></>}<select name="patch.rulebookScenario" data-nullable><option value="" selected={!scenario.rulebookScenario}>Custom scenario</option><optgroup label="The campaign’s own">{HOUSE_SCENARIOS.map((h) => <option value={h.name} data-house data-sides={String(h.sides)} selected={h.name === scenario!.rulebookScenario}>{h.name}</option>)}</optgroup><optgroup label="The rulebook">{RULEBOOK_SCENARIOS.map((r) => <option value={r} data-rulebook selected={r === scenario!.rulebookScenario}>{r}</option>)}</optgroup>{scenario.rulebookScenario && !house && !(RULEBOOK_SCENARIOS as readonly string[]).includes(scenario.rulebookScenario) && <option value={scenario.rulebookScenario} selected>{scenario.rulebookScenario}</option>}</select></label>
               </div>
               <label class="mg-field">What the tracker tallies<input name="patch.tally" maxlength="60" value={scenario.tally} placeholder={tallyOf({ tally: '', rulebookScenario: scenario.rulebookScenario }) || 'Nothing beyond the fallen'} /><small>What the battle tracker counts per warband besides who fell: shards on a Wyrdstone Hunt, warriors through on a Breakthrough. Empty means the rulebook scenario's own ({Object.entries(RULEBOOK_TALLIES).map(([k, v]) => `${k}: ${v!.toLowerCase()}`).join('; ')}), or none.</small></label>
+              <fieldset class="mg-fieldset" data-when-not-house hidden={!!house}><legend>Something to hold</legend>
+                <label class="mg-field">What it is called<input name="patch.objective.name" maxlength="60" value={scenario.objective?.name ?? ''} placeholder="The relic, objective markers" /><small>A relic, a banner, markers on the board. The battle tracker asks who holds it at each check and gives a point for each one held. Empty means nothing to hold.</small></label>
+                <div class="mg-field">How many there are<div class="mg-checks">{HOLD_KINDS.map((k) => <label class="mg-field check"><input type="radio" name="patch.objective.kind" value={k} checked={(scenario.objective?.kind ?? 'one') === k} data-objective-kind /> {HOLD_KIND_LABEL[k]}</label>)}</div></div>
+                <label class="mg-field" data-objective-count hidden={scenario.objective?.kind !== 'many'}>How many of them<input name="patch.objective.count" type="number" min="2" max={MAX_HELD} inputmode="numeric" data-nullable value={scenario.objective?.kind === 'many' ? scenario.objective.count : 3} /></label>
+                <label class="mg-field">When it is checked<select name="patch.objective.when">{CHECK_MOMENTS.map((m) => <option value={m} selected={(scenario.objective?.when ?? 'round-end') === m}>{MOMENT_LABEL[m]}</option>)}</select><small>A round is a turn of the tracker, in which every warband moves once. At a warband’s own turn, only that warband is counted.</small></label>
+              </fieldset>
               <label class="mg-field">Turns<input name="patch.turnLimit" type="number" min="1" max="99" inputmode="numeric" value={scenario.turnLimit ?? ''} data-nullable placeholder="Until it is decided" /><small>The game ends of itself after this many; the table may add another round in the tracker, time permitting. A campaign scenario sets its own when chosen.</small></label>
               <label class="mg-field check"><input type="checkbox" name="patch.tarot" checked={scenario.tarot} /> The Tarot of the Damned is in play: each warband a hidden hand of three cards in the tracker, small boons and banes played at the table</label>
               <fieldset class="mg-fieldset"><legend>Where</legend>
-                <label class="mg-field">Place<select name="patch.locationId" data-nullable data-location-select><option value="" selected={!scenario.locationId}>Not said</option>{locations.map((l) => <option value={l.id} selected={l.id === scenario!.locationId}>{l.name}{l.region ? ` (${l.region})` : ''}</option>)}</select><small>One of <a class="mg-rules-link" href={`${base}/locations/`}>the campaign’s locations</a>. Tap its map where the fight is, or tap a marked place to set the fight there; the marker then follows the place if it is moved.</small></label>
+                <label class="mg-field">Place<select name="patch.locationId" data-nullable data-location-select><option value="" selected={!scenario.locationId}>Not said</option>{locations.map((l) => <option value={l.id} selected={l.id === scenario!.locationId}>{l.name}{l.region ? ` (${l.region})` : ''}</option>)}</select><small>Tap its map where the fight is, or tap a marked place to set the fight there.</small></label>
                 <input type="number" name="patch.pointId" data-nullable data-point-input hidden value={scenario.pointId ?? ''} />
                 {mapped.map((l) => <div data-picker-for={l.id} hidden={l.id !== scenario!.locationId}><LocationMap location={l} picker marker={l.id === scenario!.locationId ? whereAt : null} markerLabel="The fight" /></div>)}
                 <p class="mg-note" data-no-map hidden={!scenario.locationId || !!where?.map}>This place has no map yet, so the fight has no spot on one; it can be set once a map is uploaded.</p>
@@ -417,9 +437,9 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                 <div class="mg-checks">{warbands.map((w) => <label class="mg-field check"><input type="checkbox" name="patch.warbandIds" value={w.id} data-array checked={scenario!.warbands.some((p) => p.warbandId === w.id)} /> {w.name} <span class="mg-muted">({w.type})</span></label>)}</div>
                 <p class="mg-note">A warband taken off the list takes its warriors' records for this scenario with it.</p>
               </fieldset>
-              <label class="mg-field">Custom and special rules<textarea name="patch.customRules" maxlength="8000">{scenario.customRules}</textarea></label>
-              <label class="mg-field" data-when-custom hidden={!!scenario.rulebookScenario}>Win condition<textarea name="patch.winCondition" maxlength="4000">{scenario.winCondition}</textarea><small>How a custom scenario is won. A rulebook scenario sets its own.</small></label>
-              <label class="mg-field">Prologue<textarea name="patch.prologue" maxlength="8000" class="tall">{scenario.prologue}</textarea></label>
+              <label class="mg-field">Custom and special rules<textarea name="patch.customRules" data-markdown maxlength="8000">{scenario.customRules}</textarea></label>
+              <label class="mg-field" data-when-custom hidden={!!scenario.rulebookScenario}>Win condition<textarea name="patch.winCondition" data-markdown maxlength="4000">{scenario.winCondition}</textarea><small>How a custom scenario is won. A rulebook scenario sets its own.</small></label>
+              <label class="mg-field">Prologue<textarea name="patch.prologue" data-markdown maxlength="8000" class="tall">{scenario.prologue}</textarea></label>
               <label class="mg-field check"><input type="checkbox" name="patch.prologueAsSummary" checked={scenario.prologueAsSummary} /> Print the prologue under the title until the game is played</label>
               {!upcoming && <label class="mg-field check"><input type="checkbox" name="patch.battleOpen" checked={scenario.battleOpen} /> Open the battle’s long version to those who fought</label>}
               <div class="mg-actions end"><button type="submit" class="mg-btn">Save the scenario</button></div>
@@ -432,12 +452,12 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
             <summary>The battle</summary>
             {(gm || (!upcoming && mayRetell)) && (
               <form class="mg-form" data-api="scenarios/battle" data-json={JSON.stringify({ scenarioId: scenario.id })}>
-                {gm && <label class="mg-field">The short version<textarea name="patch.summary" maxlength="1000">{summaryOf({ ...scenario, status: 'played' })}</textarea><small>Two or three sentences: what stands under the title here, and what the Chronicle prints on the front page.{upcoming && scenario.prologueAsSummary ? ' Until the game is played, the prologue stands in when this is empty.' : ''}</small></label>}
-                {!upcoming && mayRetell && <label class="mg-field">The long version<textarea name="battle" data-paragraphs class="tall" style="min-height: 22rem">{scenario.battle.join('\n\n')}</textarea><small>One paragraph per beat of the fight, a blank line between them. Who did what to whom, in the archivist's neutral past tense. The telling as it stands now is kept before yours replaces it.</small></label>}
+                {gm && <label class="mg-field">The short version<textarea name="patch.summary" data-markdown maxlength="1000">{summaryOf({ ...scenario, status: 'played' })}</textarea><small>Two or three sentences: what stands under the title here, and what the Chronicle prints on the front page.{upcoming && scenario.prologueAsSummary ? ' Until the game is played, the prologue stands in when this is empty.' : ''}</small></label>}
+                {!upcoming && mayRetell && <label class="mg-field">The long version<textarea name="battle" data-markdown data-paragraphs class="tall" style="min-height: 22rem">{scenario.battle.join('\n\n')}</textarea><small>One paragraph per beat of the fight, a blank line between them. Who did what to whom, in the archivist's neutral past tense. The telling as it stands now is kept before yours replaces it.</small></label>}
                 {gm && !upcoming && (
                   <>
-                    <label class="mg-field">How the outcome was decided<textarea name="patch.outcome" maxlength="4000">{scenario.outcome}</textarea></label>
-                    <label class="mg-field">Epilogue<textarea name="patch.epilogue" maxlength="8000" class="tall">{scenario.epilogue}</textarea></label>
+                    <label class="mg-field">How the outcome was decided<textarea name="patch.outcome" data-markdown maxlength="4000">{scenario.outcome}</textarea></label>
+                    <label class="mg-field">Epilogue<textarea name="patch.epilogue" data-markdown maxlength="8000" class="tall">{scenario.epilogue}</textarea></label>
                   </>
                 )}
                 <div class="mg-actions end"><button type="submit" class="mg-btn">{gm && upcoming ? 'Save the short version' : 'Set down this telling'}</button></div>
@@ -449,7 +469,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                 {upcoming ? (
                   <p class="mg-note">The game is called at the table: the tracker takes every warband's result and moves the scenario into the Chronicle.{scenario.warbands.length === 0 ? ' Name the warbands that fight first, under the scenario above.' : ''}</p>
                 ) : (
-                  <ul class="ending-list">{scenario.warbands.map((w) => <li><span>{nameOf(w.warbandId)}</span><b class={w.result ?? ''}>{w.result ? resultLabel[w.result] : 'No result'}</b></li>)}</ul>
+                  <ul class="ending-list">{scenario.warbands.map((w) => <li><span><WarbandLabel warband={warbandOf(w.warbandId)} fallback={w.warbandId} /></span><b class={w.result ?? ''}>{w.result ? resultLabel[w.result] : 'No result'}</b></li>)}</ul>
                 )}
                 <div class="mg-actions end">
                   {!upcoming && <button type="button" class="mg-btn ghost" data-act="scenarios/reopen" data-body={JSON.stringify({ scenarioId: scenario.id })} data-confirm="Lift this scenario out of the Chronicle and make it upcoming again? Everything written stays.">Reopen as upcoming</button>}
@@ -463,7 +483,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                 <h4 class="mg-h3">Earlier tellings</h4>
                 <ul class="mg-revisions">{revisions.slice(0, 8).map((r) => (
                   <li><span class="mg-muted">{r.authorName || 'unknown'} · {when(r.savedAt)} · {r.battle.length} {r.battle.length === 1 ? 'paragraph' : 'paragraphs'}</span>
-                    <details><summary class="mg-link">Read it</summary>{r.battle.map((p) => <p>{p}</p>)}</details></li>
+                    <details><summary class="mg-link">Read it</summary><Markdown text={r.battle.join('\n\n')} /></details></li>
                 ))}</ul>
               </div>
             )}
@@ -482,13 +502,13 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
                   {!upcoming && <label class="mg-field check"><input type="checkbox" data-telling-part={`epilogue-${p.warbandId}`} checked={!!p.epilogue.trim()} /> An epilogue</label>}
                 </div>
                 <div id={`prologue-${p.warbandId}`} hidden={!p.prologue.trim()}>
-                  <label class="mg-field">Prologue<textarea name="patch.prologue" maxlength="8000" disabled={!p.prologue.trim()}>{p.prologue}</textarea><small>Why they came, from their own side of the street.</small></label>
+                  <label class="mg-field">Prologue<textarea name="patch.prologue" data-markdown maxlength="8000" disabled={!p.prologue.trim()}>{p.prologue}</textarea><small>Why they came, from their own side of the street.</small></label>
                   <input type="hidden" name="patch.prologue" value="" disabled={!!p.prologue.trim()} data-telling-empty />
                 </div>
                 {!upcoming && (
                   <>
                     <div id={`epilogue-${p.warbandId}`} hidden={!p.epilogue.trim()}>
-                      <label class="mg-field">Epilogue<textarea name="patch.epilogue" maxlength="8000" disabled={!p.epilogue.trim()}>{p.epilogue}</textarea><small>How they left it, and what they carried away.</small></label>
+                      <label class="mg-field">Epilogue<textarea name="patch.epilogue" data-markdown maxlength="8000" disabled={!p.epilogue.trim()}>{p.epilogue}</textarea><small>How they left it, and what they carried away.</small></label>
                       <input type="hidden" name="patch.epilogue" value="" disabled={!!p.epilogue.trim()} data-telling-empty />
                     </div>
                     <label class="mg-field">Finest moments<textarea name="patch.highlights" data-list>{p.highlights.join('\n')}</textarea><small>One per line.</small></label>
@@ -582,15 +602,26 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
     const field = form?.querySelector<HTMLElement>('[data-when-custom]');
     const link = form?.querySelector<HTMLAnchorElement>('.mg-rules-link');
     const sides = form?.querySelector<HTMLElement>('[data-when-sides]');
+    const holding = form?.querySelector<HTMLElement>('[data-when-not-house]');
     const follow = () => {
       const picked = select.selectedOptions[0];
       if (field) field.hidden = !!select.value;
       if (sides) sides.hidden = picked?.dataset.sides !== 'true';
+      // a campaign scenario brings its own objective
+      if (holding) holding.hidden = picked?.dataset.house !== undefined;
       const rulebook = picked?.dataset.rulebook !== undefined;
       if (link) { const slug = select.value.toLowerCase().replace(/[^a-z0-9]+/g, '-'); link.hidden = !rulebook; if (rulebook) link.href = `https://mordheimer.net/docs/campaigns/scenarios/mordheim-rulebook/${slug}`; }
     };
     select.addEventListener('change', follow);
     follow();
+  }
+
+  // how many of them is asked only when there are several
+  for (const form of root.querySelectorAll<HTMLFormElement>('form:has([data-objective-kind])')) {
+    const count = form.querySelector<HTMLElement>('[data-objective-count]');
+    form.addEventListener('change', (e) => {
+      if (count && (e.target as HTMLElement).matches('[data-objective-kind]')) count.hidden = (e.target as HTMLInputElement).value !== 'many';
+    });
   }
 
   // the muster: rows of warriors, each with whether they came and how they fared
@@ -870,23 +901,28 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
   .house-rules-fold { margin: .5rem 0 1rem; }
   .house-rules-fold > summary { cursor: pointer; color: var(--gold); min-height: var(--control-size); display: flex; align-items: center; }
   .outcome-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+  .scenario-warbands { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
   dt { color: var(--ink-dim); font-size: .8rem; }
   dd { color: var(--parchment); }
   .archive-note { font-size: .9rem; color: var(--ink-dim); }
+  .rulebook-note { margin-bottom: 1.5rem; }
+  .tarot-section { margin-top: 1.5rem; }
   .neutral { max-width: 760px; margin: 0 auto 2rem; text-align: center; }
   .perspectives, .warband-summaries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; align-items: start; }
   .perspectives { align-items: stretch; }
   .perspective { border-top: 3px solid var(--gold-dim); }
-  .perspective p:last-child { font-style: italic; }
+  .perspective-prose { font-style: italic; }
   .voice-label { text-transform: uppercase; letter-spacing: .12em; font-size: .65rem; color: var(--gold); margin-bottom: .65rem; }
   .battle-narrative { max-width: 760px; margin-inline: auto; }
-  .battle-narrative > p:not(.section-kicker) { line-height: 1.9; }
+  .battle-narrative > p:not(.section-kicker), .battle-prose { line-height: 1.9; }
   .finest, .victory { color: var(--gold); }
   .darkest, .defeat { color: var(--blood-bright); }
   .roster-title { border-top: 1px solid var(--gold-dim); padding-top: 1.5rem; }
   .member-record { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); scroll-margin-top: 2rem; }
+  .member-heading { display: flex; align-items: center; gap: .9rem; margin-bottom: 1rem; }
+  .member-heading > div { min-width: 0; overflow-wrap: anywhere; }
   .member-record h5 { font: 1.4rem/1.3 'Pirata One', Georgia, serif; color: var(--parchment); }
-  .member-meta { color: var(--ink-dim); font-size: .8rem; margin: .4rem 0 1rem; }
+  .member-meta { color: var(--ink-dim); font-size: .8rem; margin: .4rem 0 0; }
   .member-record strong { font-weight: normal; color: var(--gold); }
   .member-record strong.darkest { color: var(--blood-bright); }
   .member-record p { font-size: .95rem; }

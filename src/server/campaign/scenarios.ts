@@ -10,7 +10,9 @@
  *
  * While the game is played, the battle tracker logs it turn by turn: anyone at the table (a player whose warband
  * attends, or a game master) advances the turn, notes what happened, scores towards the scenario's tally and
- * records who put whom out of action, tagged with the turn. The out-of-action results are the record's own rows.
+ * records who put whom out of action, tagged with the turn. The out-of-action results are the record's own rows. A
+ * custom scenario may have something to hold (campaign/objective.ts), which the table checks round by round or turn
+ * by turn.
  */
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
@@ -18,7 +20,9 @@ import { locationPoints, locations, members, scenarioEvents, scenarioMembers, sc
 import { LedgerError } from '../../curfew/ledger.ts';
 import { LOGGED_KINDS, MEMBER_STATUSES, SCENARIO_RESULTS, positionOf, slugify, type EventKind, type MemberStatus, type NarrativeRevision, type OutOfAction, type Puzzle, type Scenario, type ScenarioEvent, type ScenarioMember, type ScenarioResult, type ScenarioWarband, type Statline } from '../../campaign/model.ts';
 import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook.ts';
+import { proseSource } from '../../campaign/prose.ts';
 import { HOUSE_SCENARIOS, SIDES, houseScenario, verdictOf, type Side } from '../../campaign/house.ts';
+import { CHECK_MOMENTS, HOLD_KINDS, MAX_HELD, checkError, checkKey, coerceObjective, objectiveOf, perWarband, type CheckMoment, type HoldKind, type Objective } from '../../campaign/objective.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { ensureLocationsSeeded, ensureSeeded } from './seed.ts';
 
@@ -36,7 +40,7 @@ function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mem
   return {
     id: r.id, sequence: r.sequence, status: r.status, title: r.title, playedOn: r.playedOn, rulebookScenario: r.rulebookScenario, customRules: r.customRules,
     winCondition: r.winCondition, summary: r.summary, chronicle: r.chronicle, outcome: r.outcome, prologue: r.prologue, prologueAsSummary: r.prologueAsSummary, battle: (r.battle as string[]) ?? [], epilogue: r.epilogue,
-    battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null, turn: r.turn, turnLimit: r.turnLimit, tally: r.tally, tarot: r.tarot,
+    battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null, turn: r.turn, turnLimit: r.turnLimit, tally: r.tally, objective: coerceObjective(r.objective), tarot: r.tarot,
     locationId: r.locationId, pointId: r.pointId, mapX: r.mapX, mapY: r.mapY,
     warbands: parts.filter((p) => p.scenarioId === r.id).map((p): ScenarioWarband => ({
       scenarioId: p.scenarioId, warbandId: p.warbandId, result: p.result, side: p.side, prologue: p.prologue, epilogue: p.epilogue, accomplishments: p.accomplishments,
@@ -126,6 +130,8 @@ export interface ScenarioInput {
   turnLimit?: number | null;
   /** Whether the Tarot of the Damned is in play at the table (campaign/tarot.ts). */
   tarot?: boolean;
+  /** Something to hold (campaign/objective.ts); null, or an empty name, takes it away. */
+  objective?: ObjectiveInput | null;
   /** Where it is fought: a location of the campaign's, a point of interest there, a spot on its map. Null clears each. */
   locationId?: string | null; pointId?: number | null; mapX?: number | null; mapY?: number | null;
 }
@@ -139,6 +145,17 @@ function rulebookOf(given: string | null | undefined): string | null {
   const s = clean(given, 80);
   if (!s) return null;
   return [...RULEBOOK_SCENARIOS, ...HOUSE_SCENARIOS.map((h) => h.name)].find((r) => r.toLowerCase() === s.toLowerCase()) ?? s;
+}
+export interface ObjectiveInput { name: string; kind: HoldKind; count?: number | null; when: CheckMoment }
+function objectiveInputOf(given: ObjectiveInput | null | undefined): Objective | null {
+  const name = clean(given?.name, 60);
+  if (!given || !name) return null;
+  if (!HOLD_KINDS.includes(given.kind)) throw new LedgerError('Say whether there is one of it or several.');
+  if (!CHECK_MOMENTS.includes(given.when)) throw new LedgerError('Say when it is checked.');
+  if (given.kind === 'one') return { name, kind: 'one', count: 1, when: given.when };
+  const count = given.count ?? 0;
+  if (!Number.isInteger(count) || count < 2 || count > MAX_HELD) throw new LedgerError(`Say how many there are, from 2 to ${MAX_HELD}.`);
+  return { name, kind: 'many', count, when: given.when };
 }
 function turnLimitOf(given: number | null | undefined): number | null {
   if (given === undefined || given === null) return null;
@@ -191,9 +208,9 @@ export async function createScenario(actor: Actor, input: ScenarioInput): Promis
   let id = `scenario-${String(seq).padStart(2, '0')}-${slugify(title)}`, k = 2;
   while (taken.has(id)) id = `scenario-${String(seq).padStart(2, '0')}-${slugify(title)}-${k++}`;
   await d.insert(scenarios).values({
-    id, sequence: seq, status: 'upcoming', title, playedOn: input.playedOn, rulebookScenario: rulebookOf(input.rulebookScenario), customRules: clean(input.customRules, 8000),
-    turnLimit: turnLimitOf(input.turnLimit) ?? houseScenario(input.rulebookScenario)?.turns ?? null, tarot: !!input.tarot,
-    prologue: clean(input.prologue, 8000), prologueAsSummary: input.prologueAsSummary ?? true, summary: clean(input.summary, 1000), createdBy: actor.id,
+    id, sequence: seq, status: 'upcoming', title, playedOn: input.playedOn, rulebookScenario: rulebookOf(input.rulebookScenario), customRules: proseSource(input.customRules, 8000),
+    turnLimit: turnLimitOf(input.turnLimit) ?? houseScenario(input.rulebookScenario)?.turns ?? null, tarot: !!input.tarot, objective: objectiveInputOf(input.objective),
+    prologue: proseSource(input.prologue, 8000), prologueAsSummary: input.prologueAsSummary ?? true, summary: proseSource(input.summary, 1000), createdBy: actor.id,
     ...(await whereOf(input)),
   });
   if (input.warbandIds?.length) await setParticipants(actor, id, input.warbandIds);
@@ -210,15 +227,15 @@ export async function updateScenario(actor: Actor, id: string, patch: ScenarioPa
   if (patch.turnLimit !== undefined) set.turnLimit = turnLimitOf(patch.turnLimit);
   // a house scenario brings its own length when it is chosen and none was set
   else if (patch.rulebookScenario !== undefined && (await row(id)).turnLimit === null) set.turnLimit = houseScenario(patch.rulebookScenario)?.turns ?? null;
-  if (patch.customRules !== undefined) set.customRules = clean(patch.customRules, 8000);
-  if (patch.winCondition !== undefined) set.winCondition = clean(patch.winCondition, 4000);
+  if (patch.customRules !== undefined) set.customRules = proseSource(patch.customRules, 8000);
+  if (patch.winCondition !== undefined) set.winCondition = proseSource(patch.winCondition, 4000);
   // the summary and the Chronicle's paragraph are one field now; saving it empties the older one
-  if (patch.summary !== undefined) { set.summary = clean(patch.summary, 1000); set.chronicle = ''; }
+  if (patch.summary !== undefined) { set.summary = proseSource(patch.summary, 1000); set.chronicle = ''; }
   else if (patch.chronicle !== undefined) set.chronicle = clean(patch.chronicle, 4000);
-  if (patch.outcome !== undefined) set.outcome = clean(patch.outcome, 4000);
-  if (patch.prologue !== undefined) set.prologue = clean(patch.prologue, 8000);
+  if (patch.outcome !== undefined) set.outcome = proseSource(patch.outcome, 4000);
+  if (patch.prologue !== undefined) set.prologue = proseSource(patch.prologue, 8000);
   if (patch.prologueAsSummary !== undefined) set.prologueAsSummary = !!patch.prologueAsSummary;
-  if (patch.epilogue !== undefined) set.epilogue = clean(patch.epilogue, 8000);
+  if (patch.epilogue !== undefined) set.epilogue = proseSource(patch.epilogue, 8000);
   // the loot and the lasting records are one list now; saving it empties the older one
   if (patch.campaignNotes !== undefined) { set.campaignNotes = paragraphs(patch.campaignNotes); set.loot = []; }
   else if (patch.loot !== undefined) set.loot = paragraphs(patch.loot);
@@ -226,6 +243,7 @@ export async function updateScenario(actor: Actor, id: string, patch: ScenarioPa
   if (patch.puzzle !== undefined) set.puzzle = patch.puzzle ?? null;
   if (patch.tally !== undefined) set.tally = clean(patch.tally, 60);
   if (patch.tarot !== undefined) set.tarot = !!patch.tarot;
+  if (patch.objective !== undefined) set.objective = objectiveInputOf(patch.objective);
   await db().update(scenarios).set(set).where(eq(scenarios.id, id));
   for (const [warbandId, given] of Object.entries(patch.sides ?? {})) {
     const side = given ? (SIDES.includes(given) ? given : null) : null;
@@ -304,7 +322,8 @@ export async function writeBattle(actor: Actor, id: string, battle: string[]): P
     const mine = await db().select({ id: scenarioWarbands.warbandId }).from(scenarioWarbands).innerJoin(warbands, eq(warbands.id, scenarioWarbands.warbandId)).where(and(eq(scenarioWarbands.scenarioId, id), eq(warbands.ownerId, actor.id))).limit(1);
     if (!mine.length) throw new LedgerError('Only those who fought may retell the battle.', 403);
   }
-  const next = paragraphs(battle);
+  // Empty pieces keep blank lines inside code when the telling is joined again.
+  const next = battle.some((s) => s.trim()) ? battle.slice(0, 60).map((s) => s.replace(/\r\n?/g, '\n').slice(0, 4000)) : [];
   const previous = (r.battle as string[]) ?? [];
   if (JSON.stringify(next) === JSON.stringify(previous)) return (await getScenario(id))!;
   const d = db();
@@ -344,8 +363,8 @@ export interface PerspectivePatch { prologue?: string; epilogue?: string; highli
 export async function writePerspective(actor: Actor, id: string, warbandId: string, patch: PerspectivePatch): Promise<Scenario> {
   await speaksFor(actor, id, warbandId);
   const set: Partial<typeof scenarioWarbands.$inferInsert> = {};
-  if (patch.prologue !== undefined) set.prologue = clean(patch.prologue, 8000);
-  if (patch.epilogue !== undefined) set.epilogue = clean(patch.epilogue, 8000);
+  if (patch.prologue !== undefined) set.prologue = proseSource(patch.prologue, 8000);
+  if (patch.epilogue !== undefined) set.epilogue = proseSource(patch.epilogue, 8000);
   if (patch.highlights !== undefined) set.highlights = paragraphs(patch.highlights, 12);
   if (patch.lowlights !== undefined) set.lowlights = paragraphs(patch.lowlights, 12);
   if (Object.keys(set).length) await db().update(scenarioWarbands).set(set).where(and(eq(scenarioWarbands.scenarioId, id), eq(scenarioWarbands.warbandId, warbandId)));
@@ -496,14 +515,17 @@ export async function addEvent(actor: Actor, id: string, input: EventInput): Pro
   return (await getScenario(id))!;
 }
 
-/** Strike a line from the log: the one who wrote it, or a game master. */
+/** Strike a line from the log: the one who wrote it, or a game master. A check of the objective goes whole, every warband's count with it. */
 export async function removeEvent(actor: Actor, id: string, eventId: number): Promise<Scenario> {
   await row(id);
   const d = db();
   const rows = await d.select().from(scenarioEvents).where(and(eq(scenarioEvents.id, eventId), eq(scenarioEvents.scenarioId, id))).limit(1);
   if (!rows.length) throw new LedgerError('That line is already gone.', 404);
   if (!isGm(actor) && rows[0].authorId !== actor.id) throw new LedgerError('Only the one who wrote it, or a game master, strikes a line.', 403);
-  await d.delete(scenarioEvents).where(eq(scenarioEvents.id, eventId));
+  const e = rows[0];
+  if (e.kind === 'control') await d.delete(scenarioEvents).where(and(eq(scenarioEvents.scenarioId, id), eq(scenarioEvents.turn, e.turn), eq(scenarioEvents.kind, 'control'), eq(scenarioEvents.text, e.text)));
+  else await d.delete(scenarioEvents).where(eq(scenarioEvents.id, eventId));
+  await d.update(scenarios).set({ updatedAt: new Date() }).where(eq(scenarios.id, id));
   return (await getScenario(id))!;
 }
 
@@ -578,6 +600,35 @@ export async function chooseSides(actor: Actor, id: string, sides: Record<string
     if (given && !SIDES.includes(given)) throw new LedgerError('A warband attacks or defends.');
     await d.update(scenarioWarbands).set({ side: given || null }).where(and(eq(scenarioWarbands.scenarioId, id), eq(scenarioWarbands.warbandId, warbandId)));
   }
+  await d.update(scenarios).set({ updatedAt: new Date() }).where(eq(scenarios.id, id));
+  return (await getScenario(id))!;
+}
+
+export interface CheckInput { turn: number; /** Whose turn it is, when the objective is checked at each warband's own. */ whose?: string | null; held: Record<string, number> }
+
+/**
+ * The table checks the scenario's objective (campaign/objective.ts): how many each warband holds at a round's start
+ * or end, or how many the warband whose turn it is holds at its own turn's. Every attending warband counted at a
+ * round is written down, nought included, so "nobody held it" is on the record; a second telling of the same check
+ * replaces the first. Anyone at the table may; the turn does not move.
+ */
+export async function recordCheck(actor: Actor, id: string, input: CheckInput): Promise<Scenario> {
+  const r = await row(id);
+  await tableOnly(actor, id);
+  if (r.status === 'played') throw new LedgerError('The game is already called.', 409);
+  const objective = objectiveOf({ objective: coerceObjective(r.objective), rulebookScenario: r.rulebookScenario });
+  if (!objective) throw new LedgerError('This scenario has nothing to hold.', 400);
+  const turn = turnOf(input.turn, null);
+  if (turn === null) throw new LedgerError('Say which turn it is.');
+  const d = db();
+  const attending = (await d.select({ warbandId: scenarioWarbands.warbandId }).from(scenarioWarbands).where(eq(scenarioWarbands.scenarioId, id))).map((x) => x.warbandId);
+  const whose = perWarband(objective.when) ? input.whose ?? null : null;
+  const refused = checkError(objective, input.held, attending, whose);
+  if (refused) throw new LedgerError(refused, refused.startsWith('That warband') ? 404 : 400);
+  const key = checkKey(objective.when, whose);
+  const counted = whose ? [whose] : attending;
+  await d.delete(scenarioEvents).where(and(eq(scenarioEvents.scenarioId, id), eq(scenarioEvents.turn, turn), eq(scenarioEvents.kind, 'control'), eq(scenarioEvents.text, key)));
+  if (counted.length) await d.insert(scenarioEvents).values(counted.map((warbandId) => ({ scenarioId: id, turn, kind: 'control' as const, warbandId, points: input.held[warbandId] ?? 0, text: key, authorId: actor.id, authorName: actor.name })));
   await d.update(scenarios).set({ updatedAt: new Date() }).where(eq(scenarios.id, id));
   return (await getScenario(id))!;
 }

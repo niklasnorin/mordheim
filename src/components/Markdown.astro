@@ -1,0 +1,12 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import { renderMarkdown } from '../lib/markdown';
+
+interface Props extends HTMLAttributes<'div'> {
+  text: string;
+  initial?: boolean;
+}
+const { text, initial = false, class: className, ...attrs } = Astro.props;
+---
+
+<div {...attrs} class:list={['markdown', className, { 'markdown-initial': initial }]} set:html={renderMarkdown(text)} />

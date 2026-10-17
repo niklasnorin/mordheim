@@ -122,8 +122,8 @@
 .mg-card .mg-real { color: var(--ink-dim); font-size: var(--text-meta); font-family: var(--font-utility); }
 .mg-card p { color: var(--ink-dim); font-size: var(--text-ui); line-height: 1.6; }
 .mg-card .mg-who { display: flex; gap: .4rem; flex-wrap: wrap; text-transform: none; letter-spacing: 0; }
-.mg-card .mg-who span { color: var(--ink); font-size: var(--text-ui); }
-.mg-card .mg-who span + span::before { content: '·'; color: var(--gold-dim); margin-right: .4rem; }
+.mg-card .mg-who > span { color: var(--ink); font-size: var(--text-ui); }
+.mg-card .mg-who > span + span::before { content: '·'; color: var(--gold-dim); margin-right: .4rem; }
 
 /* wide, quiet tables for the Watch House side */
 .mg-table { width: 100%; border-collapse: collapse; font-size: var(--text-ui); }

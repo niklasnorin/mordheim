@@ -241,7 +241,7 @@ const lastRun = data?.runs[0];
               <span class="wh-h3">Set a new article in type</span>
               <label class="wh-field">Headline<input name="headline" required maxlength="200" placeholder="Bell Heard Beneath the Ash; Nobody Claims It" /></label>
               <label class="wh-field">Byline<input name="byline" maxlength="200" placeholder="By our correspondent at the ferry stair, who was counting too" /></label>
-              <label class="wh-field">Body<textarea name="body" required maxlength="4000" placeholder="One paragraph, eighty to a hundred and fifty words."></textarea></label>
+              <label class="wh-field">Body<textarea name="body" data-markdown required maxlength="4000" placeholder="One paragraph, eighty to a hundred and fifty words."></textarea></label>
               <div class="wh-field-row">
                 <label class="wh-field">Place<select name="locationId">{data.locations.map((l) => <option value={l.id} selected={l.id === data!.location.id}>{l.name}</option>)}</select></label>
                 <label class="wh-check"><input type="checkbox" name="notice" /> A notice (capitals, no byline)</label>
@@ -261,7 +261,7 @@ const lastRun = data?.runs[0];
                         <form class="wh-article-form" data-api="admin/article-update" data-json={JSON.stringify({ id: a.id })}>
                           <label class="wh-field">Headline<input name="patch.headline" required maxlength="200" value={a.headline} /></label>
                           <label class="wh-field">Byline<input name="patch.byline" maxlength="200" value={a.byline} /></label>
-                          <label class="wh-field">Body<textarea name="patch.body" required maxlength="4000">{a.body}</textarea></label>
+                          <label class="wh-field">Body<textarea name="patch.body" data-markdown required maxlength="4000">{a.body}</textarea></label>
                           <div class="wh-field-row">
                             <label class="wh-field">Place<select name="patch.locationId">{data!.locations.map((l) => <option value={l.id} selected={l.id === a.locationId}>{l.name}</option>)}</select></label>
                             <label class="wh-field">Order<input name="patch.sort" type="number" min="0" max="9999" value={a.sort} /></label>

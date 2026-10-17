@@ -12,6 +12,7 @@ import { images, locationPoints, locationStock, locations, scenarios } from '../
 import { LedgerError } from '../../curfew/ledger.ts';
 import { positionOf, slugify, type CampaignLocation, type PointOfInterest } from '../../campaign/model.ts';
 import { COMMON, tradeItemById, type StockEntry } from '../../campaign/trading.ts';
+import { proseSource } from '../../campaign/prose.ts';
 import { IMAGE_MAX_BYTES, looksLike, type ImageType } from './chapters.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { ensureLocationsSeeded } from './seed.ts';
@@ -97,7 +98,7 @@ export async function createLocation(actor: Actor, input: LocationInput): Promis
   const stem = slugify(name) || 'place';
   let id = stem, k = 2;
   while (taken.has(id)) id = `${stem}-${k++}`;
-  await d.insert(locations).values({ id, name, region: clean(input.region, 80), description: clean(input.description, 8000), map: pathOf('map', input.map), banner: pathOf('banner', input.banner), bannerFocus: focusOf(input.bannerFocus), sort: n + 1 });
+  await d.insert(locations).values({ id, name, region: clean(input.region, 80), description: proseSource(input.description, 8000), map: pathOf('map', input.map), banner: pathOf('banner', input.banner), bannerFocus: focusOf(input.bannerFocus), sort: n + 1 });
   return (await getLocation(id))!;
 }
 
@@ -107,7 +108,7 @@ export async function updateLocation(actor: Actor, id: string, patch: Partial<Lo
   const set: Partial<typeof locations.$inferInsert> = { updatedAt: new Date() };
   if (patch.name !== undefined) { const name = clean(patch.name, 80); if (!name) throw new LedgerError('The place needs a name.'); set.name = name; }
   if (patch.region !== undefined) set.region = clean(patch.region, 80);
-  if (patch.description !== undefined) set.description = clean(patch.description, 8000);
+  if (patch.description !== undefined) set.description = proseSource(patch.description, 8000);
   if (patch.map !== undefined) { set.map = pathOf('map', patch.map); await dropUploaded(id, 'map', set.map); }
   if (patch.banner !== undefined) { set.banner = pathOf('banner', patch.banner); await dropUploaded(id, 'banner', set.banner); }
   if (patch.bannerFocus !== undefined) set.bannerFocus = focusOf(patch.bannerFocus);
@@ -170,7 +171,7 @@ function pointValues(input: Partial<PointInput>, before?: PointRow): Pick<typeof
   if (!name) throw new LedgerError('The place needs a name.');
   const pos = positionOf(input.x === undefined ? before?.x : input.x, input.y === undefined ? before?.y : input.y);
   if (pos === 'invalid') throw new LedgerError('A pin needs both its distances across and down the map, between 0 and 100.');
-  return { name, kind: clean(input.kind ?? before?.kind, 40), description: clean(input.description ?? before?.description, 2000), x: pos?.x ?? null, y: pos?.y ?? null };
+  return { name, kind: clean(input.kind ?? before?.kind, 40), description: proseSource(input.description ?? before?.description, 2000), x: pos?.x ?? null, y: pos?.y ?? null };
 }
 
 async function pointRow(pointId: number): Promise<PointRow> {

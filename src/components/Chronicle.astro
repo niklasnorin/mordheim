@@ -1,6 +1,8 @@
 ---
 import { summaryOf, type Scenario, type Warband } from '../campaign/model';
 import Icon from './Icon.astro';
+import WarbandLabel from './WarbandLabel.astro';
+import Markdown from './Markdown.astro';
 import { base } from '../lib/site';
 import { formatImperial, imperialForDate } from '../lib/calendar';
 
@@ -11,7 +13,7 @@ const imperial = (day: string) => formatImperial(imperialForDate(day));
 /** Newest battle first, as the Chronicle reads; the upcoming games stand above it. */
 const chronicle = scenarios.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence).map((s) => ({ scenarioId: s.id, date: imperial(s.playedOn), title: s.title, body: summaryOf(s) }));
 const upcoming = scenarios.filter((s) => s.status === 'upcoming');
-const nameOf = (id: string) => warbands.find((w) => w.id === id)?.name ?? id;
+const warbandOf = (id: string) => warbands.find((w) => w.id === id);
 const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(day + 'T12:00:00Z'));
 ---
 
@@ -26,7 +28,7 @@ const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'U
           <li>
             <a href={getScenarioUrl(s.id)}>{s.title}</a>
             <span class="upcoming-when">{imperial(s.playedOn)} <small>({realDay(s.playedOn)})</small></span>
-            {s.warbands.length > 0 && <span class="upcoming-who">{s.warbands.map((w) => nameOf(w.warbandId)).join(' against ')}</span>}
+            {s.warbands.length > 0 && <span class="upcoming-who">{s.warbands.map((w, i) => <>{i > 0 && ' against '}<WarbandLabel warband={warbandOf(w.warbandId)} fallback={w.warbandId} /></>)}</span>}
           </li>
         ))}
       </ul>
@@ -48,7 +50,7 @@ const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'U
           <span class="timeline-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
           <span class="timeline-date">{entry.date}</span>
           <h3><a href={getScenarioUrl(entry.scenarioId)}>{entry.title}</a></h3>
-          <p>{entry.body}</p>
+          <Markdown text={entry.body} />
           <a class="report-link" href={getScenarioUrl(entry.scenarioId)} aria-label={`Read battle report: ${entry.title}`}>
             Read battle report <Icon name="arrow-right" size={14} />
           </a>
@@ -142,12 +144,12 @@ const realDay = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'U
     margin: 0.6rem 0 0.7rem;
     font-weight: normal;
   }
-  .timeline-entry p {
+  .timeline-entry :global(.markdown) {
     font-size: var(--text-body);
     line-height: 1.85;
     color: #b8b9a9;
   }
-  .timeline-entry:first-child p::first-letter {
+  .timeline-entry:first-child :global(.markdown > p:first-of-type)::first-letter {
     float: left;
     margin: 0.1rem 0.5rem 0 0;
     padding: 0.2rem 0.4rem;

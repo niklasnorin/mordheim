@@ -7,6 +7,7 @@ import { db } from '../db/client.ts';
 import { newsArticles } from '../db/schema.ts';
 import { LedgerError } from '../../curfew/ledger.ts';
 import type { NewsArticle } from '../../campaign/model.ts';
+import { proseSource } from '../../campaign/prose.ts';
 import { LOCATIONS } from '../../curfew/engine.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { ensureSeeded } from './seed.ts';
@@ -32,7 +33,7 @@ export async function articlesFor(locationId: string): Promise<NewsArticle[]> {
 export interface ArticleInput { headline: string; byline?: string; body: string; notice?: boolean; locationId?: string; published?: boolean; sort?: number }
 
 function checked(input: Partial<ArticleInput>, previous?: NewsArticle): typeof newsArticles.$inferInsert {
-  const headline = clean(input.headline ?? previous?.headline, 200), body = clean(input.body ?? previous?.body, 4000);
+  const headline = clean(input.headline ?? previous?.headline, 200), body = proseSource(input.body ?? previous?.body, 4000);
   if (!headline) throw new LedgerError('The article needs a headline.');
   if (!body) throw new LedgerError('The article needs a body.');
   const locationId = input.locationId ?? previous?.locationId ?? 'mordheim';

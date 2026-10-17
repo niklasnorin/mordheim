@@ -8,8 +8,10 @@
  */
 import { RULEBOOK_TALLIES, type RulebookScenario } from './rulebook.ts';
 import type { Side } from './house.ts';
+import type { Objective } from './objective.ts';
 import type { StockEntry } from './trading.ts';
 import type { PortraitCrop } from './portrait.ts';
+import { proseSource } from './prose.ts';
 
 export interface Statline {
   M: number; WS: number; BS: number; S: number; T: number; W: number; I: number; A: number; Ld: number;
@@ -136,9 +138,10 @@ export interface OutOfAction {
  * What the tracker logs besides takedowns: a note is anything worth remembering, a score counts towards the tally.
  * A house scenario's turn ends add two more (campaign/house.ts): `hold`, who held its objective at the end of the
  * turn (the warband, or none when nobody did), and `roll`, the die rolled at the end of the turn (in `points`).
+ * A custom scenario's objective adds `control` (campaign/objective.ts): how many of it one warband held at a check.
  */
-export type EventKind = 'note' | 'score' | 'hold' | 'roll' | 'card';
-export const EVENT_KINDS: EventKind[] = ['note', 'score', 'hold', 'roll', 'card'];
+export type EventKind = 'note' | 'score' | 'hold' | 'roll' | 'card' | 'control';
+export const EVENT_KINDS: EventKind[] = ['note', 'score', 'hold', 'roll', 'card', 'control'];
 /** The kinds anyone at the table writes as a line of their own; the others come with the end of a turn. */
 export const LOGGED_KINDS: EventKind[] = ['note', 'score'];
 
@@ -149,7 +152,7 @@ export interface ScenarioEvent {
   turn: number;
   kind: EventKind;
   warbandId?: string | null;
-  /** Towards the tally; zero for a note. */
+  /** Towards the tally, or how many a warband held at a check; zero for a note. */
   points: number;
   text: string;
   authorName: string;
@@ -212,6 +215,8 @@ export interface Scenario {
   turnLimit: number | null;
   /** What the scenario scores, as the game master named it; empty means the rulebook scenario's own tally, or none. See `tallyOf`. */
   tally: string;
+  /** Something to hold, checked round by round or turn by turn, as the game master set it up; null when there is none. See `objectiveOf`. */
+  objective: Objective | null;
   /** Whether the Tarot of the Damned is in play: a hidden hand of cards per warband, played at the table (`campaign/tarot.ts`). */
   tarot: boolean;
   /** Where it is fought: one of the campaign's locations, or null when not said. */
@@ -369,7 +374,7 @@ export const IMAGE_UNITS: ImageUnit[] = ['%', 'px'];
 /** How large a picture may be set, so a typo cannot make one vanish or burst the page. */
 export const IMAGE_SIZE: Record<ImageUnit, { min: number; max: number; default: number }> = { '%': { min: 10, max: 100, default: 50 }, px: { min: 60, max: 1200, default: 320 } };
 
-/** Prose, in paragraphs separated by a blank line. */
+/** Markdown prose. */
 export interface ChapterText { kind: 'text'; text: string }
 /** A picture uploaded to the site (`/images/<imageId>`), placed, sized and captioned. */
 export interface ChapterImage { kind: 'image'; imageId: string; align: ImageAlign; size: number; unit: ImageUnit; caption: string }
@@ -394,13 +399,13 @@ export function paragraphsOf(text: string): string[] {
 }
 
 /**
- * A chapter's blocks as they may be kept: text trimmed and empty text dropped, a picture's size clamped to what its
+ * A chapter's blocks as they may be kept: Markdown whitespace kept and empty text dropped, a picture's size clamped to what its
  * unit allows, its alignment and unit one of the known ones, its caption trimmed.
  */
 export function normaliseBlocks(blocks: ChapterBlock[]): ChapterBlock[] {
   const out: ChapterBlock[] = [];
   for (const b of blocks) {
-    if (b.kind === 'text') { const text = b.text.replace(/\r\n/g, '\n').trim(); if (text) out.push({ kind: 'text', text }); continue; }
+    if (b.kind === 'text') { const text = proseSource(b.text, 20000); if (text) out.push({ kind: 'text', text }); continue; }
     const unit: ImageUnit = IMAGE_UNITS.includes(b.unit) ? b.unit : '%';
     const { min, max, default: fallback } = IMAGE_SIZE[unit];
     const size = Number.isFinite(b.size) ? Math.min(max, Math.max(min, Math.round(b.size))) : fallback;

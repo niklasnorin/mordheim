@@ -1,0 +1,30 @@
+---
+import type { Warband } from '../campaign/model';
+import { asset } from '../lib/site';
+
+interface Props {
+  warband: Pick<Warband, 'name' | 'crest' | 'sigil'> | undefined;
+  fallback: string;
+}
+
+const { warband, fallback } = Astro.props;
+---
+
+<span class="warband-label">
+  {warband && (
+    <span class="warband-label-mark" aria-hidden="true">
+      {warband.crest
+        ? <img src={asset(warband.crest)} width="120" height="140" alt="" loading="lazy" />
+        : <span class="warband-label-sigil">{warband.sigil}</span>}
+    </span>
+  )}
+  <span class="warband-label-name">{warband?.name ?? fallback}</span>
+</span>
+
+<style>
+  .warband-label { display: inline-flex; align-items: center; gap: .4em; max-width: 100%; vertical-align: middle; }
+  .warband-label-mark { display: inline-grid; place-items: center; width: 1.6em; height: 1.8em; flex: none; }
+  .warband-label-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .warband-label-sigil { color: var(--gold); font: .65em/1 var(--font-utility); font-style: normal; letter-spacing: .04em; }
+  .warband-label-name { min-width: 0; overflow-wrap: anywhere; }
+</style>

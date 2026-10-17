@@ -4,10 +4,12 @@
  * The page hands over the roster (who is at the table, with their warriors; it does not change during a game)
  * and the scenario; every action posts to `/api/scenarios/<action>` and re-renders from the answer, and while the
  * page is visible it asks the server every few seconds whether another phone has written something. Nothing is
- * updated optimistically: the server's answer is the table.
+ * updated optimistically: the server's answer is the table. A custom scenario's objective (campaign/objective.ts) is
+ * checked from its own panel, a tap for one of it and a count for several, and each check is one line of the log.
  */
 import { SCENARIO_RESULTS, scoresOf, tallyOf, type OutOfAction, type Scenario, type ScenarioEvent, type ScenarioResult } from '../campaign/model';
 import { SIDES, SIDE_LABEL, houseScenario, inWords, resultsOf, rollBrings, turnEnds, verdictOf } from '../campaign/house';
+import { checkLabel, checksOf, describeCheck, inSentence, objectiveOf, objectiveScores, objectiveSummary, perWarband, slotsFor, MOMENT_LABEL, type Check, type Objective, type Slot } from '../campaign/objective';
 import { cardById } from '../campaign/tarot';
 import { CARD_ICON, mountTarot, type TarotMount } from './tarot';
 
@@ -56,6 +58,7 @@ const ICON = {
   laurel: 'm3 6 3 13h12l3-13-6 5-3-8-3 8-6-5ZM6 16h12',
   cart: 'M3 15h14l2-7H6m-3 7V8h3m-1 11a2 2 0 1 0 4 0 2 2 0 1 0-4 0m8 0a2 2 0 1 0 4 0 2 2 0 1 0-4 0',
   die: 'M5 5h14v14H5Zm4 4h.01M15 15h.01M12 12h.01',
+  flag: 'M5 21V4m0 0h12l-2.5 4L17 12H5',
   card: CARD_ICON,
 };
 const RESULT_LABEL: Record<ScenarioResult, string> = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' };
@@ -106,6 +109,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
   const turnBox = h('section', { class: 'tk-turn', 'aria-label': 'The turn' });
   const tallyBox = h('section', { class: 'tk-tally', 'aria-label': 'The tally' });
   const holdBox = h('section', { class: 'tk-hold', 'aria-label': 'The objective' });
+  const objectiveBox = h('section', { class: 'tk-tally tk-objective', 'aria-label': 'Something to hold' });
   const logBox = h('section', { class: 'tk-log', 'aria-label': 'The log' });
   const bar = h('nav', { class: 'tk-bar', 'aria-label': 'Log something', 'data-may': String(state.may) },
     h('div', { class: 'tk-bar-inner' },
@@ -114,7 +118,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       h('button', { type: 'button', class: 'tk-btn', 'data-open': 'note' }, svg(ICON.quill), 'Note'),
     ));
   const sheet = h('dialog', { class: 'tk-sheet' });
-  root.append(turnBox, holdBox, tallyBox, logBox, bar, sheet);
+  root.append(turnBox, holdBox, objectiveBox, tallyBox, logBox, bar, sheet);
   // the Tarot of the Damned: the keeper's hidden hand in a drawer, and any card held up to read from the log
   const tarot: TarotMount | null = state.scenario.tarot ? mountTarot(root, {
     base: state.base, scenarioId: state.scenario.id, hands: state.hands, names: Object.fromEntries(state.roster.map((w) => [w.id, w.name])), scenario: () => state.scenario, toast,
@@ -128,6 +132,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     const s = state.scenario;
     renderTurn(s);
     renderHold(s);
+    renderObjective(s);
     renderTally(s);
     renderLog(s);
     bar.dataset.may = String(state.may);
@@ -250,13 +255,94 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     }
   }
 
+  // ───────────────────────── something to hold ─────────────────────────
+
+  /** The counts a phone is setting for several things, kept across a re-render until they are recorded. */
+  const drafts = new Map<string, Record<string, number>>();
+  /** The checks on show, by the key their buttons carry. */
+  const slots = new Map<string, Slot>();
+  const slotId = (sl: Pick<Slot, 'turn' | 'key'>) => `${sl.turn}|${sl.key}`;
+  const checked = (checks: Check[], sl: Pick<Slot, 'turn' | 'key'>) => checks.find((c) => c.turn === sl.turn && c.key === sl.key);
+  /** The checks a turn still owes. */
+  const owed = (s: Scenario, o: Objective, turn: number) => turn < 1 ? [] : slotsFor(o, s.warbands.map((w) => w.warbandId), turn).filter((sl) => !checked(checksOf(s.events), sl));
+  /** What a count starts from: as it was told for this check, else as the last check left it, since what is held tends to stay held. */
+  function draftOf(s: Scenario, o: Objective, sl: Slot): Record<string, number> {
+    const have = drafts.get(slotId(sl));
+    if (have) return have;
+    const checks = checksOf(s.events);
+    const told = checked(checks, sl);
+    if (told) return { ...told.held };
+    const earlier = checks.filter((c) => c.turn < sl.turn || (c.turn === sl.turn && c.key !== sl.key));
+    const last = sl.whose ? earlier.filter((c) => c.whose === sl.whose).at(-1) : earlier.filter((c) => !perWarband(c.when)).at(-1);
+    const counted = sl.whose ? [sl.whose] : s.warbands.map((w) => w.warbandId);
+    return Object.fromEntries(counted.map((w) => [w, Math.min(o.count, last?.held[w] ?? 0)]));
+  }
+
+  /** The objective: each warband's points, how it scores, and the checks this turn asks for, answered with a tap. */
+  function renderObjective(s: Scenario): void {
+    objectiveBox.replaceChildren();
+    slots.clear();
+    const o = objectiveOf(s);
+    objectiveBox.hidden = !o;
+    if (!o) return;
+    const live = state.may && s.status !== 'played';
+    const checks = checksOf(s.events);
+    objectiveBox.append(h('div', { class: 'tk-tally-head' }, h('span', {}, o.name), h('span', {}, MOMENT_LABEL[o.when].replace(/^At/, 'at'))));
+    for (const { warbandId, points } of objectiveScores(s)) {
+      objectiveBox.append(h('div', { class: 'tk-score' }, h('div', { class: 'tk-score-name' }, warbandName(warbandId)), h('div', { class: 'tk-score-total' }, String(points))));
+    }
+    objectiveBox.append(h('p', { class: 'tk-note tk-span' }, objectiveSummary(o)));
+    if (!live) return;
+    if (s.turn === 0) { objectiveBox.append(h('p', { class: 'tk-note tk-span' }, 'The first check comes with turn 1.')); return; }
+    // the turn the table is on, and any check the turn before still owes, should someone have pressed on too soon
+    const due = [...owed(s, o, s.turn - 1), ...slotsFor(o, s.warbands.map((w) => w.warbandId), s.turn)];
+    for (const sl of due) {
+      slots.set(slotId(sl), sl);
+      const told = checked(checks, sl);
+      const card = h('div', { class: 'tk-check tk-span', 'data-told': String(!!told) },
+        h('div', { class: 'tk-check-head' }, h('span', {}, `${sl.turn !== s.turn ? `Turn ${sl.turn} · ` : ''}${checkLabel(sl, warbandName)}`), h('small', {}, told ? 'checked' : 'to check')));
+      const name = inSentence(o.name);
+      if (o.kind === 'one') {
+        // one tap answers it: who holds it, or nobody
+        const holder = told ? Object.entries(told.held).find(([, n]) => n > 0)?.[0] ?? '' : undefined;
+        const choices = sl.whose
+          ? [{ id: sl.whose, label: 'Holds it' }, { id: '', label: 'Does not' }]
+          : [...s.warbands.map((w) => ({ id: w.warbandId, label: warbandName(w.warbandId) })), { id: '', label: 'Nobody' }];
+        card.append(
+          h('p', { class: 'tk-check-ask' }, sl.whose ? `Does ${warbandName(sl.whose)} hold ${name}?` : `Who holds ${name}?`),
+          h('div', { class: 'tk-check-taps', role: 'group', 'aria-label': sl.whose ? `Whether ${warbandName(sl.whose)} holds ${name}` : `Who holds ${name}` },
+            ...choices.map((c) => h('button', { type: 'button', class: 'tk-side-btn', 'data-slot': slotId(sl), 'data-holder': c.id, 'aria-pressed': String(holder === c.id) }, c.label))),
+        );
+      } else {
+        // a count each, from where the last check left it, then one tap to set it down
+        const draft = draftOf(s, o, sl);
+        const total = Object.values(draft).reduce((a, n) => a + n, 0);
+        card.append(h('p', { class: 'tk-check-ask' }, sl.whose ? `How many does ${warbandName(sl.whose)} hold?` : `How many does each hold? ${total} of ${o.count} counted.`));
+        for (const [w, n] of Object.entries(draft)) {
+          card.append(h('div', { class: 'tk-check-row' },
+            h('span', { class: 'tk-check-name' }, warbandName(w)),
+            h('div', { class: 'tk-stepper' },
+              h('button', { type: 'button', class: 'tk-btn ghost', 'data-slot-step': slotId(sl), 'data-warband': w, 'data-d': '-1', disabled: n <= 0, 'aria-label': `${warbandName(w)}: one fewer` }, svg(ICON.minus)),
+              h('output', { class: 'tk-check-count', 'aria-live': 'polite' }, String(n)),
+              h('button', { type: 'button', class: 'tk-btn ghost', 'data-slot-step': slotId(sl), 'data-warband': w, 'data-d': '1', disabled: n >= o.count || total >= o.count, 'aria-label': `${warbandName(w)}: one more` }, svg(ICON.plus)),
+            ),
+          ));
+        }
+        card.append(h('button', { type: 'button', class: 'tk-btn wide', 'data-slot-save': slotId(sl) }, svg(ICON.flag), told ? 'Count it again' : 'Count it'));
+      }
+      objectiveBox.append(card);
+    }
+  }
+
   type Line = { turn: number | null; at: number; node: HTMLElement };
   function renderLog(s: Scenario): void {
-    logBox.replaceChildren(h('div', { class: 'tk-log-head' }, h('span', {}, 'The log'), h('span', {}, `${s.events.length + s.outOfAction.length} ${s.events.length + s.outOfAction.length === 1 ? 'line' : 'lines'}`)));
     const lines: Line[] = [
       ...s.outOfAction.map((o) => ({ turn: o.turn ?? null, at: o.id, node: fallenLine(o) })),
-      ...s.events.map((e) => ({ turn: e.turn, at: e.id, node: eventLine(e) })),
+      ...s.events.filter((e) => e.kind !== 'control').map((e) => ({ turn: e.turn, at: e.id, node: eventLine(e) })),
+      // a check of the objective is one line, however many warbands it counted
+      ...checksOf(s.events).map((c) => ({ turn: c.turn, at: c.ids[0], node: checkLine(c) })),
     ];
+    logBox.replaceChildren(h('div', { class: 'tk-log-head' }, h('span', {}, 'The log'), h('span', {}, `${lines.length} ${lines.length === 1 ? 'line' : 'lines'}`)));
     if (!lines.length) {
       logBox.append(h('p', { class: 'tk-empty' }, state.may ? 'Nothing logged yet. Who struck, who scored, what happened: it all goes here, by turn.' : 'Nothing has been logged yet.'));
       if (!state.may) logBox.append(h('p', { class: 'tk-watching' }, 'You are watching. Only those whose warbands fight here may write.'));
@@ -285,6 +371,15 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
         h('div', { class: 'tk-line-meta' }, attacker ? h('span', { class: 'tk-chip' }, warbandName(attacker.warbandId)) : null),
       ),
       state.may ? h('button', { type: 'button', class: 'tk-strike', 'data-strike-ooa': String(o.id), 'aria-label': 'Strike this record' }, svg(ICON.close)) : h('span'),
+    );
+  }
+
+  function checkLine(c: Check): HTMLElement {
+    const { lead, strong, rest } = describeCheck(objectiveOf(state.scenario), c, warbandName);
+    return h('div', { class: 'tk-line', 'data-kind': 'control' },
+      svg(ICON.flag, 'tk-line-icon'),
+      h('div', { class: 'tk-line-body' }, h('div', {}, lead, h('b', {}, strong), rest), h('div', { class: 'tk-line-meta' }, c.authorName ? h('span', {}, c.authorName) : null)),
+      state.may ? h('button', { type: 'button', class: 'tk-strike', 'data-strike-event': String(c.ids[0]), 'aria-label': 'Strike this check' }, svg(ICON.close)) : h('span'),
     );
   }
 
@@ -346,8 +441,8 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     if (Object.keys(out).length) return out;
     const kind = houseScenario(s.rulebookScenario);
     if (kind?.objective) return resultsOf(verdictOf(kind, s), s.warbands);
-    if (!tallyOf(s)) return out;
-    const scores = scoresOf(s);
+    const scores = objectiveOf(s) ? objectiveScores(s) : tallyOf(s) ? scoresOf(s) : null;
+    if (!scores?.length) return out;
     const top = Math.max(...scores.map((x) => x.points));
     if (scores.filter((x) => x.points === top).length !== 1) return out;
     for (const x of scores) out[x.warbandId] = x.points === top ? 'victory' : 'defeat';
@@ -379,7 +474,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
         form.append(h('div', { class: 'tk-field' }, w.name, box));
       }
       form.append(
-        h('p', { class: 'tk-note' }, s.status === 'played' ? 'The results are changed as they stand; the scenario stays in the Chronicle.' : Object.keys(given).length && !s.warbands.some((w) => w.result) ? (houseScenario(s.rulebookScenario)?.objective ? `As the rules have it: ${verdictOf(houseScenario(s.rulebookScenario)!, s).reason} Change it if the table says otherwise.` : 'Suggested from the tally. Change it if the table says otherwise.') : 'Every warband that fought gets a result. The scenario joins the Chronicle, and the writing-up begins on its page.'),
+        h('p', { class: 'tk-note' }, s.status === 'played' ? 'The results are changed as they stand; the scenario stays in the Chronicle.' : Object.keys(given).length && !s.warbands.some((w) => w.result) ? (houseScenario(s.rulebookScenario)?.objective ? `As the rules have it: ${verdictOf(houseScenario(s.rulebookScenario)!, s).reason} Change it if the table says otherwise.` : `Suggested from ${objectiveOf(s) ? inSentence(objectiveOf(s)!.name) : 'the tally'}. Change it if the table says otherwise.`) : 'Every warband that fought gets a result. The scenario joins the Chronicle, and the writing-up begins on its page.'),
         h('div', { class: 'tk-actions' }, h('button', { type: 'submit', class: 'tk-btn big', disabled: !s.warbands.length }, svg(ICON.laurel), s.status === 'played' ? 'Save how it ended' : 'Call the game')),
       );
     } else if (kind === 'end-turn') {
@@ -537,11 +632,43 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     const more = t.closest<HTMLButtonElement>('[data-limit]');
     if (more) { await post('turn-limit', { turnLimit: Number(more.dataset.limit) }); return; }
     const turn = t.closest<HTMLButtonElement>('[data-turn]');
-    if (turn) { if (sheet.open) sheet.close(); await post('turn', { turn: Number(turn.dataset.turn) }); return; }
+    if (turn) {
+      // from the question sheet, the sheet goes first; moving on with the objective unchecked is allowed, but asked about
+      if (sheet.open) sheet.close();
+      const s = state.scenario, o = objectiveOf(s), to = Number(turn.dataset.turn);
+      if (o && to > s.turn && owed(s, o, s.turn).length && !confirm(`${o.name} has not been checked for turn ${s.turn}. Move on anyway?`)) return;
+      await post('turn', { turn: to });
+      return;
+    }
+    const holder = t.closest<HTMLButtonElement>('[data-holder]');
+    if (holder) {
+      const sl = slots.get(holder.dataset.slot!);
+      if (sl) await post('check', { turn: sl.turn, whose: sl.whose, held: holder.dataset.holder ? { [holder.dataset.holder]: 1 } : {} });
+      return;
+    }
+    const step = t.closest<HTMLButtonElement>('[data-slot-step]');
+    if (step) {
+      const s = state.scenario, o = objectiveOf(s), sl = slots.get(step.dataset.slotStep!);
+      if (!o || !sl) return;
+      const draft = { ...draftOf(s, o, sl) }, w = step.dataset.warband!;
+      draft[w] = Math.max(0, Math.min(o.count, (draft[w] ?? 0) + Number(step.dataset.d)));
+      if (Object.values(draft).reduce((a, n) => a + n, 0) > o.count) return;
+      drafts.set(step.dataset.slotStep!, draft);
+      renderObjective(s);
+      objectiveBox.querySelector<HTMLButtonElement>(`[data-slot-step="${CSS.escape(step.dataset.slotStep!)}"][data-warband="${CSS.escape(w)}"][data-d="${step.dataset.d}"]:not([disabled])`)?.focus();
+      return;
+    }
+    const save = t.closest<HTMLButtonElement>('[data-slot-save]');
+    if (save) {
+      const s = state.scenario, o = objectiveOf(s), sl = slots.get(save.dataset.slotSave!);
+      if (!o || !sl) return;
+      if (await post('check', { turn: sl.turn, whose: sl.whose, held: draftOf(s, o, sl) })) drafts.delete(save.dataset.slotSave!);
+      return;
+    }
     const score = t.closest<HTMLButtonElement>('[data-score]');
     if (score) { await post('event', { kind: 'score', warbandId: score.dataset.score, points: Number(score.dataset.points), turn: Math.max(1, state.scenario.turn) }); return; }
     const strikeEvent = t.closest<HTMLButtonElement>('[data-strike-event]');
-    if (strikeEvent) { if (confirm('Strike this line from the log?')) await post('remove-event', { id: Number(strikeEvent.dataset.strikeEvent) }); return; }
+    if (strikeEvent) { if (confirm(strikeEvent.closest('[data-kind="control"]') ? 'Strike this check from the log?' : 'Strike this line from the log?')) await post('remove-event', { id: Number(strikeEvent.dataset.strikeEvent) }); return; }
     const strikeOoa = t.closest<HTMLButtonElement>('[data-strike-ooa]');
     if (strikeOoa) { if (confirm('Strike this out-of-action record?')) await post('remove-out-of-action', { id: Number(strikeOoa.dataset.strikeOoa) }); return; }
   });

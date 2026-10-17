@@ -23,6 +23,7 @@ import { warbands as fixtures } from '../../data/warbands.ts';
 import { history } from '../../data/history.ts';
 import { setRole } from '../roles.ts';
 import { getSettings, setSetting } from './settings.ts';
+import { markdownParagraphs, renderMarkdown } from '../../lib/markdown.ts';
 
 const gm = actorOf('user-gm', 'Game Master', 'gm');
 const niklas = actorOf('user-niklas', 'Niklas');
@@ -704,4 +705,86 @@ test('the battle told in one go: the short and long versions, the outcome and th
   t = (await getScenario(s.id))!;
   assert.equal(t.summary, 'The kin held the bridge.', 'a refused report writes nothing');
   assert.deepEqual(t.battle, ['They met at the bridge.', 'Agnar held it.']);
+});
+
+test('long-form Markdown survives saving, reloading and revising every kind of prose', async () => {
+  const source = '    An order in the margin\n\n## At the gate\n\n- **Watch**\n  - Wait\n\n```text\n    1\n\n\n\n    2\n```\n\nA line  \nAnother line\n';
+  const warband = await createWarband(gm, { name: 'The Markdown Watch', type: 'Mercenaries', lore: source });
+  assert.equal(warband.lore, source);
+  assert.equal((await updateWarband(gm, warband.id, { lore: source })).lore, source);
+  let roll = await addMember(gm, warband.id, { name: 'The Scribe', lore: source });
+  const member = roll.members[0];
+  assert.equal(member.lore, source);
+  roll = await updateMember(gm, member.id, { lore: source });
+  assert.equal(roll.members[0].lore, source);
+
+  const { addChapter, listChapters, updateChapter } = await import('./chapters.ts');
+  let chapters = await addChapter(gm, warband.id, { title: 'The margin', blocks: [{ kind: 'text', text: source }] });
+  chapters = await updateChapter(gm, chapters[0].id, { blocks: [{ kind: 'text', text: source }] });
+  assert.deepEqual((await listChapters(warband.id))[0].blocks, [{ kind: 'text', text: source }]);
+
+  let location = await createLocation(gm, { name: 'The Written Gate', description: source });
+  assert.equal(location.description, source);
+  location = await updateLocation(gm, location.id, { description: source });
+  assert.equal(location.description, source);
+  location = await addPoint(gm, location.id, { name: 'The margin', description: source });
+  assert.equal(location.points[0].description, source);
+  location = await updatePoint(gm, location.points[0].id, { description: source });
+  assert.equal(location.points[0].description, source);
+
+  const article = await createArticle(gm, { headline: 'Orders Left in Margin', body: source });
+  assert.equal(article.body, source);
+  assert.equal((await updateArticle(gm, article.id, { body: source })).body, source);
+
+  let scenario = await createScenario(gm, { title: 'The Written Battle', playedOn: '2026-12-13', warbandIds: [warband.id], prologue: source, customRules: source, summary: source });
+  assert.equal(scenario.prologue, source);
+  assert.equal(scenario.customRules, source);
+  assert.equal(scenario.summary, source);
+  scenario = await updateScenario(gm, scenario.id, { prologue: source, customRules: source, winCondition: source, summary: source, outcome: source, epilogue: source });
+  for (const key of ['prologue', 'customRules', 'winCondition', 'summary', 'outcome', 'epilogue'] as const) assert.equal(scenario[key], source, key);
+  scenario = await writePerspective(gm, scenario.id, warband.id, { prologue: source, epilogue: source });
+  assert.equal(scenario.warbands[0].prologue, source);
+  assert.equal(scenario.warbands[0].epilogue, source);
+  scenario = await writeBattle(gm, scenario.id, markdownParagraphs(source));
+  assert.equal((await getScenario(scenario.id))!.battle.join('\n\n'), source);
+  assert.equal(renderMarkdown(scenario.battle.join('\n\n')), renderMarkdown(source));
+  await writeBattle(gm, scenario.id, ['A new telling.']);
+  assert.ok((await revisionsOf(scenario.id)).some((r) => r.battle.join('\n\n') === source), 'earlier tellings keep their Markdown');
+  scenario = await writeBattle(gm, scenario.id, [' \n ', '']);
+  assert.deepEqual(scenario.battle, [], 'a blank telling is still empty');
+});
+
+test('something to hold: the game master sets it up, the table checks it, a second telling replaces the first, a strike takes the check whole', async () => {
+  const { recordCheck } = await import('./scenarios.ts');
+  const { objectiveScores, objectiveOf } = await import('../../campaign/objective.ts');
+  await assert.rejects(createScenario(gm, { title: 'The Well', playedOn: '2026-10-13', objective: { name: 'Markers', kind: 'many', count: 1, when: 'round-end' } }), (e: unknown) => e instanceof LedgerError && /from 2/.test(e.message));
+  let s = await createScenario(gm, { title: 'The Well', playedOn: '2026-10-13', warbandIds: ['nordost', 'bitterbrow-expedition'], objective: { name: 'The well', kind: 'one', count: 9, when: 'round-end' } });
+  assert.deepEqual(s.objective, { name: 'The well', kind: 'one', count: 1, when: 'round-end' });
+
+  await assert.rejects(recordCheck(stranger, s.id, { turn: 1, held: { nordost: 1 } }), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(recordCheck(gm, s.id, { turn: 1, held: { nordost: 1, 'bitterbrow-expedition': 1 } }), (e: unknown) => e instanceof LedgerError && /Only one warband/.test(e.message));
+  await assert.rejects(recordCheck(gm, s.id, { turn: 1, held: { 'grey-hand': 1 } }), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  s = await recordCheck(gm, s.id, { turn: 1, held: { nordost: 1 } });
+  assert.deepEqual(s.events.filter((e) => e.kind === 'control').map((e) => [e.warbandId, e.points]).sort(), [['bitterbrow-expedition', 0], ['nordost', 1]], 'every warband is counted, nought included');
+  s = await recordCheck(gm, s.id, { turn: 1, held: {} });
+  assert.equal(s.events.filter((e) => e.kind === 'control').reduce((a, e) => a + e.points, 0), 0, 'held by nobody, told again, replaces the first telling');
+  s = await recordCheck(gm, s.id, { turn: 2, held: { 'bitterbrow-expedition': 1 } });
+  s = await recordCheck(gm, s.id, { turn: 3, held: { 'bitterbrow-expedition': 1 } });
+  assert.deepEqual(Object.fromEntries(objectiveScores(s).map((x) => [x.warbandId, x.points])), { nordost: 0, 'bitterbrow-expedition': 2 });
+  assert.equal(s.turn, 0, 'a check does not move the table');
+  s = await removeEvent(gm, s.id, s.events.find((e) => e.kind === 'control' && e.turn === 3)!.id);
+  assert.equal(s.events.filter((e) => e.kind === 'control' && e.turn === 3).length, 0, 'a strike takes every warband’s count of the check');
+
+  s = await updateScenario(gm, s.id, { objective: { name: 'Doors', kind: 'many', count: 3, when: 'turn-start' } });
+  await assert.rejects(recordCheck(gm, s.id, { turn: 1, held: { nordost: 2 } }), (e: unknown) => e instanceof LedgerError && /whose turn/.test(e.message));
+  await assert.rejects(recordCheck(gm, s.id, { turn: 1, whose: 'nordost', held: { nordost: 4 } }), (e: unknown) => e instanceof LedgerError && /only 3/.test(e.message));
+  s = await recordCheck(gm, s.id, { turn: 1, whose: 'nordost', held: { nordost: 2 } });
+  assert.deepEqual(s.events.filter((e) => e.kind === 'control' && e.text === 'turn-start:nordost').map((e) => [e.warbandId, e.points]), [['nordost', 2]], 'at a warband’s own turn only it is counted');
+
+  s = await updateScenario(gm, s.id, { rulebookScenario: 'The Supply Cart' });
+  assert.equal(objectiveOf(s), null, 'a campaign scenario brings its own rules');
+  await assert.rejects(recordCheck(gm, s.id, { turn: 1, whose: 'nordost', held: { nordost: 1 } }), (e: unknown) => e instanceof LedgerError && /nothing to hold/.test(e.message));
+  s = await updateScenario(gm, s.id, { rulebookScenario: null, objective: { name: '', kind: 'one', when: 'round-end' } });
+  assert.equal(s.objective, null, 'an empty name takes the objective away');
+  await deleteScenario(gm, s.id);
 });
