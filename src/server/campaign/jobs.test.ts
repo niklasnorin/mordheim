@@ -91,14 +91,16 @@ test('a scheduled game opens the post; the jobs are paid into the roster once, a
   const after = await takeJobs(gm, game, 'welling-rune');
   assert.equal(after.taken.length, pay.jobs.length);
   assert.equal(after.taken[0].title, pay.jobs[0].job.title, 'what was offered is what was taken');
+  assert.deepEqual(after.taken.map((t) => [t.dice, t.byHand]), pay.jobs.map((p) => [p.dice, false]), 'the post’s roll, kept with the job');
   assert.equal(await gold('welling-rune'), goldBefore + pay.gold);
   assert.equal(await xpOf('welling-rune'), xpBefore + pay.experience);
   assert.match(after.shut!, /already/);
   await assert.rejects(takeJobs(gm, game, 'welling-rune'), refused(409));
   // the Nordost Kin are at the pace: the usual work alone, a few crowns and no experience
   const nordostGold = await gold('nordost'), nordostXp = await xpOf('nordost');
-  const usual = await takeJobs(gm, game, 'nordost');
+  const usual = await takeJobs(gm, game, 'nordost', undefined, [12]);
   assert.equal(usual.taken.length, 1);
+  assert.deepEqual([usual.taken[0].dice, usual.taken[0].byHand], [12, true], 'the table rolled a 12');
   assert.equal(usual.taken[0].owed, false);
   assert.ok(usual.taken[0].gold > 0 && usual.taken[0].gold <= 25, `${usual.taken[0].gold} gc`);
   assert.equal(await gold('nordost'), nordostGold + usual.taken[0].gold);
@@ -111,6 +113,14 @@ test('a scheduled game opens the post; the jobs are paid into the roster once, a
   assert.equal(me.jobs, pay.jobs.filter((p) => p.owed).length, 'only the owed jobs count towards the pace');
   assert.equal(r.standings.find((x) => x.warbandId === 'nordost')!.jobs, 0, 'the usual work does not count');
   assert.equal((await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach' })).reckoning.owed, 0, 'the gap is closed');
+});
+
+test('the table may roll the dice and say the totals; the post rolls the rest', async () => {
+  const post = (await offer(gm, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach' })).reckoning.payout!;
+  assert.ok(post.jobs.every((p) => !p.byHand));
+  const hand = (await offer(gm, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach', dice: [11] })).reckoning.payout!;
+  assert.deepEqual(hand.jobs.map((p) => [p.job.id, p.dice, p.byHand]), [[post.jobs[0].job.id, 11, true]], 'the same job, the table’s roll');
+  await assert.rejects(takeJobs(gm, game, 'welling-rune', undefined, [13]), (e) => e instanceof LedgerError && /2 to 12/.test(e.message));
 });
 
 test('the jobs can be undone, and the post shuts once the game has begun', async () => {

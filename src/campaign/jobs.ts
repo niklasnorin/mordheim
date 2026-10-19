@@ -51,6 +51,10 @@ export const USUAL_SHARE = 0.2;
 export const GOLD_PER_RATING = 7;
 /** A job's gold before its lean: 2D6×5+15 crowns, about 50 on average, a little less than a game's takings. */
 export const JOB_GOLD = { dice: 2, sides: 6, times: 5, plus: 15 } as const;
+/** The lowest and highest a job's dice can show: the 2D6 of `JOB_GOLD`. */
+export const DICE_LOW = JOB_GOLD.dice, DICE_HIGH = JOB_GOLD.dice * JOB_GOLD.sides;
+/** Whether a total is one the table could have rolled on the job's dice. */
+export const isDiceTotal = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= DICE_LOW && n <= DICE_HIGH;
 /** How much of the rolled gold each lean pays. */
 export const LEAN_GOLD: Record<JobLean, number> = { gold: 1.5, experience: 0.5, champion: 1, even: 1 };
 /** A warrior's worth in the reckoned rating, as the rulebook counts it: 5 a warrior, plus their experience. */
@@ -173,6 +177,9 @@ export interface Grant { memberId: string; name: string; experience: number; adv
 
 export interface JobPay {
   job: Job;
+  /** The total of the job's 2D6, and whether the table rolled it (`byHand`) or the post did. */
+  dice: number;
+  byHand: boolean;
   /** An owed job, paid in full and counted towards the pace; otherwise the usual work, paid in a few crowns. */
   owed: boolean;
   /** The crowns the dice gave before the ceiling, and what was paid. */
@@ -213,13 +220,20 @@ function wanted(lean: JobLean, warriors: Warrior[]): { w: Warrior; n: number }[]
 /** No ceiling: a warband nobody is ahead of is held under nothing, and is paid only the usual work. */
 const OPEN: Ceiling = { ahead: [], power: Infinity, experience: Infinity, warrior: { hero: Infinity, henchman: Infinity } };
 
+/** One job to pay: owed or the usual work, and the table's own roll of its dice when they rolled them. */
+export interface JobToPay { job: Job; owed: boolean; dice?: number | null }
+
 /**
- * What the jobs pay, cut to the ceiling. An owed job grants its experience first, warrior by warrior, then its gold;
+ * What the jobs pay, cut to the ceiling. Each job's gold comes of its 2D6: the post rolls them from the seed, or the
+ * table rolls them and says the total (`dice`), and the post's roll stands where they did not or said something no
+ * 2D6 shows. The post rolls for every job either way, so a roll at the table changes that job alone.
+ *
+ * An owed job grants its experience first, warrior by warrior, then its gold;
  * the usual work grants a share of the gold alone. Every point is held under the warband's ceiling as it rises, so the
  * order of the jobs matters only at the margin: the owed ones come first. Gold is paid in fives, the usual work at
  * least five.
  */
-export function payJobs(s: Standing, ceilingOrNone: Ceiling | null, jobs: { job: Job; owed: boolean }[], seed: number): Payout {
+export function payJobs(s: Standing, ceilingOrNone: Ceiling | null, jobs: JobToPay[], seed: number): Payout {
   const ceiling = ceilingOrNone ?? OPEN;
   const r = rng(hashSeed(seed, 'pay'));
   const xp = new Map(s.warriors.map((w) => [w.id, w.experience]));
@@ -228,7 +242,7 @@ export function payJobs(s: Standing, ceilingOrNone: Ceiling | null, jobs: { job:
   let rating = ratingOf(s);
   const room = () => ceiling.power - (rating + Math.floor(gold / GOLD_PER_RATING));
   const paid: JobPay[] = [];
-  for (const { job, owed } of jobs) {
+  for (const { job, owed, dice: atTable } of jobs) {
     let jobCut = false;
     const grants: Grant[] = [];
     for (const { w, n } of owed ? wanted(job.lean, s.warriors) : []) {
@@ -240,7 +254,10 @@ export function payJobs(s: Standing, ceilingOrNone: Ceiling | null, jobs: { job:
       xp.set(w.id, now + allowed); total += allowed; rating += allowed;
       grants.push({ memberId: w.id, name: w.name, experience: allowed, advance: crossesAdvance(w.rank, now, now + allowed) });
     }
-    const full = (roll(r, JOB_GOLD.dice, JOB_GOLD.sides) * JOB_GOLD.times + JOB_GOLD.plus) * LEAN_GOLD[job.lean];
+    const posted = roll(r, JOB_GOLD.dice, JOB_GOLD.sides);
+    const byHand = isDiceTotal(atTable);
+    const dice = byHand ? atTable : posted;
+    const full = (dice * JOB_GOLD.times + JOB_GOLD.plus) * LEAN_GOLD[job.lean];
     const rolled = owed ? Math.round(full / 5) * 5 : Math.max(5, Math.round((full * USUAL_SHARE) / 5) * 5);
     // the most gold that keeps rating + floor(gold / GOLD_PER_RATING) at or under the ceiling
     const most = ceiling.power === Infinity ? Infinity : Math.max(0, (ceiling.power - rating) * GOLD_PER_RATING + GOLD_PER_RATING - 1 - gold);
@@ -248,7 +265,7 @@ export function payJobs(s: Standing, ceilingOrNone: Ceiling | null, jobs: { job:
     if (given < rolled) jobCut = true;
     gold += given;
     cut ||= jobCut;
-    paid.push({ job, owed, rolled, gold: given, grants, cut: jobCut });
+    paid.push({ job, owed, dice, byHand, rolled, gold: given, grants, cut: jobCut });
   }
   return {
     jobs: paid,
@@ -272,12 +289,13 @@ export interface Reckoning {
 }
 
 /**
- * Draw the owed jobs and the usual work, one more than is owed, and pay them. The first drawn are the owed ones, so a
+ * Draw the owed jobs and the usual work, one more than is owed, and pay them, with the table's dice where they rolled. The first drawn are the owed ones, so a
  * board too small for all of them pays what is owed before the usual work.
  */
-export function reckon(s: Standing, all: Standing[], board: Job[], seed: number, opts: Parameters<typeof drawJobs>[3] = {}): Reckoning {
+export function reckon(s: Standing, all: Standing[], board: Job[], seed: number, opts: Parameters<typeof drawJobs>[3] & { dice?: (number | null | undefined)[] } = {}): Reckoning {
   const ceiling = ceilingFor(s, all);
   const owed = jobsOwed(s, all);
-  const jobs = drawJobs(board, owed + 1, seed, opts).map((job, i) => ({ job, owed: i < owed }));
+  // the table's dice go to the jobs in the order drawn: the owed ones first, then the usual work
+  const jobs = drawJobs(board, owed + 1, seed, opts).map((job, i) => ({ job, owed: i < owed, dice: opts.dice?.[i] ?? null }));
   return { pace: paceOf(all), effective: effectiveGames(s), owed, ceiling, power: powerOf(s), payout: jobs.length ? payJobs(s, ceiling, jobs, seed) : null };
 }

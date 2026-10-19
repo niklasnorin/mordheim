@@ -7,7 +7,7 @@ import { base } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
 import { admission } from '../../server/admin/guard';
 import { currentLocation, todayFor } from '../../server/curfew/service';
-import { listJobs, offer, postOverview, type Books, type Offer, type PostRecord } from '../../server/campaign/jobs';
+import { diceKey, listJobs, offer, postOverview, type Books, type Offer, type PostRecord } from '../../server/campaign/jobs';
 import { listLocations } from '../../server/campaign/locations';
 import { GOLD_PER_RATING, JOBS_AT_MOST, JOB_GOLD, JOB_LEANS, JOB_LEAN_LABEL, LEAN_GOLD, RATING_PER_WARRIOR, USUAL_SHARE, effectiveGames, jobsOwed, paceOf, powerOf, ratingOf, totalExperience, type Job, type Standing } from '../../campaign/jobs';
 import type { CampaignLocation } from '../../campaign/model';
@@ -36,16 +36,22 @@ for (const [key, value] of q) {
   const n = Number(value);
   if (m && value !== '' && Number.isFinite(n)) (books[m[2]] ??= {})[m[1] as 'rating' | 'gold'] = n;
 }
+// the table's own 2D6, `dice.<warband>:<game or dry>.<job>`, typed where the dice were rolled by hand; the rule ignores what no 2D6 shows
+const dice: Record<string, (number | null)[]> = {};
+for (const [key, value] of q) {
+  const m = /^dice\.([\w-]{1,64}:[\w-]{1,160})\.(\d)$/.exec(key);
+  if (m && value !== '') (dice[m[1]] ??= [])[Number(m[2])] = Number(value);
+}
 if (gm && viewer) {
   try {
     here = (await currentLocation(today)).id;
     [places, board] = await Promise.all([listLocations(), listJobs()]);
-    const o = await postOverview(viewer, here, books);
+    const o = await postOverview(viewer, here, books, dice);
     record = o.record; logged = o.logged; offers = o.offers;
     const behind = o.dry.find((d) => d.reckoning.owed > 0) ?? o.dry[0];
     const warbandId = q.get('warband') && record.standings.some((s) => s.warbandId === q.get('warband')) ? q.get('warband')! : behind?.warbandId;
     const place = places.find((l) => l.id === q.get('place'))?.id ?? here;
-    if (warbandId) dry = await offer(viewer, { warbandId, locationId: place }, record);
+    if (warbandId) dry = await offer(viewer, { warbandId, locationId: place, dice: dice[diceKey(warbandId)] }, record);
   } catch (e) { console.error('[fountain-post] unavailable', e); trouble = true; }
 }
 
@@ -103,6 +109,7 @@ const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places
             <li>The post <b>opens</b> when a game is scheduled with the warband on its muster, and <b>shuts</b> at that game's first turn. The jobs come from the board of the place the game is fought in, or where the campaign is when the game names none.</li>
             <li>The <b>ceiling</b>: the jobs never make a warband stronger than the weakest warband that has fought more. Strength is the rating (logged, or reckoned at {RATING_PER_WARRIOR} a warrior plus their experience) with the unspent treasury at {GOLD_PER_RATING} gc a point; the warband's experience together, and each hero's and henchman's, are held under the least of those ahead too. Every grant is cut to fit.</li>
             <li>The <b>draw</b> is seeded by the warband and the game: the same game, the same jobs. Withheld jobs are never drawn, nor a job at a point of interest where a game is scheduled. Jobs the warband has not done lately come first.</li>
+            <li>The <b>dice</b>: a job's gold comes of its {JOB_GOLD.dice}D6. The post rolls them, or the table rolls its own and types the total in the job's box; an empty box is the post's roll. Either way the ceiling holds.</li>
             <li>The <b>pay</b> of an owed job: {JOB_GOLD.dice}D6×{JOB_GOLD.times}+{JOB_GOLD.plus} gc, times its lean ({JOB_LEANS.map((l) => `${JOB_LEAN_LABEL[l].toLowerCase()} ×${LEAN_GOLD[l]}`).join(', ')}); experience by the lean: every warrior, every hero, the leader alone, or two for the least experienced hero. An advance reached is marked, to be rolled at the table.</li>
             <li>One warband's jobs will move the next one's offer at once: every offer is reckoned from the record as it stands. The dials are code, in <code>src/campaign/jobs.ts</code>.</li>
           </ul>

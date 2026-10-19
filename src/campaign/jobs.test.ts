@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GOLD_PER_RATING, JOBS_AT_MOST, USUAL_SHARE, ceilingFor, drawJobs, effectiveGames, jobSeed, jobsOwed, paceOf, payJobs, powerOf, ratingOf, reckon, shutBecause, totalExperience, type Job, type Standing } from './jobs.ts';
+import { LEAN_GOLD as LEAN, DICE_HIGH, DICE_LOW, GOLD_PER_RATING, JOBS_AT_MOST, USUAL_SHARE, isDiceTotal, ceilingFor, drawJobs, effectiveGames, jobSeed, jobsOwed, paceOf, payJobs, powerOf, ratingOf, reckon, shutBecause, totalExperience, type Job, type Standing } from './jobs.ts';
 
 const job = (id: number, over: Partial<Job> = {}): Job => ({ id, locationId: 'fussenbach', pointId: id, title: `Job ${id}`, text: '', lean: 'even', withheld: false, sort: id, ...over });
 const BOARD = [job(1, { lean: 'gold' }), job(2, { lean: 'experience' }), job(3, { lean: 'champion' }), job(4), job(5, { lean: 'gold' }), job(6, { pointId: null })];
@@ -161,4 +161,36 @@ test('a board too small for everything pays what is owed before the usual work',
   assert.equal(r.owed, 2);
   assert.deepEqual(r.payout!.jobs.map((p) => p.owed), [true, true]);
   assert.equal(reckon(veteran(), all, [], 4).payout, null, 'a bare board pays nothing');
+});
+
+test('the post rolls the dice, or the table does and says the total', () => {
+  const all = [veteran(), regular(), absent()];
+  const post = reckon(absent(), all, BOARD, 9);
+  assert.ok(post.payout!.jobs.every((p) => !p.byHand && p.dice >= DICE_LOW && p.dice <= DICE_HIGH), 'the post rolls 2D6 for every job');
+  assert.deepEqual(reckon(absent(), all, BOARD, 9).payout!.jobs.map((p) => p.dice), post.payout!.jobs.map((p) => p.dice), 'the same game, the same roll');
+  const hand = reckon(absent(), all, BOARD, 9, { dice: [12] });
+  const [first, ...rest] = hand.payout!.jobs;
+  assert.equal(first.dice, 12);
+  assert.equal(first.byHand, true);
+  assert.equal(first.rolled, Math.round(((12 * 5 + 15) * LEAN[first.job.lean]) / 5) * 5, 'the table’s 12 pays as a 12');
+  assert.deepEqual(rest.map((p) => [p.dice, p.byHand]), post.payout!.jobs.slice(1).map((p) => [p.dice, false]), 'the other jobs keep the post’s roll');
+  assert.deepEqual(hand.payout!.jobs.map((p) => p.job.id), post.payout!.jobs.map((p) => p.job.id), 'the dice choose the pay, not the jobs');
+  // the usual work rolls too, at its share
+  const usual = reckon(veteran(), all, BOARD, 9, { dice: [2] }).payout!.jobs[0];
+  assert.equal(usual.byHand, true);
+  assert.equal(usual.rolled, Math.max(5, Math.round(((2 * 5 + 15) * LEAN[usual.job.lean] * USUAL_SHARE) / 5) * 5));
+  // what no 2D6 shows is not taken: the post's roll stands
+  for (const bad of [1, 13, 7.5, NaN]) assert.equal(reckon(absent(), all, BOARD, 9, { dice: [bad] }).payout!.jobs[0].byHand, false, String(bad));
+  assert.equal(isDiceTotal(7), true);
+  assert.equal(isDiceTotal('7'), false);
+});
+
+test('the table’s dice are held under the ceiling like the post’s', () => {
+  for (let seed = 0; seed < 100; seed++) {
+    const me = band('absent', 0, [20, 10, 9, 3, 2]);
+    const all = [veteran(), regular(), me];
+    const r = reckon(me, all, BOARD, seed, { dice: [12, 12, 12, 12] });
+    assert.ok(r.payout!.after.power <= r.ceiling!.power, `seed ${seed}`);
+    assert.ok(r.payout!.jobs.every((p) => p.byHand));
+  }
 });

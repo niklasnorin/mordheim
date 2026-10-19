@@ -1,10 +1,11 @@
 ---
 // One warband's reckoning at the Fountain Post (campaign/jobs.ts), as the Watch House shows it: what is owed, the
 // ceiling it is held under, the jobs drawn and what each pays. Every warband is offered the usual work; one behind the
-// pace is offered its owed jobs on top. The post is a dry run for now: nothing here takes the jobs.
-import type { Offer } from '../server/campaign/jobs';
+// pace is offered its owed jobs on top. Each job's 2D6 is the post's roll, or the table's typed in its box (part of the
+// page's reckon form, carried in the address). The post is a dry run for now: nothing here takes the jobs.
+import { diceKey, type Offer } from '../server/campaign/jobs';
 import type { PointOfInterest } from '../campaign/model';
-import { JOB_LEAN_LABEL, ratingOf, totalExperience } from '../campaign/jobs';
+import { DICE_HIGH, DICE_LOW, JOB_LEAN_LABEL, ratingOf, totalExperience } from '../campaign/jobs';
 
 interface Props { offer: Offer; points: PointOfInterest[]; places: Record<string, string>; names: Record<string, string>; /** Reckoned with the game master's own figures for this warband's books. */ whatIf?: boolean }
 const { offer: o, points, places, names, whatIf = false } = Astro.props;
@@ -14,6 +15,7 @@ const pointName = (id: number | null) => (id == null ? null : points.find((p) =>
 const s = o.standing;
 const logged = s.rating > 0;
 const xpNow = totalExperience(s);
+const key = diceKey(o.warbandId, o.scenario?.id);
 ---
 
 <article class="wh-post-offer" data-shut={o.shut ? 'true' : undefined}>
@@ -37,14 +39,19 @@ const xpNow = totalExperience(s);
     <>
       <h4 class="wh-h3">{o.scenario ? `What the post would pay before ${o.scenario.title}` : 'What the post would pay now'}</h4>
       <ol class="wh-post-jobs">
-        {pay.jobs.map((p) => (
+        {pay.jobs.map((p, i) => (
           <li>
             <b>{p.job.title}</b>{pointName(p.job.pointId) && <span class="wh-post-at"> · {pointName(p.job.pointId)}</span>}{p.owed && <span class="wh-post-lean"> · {JOB_LEAN_LABEL[p.job.lean]}</span>}<span class:list={['wh-chip', { on: p.owed }]}>{p.owed ? 'Owed' : 'The usual work'}</span>
             <p>{p.job.text}</p>
+            <p class="wh-post-dice">
+              <label>2D6 <input type="number" form="reckon" name={`dice.${key}.${i}`} min={DICE_LOW} max={DICE_HIGH} step="1" inputmode="numeric" value={p.byHand ? p.dice : ''} placeholder={String(p.dice)} aria-describedby={`dice-${key}-${i}`} /></label>
+              <span id={`dice-${key}-${i}`}>{p.byHand ? <>rolled at the table</> : <>the post rolled <b>{p.dice}</b>; or roll them and type the total</>}</span>
+            </p>
             <p class="wh-post-pay"><b>{p.gold}</b> gc{p.gold < p.rolled && <span class="dim"> (rolled {p.rolled})</span>}{p.grants.map((g) => <> · {g.name} +{g.experience}{g.advance && <span class="wh-chip on">Advance</span>}</>)}{p.cut && <span class="wh-chip warn">Cut to the ceiling</span>}</p>
           </li>
         ))}
       </ol>
+      <div class="wh-actions wh-post-reckon"><button type="submit" form="reckon" class="cf-btn cf-btn-ghost sm">Reckon with these dice</button></div>
       <p class="wh-post-sum">In all <b>{pay.gold}</b> gc and <b>{pay.experience}</b> experience; strength after <b>{pay.after.power}</b>{r.ceiling ? <> of <b>{r.ceiling.power}</b></> : null}.</p>
       {o.shut && <p class="wh-post-shut">{o.shut}</p>}
     </>

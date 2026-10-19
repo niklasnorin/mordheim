@@ -510,6 +510,9 @@ export const warbandJobs = pgTable(
     text: text('text').notNull().default(''),
     lean: text('lean').notNull().default('even'),
     owed: boolean('owed').notNull().default(true),
+    /** The total of the job's 2D6, and whether the table rolled it (`by_hand`) or the post did. */
+    dice: integer('dice'),
+    byHand: boolean('by_hand').notNull().default(false),
     gold: integer('gold').notNull().default(0),
     /** `{ memberId, name, experience, advance }[]`, the grants as paid (`Grant` in campaign/jobs.ts). */
     grants: jsonb('grants').notNull().default([]),

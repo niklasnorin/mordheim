@@ -134,6 +134,13 @@
       "when": 1792432710978,
       "tag": "0018_fountain-post",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792438650131,
+      "tag": "0019_table-dice",
+      "breakpoints": true
     }
   ]
 }
