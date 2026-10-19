@@ -33,7 +33,8 @@ test('the boards are nailed up from the fixtures, each job at its point of inter
   assert.equal(fussenbach.find((j) => j.title === 'Keeping the bridge')!.pointId, bridge.id);
   assert.equal(fussenbach.find((j) => j.title === 'Wading for the algae men')!.pointId, null, 'the silt flats are not pinned');
   assert.ok((await listJobs('mordheim')).length > 0);
-  assert.ok(!(await listJobs()).some((j) => j.title.includes('Warehouse') || j.title.includes('Merchant')), 'no job where a thread runs');
+  for (const l of fixtures) for (const j of l.jobs ?? []) if (j.point) assert.ok(l.points.some((p) => p.name === j.point), `${j.title}: ${j.point} is not a point of ${l.name}`);
+  assert.equal(fussenbach.filter((j) => j.pointId != null).length, fixtures.find((l) => l.id === 'fussenbach')!.jobs!.filter((j) => j.point).length, 'every named point was found');
 });
 
 test('the books are set for the ceiling: the Bitterbrows logged, the Welling Rune behind and kept by a player', async () => {

@@ -49,7 +49,14 @@ All the dials are code, in `src/campaign/jobs.ts`. A change to one is a commit w
 
 ## Writing a job
 
-A job is one or two short sentences, past tense: what the warband did and where, then one thing noticed. It may notice what everyone in the place already notices. It never adds a fact to a running thread, never resolves one, and never shows one of the story's people at work. Keep jobs away from the points where a thread is running: in Fussenbach today that means Warehouse 4, the manor, Morr's Garden, the ruins, the tithe barn, the Mud-Gate, the boatyard and the lower basins; in Mordheim, the Merchant's Quarter. The village's ordinary life is fair ground: the Flagon and its boat song, pumpkin ale, the eel-men and their third hour, the algae men, the charcoal burners, the ferryman's tenth, the mill wheel. A job may stand at the edge of a thread the village already talks about (a warm basin, a hollowed pumpkin, a priest who asks for soft feet in the nave) and say no more than the village does. When the story moves to a point that has a job, withhold the job. British spelling, typographic apostrophes, no exclamation marks; nights, not days or weeks.
+A job is one or two short sentences, past tense: what the warband did and where, then one thing noticed. It may touch the place's story as far as the Curfew's pack does, and no further:
+
+- **What the pack already says may be seen.** A job may stand at Warehouse 4, the manor, Morr's Garden or the ruins, and notice what the pack's rumours, details and crossroads say is there: crates that are not the chandler's, shutters that stay shut, graves dug for nobody yet, a child who will not say what it was doing.
+- **Nothing contradicts the pack.** Read the place's pack (`location:<id>` in the Watch House, or `src/data/curfew/locations/<id>.json`) before writing a job about a thread. The village's own life is the safest ground: the Flagon and its boat song, pumpkin ale, the eel-men and their third hour, the algae men, the charcoal burners, the ferryman's tenth, the mill wheel.
+- **Nothing resolves a thread or adds a fact to it.** No job says what is in the crates, who walks in the old Baron's coat, or where Anselm is. A detail the pack does not have, such as a new name or a new number, belongs in the pack first, if anywhere.
+- **Points of interest by their names on the site.** A seed job names its point exactly as the location keeps it; a game master can repoint a job on the board.
+
+British spelling, typographic apostrophes, no exclamation marks; nights, not days or weeks. A job at a point where a game is scheduled is never drawn, so nobody gets to scout the next field.
 
 ## What a draft leaves for later
 

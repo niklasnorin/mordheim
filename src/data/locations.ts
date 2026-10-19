@@ -14,9 +14,10 @@ export interface PointFixture {
 }
 
 /**
- * A job on the place's board, the Fountain Post (`campaign/jobs.ts`): what a warband that missed games did there instead.
- * `point` names one of the location's points of interest, when the job is done at one. Written to brush against the
- * place's plots and tell nothing: no job goes where a thread is running.
+ * A job on the place's board, the Fountain Post (`campaign/jobs.ts`): what a warband did there between games.
+ * `point` names one of the location's points of interest, by its name as the location keeps it, when the job is done at
+ * one. A job may touch the place's plots as far as the Curfew's pack does, and never further: what the pack's rumours,
+ * details and crossroads already say may be seen, and nothing in a job contradicts or resolves them.
  */
 export interface JobFixture {
   title: string;
@@ -84,7 +85,7 @@ export const locations: LocationFixture[] = [
     ],
     jobs: [
       { title: 'Keeping the bridge', point: 'The bridge', lean: 'gold', text: 'Kept the line moving on the bridge for whichever half of the Watch was on. Nobody was let stand on it long. One carter tried twice, and the second time he paid double.' },
-      { title: 'The grain carts to the pines', point: 'The Mordheim road', lean: 'experience', text: 'Walked the grain carts down the Mordheim road as far as the pines and back. Nothing came out of the trees. Something kept pace inside them for a mile, then did not.' },
+      { title: 'The grain carts to the pines', lean: 'experience', text: 'Walked the grain carts down the Mordheim road as far as the pines and back. Nothing came out of the trees. Something kept pace inside them for a mile, then did not.' },
       { title: 'The yard that is not a Pit', point: 'The barracks', lean: 'experience', text: 'Drilled with the Village Watch in the barracks yard, which the Flagon’s landlord says is not a Pit. Nobody kept score, and everybody knew it.' },
       { title: 'Closing time at the Flagon', point: 'The Cracked Flagon', lean: 'gold', text: 'Threw out at closing time for the landlord, who paid in coin and in what was overheard, and kept the better of the two.' },
       { title: 'Notices on the post', point: 'The town square', lean: 'even', text: 'Read the fountain post’s notices aloud in the square for those who cannot, and nailed up three more. One of the old ones had been torn down and nailed back up the wrong way round.' },
@@ -97,6 +98,15 @@ export const locations: LocationFixture[] = [
       { title: 'Charcoal from the burners’ camp', lean: 'experience', text: 'Carried charcoal down from the burners’ camp above the village. The burners would not cut near the cliff, and paid in silver so old the face on it was the wrong Baron.' },
       { title: 'The ferry, for a bad arm', lean: 'gold', text: 'Worked the ferry while the ferryman nursed his arm. He took his tenth of the fares anyway, and listened mid-river, as he always does.' },
       { title: 'Clearing the mill race', lean: 'even', text: 'Cleared the weed from the race below the Black-Grist Mill. The miller paid by the sack and asked them not to look at the wheel while it turned.' },
+      { title: 'Day work at Warehouse 4', point: 'Warehouse 4', lean: 'gold', text: 'Carried for the chandler at Warehouse 4, by daylight. The day stock was rope and tallow. The crates stacked at the back were somebody else’s, and they were paid to finish before dusk.' },
+      { title: 'The orchard below the manor', point: 'The manor', lean: 'even', text: 'Cut back the orchard below the manor. One of the Baron’s mercenaries paid them at the fence, in coin with the Baron’s seal. The shutters stayed shut all day.' },
+      { title: 'A child from the ruins', point: 'The ruins', lean: 'champion', text: 'One of them walked a child back from the ruins east of the cemetery, as the mother asked. The child had not been lost, and would not say what it had been doing there.' },
+      { title: 'Digging for the gravedigger', point: 'Morr’s Garden', lean: 'experience', text: 'Dug graves in Morr’s Garden for the gravedigger. None of them was for anyone yet; he says it saves time. He saw to the chains himself.' },
+      { title: 'Grain off the barges', lean: 'gold', text: 'Unloaded the grain barges on the wharf, by daylight, which is when strangers are let. The Baron’s mercenaries counted every sack twice. The bargemen counted the mercenaries.' },
+      { title: 'A night at the Mud-Gate', lean: 'experience', text: 'Stood a night at the Mud-Gate for a watchman who was ill. A sergeant came by for the toll, looked at who was standing there, and decided against it.' },
+      { title: 'Firewood for the Watch House', lean: 'even', text: 'Carried the Watch House’s firewood in from the yard. Captain Hauer signed for it himself, and barred the door behind them before they had reached the lane.' },
+      { title: 'The tithe barn roof', lean: 'gold', text: 'Mended the roof of the tithe barn. The tithe went to the Elector a month ago, or was meant to. Somebody had swept the floor since, and left the lamps trimmed.' },
+      { title: 'Caulking at the boatyard', lean: 'experience', text: 'Caulked hulls at the boatyard while the shipwright is upriver. Something long lay under a tarpaulin at the back. It was not part of the work, and nobody asked them to move it.' },
     ],
   },
 ];

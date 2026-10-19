@@ -170,7 +170,7 @@ const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places
 
         <section class="wh-section" id="boards" aria-labelledby="boards-title">
           <h2 class="wh-h2" id="boards-title">The boards</h2>
-          <p class="wh-muted">Each place's jobs. A job brushes against the place's plots and tells nothing: it may notice what everyone in the place already notices, never add a fact to a thread, resolve one, or show one of the story's people at work. Keep jobs away from the points where a thread is running, and <b>withhold</b> one when the story moves to it. The boards are the one thing this page saves: they are what the dry runs draw from.</p>
+          <p class="wh-muted">Each place's jobs. A job may touch the place's story as far as the Curfew's pack does: it may see what the pack's rumours and details already say, and never contradicts them, resolves a thread or adds a fact to one. <b>Withhold</b> a job when the story moves past it. The boards are the one thing this page saves: they are what the dry runs draw from.</p>
           {places.map((l) => (
             <div class="wh-post-board">
               <h3 class="wh-h3">{l.name}</h3>
