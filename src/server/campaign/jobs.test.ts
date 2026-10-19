@@ -10,7 +10,7 @@ import { createScenario } from './scenarios.ts';
 import { getLocation } from './locations.ts';
 import { addJob, jobsTaken, listJobs, loadRecord, offer, postOverview, removeJob, takeJobs, undoJobs, updateJob, withBooks, LedgerError } from './jobs.ts';
 import { locations as fixtures } from '../../data/locations.ts';
-import { powerOf, totalExperience } from '../../campaign/jobs.ts';
+import { numberBoard, powerOf, totalExperience } from '../../campaign/jobs.ts';
 
 const gm = actorOf('user-gm', 'Game Master', 'gm');
 const player = actorOf('user-player', 'Player');
@@ -98,7 +98,7 @@ test('a scheduled game opens the post; the jobs are paid into the roster once, a
   await assert.rejects(takeJobs(gm, game, 'welling-rune'), refused(409));
   // the Nordost Kin are at the pace: the usual work alone, a few crowns and no experience
   const nordostGold = await gold('nordost'), nordostXp = await xpOf('nordost');
-  const usual = await takeJobs(gm, game, 'nordost', undefined, [12]);
+  const usual = await takeJobs(gm, game, 'nordost', undefined, { dice: [12] });
   assert.equal(usual.taken.length, 1);
   assert.deepEqual([usual.taken[0].dice, usual.taken[0].byHand], [12, true], 'the table rolled a 12');
   assert.equal(usual.taken[0].owed, false);
@@ -115,12 +115,28 @@ test('a scheduled game opens the post; the jobs are paid into the roster once, a
   assert.equal((await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach' })).reckoning.owed, 0, 'the gap is closed');
 });
 
+test('the table may roll D66 for which notice; a number it may not have is refused, to roll again', async () => {
+  const board = await listJobs('fussenbach');
+  const numbers = numberBoard(board);
+  const bridge = board.find((j) => j.title === 'Keeping the bridge')!;
+  const flagon = board.find((j) => j.title === 'Closing time at the Flagon')!;
+  const o = await offer(gm, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach', rolls: { picks: [numbers.get(flagon.id)!] } });
+  assert.equal(o.reckoning.payout!.jobs[0].job.id, flagon.id);
+  assert.equal(o.reckoning.payout!.jobs[0].slot?.byHand, true);
+  // the bridge is where the game is set: rolled at the table, it is refused
+  const barred = await offer(gm, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach', rolls: { picks: [numbers.get(bridge.id)!] } });
+  assert.match(barred.reckoning.payout!.jobs[0].slot!.refused!, /game is set/);
+  assert.notEqual(barred.reckoning.payout!.jobs[0].job.id, bridge.id, 'the post drew another');
+});
+
 test('the table may roll the dice and say the totals; the post rolls the rest', async () => {
   const post = (await offer(gm, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach' })).reckoning.payout!;
   assert.ok(post.jobs.every((p) => !p.byHand));
-  const hand = (await offer(gm, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach', dice: [11] })).reckoning.payout!;
+  const hand = (await offer(gm, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach', rolls: { dice: [11] } })).reckoning.payout!;
   assert.deepEqual(hand.jobs.map((p) => [p.job.id, p.dice, p.byHand]), [[post.jobs[0].job.id, 11, true]], 'the same job, the table’s roll');
-  await assert.rejects(takeJobs(gm, game, 'welling-rune', undefined, [13]), (e) => e instanceof LedgerError && /2 to 12/.test(e.message));
+  await assert.rejects(takeJobs(gm, game, 'welling-rune', undefined, { dice: [13] }), (e) => e instanceof LedgerError && /2 to 12/.test(e.message));
+  await assert.rejects(takeJobs(gm, game, 'welling-rune', undefined, { experience: [7] }), (e) => e instanceof LedgerError && /1 to 6/.test(e.message));
+  await assert.rejects(takeJobs(gm, game, 'welling-rune', undefined, { picks: [17] }), (e) => e instanceof LedgerError && /D66/.test(e.message));
 });
 
 test('the jobs can be undone, and the post shuts once the game has begun', async () => {

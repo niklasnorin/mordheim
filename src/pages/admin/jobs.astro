@@ -8,6 +8,7 @@ import { hasDatabase } from '../../server/db/client';
 import { admission } from '../../server/admin/guard';
 import { currentLocation, todayFor } from '../../server/curfew/service';
 import { diceKey, listJobs, offer, postOverview, type Books, type Offer, type PostRecord } from '../../server/campaign/jobs';
+import { numberBoard, type TableRolls } from '../../campaign/jobs';
 import { listLocations } from '../../server/campaign/locations';
 import { GOLD_PER_RATING, JOBS_AT_MOST, JOB_GOLD, JOB_LEANS, JOB_LEAN_LABEL, LEAN_GOLD, RATING_PER_WARRIOR, USUAL_SHARE, effectiveGames, jobsOwed, paceOf, powerOf, ratingOf, totalExperience, type Job, type Standing } from '../../campaign/jobs';
 import type { CampaignLocation } from '../../campaign/model';
@@ -36,22 +37,24 @@ for (const [key, value] of q) {
   const n = Number(value);
   if (m && value !== '' && Number.isFinite(n)) (books[m[2]] ??= {})[m[1] as 'rating' | 'gold'] = n;
 }
-// the table's own 2D6, `dice.<warband>:<game or dry>.<job>`, typed where the dice were rolled by hand; the rule ignores what no 2D6 shows
-const dice: Record<string, (number | null)[]> = {};
+// the table's own rolls, `pick|dice|exp.<warband>:<game or dry>.<place>`, typed where they were rolled by hand: a D66 for
+// which notice, 2D6 for the gold, a D6 for the experience. The rule ignores what no such roll shows, and says so.
+const ROLL: Record<string, keyof TableRolls> = { pick: 'picks', dice: 'dice', exp: 'experience' };
+const rolls: Record<string, TableRolls> = {};
 for (const [key, value] of q) {
-  const m = /^dice\.([\w-]{1,64}:[\w-]{1,160})\.(\d)$/.exec(key);
-  if (m && value !== '') (dice[m[1]] ??= [])[Number(m[2])] = Number(value);
+  const m = /^(pick|dice|exp)\.([\w-]{1,64}:[\w-]{1,160})\.(\d)$/.exec(key);
+  if (m && value !== '') ((rolls[m[2]] ??= {})[ROLL[m[1]]] ??= [])[Number(m[3])] = Number(value);
 }
 if (gm && viewer) {
   try {
     here = (await currentLocation(today)).id;
     [places, board] = await Promise.all([listLocations(), listJobs()]);
-    const o = await postOverview(viewer, here, books, dice);
+    const o = await postOverview(viewer, here, books, rolls);
     record = o.record; logged = o.logged; offers = o.offers;
     const behind = o.dry.find((d) => d.reckoning.owed > 0) ?? o.dry[0];
     const warbandId = q.get('warband') && record.standings.some((s) => s.warbandId === q.get('warband')) ? q.get('warband')! : behind?.warbandId;
     const place = places.find((l) => l.id === q.get('place'))?.id ?? here;
-    if (warbandId) dry = await offer(viewer, { warbandId, locationId: place, dice: dice[diceKey(warbandId)] }, record);
+    if (warbandId) dry = await offer(viewer, { warbandId, locationId: place, rolls: rolls[diceKey(warbandId)] }, record);
   } catch (e) { console.error('[fountain-post] unavailable', e); trouble = true; }
 }
 
@@ -60,6 +63,8 @@ const whatIf = new Set((record?.standings ?? []).filter((s) => { const l = logge
 const names = Object.fromEntries((record?.standings ?? []).map((s) => [s.warbandId, s.name]));
 const placeNames = Object.fromEntries(places.map((l) => [l.id, l.name]));
 const allPoints = places.flatMap((l) => l.points);
+// each notice's D66 number on its own board
+const numbers = new Map(places.flatMap((l) => [...numberBoard(board.filter((j) => j.locationId === l.id))]));
 const pace = record ? paceOf(record.standings) : 0;
 const upcoming = (record?.scenarios ?? []).filter((s) => s.status === 'upcoming');
 const imperial = (iso: string) => { try { return formatImperial(imperialForDate(iso), 'short'); } catch { return iso; } };
@@ -109,8 +114,9 @@ const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places
             <li>The post <b>opens</b> when a game is scheduled with the warband on its muster, and <b>shuts</b> at that game's first turn. The jobs come from the board of the place the game is fought in, or where the campaign is when the game names none.</li>
             <li>The <b>ceiling</b>: the jobs never make a warband stronger than the weakest warband that has fought more. Strength is the rating (logged, or reckoned at {RATING_PER_WARRIOR} a warrior plus their experience) with the unspent treasury at {GOLD_PER_RATING} gc a point; the warband's experience together, and each hero's and henchman's, are held under the least of those ahead too. Every grant is cut to fit.</li>
             <li>The <b>draw</b> is seeded by the warband and the game: the same game, the same jobs. Withheld jobs are never drawn, nor a job at a point of interest where a game is scheduled. Jobs the warband has not done lately come first.</li>
-            <li>The <b>dice</b>: a job's gold comes of its {JOB_GOLD.dice}D6. The post rolls them, or the table rolls its own and types the total in the job's box; an empty box is the post's roll. Either way the ceiling holds.</li>
-            <li>The <b>pay</b> of an owed job: {JOB_GOLD.dice}D6×{JOB_GOLD.times}+{JOB_GOLD.plus} gc, times its lean ({JOB_LEANS.map((l) => `${JOB_LEAN_LABEL[l].toLowerCase()} ×${LEAN_GOLD[l]}`).join(', ')}); experience by the lean: every warrior, every hero, the leader alone, or two for the least experienced hero. An advance reached is marked, to be rolled at the table.</li>
+            <li>The <b>rolls</b>: which notice (D66 on the board's numbers), the gold ({JOB_GOLD.dice}D6) and an owed job's experience (D6). The post rolls each, or the table rolls its own and types it in the job's box; an empty box is the post's roll. A notice the table may not have (withheld, where a game is set, already taken this return, or no notice at that number) is a roll again. Either way the ceiling holds.</li>
+            <li>The <b>experience</b> of an owed job, on its D6: 1–2 the floor (the lean's grant: every warrior +1, every hero +1, the leader +1, or the least experienced hero +2), 3–5 the floor and a point more to the least experienced warrior it names, 6 twice the floor. Never below the floor, unless the ceiling cuts it.</li>
+            <li>The <b>pay</b> of an owed job: {JOB_GOLD.dice}D6×{JOB_GOLD.times}+{JOB_GOLD.plus} gc, times its lean ({JOB_LEANS.map((l) => `${JOB_LEAN_LABEL[l].toLowerCase()} ×${LEAN_GOLD[l]}`).join(', ')}); experience as above. An advance reached is marked, to be rolled at the table.</li>
             <li>One warband's jobs will move the next one's offer at once: every offer is reckoned from the record as it stands. The dials are code, in <code>src/campaign/jobs.ts</code>.</li>
           </ul>
         </section>
@@ -184,7 +190,7 @@ const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places
               <ul class="wh-dispatches">
                 {board.filter((j) => j.locationId === l.id).map((j) => (
                   <li class="wh-dispatch wh-article">
-                    <span class="wh-meta"><span>{JOB_LEAN_LABEL[j.lean]}</span>{j.pointId != null && <span class="wh-chip">{l.points.find((p) => p.id === j.pointId)?.name ?? 'a point'}</span>}{j.withheld && <span class="wh-chip warn">Withheld</span>}</span>
+                    <span class="wh-meta">{numbers.get(j.id) != null && <span class="wh-post-number" title="Its number on D66">{numbers.get(j.id)}</span>}<span>{JOB_LEAN_LABEL[j.lean]}</span>{j.pointId != null && <span class="wh-chip">{l.points.find((p) => p.id === j.pointId)?.name ?? 'a point'}</span>}{j.withheld && <span class="wh-chip warn">Withheld</span>}</span>
                     <details class="wh-text wh-article-edit">
                       <summary><p>{j.title}</p><small>{j.text}</small></summary>
                       <form class="wh-article-form" data-api="admin/job-update" data-json={JSON.stringify({ jobId: j.id })}>

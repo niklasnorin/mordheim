@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LEAN_GOLD as LEAN, DICE_HIGH, DICE_LOW, GOLD_PER_RATING, JOBS_AT_MOST, USUAL_SHARE, isDiceTotal, ceilingFor, drawJobs, effectiveGames, jobSeed, jobsOwed, paceOf, payJobs, powerOf, ratingOf, reckon, shutBecause, totalExperience, type Job, type Standing } from './jobs.ts';
+import { drawSlots, isD66, isD6, numberBoard, LEAN_GOLD as LEAN, DICE_HIGH, DICE_LOW, GOLD_PER_RATING, JOBS_AT_MOST, USUAL_SHARE, isDiceTotal, ceilingFor, drawJobs, effectiveGames, jobSeed, jobsOwed, paceOf, payJobs, powerOf, ratingOf, reckon, shutBecause, totalExperience, type Job, type Standing } from './jobs.ts';
 
 const job = (id: number, over: Partial<Job> = {}): Job => ({ id, locationId: 'fussenbach', pointId: id, title: `Job ${id}`, text: '', lean: 'even', withheld: false, sort: id, ...over });
 const BOARD = [job(1, { lean: 'gold' }), job(2, { lean: 'experience' }), job(3, { lean: 'champion' }), job(4), job(5, { lean: 'gold' }), job(6, { pointId: null })];
@@ -112,7 +112,8 @@ test('a warband right under the ceiling is paid nothing, and says it was cut', (
 test('the leans pay as they say, and an advance reached is flagged', () => {
   const me = absent();
   const c = { ahead: ['x'], power: 10_000, experience: 10_000, warrior: { hero: 100, henchman: 100 } };
-  const pay = (lean: Job['lean']) => payJobs(me, c, [{ job: job(1, { lean }), owed: true }], 1).jobs[0];
+  // the floor: a 1 on the experience D6
+  const pay = (lean: Job['lean']) => payJobs(me, c, [{ job: job(1, { lean }), owed: true, experienceDie: 1 }], 1).jobs[0];
   assert.deepEqual(pay('experience').grants.map((g) => g.experience), [1, 1, 1, 1, 1], 'every warrior');
   assert.deepEqual(pay('even').grants.map((g) => g.memberId), ['absent-0', 'absent-1', 'absent-2'], 'every hero');
   assert.deepEqual(pay('gold').grants.map((g) => g.memberId), ['absent-0'], 'the leader');
@@ -192,5 +193,73 @@ test('the table’s dice are held under the ceiling like the post’s', () => {
     const r = reckon(me, all, BOARD, seed, { dice: [12, 12, 12, 12] });
     assert.ok(r.payout!.after.power <= r.ceiling!.power, `seed ${seed}`);
     assert.ok(r.payout!.jobs.every((p) => p.byHand));
+  }
+});
+
+test('the notices are numbered D66 in the board’s order, withheld ones keeping their number', () => {
+  const board = Array.from({ length: 40 }, (_, i) => job(i + 1, { sort: 40 - i, withheld: i === 39 }));
+  const n = numberBoard(board);
+  assert.equal(n.get(40), 11, 'the first by sort, withheld or not');
+  assert.equal(n.get(35), 16);
+  assert.equal(n.get(34), 21);
+  assert.equal(n.get(5), 66, 'the 36th');
+  assert.equal(n.get(4), undefined, 'the 37th has no number');
+  assert.ok(isD66(11) && isD66(66) && isD66(34) && !isD66(17) && !isD66(70) && !isD66(10) && !isD66(3));
+  assert.ok(isD6(1) && isD6(6) && !isD6(0) && !isD6(7) && !isD6(2.5));
+});
+
+test('the table may roll D66 for a notice; a number it may not have is refused, and the post draws that place', () => {
+  const board = [job(1), job(2, { withheld: true }), job(3), job(4), job(5), job(6)];
+  const n = numberBoard(board);
+  const at = (id: number) => n.get(id)!;
+  const post = drawSlots(board, 3, 5);
+  assert.ok(post.every((s) => !s.byHand && s.number != null));
+  const hand = drawSlots(board, 3, 5, { picks: [at(4), at(4), at(2)], barredPoints: [5] });
+  assert.equal(hand[0].job.id, 4);
+  assert.equal(hand[0].byHand, true);
+  assert.match(hand[1].refused!, /Already taken/);
+  assert.match(hand[2].refused!, /withheld/);
+  assert.ok(hand.slice(1).every((s) => !s.byHand && s.job.id !== 4 && s.job.id !== 2 && s.job.id !== 5));
+  assert.match(drawSlots(board, 1, 5, { picks: [at(5)], barredPoints: [5] })[0].refused!, /game is set/);
+  assert.match(drawSlots(board, 1, 5, { picks: [26] })[0].refused!, /No notice/);
+  assert.match(drawSlots(board, 1, 5, { picks: [17] })[0].refused!, /Not a roll/);
+  assert.equal(new Set(drawSlots(board, 5, 5, { picks: [at(1), null, at(3)] }).map((s) => s.job.id)).size, 5, 'never a job twice');
+});
+
+test('an owed job’s experience is rolled on a D6 and never falls below the floor', () => {
+  const me = absent();
+  const open = { ahead: ['x'], power: 10_000, experience: 10_000, warrior: { hero: 100, henchman: 100 } };
+  const xp = (lean: Job['lean'], d6: number) => payJobs(me, open, [{ job: job(1, { lean }), owed: true, experienceDie: d6 }], 1).jobs[0];
+  for (const lean of ['gold', 'experience', 'champion', 'even'] as const) {
+    const floor = xp(lean, 1).grants.reduce((a, g) => a + g.experience, 0);
+    assert.equal(xp(lean, 2).grants.reduce((a, g) => a + g.experience, 0), floor, `${lean}: a 2 is the floor`);
+    for (const d6 of [3, 4, 5]) assert.equal(xp(lean, d6).grants.reduce((a, g) => a + g.experience, 0), floor + 1, `${lean}: ${d6} is a point more`);
+    assert.equal(xp(lean, 6).grants.reduce((a, g) => a + g.experience, 0), floor * 2, `${lean}: a 6 doubles`);
+    for (let d6 = 1; d6 <= 6; d6++) assert.equal(xp(lean, d6).experienceByHand, true);
+  }
+  const more = xp('experience', 4).grants;
+  assert.equal(more.find((g) => g.experience === 2)!.memberId, 'absent-4', 'the point more goes to the least experienced named');
+  // the post rolls when the table did not, the same each time, and the experience dice leave the gold's alone
+  const posted = payJobs(me, open, [{ job: job(1), owed: true }], 3).jobs[0];
+  assert.equal(posted.experienceByHand, false);
+  assert.ok(isD6(posted.experienceDie));
+  assert.equal(payJobs(me, open, [{ job: job(1), owed: true }], 3).jobs[0].experienceDie, posted.experienceDie);
+  assert.equal(payJobs(me, open, [{ job: job(1), owed: true, experienceDie: 6 }], 3).jobs[0].dice, posted.dice, 'the gold’s roll is untouched');
+  // the usual work rolls no experience
+  const usual = payJobs(me, open, [{ job: job(1), owed: false, experienceDie: 6 }], 3).jobs[0];
+  assert.equal(usual.experienceDie, null);
+  assert.equal(usual.grants.length, 0);
+});
+
+test('the table’s experience is held under the ceiling like the post’s', () => {
+  for (let seed = 0; seed < 100; seed++) {
+    const me = band('absent', 0, [20, 10, 9, 3, 2]);
+    const all = [veteran(), regular(), me];
+    const r = reckon(me, all, BOARD, seed, { experience: [6, 6, 6], dice: [12, 12, 12, 12] });
+    const c = r.ceiling!;
+    assert.ok(r.payout!.after.experience <= c.experience, `seed ${seed}`);
+    const xp = new Map(me.warriors.map((w) => [w.id, w.experience]));
+    for (const p of r.payout!.jobs) for (const g of p.grants) xp.set(g.memberId, xp.get(g.memberId)! + g.experience);
+    for (const w of me.warriors) assert.ok(xp.get(w.id)! <= c.warrior[w.rank]!, `seed ${seed}: ${w.id}`);
   }
 });

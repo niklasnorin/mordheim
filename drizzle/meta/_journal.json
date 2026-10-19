@@ -141,6 +141,13 @@
       "when": 1792438650131,
       "tag": "0019_table-dice",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792439349178,
+      "tag": "0020_table-rolls",
+      "breakpoints": true
     }
   ]
 }

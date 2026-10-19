@@ -265,3 +265,5 @@
 .wh-post-dice input { width: 4.2rem; min-height: 2.4rem; font-family: var(--body); font-size: 0.95rem; background: var(--ash-deep); color: var(--bone); border: 1px solid var(--rule); padding: 0.3rem 0.5rem; color-scheme: dark; }
 .wh-post-dice input:focus-visible { border-color: var(--candle-dim); outline: none; }
 .wh-post-dice b { color: var(--candle); font-family: var(--label); font-weight: 600; }
+.wh-post-who { color: var(--bone-dim); font-size: 0.8rem; flex-basis: 100%; }
+.wh-post-number { font-family: var(--label); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--candle); border: 1px solid var(--candle-dim); padding: 0.05rem 0.4rem; margin-right: 0.4rem; }

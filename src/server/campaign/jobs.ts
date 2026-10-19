@@ -14,7 +14,7 @@ import { db } from '../db/client.ts';
 import { locationJobs, locationPoints, locations, members, warbandJobs, warbands as warbandTable } from '../db/schema.ts';
 import { LedgerError } from '../../curfew/ledger.ts';
 import { leaderOf, type Scenario, type Warband } from '../../campaign/model.ts';
-import { DICE_HIGH, DICE_LOW, JOB_LEANS, isDiceTotal, jobSeed, reckon, shutBecause, type Grant, type Job, type JobLean, type Reckoning, type Standing } from '../../campaign/jobs.ts';
+import { DICE_HIGH, DICE_LOW, JOB_LEANS, isD6, isD66, isDiceTotal, jobSeed, reckon, shutBecause, type Grant, type Job, type JobLean, type Reckoning, type Standing, type TableRolls } from '../../campaign/jobs.ts';
 import { proseSource } from '../../campaign/prose.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { listWarbands } from './roster.ts';
@@ -95,7 +95,7 @@ export async function removeJob(actor: Actor, jobId: number): Promise<Job[]> {
 
 // ───────────────────────── the warbands as the rule sees them ─────────────────────────
 
-export interface TakenJob { id: number; warbandId: string; scenarioId: string | null; seq: number; jobId: number | null; locationId: string | null; pointId: number | null; title: string; text: string; lean: string; owed: boolean; dice: number | null; byHand: boolean; gold: number; grants: Grant[]; takenBy: string | null; takenAt: Date }
+export interface TakenJob { id: number; warbandId: string; scenarioId: string | null; seq: number; jobId: number | null; locationId: string | null; pointId: number | null; title: string; text: string; lean: string; owed: boolean; pick: number | null; pickByHand: boolean; dice: number | null; byHand: boolean; experienceDie: number | null; experienceByHand: boolean; gold: number; grants: Grant[]; takenBy: string | null; takenAt: Date }
 type TakenRow = typeof warbandJobs.$inferSelect;
 const takenOf = (r: TakenRow): TakenJob => ({ ...r, grants: (r.grants as Grant[]) ?? [] });
 
@@ -149,11 +149,11 @@ export interface OfferQuery {
   scenarioId?: string | null;
   /** The board to reckon a dry run on, with no game; or where the campaign is, when the game names no location. */
   locationId?: string | null;
-  /** The table's own 2D6 for each job, in the order drawn (owed first, then the usual work); null where the post rolls. */
-  dice?: (number | null)[];
+  /** The table's own rolls, place by place in the return (owed first, then the usual work): a D66 for which notice, 2D6 for the gold, a D6 for the experience; null where the post rolls. */
+  rolls?: TableRolls;
 }
 
-/** The key a warband's dice are kept under for one game, or for its dry run with none. */
+/** The key a warband's rolls are kept under for one game, or for its dry run with none. */
 export const diceKey = (warbandId: string, scenarioId?: string | null) => `${warbandId}:${scenarioId ?? 'dry'}`;
 
 /** What the post would pay this warband now. Saves nothing: the dry run and the real thing reckon alike. */
@@ -177,7 +177,7 @@ export async function offer(actor: Actor, q: OfferQuery, record?: PostRecord): P
     warbandId: standing.warbandId, name: standing.name,
     scenario: scenario ? { id: scenario.id, title: scenario.title, playedOn: scenario.playedOn } : null,
     locationId, shut, taken, standing,
-    reckoning: reckon(standing, r.standings, board, seed, { barredPoints, lastTaken, dice: q.dice }),
+    reckoning: reckon(standing, r.standings, board, seed, { barredPoints, lastTaken, ...q.rolls }),
   };
 }
 
@@ -197,14 +197,14 @@ export function withBooks(record: PostRecord, books: Books = {}): PostRecord {
 }
 
 /** Every warband's offer for every scheduled game it is on, and a dry run for each warband on no game. For the Watch House. */
-export async function postOverview(actor: Actor, here: string, books: Books = {}, dice: Record<string, (number | null)[]> = {}): Promise<{ record: PostRecord; logged: Standing[]; offers: Offer[]; dry: Offer[] }> {
+export async function postOverview(actor: Actor, here: string, books: Books = {}, rolls: Record<string, TableRolls> = {}): Promise<{ record: PostRecord; logged: Standing[]; offers: Offer[]; dry: Offer[] }> {
   gmOnly(actor);
   const loaded = await loadRecord();
   const record = withBooks(loaded, books);
   const offers: Offer[] = [];
-  for (const s of upcomingOnly(record.scenarios)) for (const w of s.warbands) offers.push(await offer(actor, { warbandId: w.warbandId, scenarioId: s.id, locationId: here, dice: dice[diceKey(w.warbandId, s.id)] }, record));
+  for (const s of upcomingOnly(record.scenarios)) for (const w of s.warbands) offers.push(await offer(actor, { warbandId: w.warbandId, scenarioId: s.id, locationId: here, rolls: rolls[diceKey(w.warbandId, s.id)] }, record));
   const dry: Offer[] = [];
-  for (const w of record.standings) dry.push(await offer(actor, { warbandId: w.warbandId, locationId: here, dice: dice[diceKey(w.warbandId)] }, record));
+  for (const w of record.standings) dry.push(await offer(actor, { warbandId: w.warbandId, locationId: here, rolls: rolls[diceKey(w.warbandId)] }, record));
   return { record, logged: loaded.standings, offers, dry };
 }
 
@@ -214,7 +214,7 @@ export async function postOverview(actor: Actor, here: string, books: Books = {}
  * Not routed yet: the post is a dry run until the players run it themselves.
  *
  * Take the jobs the post offers this warband before this game, the usual work and any owed on top, and pay them into
- * the roster, with the table's dice where they rolled them: experience to the warriors, gold to the treasury, and the logged rating moved with the experience (a
+ * the roster, with the table's rolls where they rolled them (which notice, the gold, the experience): experience to the warriors, gold to the treasury, and the logged rating moved with the experience (a
  * rating nobody logged is reckoned from the roster anyway). Refused when the post is shut, when they were taken
  * already, or when the board has nothing open to them.
  *
@@ -222,16 +222,20 @@ export async function postOverview(actor: Actor, here: string, books: Books = {}
  * row is written first, and a second taker finds it there. Two warbands taking at the very same moment may each be
  * reckoned without the other; the next offer reads them both.
  */
-export async function takeJobs(actor: Actor, scenarioId: string, warbandId: string, here?: string, dice?: (number | null)[]): Promise<Offer> {
+export async function takeJobs(actor: Actor, scenarioId: string, warbandId: string, here?: string, rolls: TableRolls = {}): Promise<Offer> {
   gmOnly(actor);
-  if (dice?.some((n) => n != null && !isDiceTotal(n))) throw new LedgerError(`Two dice show ${DICE_LOW} to ${DICE_HIGH}. Roll again, or let the post roll.`);
-  const o = await offer(actor, { warbandId, scenarioId, locationId: here, dice });
+  if (rolls.dice?.some((n) => n != null && !isDiceTotal(n))) throw new LedgerError(`Two dice show ${DICE_LOW} to ${DICE_HIGH}. Roll again, or let the post roll.`);
+  if (rolls.experience?.some((n) => n != null && !isD6(n))) throw new LedgerError('A die shows 1 to 6. Roll again, or let the post roll.');
+  if (rolls.picks?.some((n) => n != null && !isD66(n))) throw new LedgerError('A notice is rolled on D66: 11 to 66, each die 1 to 6.');
+  const o = await offer(actor, { warbandId, scenarioId, locationId: here, rolls });
+  const refused = o.reckoning.payout?.jobs.find((p) => p.slot?.refused);
+  if (refused) throw new LedgerError(`${refused.slot!.refused} Roll again for that notice, or let the post draw it.`, 409);
   if (o.shut) throw new LedgerError(o.shut, 409);
   const pay = o.reckoning.payout;
   if (!pay || !pay.jobs.length) throw new LedgerError('The post is bare: no job there is open to them.', 409);
   const d = db();
   const rows = pay.jobs.map((p, i) => ({
-    warbandId, scenarioId, seq: i + 1, jobId: p.job.id, locationId: p.job.locationId, pointId: p.job.pointId, title: p.job.title, text: p.job.text, lean: p.job.lean, owed: p.owed, dice: p.dice, byHand: p.byHand, gold: p.gold, grants: p.grants, takenBy: actor.name,
+    warbandId, scenarioId, seq: i + 1, jobId: p.job.id, locationId: p.job.locationId, pointId: p.job.pointId, title: p.job.title, text: p.job.text, lean: p.job.lean, owed: p.owed, pick: p.slot?.number ?? null, pickByHand: !!p.slot?.byHand, dice: p.dice, byHand: p.byHand, experienceDie: p.experienceDie, experienceByHand: p.experienceByHand, gold: p.gold, grants: p.grants, takenBy: actor.name,
   }));
   const first = await d.insert(warbandJobs).values(rows[0]).onConflictDoNothing().returning({ id: warbandJobs.id });
   if (!first.length) throw new LedgerError('They took their jobs before this game already.', 409);

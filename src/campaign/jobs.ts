@@ -60,6 +60,13 @@ export const LEAN_GOLD: Record<JobLean, number> = { gold: 1.5, experience: 0.5, 
 /** A warrior's worth in the reckoned rating, as the rulebook counts it: 5 a warrior, plus their experience. */
 export const RATING_PER_WARRIOR = 5;
 
+/**
+ * An owed job's experience is rolled on a D6, never below the floor: 1–2 the floor (the lean's grant as it stands),
+ * 3–5 the floor and a point more to the least experienced warrior it names, 6 twice the floor.
+ */
+export const EXPERIENCE_ROLL = { floor: [1, 2], more: [3, 4, 5], double: [6] } as const;
+export const isD6 = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= 6;
+
 /** The rulebook's experience at which a hero, or a henchman group, rolls an advance. */
 export const HERO_ADVANCES = [2, 4, 6, 8, 11, 14, 17, 20, 24, 28, 32, 36, 41, 46, 51, 57, 63, 69, 76, 83, 90];
 export const HENCHMAN_ADVANCES = [2, 5, 9, 14];
@@ -170,6 +177,62 @@ export function drawJobs(board: Job[], count: number, seed: number, opts: { barr
   return order.map((j, i) => ({ j, i })).sort((a, b) => when(a.j) - when(b.j) || a.i - b.i).slice(0, Math.max(0, count)).map((x) => x.j);
 }
 
+// ───────────────────────── the notices, numbered for the table ─────────────────────────
+
+/**
+ * The notices on a board are numbered D66 in the board's order, withheld ones included, so a number keeps its notice
+ * while the game master withholds and restores: 11 to 16, 21 to 26, and so on to 66. A board numbers 36 notices at
+ * most; the rest are the post's to draw and cannot be rolled for.
+ */
+export const isD66 = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 11 && n <= 66 && n % 10 >= 1 && n % 10 <= 6;
+const d66At = (i: number) => (Math.floor(i / 6) + 1) * 10 + (i % 6) + 1;
+const indexOfD66 = (n: number) => (Math.floor(n / 10) - 1) * 6 + (n % 10) - 1;
+const inBoardOrder = (board: Job[]) => board.slice().sort((a, b) => a.sort - b.sort || a.id - b.id);
+
+/** Each notice's D66 number on its board, by job id; the 37th notice and after have none. */
+export function numberBoard(board: Job[]): Map<number, number> {
+  return new Map(inBoardOrder(board).slice(0, 36).map((j, i) => [j.id, d66At(i)]));
+}
+
+/** One job drawn for one place in the return: the job, its number on the board, and whether the table rolled it. */
+export interface Slot {
+  job: Job;
+  /** Its D66 number on the board, or null past the 36th. */
+  number: number | null;
+  byHand: boolean;
+  /** Why the table's number was not taken, when it was not ("roll again"); the post drew this one instead. */
+  refused?: string;
+}
+
+/**
+ * The jobs for one return, a place at a time: the table's D66 where they rolled one and it lands on a notice that is
+ * open and not already taken this return, the post's own draw (`drawJobs`) for the rest. A number the table may not
+ * have is refused with the reason, and the post draws that place; at the table, that is a roll again.
+ */
+export function drawSlots(board: Job[], count: number, seed: number, opts: Parameters<typeof drawJobs>[3] & { picks?: (number | null | undefined)[] } = {}): Slot[] {
+  const numbers = numberBoard(board);
+  const byNumber = new Map([...numbers].map(([id, n]) => [n, board.find((j) => j.id === id)!]));
+  const barred = new Set(opts.barredPoints ?? []);
+  const order = drawJobs(board, board.length, seed, opts);
+  const used = new Set<number>();
+  const slots: Slot[] = [];
+  for (let i = 0; i < count; i++) {
+    const pick = opts.picks?.[i];
+    let refused: string | undefined;
+    if (pick != null) {
+      const job = isD66(pick) ? byNumber.get(pick) : undefined;
+      refused = !isD66(pick) ? 'Not a roll of D66.' : !job ? 'No notice has that number.' : job.withheld ? 'That notice is withheld.'
+        : job.pointId != null && barred.has(job.pointId) ? 'A game is set there.' : used.has(job.id) ? 'Already taken this return.' : undefined;
+      if (job && !refused) { used.add(job.id); slots.push({ job, number: pick, byHand: true }); continue; }
+    }
+    const next = order.find((j) => !used.has(j.id));
+    if (!next) break;
+    used.add(next.id);
+    slots.push({ job: next, number: numbers.get(next.id) ?? null, byHand: false, refused });
+  }
+  return slots;
+}
+
 // ───────────────────────── the pay ─────────────────────────
 
 /** A grant of experience to one warrior, and whether it brings them to an advance. */
@@ -180,6 +243,11 @@ export interface JobPay {
   /** The total of the job's 2D6, and whether the table rolled it (`byHand`) or the post did. */
   dice: number;
   byHand: boolean;
+  /** The experience D6, and whether the table rolled it; the usual work rolls none and pays no experience. */
+  experienceDie: number | null;
+  experienceByHand: boolean;
+  /** Its number on the board and whether the table rolled for it, when it was drawn through `drawSlots`. */
+  slot?: Omit<Slot, 'job'>;
   /** An owed job, paid in full and counted towards the pace; otherwise the usual work, paid in a few crowns. */
   owed: boolean;
   /** The crowns the dice gave before the ceiling, and what was paid. */
@@ -203,8 +271,19 @@ export interface Payout {
 const roll = (r: () => number, n: number, sides: number) => Array.from({ length: n }, () => 1 + Math.floor(r() * sides)).reduce((a, b) => a + b, 0);
 const crossesAdvance = (rank: Warrior['rank'], from: number, to: number) => (rank === 'hero' ? HERO_ADVANCES : HENCHMAN_ADVANCES).some((t) => t > from && t <= to);
 
-/** Who the job pays experience, before the ceiling: the lean decides. */
-function wanted(lean: JobLean, warriors: Warrior[]): { w: Warrior; n: number }[] {
+/** Who the job pays experience before the ceiling: the lean says who, the D6 how much over the floor. */
+function wanted(lean: JobLean, warriors: Warrior[], d6: number): { w: Warrior; n: number }[] {
+  const floor = byLean(lean, warriors);
+  if ((EXPERIENCE_ROLL.double as readonly number[]).includes(d6)) return floor.map(({ w, n }) => ({ w, n: n * 2 }));
+  if ((EXPERIENCE_ROLL.more as readonly number[]).includes(d6) && floor.length) {
+    const least = floor.reduce((a, b) => (b.w.experience < a.w.experience ? b : a));
+    return floor.map((g) => (g === least ? { ...g, n: g.n + 1 } : g));
+  }
+  return floor;
+}
+
+/** The floor: who the lean pays, and how much, whatever the D6 says. */
+function byLean(lean: JobLean, warriors: Warrior[]): { w: Warrior; n: number }[] {
   const heroes = warriors.filter((w) => w.rank === 'hero');
   switch (lean) {
     case 'experience': return warriors.map((w) => ({ w, n: 1 }));
@@ -221,7 +300,15 @@ function wanted(lean: JobLean, warriors: Warrior[]): { w: Warrior; n: number }[]
 const OPEN: Ceiling = { ahead: [], power: Infinity, experience: Infinity, warrior: { hero: Infinity, henchman: Infinity } };
 
 /** One job to pay: owed or the usual work, and the table's own roll of its dice when they rolled them. */
-export interface JobToPay { job: Job; owed: boolean; dice?: number | null }
+export interface JobToPay {
+  job: Job;
+  owed: boolean;
+  /** The table's 2D6 for the gold, and its D6 for the experience, where they rolled them. */
+  dice?: number | null;
+  experienceDie?: number | null;
+  /** How the job came to be drawn, passed through to the pay. */
+  slot?: Omit<Slot, 'job'>;
+}
 
 /**
  * What the jobs pay, cut to the ceiling. Each job's gold comes of its 2D6: the post rolls them from the seed, or the
@@ -236,16 +323,21 @@ export interface JobToPay { job: Job; owed: boolean; dice?: number | null }
 export function payJobs(s: Standing, ceilingOrNone: Ceiling | null, jobs: JobToPay[], seed: number): Payout {
   const ceiling = ceilingOrNone ?? OPEN;
   const r = rng(hashSeed(seed, 'pay'));
+  // a stream of its own, so the experience dice leave the gold's as they were
+  const rx = rng(hashSeed(seed, 'experience'));
   const xp = new Map(s.warriors.map((w) => [w.id, w.experience]));
   let total = totalExperience(s), gold = s.gold, cut = false;
   // the rating moves with the experience granted, logged or reckoned alike
   let rating = ratingOf(s);
   const room = () => ceiling.power - (rating + Math.floor(gold / GOLD_PER_RATING));
   const paid: JobPay[] = [];
-  for (const { job, owed, dice: atTable } of jobs) {
+  for (const { job, owed, dice: atTable, experienceDie: xpAtTable, slot } of jobs) {
     let jobCut = false;
     const grants: Grant[] = [];
-    for (const { w, n } of owed ? wanted(job.lean, s.warriors) : []) {
+    const xpPosted = 1 + Math.floor(rx() * 6);
+    const experienceByHand = owed && isD6(xpAtTable);
+    const experienceDie = owed ? (experienceByHand ? xpAtTable! : xpPosted) : null;
+    for (const { w, n } of owed ? wanted(job.lean, s.warriors, experienceDie!) : []) {
       const now = xp.get(w.id)!;
       const cap = ceiling.warrior[w.rank];
       const allowed = Math.max(0, Math.min(n, cap == null ? 0 : cap - now, ceiling.experience - total, room()));
@@ -265,7 +357,7 @@ export function payJobs(s: Standing, ceilingOrNone: Ceiling | null, jobs: JobToP
     if (given < rolled) jobCut = true;
     gold += given;
     cut ||= jobCut;
-    paid.push({ job, owed, dice, byHand, rolled, gold: given, grants, cut: jobCut });
+    paid.push({ job, owed, dice, byHand, experienceDie, experienceByHand, slot, rolled, gold: given, grants, cut: jobCut });
   }
   return {
     jobs: paid,
@@ -289,13 +381,21 @@ export interface Reckoning {
 }
 
 /**
- * Draw the owed jobs and the usual work, one more than is owed, and pay them, with the table's dice where they rolled. The first drawn are the owed ones, so a
+ * Draw the owed jobs and the usual work, one more than is owed, and pay them, with the table's rolls where they rolled:
+ * a D66 for which notice, 2D6 for the gold, a D6 for the experience. The first drawn are the owed ones, so a
  * board too small for all of them pays what is owed before the usual work.
  */
-export function reckon(s: Standing, all: Standing[], board: Job[], seed: number, opts: Parameters<typeof drawJobs>[3] & { dice?: (number | null | undefined)[] } = {}): Reckoning {
+export interface TableRolls {
+  /** The table's D66 for which notice, 2D6 for the gold and D6 for the experience, place by place in the return. */
+  picks?: (number | null | undefined)[];
+  dice?: (number | null | undefined)[];
+  experience?: (number | null | undefined)[];
+}
+
+export function reckon(s: Standing, all: Standing[], board: Job[], seed: number, opts: Parameters<typeof drawJobs>[3] & TableRolls = {}): Reckoning {
   const ceiling = ceilingFor(s, all);
   const owed = jobsOwed(s, all);
-  // the table's dice go to the jobs in the order drawn: the owed ones first, then the usual work
-  const jobs = drawJobs(board, owed + 1, seed, opts).map((job, i) => ({ job, owed: i < owed, dice: opts.dice?.[i] ?? null }));
+  // the table's rolls go place by place: the owed jobs first, then the usual work
+  const jobs = drawSlots(board, owed + 1, seed, opts).map(({ job, ...slot }, i) => ({ job, owed: i < owed, dice: opts.dice?.[i] ?? null, experienceDie: opts.experience?.[i] ?? null, slot }));
   return { pace: paceOf(all), effective: effectiveGames(s), owed, ceiling, power: powerOf(s), payout: jobs.length ? payJobs(s, ceiling, jobs, seed) : null };
 }
