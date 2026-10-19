@@ -231,3 +231,30 @@
 .wh-tarot-rule { margin: 0; color: var(--bone); }
 .wh-tarot-flavour { margin: 0; font-style: italic; color: var(--bone-dim); }
 .wh-table a { color: var(--candle); }
+
+/* ── the fountain post (/admin/jobs/) ── */
+.wh-post-offers { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); margin-bottom: 1.6rem; }
+.wh-post-offer { display: grid; gap: 0.5rem; align-content: start; padding: 0.9rem 1.1rem 1rem; border: 1px solid var(--rule); background: #100e0c; min-width: 0; }
+.wh-post-offer[data-shut] { border-style: dashed; }
+.wh-post-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem 1rem; flex-wrap: wrap; }
+.wh-post-head .wh-h2 { margin: 0; font-size: 1.3rem; }
+.wh-post-head .wh-meta { display: inline-flex; gap: 0.35rem; flex-wrap: wrap; }
+.wh-post-jobs { display: grid; gap: 0.7rem; padding-left: 1.2rem; margin: 0; }
+.wh-post-jobs li { color: var(--bone); }
+.wh-post-jobs li::marker { color: var(--candle-dim); font-family: var(--label); }
+.wh-post-jobs p { color: var(--bone-dim); font-size: 0.95rem; font-style: italic; margin-top: 0.15rem; }
+.wh-post-jobs .wh-post-pay { font-style: normal; font-size: 0.9rem; }
+.wh-post-jobs .wh-post-pay b, .wh-post-sum b { color: var(--candle); font-family: var(--label); font-weight: 600; font-variant-numeric: tabular-nums; }
+.wh-post-pay .wh-chip { margin-left: 0.35rem; }
+.wh-post-at, .wh-post-lean { color: var(--bone-dim); font-size: 0.9rem; }
+.wh-post-sum { color: var(--bone-dim); font-size: 0.95rem; }
+.wh-post-shut { color: var(--bone-dim); font-style: italic; font-size: 0.95rem; }
+.wh-post-offer .wh-actions { max-width: none; }
+.wh-post-game > .wh-h3 a { color: inherit; }
+.wh-post-board { margin-bottom: 1.8rem; }
+.wh-post-board .wh-dispatches { margin-bottom: 0.8rem; }
+.wh-post-add > summary { list-style: none; display: inline-flex; cursor: pointer; }
+.wh-post-add > summary::-webkit-details-marker { display: none; }
+.wh-post-add[open] > summary { margin-bottom: 0.8rem; }
+.wh-post-books { margin: 0; gap: 0.5rem 0.8rem; flex-wrap: nowrap; }
+.wh-post-books small { font-size: 0.8rem; white-space: nowrap; }

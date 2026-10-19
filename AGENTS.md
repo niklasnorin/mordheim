@@ -19,6 +19,7 @@ Instructions for any coding agent working in this repository. `CLAUDE.md` is the
 | How the code fits: the two halves, nights and places, the resolution pipeline, env | `docs/agents/architecture.md` |
 | What the campaign's words mean in code | `docs/agents/glossary.md` |
 | How to write for each surface, and commit messages | `docs/agents/writing.md` |
+| The catch-up rule (the Fountain Post), a draft for game masters | `docs/fountain-post.md` |
 | Product intent, the Curfew plan and its decisions, the prose rules | `PRODUCT.md`, `src/data/curfew/PLAN.md`, `src/data/curfew/STYLE.md` |
 
 ## Skills for the common tasks

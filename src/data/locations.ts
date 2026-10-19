@@ -13,6 +13,18 @@ export interface PointFixture {
   y?: number;
 }
 
+/**
+ * A job on the place's board, the Fountain Post (`campaign/jobs.ts`): what a warband that missed games did there instead.
+ * `point` names one of the location's points of interest, when the job is done at one. Written to brush against the
+ * place's plots and tell nothing: no job goes where a thread is running.
+ */
+export interface JobFixture {
+  title: string;
+  text: string;
+  lean: 'gold' | 'experience' | 'champion' | 'even';
+  point?: string;
+}
+
 export interface LocationFixture {
   id: string;
   name: string;
@@ -24,6 +36,7 @@ export interface LocationFixture {
   banner?: string;
   bannerFocus?: string;
   points: PointFixture[];
+  jobs?: JobFixture[];
 }
 
 export const locations: LocationFixture[] = [
@@ -39,6 +52,12 @@ export const locations: LocationFixture[] = [
       { name: 'Cutthroat’s Haven', kind: 'District', description: 'Where the city’s trade carried on after the city stopped. Anything is for sale, including the way back out.' },
       { name: 'Executioner’s Square', kind: 'Square', description: 'The scaffold is still up. The crows have the only steady work in the city.' },
       { name: 'The Pit', kind: 'Fighting pit', description: 'Where the warbands train by fighting each other for coin, and where the coin is usually the smaller loss.' },
+    ],
+    jobs: [
+      { title: 'Minding a door in the Haven', point: 'Cutthroat’s Haven', lean: 'gold', text: 'Minded a door in Cutthroat’s Haven for a man who sold things that were not his. He paid on time, which in the Haven passes for honesty.' },
+      { title: 'Seven nights in the Pit', point: 'The Pit', lean: 'champion', text: 'One of them fought seven nights running in the Pit for the house’s purse. Won more than lost, and lost the right ones.' },
+      { title: 'Clearing the scaffold', point: 'Executioner’s Square', lean: 'even', text: 'Cleared the scaffold in Executioner’s Square for a fee from the Watch. The pay was fair. The crows disagreed.' },
+      { title: 'A sifter’s cart', lean: 'experience', text: 'Walked a sifter’s cart from the outer ruins to the Haven and back, three times. The cart came back each time. So did they.' },
     ],
   },
   {
@@ -62,6 +81,16 @@ export const locations: LocationFixture[] = [
       { name: 'Morr’s Garden', kind: 'Cemetery', description: 'The cemetery at the village’s eastern edge, walled, with a gate that is locked from the inside at dusk. The gravedigger asks that his name be chained down too.', x: 91.6, y: 51.0 },
       { name: 'The bridge', kind: 'Bridge', description: 'The one crossing of the Fussen for a day in either direction. Whoever holds it holds the village’s trade, which is why nobody is allowed to stand on it for long.', x: 49.7, y: 62.7 },
       { name: 'The Mordheim road', kind: 'Road', description: 'South out of the village, past the temple and into the pines. Everything that comes up it is asked its business; everything that goes down it is not asked back.', x: 49.7, y: 92.5 },
+    ],
+    jobs: [
+      { title: 'Keeping the bridge', point: 'The bridge', lean: 'gold', text: 'Kept the line moving on the bridge for the Watch’s off half. Nobody was let stand on it long. One carter tried twice, and the second time he paid double.' },
+      { title: 'The grain carts to the pines', point: 'The Mordheim road', lean: 'experience', text: 'Walked the grain carts down the Mordheim road as far as the pines and back. Nothing came out of the trees. Something kept pace inside them for a mile, then did not.' },
+      { title: 'The yard that is not a Pit', point: 'The barracks', lean: 'experience', text: 'Drilled with the Village Watch in the barracks yard. Nobody kept score, and everybody knew it.' },
+      { title: 'Closing time at the Flagon', point: 'The Cracked Flagon', lean: 'gold', text: 'Threw out at closing time for the landlord, who paid in coin and in what was overheard, and kept the better of the two.' },
+      { title: 'Standing by the stalls', point: 'The market', lean: 'gold', text: 'Stood by the market stalls when the barges came in. The stalls that sold nothing paid best and asked least.' },
+      { title: 'Seven nights on the crag', point: 'The watch tower', lean: 'champion', text: 'One of them kept the watch tower on the crag for seven nights. Saw nothing worth the bell, and did not ring it, which the Watch counts as nights well spent.' },
+      { title: 'The bell-frame at the Hammer', point: 'Sigmar’s Hammer', lean: 'even', text: 'Mended the bell-frame at Sigmar’s Hammer. The priest paid in silver and in blessings, and apologised for the silver.' },
+      { title: 'Wading for the algae men', lean: 'gold', text: 'Waded the silt flats for the algae men, cutting and carrying. The basins were warm. The algae men said that was usual.' },
     ],
   },
 ];

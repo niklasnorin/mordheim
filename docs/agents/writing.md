@@ -19,6 +19,10 @@ A template must read correctly with every slot filled, including a first name of
 
 Example, `templates.scavenge.boon` in Mordheim: "{name} went sifting in {district}. {they} came back with green in both pockets and no words about how."
 
+### A job on the fountain post (`location_jobs`, `src/data/locations.ts`)
+
+The vignette's cousin, in the past tense: one or two short sentences, what the warband did and where, then one thing noticed. A job may notice what everyone in the place already notices; it never adds a fact to a running thread, never resolves one, and never shows one of the story's people at work. No job at a point where a thread is running. See `docs/fountain-post.md`.
+
 ## 2. The Town Cryer article (`src/data/news.ts`)
 
 An Imperial broadsheet with a correspondent who would like to survive the week. Deadpan, satirical, exact.

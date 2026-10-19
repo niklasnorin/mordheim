@@ -1,0 +1,116 @@
+/** The Fountain Post against a real Postgres (PGlite): the seeded boards, the dry run, taking the jobs, and undoing them. */
+import { test, before } from 'node:test';
+import assert from 'node:assert/strict';
+import { eq, inArray } from 'drizzle-orm';
+import { actorOf, testDatabase } from '../testdb.ts';
+import { db } from '../db/client.ts';
+import { members, scenarios, warbandJobs, warbands } from '../db/schema.ts';
+import { claimWarband, getWarband } from './roster.ts';
+import { createScenario } from './scenarios.ts';
+import { getLocation } from './locations.ts';
+import { addJob, jobsTaken, listJobs, loadRecord, offer, removeJob, setBooks, takeJobs, undoJobs, updateJob, LedgerError } from './jobs.ts';
+import { locations as fixtures } from '../../data/locations.ts';
+import { powerOf, totalExperience } from '../../campaign/jobs.ts';
+
+const gm = actorOf('user-gm', 'Game Master', 'gm');
+const player = actorOf('user-player', 'Player');
+let game = '';
+
+before(async () => {
+  const { db, schema } = await testDatabase();
+  await db.insert(schema.user).values([gm, player].map((a) => ({ id: a.id, name: a.name, email: a.email, emailVerified: true })));
+});
+
+const refused = (status: number) => (e: unknown) => e instanceof LedgerError && e.status === status;
+const gold = async (id: string) => (await db().select({ gold: warbands.gold }).from(warbands).where(eq(warbands.id, id)))[0].gold;
+const xpOf = async (id: string) => totalExperience({ warriors: (await getWarband(id))!.members.filter((m) => !m.dead).map((m) => ({ id: m.id, name: m.name, rank: m.rank, experience: m.experience ?? 0 })) });
+
+test('the boards are nailed up from the fixtures, each job at its point of interest', async () => {
+  const fussenbach = await listJobs('fussenbach');
+  assert.equal(fussenbach.length, fixtures.find((l) => l.id === 'fussenbach')!.jobs!.length);
+  const bridge = (await getLocation('fussenbach'))!.points.find((p) => p.name === 'The bridge')!;
+  assert.equal(fussenbach.find((j) => j.title === 'Keeping the bridge')!.pointId, bridge.id);
+  assert.equal(fussenbach.find((j) => j.title === 'Wading for the algae men')!.pointId, null, 'the silt flats are not pinned');
+  assert.ok((await listJobs('mordheim')).length > 0);
+  assert.ok(!(await listJobs()).some((j) => j.title.includes('Warehouse') || j.title.includes('Merchant')), 'no job where a thread runs');
+});
+
+test('the books are set for the ceiling: the Bitterbrows logged, the Welling Rune behind and kept by a player', async () => {
+  await claimWarband(player, 'welling-rune');
+  // the Bitterbrows have fought once beside the Nordost Kin; give them a little experience to be measured against
+  const bitter = (await getWarband('bitterbrow-expedition'))!;
+  for (const m of bitter.members) await db().update(members).set({ experience: m.rank === 'hero' ? 20 : 4 }).where(eq(members.id, m.id));
+  await setBooks(gm, 'bitterbrow-expedition', { rating: 160, gold: 40 });
+  const welling = (await getWarband('welling-rune'))!;
+  for (const m of welling.members) await db().update(members).set({ experience: m.rank === 'hero' ? 2 : 0 }).where(eq(members.id, m.id));
+  await setBooks(gm, 'welling-rune', { rating: 0, gold: 0 });
+  await assert.rejects(setBooks(player, 'welling-rune', { gold: 999 }), refused(403));
+  const r = await loadRecord();
+  const s = r.standings.find((x) => x.warbandId === 'welling-rune')!;
+  assert.equal(s.active, true, 'kept by a player');
+  assert.equal(s.played, 0);
+});
+
+test('a dry run reckons the offer and writes nothing; a player may not look', async () => {
+  const before = await gold('welling-rune');
+  const o = await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach' });
+  assert.match(o.shut!, /dry run/);
+  assert.equal(o.reckoning.pace, 1);
+  assert.equal(o.reckoning.owed, 1);
+  assert.ok(o.reckoning.ceiling);
+  assert.ok(o.reckoning.payout && o.reckoning.payout.jobs.length === 1);
+  assert.equal(await gold('welling-rune'), before);
+  await assert.rejects(offer(player, { warbandId: 'welling-rune', locationId: 'fussenbach' }), refused(403));
+  await assert.rejects(takeJobs(gm, 'nowhere', 'welling-rune'), refused(404));
+});
+
+test('a scheduled game opens the post; the jobs are paid into the roster once, and never the next field', async () => {
+  const bridge = (await getLocation('fussenbach'))!.points.find((p) => p.name === 'The bridge')!;
+  const s = await createScenario(gm, { title: 'At the bridge', playedOn: '2026-11-01', warbandIds: ['welling-rune', 'nordost'], locationId: 'fussenbach', pointId: bridge.id });
+  game = s.id;
+  const o = await offer(gm, { warbandId: 'welling-rune', scenarioId: game });
+  assert.equal(o.shut, null);
+  const pay = o.reckoning.payout!;
+  assert.ok(pay.gold > 0 && pay.experience > 0, `something is paid: ${pay.gold} gc, ${pay.experience} experience`);
+  for (let i = 0; i < 5; i++) assert.notEqual((await offer(gm, { warbandId: 'welling-rune', scenarioId: game })).reckoning.payout!.jobs[0].job.pointId, bridge.id, 'nobody sweeps the bridge before the fight there');
+  const [goldBefore, xpBefore] = [await gold('welling-rune'), await xpOf('welling-rune')];
+  const after = await takeJobs(gm, game, 'welling-rune');
+  assert.equal(after.taken.length, pay.jobs.length);
+  assert.equal(after.taken[0].title, pay.jobs[0].job.title, 'what was offered is what was taken');
+  assert.equal(await gold('welling-rune'), goldBefore + pay.gold);
+  assert.equal(await xpOf('welling-rune'), xpBefore + pay.experience);
+  assert.match(after.shut!, /already/);
+  await assert.rejects(takeJobs(gm, game, 'welling-rune'), refused(409));
+  await assert.rejects(takeJobs(gm, game, 'nordost'), (e) => e instanceof LedgerError && /owes them nothing/.test(e.message), 'the Nordost Kin are at the pace');
+  // the ceiling held: no stronger than the weakest warband ahead
+  const r = await loadRecord();
+  const me = r.standings.find((x) => x.warbandId === 'welling-rune')!;
+  const ahead = r.standings.filter((x) => x.warbandId !== 'welling-rune');
+  assert.ok(powerOf(me) <= Math.max(Math.min(...ahead.map(powerOf)), powerOf({ ...me, gold: goldBefore })));
+  assert.equal(me.jobs, pay.jobs.length);
+  assert.equal((await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach' })).reckoning.owed, 0, 'the gap is closed');
+});
+
+test('the jobs can be undone, and the post shuts once the game has begun', async () => {
+  const goldBefore = await gold('welling-rune');
+  const taken = (await jobsTaken('welling-rune')).filter((t) => t.scenarioId === game);
+  await undoJobs(gm, game, 'welling-rune');
+  assert.equal(await gold('welling-rune'), goldBefore - taken.reduce((n, t) => n + t.gold, 0));
+  assert.equal((await db().select().from(warbandJobs).where(inArray(warbandJobs.id, taken.map((t) => t.id)))).length, 0);
+  await assert.rejects(undoJobs(gm, game, 'welling-rune'), refused(404));
+  await db().update(scenarios).set({ turn: 1 }).where(eq(scenarios.id, game));
+  await assert.rejects(takeJobs(gm, game, 'welling-rune'), (e) => e instanceof LedgerError && /has begun/.test(e.message));
+});
+
+test('the game master keeps the board; a player may not', async () => {
+  const before = (await listJobs('fussenbach')).length;
+  const list = await addJob(gm, 'fussenbach', { title: 'Eel-weirs at dawn', text: 'Cleared the eel-weirs.', lean: 'gold' });
+  assert.equal(list.length, before + 1);
+  const added = list.find((j) => j.title === 'Eel-weirs at dawn')!;
+  await assert.rejects(addJob(gm, 'fussenbach', { title: 'Eel-weirs at dawn' }), refused(409));
+  await assert.rejects(addJob(player, 'fussenbach', { title: 'Mine' }), refused(403));
+  assert.equal((await updateJob(gm, added.id, { withheld: true })).find((j) => j.id === added.id)!.withheld, true);
+  const mordheimPoint = (await getLocation('mordheim'))!.points[0];
+  await assert.rejects(updateJob(gm, added.id, { pointId: mordheimPoint.id }), refused(404), 'a point of another place');
+  assert.equal((await removeJob(gm, added.id)).length, before);
+});

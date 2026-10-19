@@ -18,6 +18,8 @@ Roles (`src/server/roles.ts`): a **player** keeps one warband (`warbands.owner_i
 
 Ownership and the ledger are one thing seen twice: claiming a ledger at `/curfew/` claims an unowned warband, giving up the ledger frees the warband, a game master handing a warband to another player carries the ledger along, and releasing from the Watch House drops both. Battles and victories are counted from the played scenarios; the last played scenario's `injured` warriors are the Curfew's recovering ones.
 
+The Fountain Post (`docs/fountain-post.md`) follows the same split: the pace, the ceiling, the draw and the pay are a rule, pure in `src/campaign/jobs.ts`; each location's board of jobs is the game master's, in `location_jobs`; what was taken is the record, in `warband_jobs`, with the pay written into `members.experience` and `warbands.gold`. An offer is never stored: it is reckoned from the record whenever it is read, which is what lets one warband's jobs move the next one's.
+
 ## Rendering modes
 
 Astro is `output: 'static'` with the Vercel adapter (`astro.config.mjs`), but every page reads the record, so every page exports `prerender = false` and runs as a function.

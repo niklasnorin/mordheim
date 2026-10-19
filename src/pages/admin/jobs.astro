@@ -1,0 +1,234 @@
+---
+import Base from '../../layouts/Base.astro';
+import PostOffer from '../../components/PostOffer.astro';
+import '../../styles/curfew.css';
+import '../../styles/admin.css';
+import { base } from '../../lib/site';
+import { hasDatabase } from '../../server/db/client';
+import { admission } from '../../server/admin/guard';
+import { currentLocation, todayFor } from '../../server/curfew/service';
+import { listJobs, offer, postOverview, type Offer, type PostRecord } from '../../server/campaign/jobs';
+import { listLocations } from '../../server/campaign/locations';
+import { GOLD_PER_RATING, JOBS_AT_MOST, JOB_GOLD, JOB_LEANS, JOB_LEAN_LABEL, LEAN_GOLD, RATING_PER_WARRIOR, effectiveGames, jobsOwed, paceOf, powerOf, ratingOf, totalExperience, type Job } from '../../campaign/jobs';
+import type { CampaignLocation } from '../../campaign/model';
+import { formatImperial, imperialForDate } from '../../lib/calendar';
+
+// The Fountain Post, the campaign's catch-up rule, as a draft for game masters alone: where every warband stands
+// against the pace, what the post offers before each scheduled game, a dry run for any warband at any place, and the
+// boards themselves. Reckoning saves nothing; only "Take the work" writes, and "Strike the jobs" takes it back.
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const { viewer, gm } = ready ? await admission(Astro.request) : { viewer: null, gm: false };
+if (ready && !gm) Astro.response.status = viewer ? 403 : 401;
+// the post reckons from the record, never the steered clock
+const today = todayFor(null);
+
+let record: PostRecord | null = null, offers: Offer[] = [], dry: Offer | null = null, places: CampaignLocation[] = [], board: Job[] = [], here = '';
+let trouble = false;
+const q = Astro.url.searchParams;
+if (gm && viewer) {
+  try {
+    here = (await currentLocation(today)).id;
+    [places, board] = await Promise.all([listLocations(), listJobs()]);
+    const o = await postOverview(viewer, here);
+    record = o.record; offers = o.offers;
+    const behind = o.dry.find((d) => d.reckoning.owed > 0) ?? o.dry[0];
+    const warbandId = q.get('warband') && record.standings.some((s) => s.warbandId === q.get('warband')) ? q.get('warband')! : behind?.warbandId;
+    const place = places.find((l) => l.id === q.get('place'))?.id ?? here;
+    if (warbandId) dry = await offer(viewer, { warbandId, locationId: place }, record);
+  } catch (e) { console.error('[fountain-post] unavailable', e); trouble = true; }
+}
+
+const names = Object.fromEntries((record?.standings ?? []).map((s) => [s.warbandId, s.name]));
+const placeNames = Object.fromEntries(places.map((l) => [l.id, l.name]));
+const allPoints = places.flatMap((l) => l.points);
+const pace = record ? paceOf(record.standings) : 0;
+const upcoming = (record?.scenarios ?? []).filter((s) => s.status === 'upcoming');
+const imperial = (iso: string) => { try { return formatImperial(imperialForDate(iso), 'short'); } catch { return iso; } };
+const signInHref = `${base}/signin/?next=${encodeURIComponent(`${base}/admin/jobs/`)}`;
+const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places.find((l) => l.id === here);
+---
+
+<Base title="The Fountain Post — The Watch House" description="The campaign's catch-up rule laid out for the game master: where every warband stands against the pace, what the post offers, and a dry run.">
+  <Fragment slot="head">
+    <link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Barlow+Condensed:wght@600&display=swap" rel="stylesheet" />
+    <meta name="theme-color" content="#0e0d0c" />
+    <meta name="robots" content="noindex" />
+  </Fragment>
+
+  <main class="curfew wh" id="main-content" data-base={base}>
+    <header class="wh-top">
+      <a class="cf-back" href={`${base}/admin/`}>← The Watch House</a>
+      <a class="wh-wordmark" href={`${base}/admin/jobs/`}>The Fountain Post</a>
+      <div class="wh-top-right">
+        <span class="cf-nightline">A draft, for the Watch alone</span>
+      </div>
+    </header>
+
+    {!ready && <div class="wh-gate"><h1>The ledgers are not open</h1><p>This deployment has no database yet. See the README for the Vercel setup.</p></div>}
+    {ready && !viewer && <div class="wh-gate"><h1>Who goes there?</h1><p>The Fountain Post is for the game master. <a href={signInHref}>Sign in</a>, and you are brought back here.</p></div>}
+    {ready && viewer && !gm && <div class="wh-gate"><h1>No admittance</h1><p>You are signed in as {viewer.name}, and that name is neither an admin's nor a game master's.</p></div>}
+    {trouble && <div class="wh-gate"><h1>The city did not answer</h1><p>The post could not be read just now. Try again in a moment.</p></div>}
+
+    {record && (
+      <>
+        <nav class="wh-nav" aria-label="Sections">
+          <a href="#rule">The rule</a>
+          <a href="#standing">Where they stand</a>
+          <a href="#games">Before the games</a>
+          <a href="#dry">Dry run</a>
+          <a href="#boards">The boards</a>
+          <a href="#taken">Taken</a>
+          <a class="wh-nav-page" href={`${base}/admin/odds/`}>The Odds →</a>
+        </nav>
+
+        <section class="wh-section" id="rule" aria-labelledby="rule-title">
+          <h1 class="wh-h1" id="rule-title">Notices on the fountain post</h1>
+          <p class="wh-muted">A warband that has fought fewer games than the rest was not idle. It took the place's work, the notices nailed to the fountain's post in the square, and when it next comes to the table it brings the pay home. The players do not see any of this yet: it is a draft, and the jobs are taken here, by a game master, before the game.</p>
+          <ul class="wh-tarot-rules">
+            <li>The <b>pace</b> is the median of the warbands' games, counting the jobs each has taken as games (the higher middle when their number is even). Only warbands with a keeper, or a game fought, count. Today it is <b>{pace}</b>.</li>
+            <li>A warband is <b>owed</b> a job for every game it is behind the pace, at most <b>{JOBS_AT_MOST}</b> at one return.</li>
+            <li>The post <b>opens</b> when a game is scheduled with the warband on its muster, and <b>shuts</b> at that game's first turn. The jobs come from the board of the place the game is fought in, or where the campaign is when the game names none.</li>
+            <li>The <b>ceiling</b>: the jobs never make a warband stronger than the weakest warband that has fought more. Strength is the rating (logged, or reckoned at {RATING_PER_WARRIOR} a warrior plus their experience) with the unspent treasury at {GOLD_PER_RATING} gc a point; the warband's experience together, and each hero's and henchman's, are held under the least of those ahead too. Every grant is cut to fit.</li>
+            <li>The <b>draw</b> is seeded by the warband and the game: the same game, the same jobs. Withheld jobs are never drawn, nor a job at a point of interest where a game is scheduled. Jobs the warband has not done lately come first.</li>
+            <li>The <b>pay</b>: {JOB_GOLD.dice}D6×{JOB_GOLD.times}+{JOB_GOLD.plus} gc a job, times its lean ({JOB_LEANS.map((l) => `${JOB_LEAN_LABEL[l].toLowerCase()} ×${LEAN_GOLD[l]}`).join(', ')}); experience by the lean: every warrior, every hero, the leader alone, or two for the least experienced hero. An advance reached is marked, to be rolled at the table.</li>
+            <li>One warband's jobs move the next one's offer at once: the offers below are reckoned from the record as it stands. The dials are code, in <code>src/campaign/jobs.ts</code>.</li>
+          </ul>
+        </section>
+
+        <section class="wh-section" id="standing" aria-labelledby="standing-title">
+          <h2 class="wh-h2" id="standing-title">Where they stand</h2>
+          <p class="wh-muted">The books the ceiling reads. Players do not log their rating and treasury on the site yet, so they are kept here for the draft; a rating of <b>0</b> is reckoned from the roster. Experience is the warriors' own, from the muster roll.</p>
+          <p class="wh-table-hint" aria-hidden="true">Scroll sideways for the rest of the table</p>
+          <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Where the warbands stand">
+            <table class="wh-table">
+              <thead><tr><th scope="col">Warband</th><th scope="col" class="num">Played</th><th scope="col" class="num">Jobs</th><th scope="col" class="num">Counts as</th><th scope="col" class="num">Experience</th><th scope="col" class="num">Strength</th><th scope="col" class="num">Owed</th><th scope="col">Rating and treasury</th></tr></thead>
+              <tbody>
+                {record.standings.map((s) => (
+                  <tr class="wh-row">
+                    <th scope="row" class="wh-keeper">{s.name}{!s.active && <small>not counted: no keeper, no game</small>}</th>
+                    <td class="num">{s.played}</td>
+                    <td class="num">{s.jobs}</td>
+                    <td class="num">{effectiveGames(s)}</td>
+                    <td class="num">{totalExperience(s)}</td>
+                    <td class="num">{powerOf(s)}</td>
+                    <td class="num">{jobsOwed(s, record!.standings)}</td>
+                    <td>
+                      <form class="wh-form-inline wh-post-books" data-api="admin/jobs-books" data-json={JSON.stringify({ warbandId: s.warbandId })}>
+                        <label>Rating<input type="number" name="rating" min="0" max="10000" value={s.rating} /></label>
+                        <label>Gold<input type="number" name="gold" min="0" max="100000" value={s.gold} /></label>
+                        <button type="submit" class="cf-btn cf-btn-ghost sm">Set</button>
+                        {s.rating === 0 && <small class="dim">reckoned {ratingOf(s)}</small>}
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="wh-section" id="games" aria-labelledby="games-title">
+          <h2 class="wh-h2" id="games-title">Before the games</h2>
+          <p class="wh-muted">Every scheduled game and what the post offers each warband on its muster. Reckoned afresh at every look and saved by nothing until <b>Take the work</b>; <b>Strike the jobs</b> takes it back out of the roster.</p>
+          {upcoming.length ? upcoming.map((s) => (
+            <div class="wh-post-game">
+              <h3 class="wh-h3"><a href={`${base}/scenarios/${s.id}/`}>{s.title}</a> · {imperial(s.playedOn)} · {s.locationId ? placeNames[s.locationId] ?? s.locationId : `${placeNames[here] ?? here}, where the campaign is`}{s.turn > 0 && ` · turn ${s.turn}`}</h3>
+              {s.warbands.length ? (
+                <div class="wh-post-offers">
+                  {offers.filter((o) => o.scenario?.id === s.id).map((o) => <PostOffer offer={o} points={allPoints} places={placeNames} names={names} />)}
+                </div>
+              ) : <p class="wh-empty">Nobody is on the muster yet.</p>}
+            </div>
+          )) : <p class="wh-empty">No game is scheduled. The post opens when one is; the dry run below reckons without one.</p>}
+        </section>
+
+        <section class="wh-section" id="dry" aria-labelledby="dry-title">
+          <h2 class="wh-h2" id="dry-title">Dry run</h2>
+          <p class="wh-muted">What the post would pay a warband now, at any place, as if a game were scheduled there today. Nothing is written. The draw is seeded by the place instead of a game, so a real game's jobs may differ; their pay is reckoned the same way.</p>
+          <form class="wh-form-inline" method="get" action={`${base}/admin/jobs/#dry`}>
+            <label>Warband <select name="warband">{record.standings.map((s) => <option value={s.warbandId} selected={s.warbandId === dry?.warbandId}>{s.name}</option>)}</select></label>
+            <label>Place <select name="place">{places.map((l) => <option value={l.id} selected={l.id === dryPlace?.id}>{l.name}{l.id === here ? ' (where the campaign is)' : ''}</option>)}</select></label>
+            <button type="submit" class="cf-btn cf-btn-ghost sm">Reckon</button>
+          </form>
+          {dry ? <PostOffer offer={dry} points={allPoints} places={placeNames} names={names} /> : <p class="wh-empty">No warband to reckon.</p>}
+        </section>
+
+        <section class="wh-section" id="boards" aria-labelledby="boards-title">
+          <h2 class="wh-h2" id="boards-title">The boards</h2>
+          <p class="wh-muted">Each place's jobs. A job brushes against the place's plots and tells nothing: it may notice what everyone in the place already notices, never add a fact to a thread, resolve one, or show one of the story's people at work. Keep jobs away from the points where a thread is running, and <b>withhold</b> one when the story moves to it. A job torn down stays in the record of those who took it, in its own words.</p>
+          {places.map((l) => (
+            <div class="wh-post-board">
+              <h3 class="wh-h3">{l.name}</h3>
+              <ul class="wh-dispatches">
+                {board.filter((j) => j.locationId === l.id).map((j) => (
+                  <li class="wh-dispatch wh-article">
+                    <span class="wh-meta"><span>{JOB_LEAN_LABEL[j.lean]}</span>{j.pointId != null && <span class="wh-chip">{l.points.find((p) => p.id === j.pointId)?.name ?? 'a point'}</span>}{j.withheld && <span class="wh-chip warn">Withheld</span>}</span>
+                    <details class="wh-text wh-article-edit">
+                      <summary><p>{j.title}</p><small>{j.text}</small></summary>
+                      <form class="wh-article-form" data-api="admin/job-update" data-json={JSON.stringify({ jobId: j.id })}>
+                        <label class="wh-field">Name<input name="patch.title" required maxlength="80" value={j.title} /></label>
+                        <label class="wh-field">What came of it<textarea name="patch.text" maxlength="1000">{j.text}</textarea></label>
+                        <div class="wh-field-row">
+                          <label class="wh-field">Pays<select name="patch.lean">{JOB_LEANS.map((x) => <option value={x} selected={x === j.lean}>{JOB_LEAN_LABEL[x]}</option>)}</select></label>
+                          <label class="wh-field">Where<select name="patch.pointId" data-nullable><option value="">Nowhere on the map</option>{l.points.map((p) => <option value={p.id} selected={p.id === j.pointId}>{p.name}</option>)}</select></label>
+                          <label class="wh-check"><input type="checkbox" name="patch.withheld" checked={j.withheld} /> Withheld</label>
+                        </div>
+                        <div class="wh-actions"><button type="button" class="cf-btn cf-btn-blood sm" data-act="admin/job-remove" data-body={JSON.stringify({ jobId: j.id })} data-confirm="Tear this notice down for good? Those who took it keep it in their record.">Tear down</button><button type="submit" class="cf-btn sm">Rewrite</button></div>
+                      </form>
+                    </details>
+                  </li>
+                ))}
+              </ul>
+              <details class="wh-post-add">
+                <summary class="cf-btn cf-btn-ghost sm">Nail up a new job in {l.name}</summary>
+                <form class="wh-notice wh-article-form" data-api="admin/job-add" data-json={JSON.stringify({ locationId: l.id })}>
+                  <label class="wh-field">Name<input name="job.title" required maxlength="80" placeholder="Clearing the eel-weirs" /></label>
+                  <label class="wh-field">What came of it<textarea name="job.text" maxlength="1000" placeholder="One or two short sentences, past tense: what they did, and one thing noticed."></textarea></label>
+                  <div class="wh-field-row">
+                    <label class="wh-field">Pays<select name="job.lean">{JOB_LEANS.map((x) => <option value={x} selected={x === 'even'}>{JOB_LEAN_LABEL[x]}</option>)}</select></label>
+                    <label class="wh-field">Where<select name="job.pointId" data-nullable><option value="">Nowhere on the map</option>{l.points.map((p) => <option value={p.id}>{p.name}</option>)}</select></label>
+                  </div>
+                  <div class="wh-notice-foot"><span></span><button type="submit" class="cf-btn">Nail it up</button></div>
+                </form>
+              </details>
+            </div>
+          ))}
+        </section>
+
+        <section class="wh-section" id="taken" aria-labelledby="taken-title">
+          <h2 class="wh-h2" id="taken-title">Taken</h2>
+          {record.taken.length ? (
+            <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Jobs taken">
+              <table class="wh-table">
+                <thead><tr><th scope="col">Warband</th><th scope="col">Before</th><th scope="col">Job</th><th scope="col" class="num">Gold</th><th scope="col">Experience</th></tr></thead>
+                <tbody>
+                  {record.taken.slice().reverse().map((t) => (
+                    <tr class="wh-row">
+                      <th scope="row">{names[t.warbandId] ?? t.warbandId}</th>
+                      <td class:list={{ dim: !t.scenarioId }}>{t.scenarioId ? <a href={`${base}/scenarios/${t.scenarioId}/`}>{record!.scenarios.find((s) => s.id === t.scenarioId)?.title ?? t.scenarioId}</a> : 'a game since struck'}</td>
+                      <td>{t.title}{t.locationId && <small class="dim"> · {placeNames[t.locationId] ?? t.locationId}</small>}</td>
+                      <td class="num">{t.gold}</td>
+                      <td>{t.grants.length ? t.grants.map((g) => `${g.name} +${g.experience}`).join(', ') : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <p class="wh-empty">Nobody has taken work from the post yet.</p>}
+        </section>
+      </>
+    )}
+  </main>
+</Base>
+
+<script>
+  import { wireManage } from '../../lib/manage';
+
+  document.body.classList.add('curfew-body');
+  const root = document.getElementById('main-content')!;
+  // buttons with data-act and forms with data-api post and reload; refusals are shown as written
+  wireManage(root, root.dataset.base ?? '');
+</script>

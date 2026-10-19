@@ -468,6 +468,55 @@ export const locationStock = pgTable(
   (t) => [uniqueIndex('location_stock_item_idx').on(t.locationId, t.itemId)],
 );
 
+/**
+ * The Fountain Post: the work a location offers a warband that has missed games (`campaign/jobs.ts`), as the game
+ * master keeps it. A job may be done at a point of interest (`point_id`), and leans its pay one way (`lean`); a
+ * withheld one stays on the board's list but is never drawn. Seeded from `src/data/locations.ts` when the table is empty.
+ */
+export const locationJobs = pgTable(
+  'location_jobs',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    locationId: text('location_id').notNull().references(() => locations.id, { onDelete: 'cascade' }),
+    pointId: integer('point_id').references(() => locationPoints.id, { onDelete: 'set null' }),
+    title: text('title').notNull(),
+    text: text('text').notNull().default(''),
+    lean: text('lean', { enum: ['gold', 'experience', 'champion', 'even'] }).notNull().default('even'),
+    withheld: boolean('withheld').notNull().default(false),
+    sort: integer('sort').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('location_jobs_location_idx').on(t.locationId), uniqueIndex('location_jobs_title_idx').on(t.locationId, t.title)],
+);
+
+/**
+ * The jobs a warband took from the post before a game, one row each, in the order drawn (`seq`). The job's words
+ * are copied as they were, so a later edit of the board does not rewrite what was done; the pay is what was granted.
+ * A row counts towards the warband's effective games for good, even if the game it was taken before is struck.
+ */
+export const warbandJobs = pgTable(
+  'warband_jobs',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    warbandId: text('warband_id').notNull().references(() => warbands.id, { onDelete: 'cascade' }),
+    scenarioId: text('scenario_id').references(() => scenarios.id, { onDelete: 'set null' }),
+    seq: integer('seq').notNull(),
+    jobId: integer('job_id').references(() => locationJobs.id, { onDelete: 'set null' }),
+    locationId: text('location_id'),
+    pointId: integer('point_id'),
+    title: text('title').notNull(),
+    text: text('text').notNull().default(''),
+    lean: text('lean').notNull().default('even'),
+    gold: integer('gold').notNull().default(0),
+    /** `{ memberId, name, experience, advance }[]`, the grants as paid (`Grant` in campaign/jobs.ts). */
+    grants: jsonb('grants').notNull().default([]),
+    takenBy: text('taken_by'),
+    takenAt: timestamp('taken_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('warband_jobs_warband_idx').on(t.warbandId), uniqueIndex('warband_jobs_once_idx').on(t.warbandId, t.scenarioId, t.seq)],
+);
+
 /** The Town Cryer's articles and notices, written by game masters, printed where the campaign is. */
 export const newsArticles = pgTable('news_articles', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),

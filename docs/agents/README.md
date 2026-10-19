@@ -9,6 +9,8 @@ Context for anyone, human or coding agent, working in this repository. `CLAUDE.m
 | [`glossary.md`](glossary.md) | Reading a request in the campaign's words: every term mapped to the code that implements it. |
 | [`writing.md`](writing.md) | Writing content: the four voices, and commit messages. |
 
+The catch-up rule, the Fountain Post, is described in [`../fountain-post.md`](../fountain-post.md).
+
 Procedures for the common tasks are skills under [`.claude/skills/`](../../.claude/skills/): `record-battle`, `add-warband`, `town-cryer`, `curfew-pack`, `curfew-engine`, `schema-change`, `preflight`. Each `SKILL.md` is a checklist; some carry a script.
 
 Product intent is in [`PRODUCT.md`](../../PRODUCT.md), the Curfew plan and its decisions in [`src/data/curfew/PLAN.md`](../../src/data/curfew/PLAN.md), the prose rules in [`src/data/curfew/STYLE.md`](../../src/data/curfew/STYLE.md).

@@ -5,7 +5,7 @@
  */
 import { sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { locationPoints, locations, members, newsArticles, scenarioMembers, scenarioOutOfAction, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
+import { locationJobs, locationPoints, locations, members, newsArticles, scenarioMembers, scenarioOutOfAction, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
 import { warbands as seedWarbands } from '../../data/warbands.ts';
 import { locations as seedLocations } from '../../data/locations.ts';
 import { news as seedNews } from '../../data/news.ts';
@@ -21,7 +21,7 @@ export function ensureSeeded(): Promise<void> {
 }
 
 /** For tests and a reset: forget that the check was made. */
-export function forgetSeeded(): void { seeded = undefined; locationsSeeded = undefined; }
+export function forgetSeeded(): void { seeded = undefined; locationsSeeded = undefined; jobsSeeded = undefined; }
 
 let locationsSeeded: Promise<void> | undefined;
 
@@ -47,6 +47,31 @@ export async function seedLocationsIfEmpty(): Promise<boolean> {
     if (!written.length) continue;
     for (const [j, p] of l.points.entries()) await d.insert(locationPoints).values({ locationId: l.id, name: p.name, kind: p.kind, description: p.description, x: p.x ?? null, y: p.y ?? null, sort: j + 1 });
   }
+  return true;
+}
+
+let jobsSeeded: Promise<void> | undefined;
+
+/**
+ * Nail the fixtures' jobs to the posts if no location has any. Kept apart as the locations are: the boards came later
+ * still. A job names its point of interest by name, found among the location's points as they stand.
+ */
+export function ensureJobsSeeded(): Promise<void> {
+  jobsSeeded ??= ensureLocationsSeeded().then(seedJobsIfEmpty).then(() => undefined, (e) => { jobsSeeded = undefined; throw e; });
+  return jobsSeeded;
+}
+
+export async function seedJobsIfEmpty(): Promise<boolean> {
+  const d = db();
+  const [{ n }] = await d.select({ n: sql<number>`count(*)::int` }).from(locationJobs);
+  if (n > 0) return false;
+  const [placed, points] = await Promise.all([d.select({ id: locations.id }).from(locations), d.select().from(locationPoints)]);
+  const here = new Set(placed.map((l) => l.id));
+  const rows = seedLocations.filter((l) => here.has(l.id)).flatMap((l) => (l.jobs ?? []).map((j, i) => ({
+    locationId: l.id, pointId: points.find((p) => p.locationId === l.id && p.name === j.point)?.id ?? null, title: j.title, text: j.text, lean: j.lean, sort: i + 1,
+  })));
+  // two cold starts may race; a job's title is its own on its board
+  if (rows.length) await d.insert(locationJobs).values(rows).onConflictDoNothing();
   return true;
 }
 
