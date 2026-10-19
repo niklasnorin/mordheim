@@ -493,7 +493,8 @@ export const locationJobs = pgTable(
 /**
  * The jobs a warband took from the post before a game, one row each, in the order drawn (`seq`). The job's words
  * are copied as they were, so a later edit of the board does not rewrite what was done; the pay is what was granted.
- * A row counts towards the warband's effective games for good, even if the game it was taken before is struck.
+ * An owed job (`owed`) counts towards the warband's effective games for good, even if the game it was taken before is
+ * struck; the usual work, which every warband takes, does not.
  */
 export const warbandJobs = pgTable(
   'warband_jobs',
@@ -508,6 +509,7 @@ export const warbandJobs = pgTable(
     title: text('title').notNull(),
     text: text('text').notNull().default(''),
     lean: text('lean').notNull().default('even'),
+    owed: boolean('owed').notNull().default(true),
     gold: integer('gold').notNull().default(0),
     /** `{ memberId, name, experience, advance }[]`, the grants as paid (`Grant` in campaign/jobs.ts). */
     grants: jsonb('grants').notNull().default([]),

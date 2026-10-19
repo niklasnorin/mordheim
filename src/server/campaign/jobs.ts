@@ -93,7 +93,7 @@ export async function removeJob(actor: Actor, jobId: number): Promise<Job[]> {
 
 // ───────────────────────── the warbands as the rule sees them ─────────────────────────
 
-export interface TakenJob { id: number; warbandId: string; scenarioId: string | null; seq: number; jobId: number | null; locationId: string | null; pointId: number | null; title: string; text: string; lean: string; gold: number; grants: Grant[]; takenBy: string | null; takenAt: Date }
+export interface TakenJob { id: number; warbandId: string; scenarioId: string | null; seq: number; jobId: number | null; locationId: string | null; pointId: number | null; title: string; text: string; lean: string; owed: boolean; gold: number; grants: Grant[]; takenBy: string | null; takenAt: Date }
 type TakenRow = typeof warbandJobs.$inferSelect;
 const takenOf = (r: TakenRow): TakenJob => ({ ...r, grants: (r.grants as Grant[]) ?? [] });
 
@@ -118,7 +118,7 @@ export async function loadRecord(): Promise<PostRecord> {
     const leader = leaderOf(w)?.id;
     return {
       warbandId: w.id, name: w.name, active: !!w.ownerId || w.battles > 0, played: w.battles,
-      jobs: taken.filter((t) => t.warbandId === w.id).length, rating: book?.rating ?? 0, gold: book?.gold ?? 0,
+      jobs: taken.filter((t) => t.warbandId === w.id && t.owed).length, rating: book?.rating ?? 0, gold: book?.gold ?? 0,
       warriors: w.members.filter((m) => !m.dead).map((m) => ({ id: m.id, name: m.name, rank: m.rank, experience: m.experience ?? 0, leader: m.id === leader })),
     };
   });
@@ -188,9 +188,10 @@ export async function postOverview(actor: Actor, here: string): Promise<{ record
 // ───────────────────────── taking the jobs ─────────────────────────
 
 /**
- * Take the jobs the post offers this warband before this game, and pay them into the roster: experience to the
- * warriors, gold to the treasury, and the logged rating moved with the experience (a rating nobody logged is reckoned
- * from the roster anyway). Refused when the post is shut, when they were taken already, or when there is nothing.
+ * Take the jobs the post offers this warband before this game, the usual work and any owed on top, and pay them into
+ * the roster: experience to the warriors, gold to the treasury, and the logged rating moved with the experience (a
+ * rating nobody logged is reckoned from the roster anyway). Refused when the post is shut, when they were taken
+ * already, or when the board has nothing open to them.
  *
  * Neon's HTTP driver has no transactions, so the once-only guard is the unique index on (warband, game, seq): the first
  * row is written first, and a second taker finds it there. Two warbands taking at the very same moment may each be
@@ -201,10 +202,10 @@ export async function takeJobs(actor: Actor, scenarioId: string, warbandId: stri
   const o = await offer(actor, { warbandId, scenarioId, locationId: here });
   if (o.shut) throw new LedgerError(o.shut, 409);
   const pay = o.reckoning.payout;
-  if (!pay || !pay.jobs.length) throw new LedgerError(o.reckoning.owed ? 'The post is bare: no job there is open to them.' : 'They are at the pace, or ahead of it. The post owes them nothing.', 409);
+  if (!pay || !pay.jobs.length) throw new LedgerError('The post is bare: no job there is open to them.', 409);
   const d = db();
   const rows = pay.jobs.map((p, i) => ({
-    warbandId, scenarioId, seq: i + 1, jobId: p.job.id, locationId: p.job.locationId, pointId: p.job.pointId, title: p.job.title, text: p.job.text, lean: p.job.lean, gold: p.gold, grants: p.grants, takenBy: actor.name,
+    warbandId, scenarioId, seq: i + 1, jobId: p.job.id, locationId: p.job.locationId, pointId: p.job.pointId, title: p.job.title, text: p.job.text, lean: p.job.lean, owed: p.owed, gold: p.gold, grants: p.grants, takenBy: actor.name,
   }));
   const first = await d.insert(warbandJobs).values(rows[0]).onConflictDoNothing().returning({ id: warbandJobs.id });
   if (!first.length) throw new LedgerError('They took their jobs before this game already.', 409);

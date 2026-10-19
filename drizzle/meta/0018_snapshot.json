@@ -1,5 +1,5 @@
 {
-  "id": "3d0b0aa3-3ae2-4376-bf5f-4b1361d873c6",
+  "id": "736862c5-b1e4-42fe-8694-6ea74ad2d2ac",
   "prevId": "39799347-70de-4b25-8f31-121f64ecec2e",
   "version": "7",
   "dialect": "postgresql",
@@ -2860,6 +2860,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'even'"
+        },
+        "owed": {
+          "name": "owed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
         },
         "gold": {
           "name": "gold",

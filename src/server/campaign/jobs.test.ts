@@ -58,7 +58,7 @@ test('a dry run reckons the offer and writes nothing; a player may not look', as
   assert.equal(o.reckoning.pace, 1);
   assert.equal(o.reckoning.owed, 1);
   assert.ok(o.reckoning.ceiling);
-  assert.ok(o.reckoning.payout && o.reckoning.payout.jobs.length === 1);
+  assert.deepEqual(o.reckoning.payout?.jobs.map((p) => p.owed), [true, false], 'the owed job, then the usual work');
   assert.equal(await gold('welling-rune'), before);
   await assert.rejects(offer(player, { warbandId: 'welling-rune', locationId: 'fussenbach' }), refused(403));
   await assert.rejects(takeJobs(gm, 'nowhere', 'welling-rune'), refused(404));
@@ -81,13 +81,21 @@ test('a scheduled game opens the post; the jobs are paid into the roster once, a
   assert.equal(await xpOf('welling-rune'), xpBefore + pay.experience);
   assert.match(after.shut!, /already/);
   await assert.rejects(takeJobs(gm, game, 'welling-rune'), refused(409));
-  await assert.rejects(takeJobs(gm, game, 'nordost'), (e) => e instanceof LedgerError && /owes them nothing/.test(e.message), 'the Nordost Kin are at the pace');
+  // the Nordost Kin are at the pace: the usual work alone, a few crowns and no experience
+  const nordostGold = await gold('nordost'), nordostXp = await xpOf('nordost');
+  const usual = await takeJobs(gm, game, 'nordost');
+  assert.equal(usual.taken.length, 1);
+  assert.equal(usual.taken[0].owed, false);
+  assert.ok(usual.taken[0].gold > 0 && usual.taken[0].gold <= 25, `${usual.taken[0].gold} gc`);
+  assert.equal(await gold('nordost'), nordostGold + usual.taken[0].gold);
+  assert.equal(await xpOf('nordost'), nordostXp);
   // the ceiling held: no stronger than the weakest warband ahead
   const r = await loadRecord();
   const me = r.standings.find((x) => x.warbandId === 'welling-rune')!;
   const ahead = r.standings.filter((x) => x.warbandId !== 'welling-rune');
   assert.ok(powerOf(me) <= Math.max(Math.min(...ahead.map(powerOf)), powerOf({ ...me, gold: goldBefore })));
-  assert.equal(me.jobs, pay.jobs.length);
+  assert.equal(me.jobs, pay.jobs.filter((p) => p.owed).length, 'only the owed jobs count towards the pace');
+  assert.equal(r.standings.find((x) => x.warbandId === 'nordost')!.jobs, 0, 'the usual work does not count');
   assert.equal((await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach' })).reckoning.owed, 0, 'the gap is closed');
 });
 

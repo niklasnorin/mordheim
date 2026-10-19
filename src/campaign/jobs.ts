@@ -3,11 +3,13 @@
  * campaign's pace was not idle: it took the place's work, nailed to the fountain post in Fussenbach's square or passed
  * along in Cutthroat's Haven, and when it next comes to the table it brings the pay home as gold and experience.
  *
- * Three things hold, whatever the board says:
+ * Every warband takes the usual work before every game it is on, a single job that pays a few crowns and no
+ * experience; a warband behind the pace takes the jobs it is owed on top, and those pay properly. Three things hold,
+ * whatever the board says:
  *
  * - It counts games behind, never games lost. Losing is the rulebook's Underdog experience's business.
  * - It opens when a game is scheduled with the warband in it, and closes when that game's first turn begins. Coming
- *   back is what is paid for, not staying away.
+ *   back is what is paid for, not staying away. Only the owed jobs count towards the pace; the usual work does not.
  * - It never makes a warband stronger than any warband that has fought more. The ceiling is the weakest of those
  *   ahead, measured three ways (strength, the warband's experience, each warrior's), and every grant is cut to fit.
  *   Those ahead are reckoned as they stand now, jobs included, so one warband's jobs move the next one's offer; since
@@ -41,8 +43,10 @@ export interface Job {
 
 // ───────────────────────── the dials ─────────────────────────
 
-/** At most this many jobs are paid at one return, however far behind the warband is. */
+/** At most this many owed jobs are paid at one return, however far behind the warband is. */
 export const JOBS_AT_MOST = 3;
+/** The usual work, which every warband takes before every game, pays this share of a job's gold and no experience. */
+export const USUAL_SHARE = 0.2;
 /** Unspent gold counts towards strength at this many crowns a point of rating: a henchman and their kit is about 35 gc for 5. */
 export const GOLD_PER_RATING = 7;
 /** A job's gold before its lean: 2D6×5+15 crowns, about 50 on average, a little less than a game's takings. */
@@ -68,7 +72,7 @@ export interface Standing {
   active: boolean;
   /** Games played, counted from the played scenarios. */
   played: number;
-  /** Jobs taken from the post before now. */
+  /** Owed jobs taken from the post before now; the usual work does not count. */
   jobs: number;
   /** The rating as the keeper logged it; 0 when nobody has, and then it is reckoned from the roster. */
   rating: number;
@@ -123,7 +127,7 @@ export function ceilingFor(s: Standing, all: Standing[]): Ceiling | null {
   };
 }
 
-/** How many jobs the warband has to its name: as far behind the pace as it is, at most `JOBS_AT_MOST`, none with nobody ahead. */
+/** How many owed jobs the warband has to its name: as far behind the pace as it is, at most `JOBS_AT_MOST`, none with nobody ahead. */
 export function jobsOwed(s: Standing, all: Standing[]): number {
   if (!ceilingFor(s, all)) return 0;
   return Math.max(0, Math.min(JOBS_AT_MOST, Math.floor(paceOf(all) - effectiveGames(s))));
@@ -169,6 +173,8 @@ export interface Grant { memberId: string; name: string; experience: number; adv
 
 export interface JobPay {
   job: Job;
+  /** An owed job, paid in full and counted towards the pace; otherwise the usual work, paid in a few crowns. */
+  owed: boolean;
   /** The crowns the dice gave before the ceiling, and what was paid. */
   rolled: number;
   gold: number;
@@ -204,12 +210,17 @@ function wanted(lean: JobLean, warriors: Warrior[]): { w: Warrior; n: number }[]
   }
 }
 
+/** No ceiling: a warband nobody is ahead of is held under nothing, and is paid only the usual work. */
+const OPEN: Ceiling = { ahead: [], power: Infinity, experience: Infinity, warrior: { hero: Infinity, henchman: Infinity } };
+
 /**
- * What the jobs pay, cut to the ceiling. Each job grants its experience first, warrior by warrior, then its gold;
- * every point is held under the warband's ceiling as it rises, so the order of the jobs matters only at the margin.
- * Gold is paid in fives.
+ * What the jobs pay, cut to the ceiling. An owed job grants its experience first, warrior by warrior, then its gold;
+ * the usual work grants a share of the gold alone. Every point is held under the warband's ceiling as it rises, so the
+ * order of the jobs matters only at the margin: the owed ones come first. Gold is paid in fives, the usual work at
+ * least five.
  */
-export function payJobs(s: Standing, ceiling: Ceiling, jobs: Job[], seed: number): Payout {
+export function payJobs(s: Standing, ceilingOrNone: Ceiling | null, jobs: { job: Job; owed: boolean }[], seed: number): Payout {
+  const ceiling = ceilingOrNone ?? OPEN;
   const r = rng(hashSeed(seed, 'pay'));
   const xp = new Map(s.warriors.map((w) => [w.id, w.experience]));
   let total = totalExperience(s), gold = s.gold, cut = false;
@@ -217,10 +228,10 @@ export function payJobs(s: Standing, ceiling: Ceiling, jobs: Job[], seed: number
   let rating = ratingOf(s);
   const room = () => ceiling.power - (rating + Math.floor(gold / GOLD_PER_RATING));
   const paid: JobPay[] = [];
-  for (const job of jobs) {
+  for (const { job, owed } of jobs) {
     let jobCut = false;
     const grants: Grant[] = [];
-    for (const { w, n } of wanted(job.lean, s.warriors)) {
+    for (const { w, n } of owed ? wanted(job.lean, s.warriors) : []) {
       const now = xp.get(w.id)!;
       const cap = ceiling.warrior[w.rank];
       const allowed = Math.max(0, Math.min(n, cap == null ? 0 : cap - now, ceiling.experience - total, room()));
@@ -229,14 +240,15 @@ export function payJobs(s: Standing, ceiling: Ceiling, jobs: Job[], seed: number
       xp.set(w.id, now + allowed); total += allowed; rating += allowed;
       grants.push({ memberId: w.id, name: w.name, experience: allowed, advance: crossesAdvance(w.rank, now, now + allowed) });
     }
-    const rolled = Math.round((roll(r, JOB_GOLD.dice, JOB_GOLD.sides) * JOB_GOLD.times + JOB_GOLD.plus) * LEAN_GOLD[job.lean] / 5) * 5;
+    const full = (roll(r, JOB_GOLD.dice, JOB_GOLD.sides) * JOB_GOLD.times + JOB_GOLD.plus) * LEAN_GOLD[job.lean];
+    const rolled = owed ? Math.round(full / 5) * 5 : Math.max(5, Math.round((full * USUAL_SHARE) / 5) * 5);
     // the most gold that keeps rating + floor(gold / GOLD_PER_RATING) at or under the ceiling
-    const most = Math.max(0, (ceiling.power - rating) * GOLD_PER_RATING + GOLD_PER_RATING - 1 - gold);
+    const most = ceiling.power === Infinity ? Infinity : Math.max(0, (ceiling.power - rating) * GOLD_PER_RATING + GOLD_PER_RATING - 1 - gold);
     const given = Math.min(rolled, Math.floor(most / 5) * 5);
     if (given < rolled) jobCut = true;
     gold += given;
     cut ||= jobCut;
-    paid.push({ job, rolled, gold: given, grants, cut: jobCut });
+    paid.push({ job, owed, rolled, gold: given, grants, cut: jobCut });
   }
   return {
     jobs: paid,
@@ -251,15 +263,21 @@ export function payJobs(s: Standing, ceiling: Ceiling, jobs: Job[], seed: number
 export interface Reckoning {
   pace: number;
   effective: number;
+  /** Owed jobs, on top of the usual work. */
   owed: number;
   ceiling: Ceiling | null;
   power: number;
+  /** Null only when the board has nothing open to them. */
   payout: Payout | null;
 }
 
+/**
+ * Draw the owed jobs and the usual work, one more than is owed, and pay them. The first drawn are the owed ones, so a
+ * board too small for all of them pays what is owed before the usual work.
+ */
 export function reckon(s: Standing, all: Standing[], board: Job[], seed: number, opts: Parameters<typeof drawJobs>[3] = {}): Reckoning {
   const ceiling = ceilingFor(s, all);
   const owed = jobsOwed(s, all);
-  const jobs = ceiling && owed ? drawJobs(board, owed, seed, opts) : [];
-  return { pace: paceOf(all), effective: effectiveGames(s), owed, ceiling, power: powerOf(s), payout: ceiling && jobs.length ? payJobs(s, ceiling, jobs, seed) : null };
+  const jobs = drawJobs(board, owed + 1, seed, opts).map((job, i) => ({ job, owed: i < owed }));
+  return { pace: paceOf(all), effective: effectiveGames(s), owed, ceiling, power: powerOf(s), payout: jobs.length ? payJobs(s, ceiling, jobs, seed) : null };
 }

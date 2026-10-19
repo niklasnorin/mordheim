@@ -1,7 +1,8 @@
 ---
 // One warband's reckoning at the Fountain Post (campaign/jobs.ts), as the Watch House shows it: what is owed, the
 // ceiling it is held under, the jobs drawn and what each pays. A dry run and a real offer render alike; only a real
-// one, open, carries the button that takes the jobs.
+// one, open, carries the button that takes the jobs. Every warband is offered the usual work; one behind the pace
+// is offered its owed jobs on top.
 import type { Offer } from '../server/campaign/jobs';
 import type { PointOfInterest } from '../campaign/model';
 import { JOB_LEAN_LABEL, ratingOf, totalExperience } from '../campaign/jobs';
@@ -22,14 +23,14 @@ const takenXp = o.taken.flatMap((t) => t.grants).reduce((n, g) => n + g.experien
   <header class="wh-post-head">
     <h3 class="wh-h2">{o.name}</h3>
     <span class="wh-meta">
-      {o.scenario ? <span class:list={['wh-chip', { on: !o.shut && !!pay }]}>{o.taken.length ? 'Taken' : o.shut ? 'Shut' : pay ? 'Open' : 'Nothing owed'}</span> : <span class="wh-chip">Dry run</span>}
+      {o.scenario ? <span class:list={['wh-chip', { on: !o.shut && !!pay }]}>{o.taken.length ? 'Taken' : o.shut ? 'Shut' : pay ? 'Open' : 'Bare'}</span> : <span class="wh-chip">Dry run</span>}
       {o.locationId && <span class="wh-chip">{places[o.locationId] ?? o.locationId}</span>}
     </span>
   </header>
 
   <dl class="wh-dl">
-    <dt>Games</dt><dd><b>{s.played}</b> played{s.jobs ? <>, <b>{s.jobs}</b> {s.jobs === 1 ? 'job' : 'jobs'} taken before</> : null}; the pace is <b>{r.pace}</b></dd>
-    <dt>Owed</dt><dd><b>{r.owed}</b> {r.owed === 1 ? 'job' : 'jobs'}{!r.ceiling ? '; nobody is ahead of them' : ''}</dd>
+    <dt>Games</dt><dd><b>{s.played}</b> played{s.jobs ? <>, <b>{s.jobs}</b> owed {s.jobs === 1 ? 'job' : 'jobs'} taken before</> : null}; the pace is <b>{r.pace}</b></dd>
+    <dt>Owed</dt><dd><b>{r.owed}</b> {r.owed === 1 ? 'job' : 'jobs'} on top of the usual work{!r.ceiling ? '; nobody is ahead of them' : ''}</dd>
     <dt>Strength</dt><dd>rating <b>{ratingOf(s)}</b> {logged ? '(logged)' : '(reckoned from the roster)'} + <b>{s.gold}</b> gc unspent = <b>{r.power}</b>{r.ceiling ? <>; the ceiling is <b>{r.ceiling.power}</b></> : null}</dd>
     <dt>Experience</dt><dd><b>{xpNow}</b> together{r.ceiling ? <>; the ceiling is <b>{r.ceiling.experience}</b>, and no hero past <b>{r.ceiling.warrior.hero ?? 0}</b>, no henchman past <b>{r.ceiling.warrior.henchman ?? 0}</b></> : null}</dd>
     {r.ceiling && <><dt>Held under</dt><dd>{r.ceiling.ahead.map((id) => names[id] ?? id).join(', ')}</dd></>}
@@ -41,7 +42,7 @@ const takenXp = o.taken.flatMap((t) => t.grants).reduce((n, g) => n + g.experien
       <ol class="wh-post-jobs">
         {o.taken.map((t) => (
           <li>
-            <b>{t.title}</b>{t.pointId != null && pointName(t.pointId) && <span class="wh-post-at"> · {pointName(t.pointId)}</span>}
+            <b>{t.title}</b>{t.pointId != null && pointName(t.pointId) && <span class="wh-post-at"> · {pointName(t.pointId)}</span>}<span class:list={['wh-chip', { on: t.owed }]}>{t.owed ? 'Owed' : 'The usual work'}</span>
             <p>{t.text}</p>
             <p class="wh-post-pay"><b>{t.gold}</b> gc{t.grants.map((g) => <> · {g.name} +{g.experience}{g.advance && <span class="wh-chip on">Advance</span>}</>)}</p>
           </li>
@@ -56,7 +57,7 @@ const takenXp = o.taken.flatMap((t) => t.grants).reduce((n, g) => n + g.experien
       <ol class="wh-post-jobs">
         {pay.jobs.map((p) => (
           <li>
-            <b>{p.job.title}</b>{pointName(p.job.pointId) && <span class="wh-post-at"> · {pointName(p.job.pointId)}</span>}<span class="wh-post-lean"> · {JOB_LEAN_LABEL[p.job.lean]}</span>
+            <b>{p.job.title}</b>{pointName(p.job.pointId) && <span class="wh-post-at"> · {pointName(p.job.pointId)}</span>}{p.owed && <span class="wh-post-lean"> · {JOB_LEAN_LABEL[p.job.lean]}</span>}<span class:list={['wh-chip', { on: p.owed }]}>{p.owed ? 'Owed' : 'The usual work'}</span>
             <p>{p.job.text}</p>
             <p class="wh-post-pay"><b>{p.gold}</b> gc{p.gold < p.rolled && <span class="dim"> (rolled {p.rolled})</span>}{p.grants.map((g) => <> · {g.name} +{g.experience}{g.advance && <span class="wh-chip on">Advance</span>}</>)}{p.cut && <span class="wh-chip warn">Cut to the ceiling</span>}</p>
           </li>
@@ -68,6 +69,6 @@ const takenXp = o.taken.flatMap((t) => t.grants).reduce((n, g) => n + g.experien
       )}
     </>
   ) : (
-    <p class="wh-post-shut">{r.owed ? 'The post is bare: no job there is open to them.' : r.ceiling ? 'At the pace, or ahead of it. Nothing is owed.' : 'Nobody has fought more than they have. Nothing is owed.'}{o.shut && !o.scenario ? '' : o.shut ? ` ${o.shut}` : ''}</p>
+    <p class="wh-post-shut">The post is bare: no job there is open to them.{o.shut && o.scenario ? ` ${o.shut}` : ''}</p>
   )}
 </article>

@@ -22,6 +22,7 @@ CREATE TABLE "warband_jobs" (
 	"title" text NOT NULL,
 	"text" text DEFAULT '' NOT NULL,
 	"lean" text DEFAULT 'even' NOT NULL,
+	"owed" boolean DEFAULT true NOT NULL,
 	"gold" integer DEFAULT 0 NOT NULL,
 	"grants" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"taken_by" text,

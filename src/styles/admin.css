@@ -245,7 +245,7 @@
 .wh-post-jobs p { color: var(--bone-dim); font-size: 0.95rem; font-style: italic; margin-top: 0.15rem; }
 .wh-post-jobs .wh-post-pay { font-style: normal; font-size: 0.9rem; }
 .wh-post-jobs .wh-post-pay b, .wh-post-sum b { color: var(--candle); font-family: var(--label); font-weight: 600; font-variant-numeric: tabular-nums; }
-.wh-post-pay .wh-chip { margin-left: 0.35rem; }
+.wh-post-pay .wh-chip, .wh-post-jobs b ~ .wh-chip { margin-left: 0.35rem; }
 .wh-post-at, .wh-post-lean { color: var(--bone-dim); font-size: 0.9rem; }
 .wh-post-sum { color: var(--bone-dim); font-size: 0.95rem; }
 .wh-post-shut { color: var(--bone-dim); font-style: italic; font-size: 0.95rem; }

@@ -9,7 +9,7 @@ import { admission } from '../../server/admin/guard';
 import { currentLocation, todayFor } from '../../server/curfew/service';
 import { listJobs, offer, postOverview, type Offer, type PostRecord } from '../../server/campaign/jobs';
 import { listLocations } from '../../server/campaign/locations';
-import { GOLD_PER_RATING, JOBS_AT_MOST, JOB_GOLD, JOB_LEANS, JOB_LEAN_LABEL, LEAN_GOLD, RATING_PER_WARRIOR, effectiveGames, jobsOwed, paceOf, powerOf, ratingOf, totalExperience, type Job } from '../../campaign/jobs';
+import { GOLD_PER_RATING, JOBS_AT_MOST, JOB_GOLD, JOB_LEANS, JOB_LEAN_LABEL, LEAN_GOLD, RATING_PER_WARRIOR, USUAL_SHARE, effectiveGames, jobsOwed, paceOf, powerOf, ratingOf, totalExperience, type Job } from '../../campaign/jobs';
 import type { CampaignLocation } from '../../campaign/model';
 import { formatImperial, imperialForDate } from '../../lib/calendar';
 
@@ -86,14 +86,15 @@ const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places
 
         <section class="wh-section" id="rule" aria-labelledby="rule-title">
           <h1 class="wh-h1" id="rule-title">Notices on the fountain post</h1>
-          <p class="wh-muted">A warband that has fought fewer games than the rest was not idle. It took the place's work, the notices nailed to the fountain's post in the square, and when it next comes to the table it brings the pay home. The players do not see any of this yet: it is a draft, and the jobs are taken here, by a game master, before the game.</p>
+          <p class="wh-muted">Between games every warband takes the place's work, the notices nailed to the fountain's post in the square. For most it is the usual work and a few crowns. A warband that has fought fewer games than the rest took more of it, and when it next comes to the table it brings that pay home. The players do not see any of this yet: it is a draft, and the jobs are taken here, by a game master, before the game.</p>
           <ul class="wh-tarot-rules">
-            <li>The <b>pace</b> is the median of the warbands' games, counting the jobs each has taken as games (the higher middle when their number is even). Only warbands with a keeper, or a game fought, count. Today it is <b>{pace}</b>.</li>
-            <li>A warband is <b>owed</b> a job for every game it is behind the pace, at most <b>{JOBS_AT_MOST}</b> at one return.</li>
+            <li>Every warband on a scheduled game takes <b>the usual work</b>: one job, paying one part in {Math.round(1 / USUAL_SHARE)} of a job's gold, at least 5 gc, and no experience. It does not count towards the pace.</li>
+            <li>The <b>pace</b> is the median of the warbands' games, counting the owed jobs each has taken as games (the higher middle when their number is even). Only warbands with a keeper, or a game fought, count. Today it is <b>{pace}</b>.</li>
+            <li>A warband is <b>owed</b> a job for every game it is behind the pace, at most <b>{JOBS_AT_MOST}</b> at one return, on top of the usual work. Owed jobs pay in full.</li>
             <li>The post <b>opens</b> when a game is scheduled with the warband on its muster, and <b>shuts</b> at that game's first turn. The jobs come from the board of the place the game is fought in, or where the campaign is when the game names none.</li>
             <li>The <b>ceiling</b>: the jobs never make a warband stronger than the weakest warband that has fought more. Strength is the rating (logged, or reckoned at {RATING_PER_WARRIOR} a warrior plus their experience) with the unspent treasury at {GOLD_PER_RATING} gc a point; the warband's experience together, and each hero's and henchman's, are held under the least of those ahead too. Every grant is cut to fit.</li>
             <li>The <b>draw</b> is seeded by the warband and the game: the same game, the same jobs. Withheld jobs are never drawn, nor a job at a point of interest where a game is scheduled. Jobs the warband has not done lately come first.</li>
-            <li>The <b>pay</b>: {JOB_GOLD.dice}D6×{JOB_GOLD.times}+{JOB_GOLD.plus} gc a job, times its lean ({JOB_LEANS.map((l) => `${JOB_LEAN_LABEL[l].toLowerCase()} ×${LEAN_GOLD[l]}`).join(', ')}); experience by the lean: every warrior, every hero, the leader alone, or two for the least experienced hero. An advance reached is marked, to be rolled at the table.</li>
+            <li>The <b>pay</b> of an owed job: {JOB_GOLD.dice}D6×{JOB_GOLD.times}+{JOB_GOLD.plus} gc, times its lean ({JOB_LEANS.map((l) => `${JOB_LEAN_LABEL[l].toLowerCase()} ×${LEAN_GOLD[l]}`).join(', ')}); experience by the lean: every warrior, every hero, the leader alone, or two for the least experienced hero. An advance reached is marked, to be rolled at the table.</li>
             <li>One warband's jobs move the next one's offer at once: the offers below are reckoned from the record as it stands. The dials are code, in <code>src/campaign/jobs.ts</code>.</li>
           </ul>
         </section>
@@ -104,7 +105,7 @@ const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places
           <p class="wh-table-hint" aria-hidden="true">Scroll sideways for the rest of the table</p>
           <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Where the warbands stand">
             <table class="wh-table">
-              <thead><tr><th scope="col">Warband</th><th scope="col" class="num">Played</th><th scope="col" class="num">Jobs</th><th scope="col" class="num">Counts as</th><th scope="col" class="num">Experience</th><th scope="col" class="num">Strength</th><th scope="col" class="num">Owed</th><th scope="col">Rating and treasury</th></tr></thead>
+              <thead><tr><th scope="col">Warband</th><th scope="col" class="num">Played</th><th scope="col" class="num">Owed jobs taken</th><th scope="col" class="num">Counts as</th><th scope="col" class="num">Experience</th><th scope="col" class="num">Strength</th><th scope="col" class="num">Owed</th><th scope="col">Rating and treasury</th></tr></thead>
               <tbody>
                 {record.standings.map((s) => (
                   <tr class="wh-row">
@@ -132,7 +133,7 @@ const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places
 
         <section class="wh-section" id="games" aria-labelledby="games-title">
           <h2 class="wh-h2" id="games-title">Before the games</h2>
-          <p class="wh-muted">Every scheduled game and what the post offers each warband on its muster. Reckoned afresh at every look and saved by nothing until <b>Take the work</b>; <b>Strike the jobs</b> takes it back out of the roster.</p>
+          <p class="wh-muted">Every scheduled game and what the post offers each warband on its muster: the usual work for all, and the owed jobs for those behind. Reckoned afresh at every look and saved by nothing until <b>Take the work</b>; <b>Strike the jobs</b> takes it back out of the roster.</p>
           {upcoming.length ? upcoming.map((s) => (
             <div class="wh-post-game">
               <h3 class="wh-h3"><a href={`${base}/scenarios/${s.id}/`}>{s.title}</a> · {imperial(s.playedOn)} · {s.locationId ? placeNames[s.locationId] ?? s.locationId : `${placeNames[here] ?? here}, where the campaign is`}{s.turn > 0 && ` · turn ${s.turn}`}</h3>
@@ -203,13 +204,14 @@ const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places
           {record.taken.length ? (
             <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Jobs taken">
               <table class="wh-table">
-                <thead><tr><th scope="col">Warband</th><th scope="col">Before</th><th scope="col">Job</th><th scope="col" class="num">Gold</th><th scope="col">Experience</th></tr></thead>
+                <thead><tr><th scope="col">Warband</th><th scope="col">Before</th><th scope="col">Job</th><th scope="col">Kind</th><th scope="col" class="num">Gold</th><th scope="col">Experience</th></tr></thead>
                 <tbody>
                   {record.taken.slice().reverse().map((t) => (
                     <tr class="wh-row">
                       <th scope="row">{names[t.warbandId] ?? t.warbandId}</th>
                       <td class:list={{ dim: !t.scenarioId }}>{t.scenarioId ? <a href={`${base}/scenarios/${t.scenarioId}/`}>{record!.scenarios.find((s) => s.id === t.scenarioId)?.title ?? t.scenarioId}</a> : 'a game since struck'}</td>
                       <td>{t.title}{t.locationId && <small class="dim"> · {placeNames[t.locationId] ?? t.locationId}</small>}</td>
+                      <td class:list={{ dim: !t.owed }}>{t.owed ? 'Owed' : 'The usual work'}</td>
                       <td class="num">{t.gold}</td>
                       <td>{t.grants.length ? t.grants.map((g) => `${g.name} +${g.experience}`).join(', ') : '—'}</td>
                     </tr>

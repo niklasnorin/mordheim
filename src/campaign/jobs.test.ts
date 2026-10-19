@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GOLD_PER_RATING, JOBS_AT_MOST, ceilingFor, drawJobs, effectiveGames, jobSeed, jobsOwed, paceOf, payJobs, powerOf, ratingOf, reckon, shutBecause, totalExperience, type Job, type Standing } from './jobs.ts';
+import { GOLD_PER_RATING, JOBS_AT_MOST, USUAL_SHARE, ceilingFor, drawJobs, effectiveGames, jobSeed, jobsOwed, paceOf, payJobs, powerOf, ratingOf, reckon, shutBecause, totalExperience, type Job, type Standing } from './jobs.ts';
 
 const job = (id: number, over: Partial<Job> = {}): Job => ({ id, locationId: 'fussenbach', pointId: id, title: `Job ${id}`, text: '', lean: 'even', withheld: false, sort: id, ...over });
 const BOARD = [job(1, { lean: 'gold' }), job(2, { lean: 'experience' }), job(3, { lean: 'champion' }), job(4), job(5, { lean: 'gold' }), job(6, { pointId: null })];
@@ -95,6 +95,7 @@ test('the pay never lifts a warband past the weakest warband ahead, however the 
     for (const p of r.payout.jobs) for (const g of p.grants) xp.set(g.memberId, xp.get(g.memberId)! + g.experience);
     for (const w of me.warriors) assert.ok(xp.get(w.id)! <= c.warrior[w.rank]!, `seed ${seed}: ${w.id} past the best ${w.rank} ahead`);
     for (const p of r.payout.jobs) assert.equal(p.gold % 5, 0, 'gold in fives');
+    assert.deepEqual(r.payout.jobs.map((p) => p.owed), [...Array(r.owed).fill(true), false], 'the owed jobs first, then the usual work');
   }
 });
 
@@ -111,7 +112,7 @@ test('a warband right under the ceiling is paid nothing, and says it was cut', (
 test('the leans pay as they say, and an advance reached is flagged', () => {
   const me = absent();
   const c = { ahead: ['x'], power: 10_000, experience: 10_000, warrior: { hero: 100, henchman: 100 } };
-  const pay = (lean: Job['lean']) => payJobs(me, c, [job(1, { lean })], 1).jobs[0];
+  const pay = (lean: Job['lean']) => payJobs(me, c, [{ job: job(1, { lean }), owed: true }], 1).jobs[0];
   assert.deepEqual(pay('experience').grants.map((g) => g.experience), [1, 1, 1, 1, 1], 'every warrior');
   assert.deepEqual(pay('even').grants.map((g) => g.memberId), ['absent-0', 'absent-1', 'absent-2'], 'every hero');
   assert.deepEqual(pay('gold').grants.map((g) => g.memberId), ['absent-0'], 'the leader');
@@ -126,9 +127,38 @@ test('one warband’s jobs move the next one’s offer', () => {
   const b = band('b', 0, [8, 3, 1, 0, 0]);
   const before = jobsOwed(b, [veteran(), regular(), a, b]);
   const r = reckon(a, [veteran(), regular(), a, b], BOARD, 3);
-  const taken = { ...a, jobs: r.payout!.jobs.length, warriors: a.warriors.map((w) => ({ ...w, experience: w.experience + r.payout!.jobs.flatMap((p) => p.grants).filter((g) => g.memberId === w.id).reduce((n, g) => n + g.experience, 0) })) };
+  const taken = { ...a, jobs: r.payout!.jobs.filter((p) => p.owed).length, warriors: a.warriors.map((w) => ({ ...w, experience: w.experience + r.payout!.jobs.flatMap((p) => p.grants).filter((g) => g.memberId === w.id).reduce((n, g) => n + g.experience, 0) })) };
   const after = ceilingFor(b, [veteran(), regular(), taken, b])!;
   assert.ok(after.ahead.includes('a'), 'a counts as ahead of b once it has caught up');
   assert.ok(after.power <= powerOf(regular()), 'and b is still held under those who played');
   assert.ok(before >= 1);
+});
+
+test('everyone takes the usual work: a few crowns, no experience, and it does not count towards the pace', () => {
+  const all = [veteran(), regular(), absent()];
+  for (const s of [veteran(), regular()]) {
+    for (let seed = 0; seed < 100; seed++) {
+      const r = reckon(s, all, BOARD, seed);
+      assert.equal(r.owed, 0);
+      assert.equal(r.payout!.jobs.length, 1, `${s.warbandId}: the usual work alone`);
+      const [usual] = r.payout!.jobs;
+      assert.equal(usual.owed, false);
+      assert.equal(usual.grants.length, 0, 'no experience');
+      assert.ok(usual.gold >= 5 && usual.gold <= Math.round((12 * 5 + 15) * 1.5 * USUAL_SHARE / 5) * 5, `seed ${seed}: ${usual.gold} gc is a few crowns`);
+      assert.equal(usual.gold % 5, 0);
+    }
+  }
+  assert.equal(reckon(veteran(), all, BOARD, 1).ceiling, null, 'the leader is held under nothing, and paid only the usual work');
+  const behind = reckon(absent(), all, BOARD, 1);
+  assert.equal(behind.payout!.jobs.length, behind.owed + 1, 'the owed jobs and the usual work');
+  const owedGold = behind.payout!.jobs.filter((p) => p.owed).reduce((n, p) => n + p.rolled, 0) / behind.owed;
+  assert.ok(owedGold > behind.payout!.jobs.find((p) => !p.owed)!.rolled, 'an owed job pays far better than the usual work');
+});
+
+test('a board too small for everything pays what is owed before the usual work', () => {
+  const all = [veteran(), regular(), absent()];
+  const r = reckon(absent(), all, [job(1), job(2)], 4);
+  assert.equal(r.owed, 2);
+  assert.deepEqual(r.payout!.jobs.map((p) => p.owed), [true, true]);
+  assert.equal(reckon(veteran(), all, [], 4).payout, null, 'a bare board pays nothing');
 });
