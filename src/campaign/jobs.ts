@@ -45,7 +45,7 @@ export interface Job {
 
 /** At most this many owed jobs are paid at one return, however far behind the warband is. */
 export const JOBS_AT_MOST = 3;
-/** The usual work, which every warband takes before every game, pays this share of a job's gold and no experience. */
+/** The usual work, which every warband takes before every game, pays this share of a job's gold, at least 5 gc, and a chance of experience (`USUAL_EXPERIENCE`). */
 export const USUAL_SHARE = 0.2;
 /** Unspent gold counts towards strength at this many crowns a point of rating: a henchman and their kit is about 35 gc for 5. */
 export const GOLD_PER_RATING = 7;
@@ -65,6 +65,12 @@ export const RATING_PER_WARRIOR = 5;
  * 3–5 the floor and a point more to the least experienced warrior it names, 6 twice the floor.
  */
 export const EXPERIENCE_ROLL = { floor: [1, 2], more: [3, 4, 5], double: [6] } as const;
+/**
+ * The usual work's experience, on its own D6, so that even the warband leading the campaign has something for the
+ * telling: 1–3 none, 4–5 a point to the least experienced warrior the job names, 6 a point each to the two least
+ * experienced it names (two to the one, when it names one).
+ */
+export const USUAL_EXPERIENCE = { none: [1, 2, 3], one: [4, 5], two: [6] } as const;
 export const isD6 = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= 6;
 
 /** The rulebook's experience at which a hero, or a henchman group, rolls an advance. */
@@ -243,8 +249,8 @@ export interface JobPay {
   /** The total of the job's 2D6, and whether the table rolled it (`byHand`) or the post did. */
   dice: number;
   byHand: boolean;
-  /** The experience D6, and whether the table rolled it; the usual work rolls none and pays no experience. */
-  experienceDie: number | null;
+  /** The experience D6, and whether the table rolled it: on the owed table for an owed job, the usual table for the usual work. */
+  experienceDie: number;
   experienceByHand: boolean;
   /** Its number on the board and whether the table rolled for it, when it was drawn through `drawSlots`. */
   slot?: Omit<Slot, 'job'>;
@@ -280,6 +286,14 @@ function wanted(lean: JobLean, warriors: Warrior[], d6: number): { w: Warrior; n
     return floor.map((g) => (g === least ? { ...g, n: g.n + 1 } : g));
   }
   return floor;
+}
+
+/** The usual work's experience: a point or two, or none, to the least experienced the lean names. */
+function usualWanted(lean: JobLean, warriors: Warrior[], d6: number): { w: Warrior; n: number }[] {
+  const named = byLean(lean, warriors).map((g) => g.w).sort((a, b) => a.experience - b.experience);
+  if (!named.length || (USUAL_EXPERIENCE.none as readonly number[]).includes(d6)) return [];
+  if ((USUAL_EXPERIENCE.one as readonly number[]).includes(d6)) return [{ w: named[0], n: 1 }];
+  return named.length > 1 ? [{ w: named[0], n: 1 }, { w: named[1], n: 1 }] : [{ w: named[0], n: 2 }];
 }
 
 /** The floor: who the lean pays, and how much, whatever the D6 says. */
@@ -335,9 +349,9 @@ export function payJobs(s: Standing, ceilingOrNone: Ceiling | null, jobs: JobToP
     let jobCut = false;
     const grants: Grant[] = [];
     const xpPosted = 1 + Math.floor(rx() * 6);
-    const experienceByHand = owed && isD6(xpAtTable);
-    const experienceDie = owed ? (experienceByHand ? xpAtTable! : xpPosted) : null;
-    for (const { w, n } of owed ? wanted(job.lean, s.warriors, experienceDie!) : []) {
+    const experienceByHand = isD6(xpAtTable);
+    const experienceDie = experienceByHand ? xpAtTable! : xpPosted;
+    for (const { w, n } of owed ? wanted(job.lean, s.warriors, experienceDie) : usualWanted(job.lean, s.warriors, experienceDie)) {
       const now = xp.get(w.id)!;
       const cap = ceiling.warrior[w.rank];
       const allowed = Math.max(0, Math.min(n, cap == null ? 0 : cap - now, ceiling.experience - total, room()));

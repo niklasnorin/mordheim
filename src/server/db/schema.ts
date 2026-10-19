@@ -516,7 +516,7 @@ export const warbandJobs = pgTable(
     /** The total of the job's 2D6, and whether the table rolled it (`by_hand`) or the post did. */
     dice: integer('dice'),
     byHand: boolean('by_hand').notNull().default(false),
-    /** The experience D6 of an owed job (null for the usual work), and whether the table rolled it. */
+    /** The experience D6, on the owed table or the usual work's, and whether the table rolled it. */
     experienceDie: integer('experience_die'),
     experienceByHand: boolean('experience_by_hand').notNull().default(false),
     gold: integer('gold').notNull().default(0),

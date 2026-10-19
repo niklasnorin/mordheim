@@ -135,7 +135,8 @@ test('one warband’s jobs move the next one’s offer', () => {
   assert.ok(before >= 1);
 });
 
-test('everyone takes the usual work: a few crowns, no experience, and it does not count towards the pace', () => {
+test('everyone takes the usual work: a few crowns, a chance of a point or two, and it does not count towards the pace', () => {
+  const leaderXp: number[] = [];
   const all = [veteran(), regular(), absent()];
   for (const s of [veteran(), regular()]) {
     for (let seed = 0; seed < 100; seed++) {
@@ -144,11 +145,14 @@ test('everyone takes the usual work: a few crowns, no experience, and it does no
       assert.equal(r.payout!.jobs.length, 1, `${s.warbandId}: the usual work alone`);
       const [usual] = r.payout!.jobs;
       assert.equal(usual.owed, false);
-      assert.equal(usual.grants.length, 0, 'no experience');
+      const xp = usual.grants.reduce((n, g) => n + g.experience, 0);
+      assert.ok(xp <= 2, `${s.warbandId}, seed ${seed}: ${xp} experience is a point or two at most`);
+      if (s.warbandId === 'veteran') leaderXp.push(xp);
       assert.ok(usual.gold >= 5 && usual.gold <= Math.round((12 * 5 + 15) * 1.5 * USUAL_SHARE / 5) * 5, `seed ${seed}: ${usual.gold} gc is a few crowns`);
       assert.equal(usual.gold % 5, 0);
     }
   }
+  assert.ok(leaderXp.some((n) => n > 0) && leaderXp.some((n) => n === 0), 'even the leader has a chance of experience, and only a chance');
   assert.equal(reckon(veteran(), all, BOARD, 1).ceiling, null, 'the leader is held under nothing, and paid only the usual work');
   const behind = reckon(absent(), all, BOARD, 1);
   assert.equal(behind.payout!.jobs.length, behind.owed + 1, 'the owed jobs and the usual work');
@@ -245,10 +249,13 @@ test('an owed job’s experience is rolled on a D6 and never falls below the flo
   assert.ok(isD6(posted.experienceDie));
   assert.equal(payJobs(me, open, [{ job: job(1), owed: true }], 3).jobs[0].experienceDie, posted.experienceDie);
   assert.equal(payJobs(me, open, [{ job: job(1), owed: true, experienceDie: 6 }], 3).jobs[0].dice, posted.dice, 'the gold’s roll is untouched');
-  // the usual work rolls no experience
-  const usual = payJobs(me, open, [{ job: job(1), owed: false, experienceDie: 6 }], 3).jobs[0];
-  assert.equal(usual.experienceDie, null);
-  assert.equal(usual.grants.length, 0);
+  // the usual work rolls on its own table: 1–3 none, 4–5 a point to the least experienced named, 6 a point each to two
+  const usual = (lean: Job['lean'], d6: number) => payJobs(me, open, [{ job: job(1, { lean }), owed: false, experienceDie: d6 }], 3).jobs[0].grants;
+  for (const d6 of [1, 2, 3]) assert.deepEqual(usual('experience', d6), [], `${d6}: none`);
+  assert.deepEqual(usual('experience', 4).map((g) => [g.memberId, g.experience]), [['absent-4', 1]]);
+  assert.deepEqual(usual('experience', 6).map((g) => [g.memberId, g.experience]), [['absent-4', 1], ['absent-3', 1]]);
+  assert.deepEqual(usual('gold', 6).map((g) => [g.memberId, g.experience]), [['absent-0', 2]], 'the lean names one: two to them');
+  assert.equal(payJobs(me, open, [{ job: job(1), owed: false }], 3).jobs[0].experienceByHand, false, 'the post rolls it too');
 });
 
 test('the table’s experience is held under the ceiling like the post’s', () => {

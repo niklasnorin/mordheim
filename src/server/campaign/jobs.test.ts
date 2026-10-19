@@ -96,15 +96,16 @@ test('a scheduled game opens the post; the jobs are paid into the roster once, a
   assert.equal(await xpOf('welling-rune'), xpBefore + pay.experience);
   assert.match(after.shut!, /already/);
   await assert.rejects(takeJobs(gm, game, 'welling-rune'), refused(409));
-  // the Nordost Kin are at the pace: the usual work alone, a few crowns and no experience
+  // the Nordost Kin are at the pace: the usual work alone, a few crowns and, on a 6, a point each to two
   const nordostGold = await gold('nordost'), nordostXp = await xpOf('nordost');
-  const usual = await takeJobs(gm, game, 'nordost', undefined, { dice: [12] });
+  const usual = await takeJobs(gm, game, 'nordost', undefined, { dice: [12], experience: [6] });
   assert.equal(usual.taken.length, 1);
   assert.deepEqual([usual.taken[0].dice, usual.taken[0].byHand], [12, true], 'the table rolled a 12');
   assert.equal(usual.taken[0].owed, false);
   assert.ok(usual.taken[0].gold > 0 && usual.taken[0].gold <= 25, `${usual.taken[0].gold} gc`);
   assert.equal(await gold('nordost'), nordostGold + usual.taken[0].gold);
-  assert.equal(await xpOf('nordost'), nordostXp);
+  assert.equal(usual.taken[0].grants.reduce((n, g) => n + g.experience, 0), 2);
+  assert.equal(await xpOf('nordost'), nordostXp + 2);
   // the ceiling held: no stronger than the weakest warband ahead
   const r = await loadRecord();
   const me = r.standings.find((x) => x.warbandId === 'welling-rune')!;
