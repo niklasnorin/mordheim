@@ -258,3 +258,5 @@
 .wh-post-add[open] > summary { margin-bottom: 0.8rem; }
 .wh-post-books { margin: 0; gap: 0.5rem 0.8rem; flex-wrap: nowrap; }
 .wh-post-books small { font-size: 0.8rem; white-space: nowrap; }
+.wh-post-whatif { color: var(--candle); font-style: italic; margin-bottom: 1rem; }
+.wh-post-reckon { margin-top: 0.8rem; max-width: none; }

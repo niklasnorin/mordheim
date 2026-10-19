@@ -3,9 +3,11 @@
  * a game. The rule (the pace, the ceiling, the draw and the pay) is pure in `campaign/jobs.ts`; this loads the record
  * into its `Standing`s, reckons, and writes what was paid into the roster.
  *
- * A draft, open to game masters alone: the board is kept and the jobs are taken in the Watch House at
- * `/admin/jobs/`, where any warband's offer can be reckoned as a dry run that saves nothing. Every reckoning reads the
- * record as it stands, so a warband's jobs move the next warband's offer the moment they are taken.
+ * A draft, open to game masters alone and only as a dry run: the board is kept, and every warband's offer reckoned,
+ * in the Watch House at `/admin/jobs/`, and nothing there writes to a warband. A game master may reckon with figures of
+ * their own for any warband's rating and treasury (`Books`, `withBooks`), since nobody logs them yet. `takeJobs` and
+ * `undoJobs` are the paying side, tested and waiting for the day the players run the post themselves; no route calls
+ * them yet. Every reckoning reads the record as it stands, so one warband's jobs will move the next one's offer.
  */
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
@@ -165,7 +167,7 @@ export async function offer(actor: Actor, q: OfferQuery, record?: PostRecord): P
   const lastTaken = Object.fromEntries(mine.filter((t) => t.jobId != null).map((t) => [t.jobId!, t.id]));
   const seed = jobSeed(q.warbandId, scenario?.id ?? `dry:${locationId ?? 'nowhere'}`);
   const taken = scenario ? mine.filter((t) => t.scenarioId === scenario.id) : [];
-  const shut = !scenario ? 'A dry run: no game is named, so nothing can be taken.' : taken.length ? 'They took their jobs before this game already.' : shutBecause(scenario, q.warbandId) ?? (!locationId ? 'The game names no place, so there is no post to read.' : null);
+  const shut = !scenario ? 'As if a game were scheduled here today.' : taken.length ? 'They took their jobs before this game already.' : shutBecause(scenario, q.warbandId) ?? (!locationId ? 'The game names no place, so there is no post to read.' : null);
   return {
     warbandId: standing.warbandId, name: standing.name,
     scenario: scenario ? { id: scenario.id, title: scenario.title, playedOn: scenario.playedOn } : null,
@@ -174,20 +176,38 @@ export async function offer(actor: Actor, q: OfferQuery, record?: PostRecord): P
   };
 }
 
+/** A game master's own figures for a warband's rating and treasury, to reckon with in place of the logged ones. */
+export type Books = Record<string, { rating?: number; gold?: number }>;
+
+/** The record with the given books in place of the logged ones. Nothing is written; the record itself is not changed. */
+export function withBooks(record: PostRecord, books: Books = {}): PostRecord {
+  const whole = (n: number | undefined) => (n === undefined || !Number.isFinite(n) ? undefined : Math.max(0, Math.round(n)));
+  return {
+    ...record,
+    standings: record.standings.map((s) => {
+      const b = books[s.warbandId];
+      return b ? { ...s, rating: whole(b.rating) ?? s.rating, gold: whole(b.gold) ?? s.gold } : s;
+    }),
+  };
+}
+
 /** Every warband's offer for every scheduled game it is on, and a dry run for each warband on no game. For the Watch House. */
-export async function postOverview(actor: Actor, here: string): Promise<{ record: PostRecord; offers: Offer[]; dry: Offer[] }> {
+export async function postOverview(actor: Actor, here: string, books: Books = {}): Promise<{ record: PostRecord; logged: Standing[]; offers: Offer[]; dry: Offer[] }> {
   gmOnly(actor);
-  const record = await loadRecord();
+  const loaded = await loadRecord();
+  const record = withBooks(loaded, books);
   const offers: Offer[] = [];
   for (const s of upcomingOnly(record.scenarios)) for (const w of s.warbands) offers.push(await offer(actor, { warbandId: w.warbandId, scenarioId: s.id, locationId: here }, record));
   const dry: Offer[] = [];
   for (const w of record.standings) dry.push(await offer(actor, { warbandId: w.warbandId, locationId: here }, record));
-  return { record, offers, dry };
+  return { record, logged: loaded.standings, offers, dry };
 }
 
 // ───────────────────────── taking the jobs ─────────────────────────
 
 /**
+ * Not routed yet: the post is a dry run until the players run it themselves.
+ *
  * Take the jobs the post offers this warband before this game, the usual work and any owed on top, and pay them into
  * the roster: experience to the warriors, gold to the treasury, and the logged rating moved with the experience (a
  * rating nobody logged is reckoned from the roster anyway). Refused when the post is shut, when they were taken
@@ -221,7 +241,7 @@ export async function takeJobs(actor: Actor, scenarioId: string, warbandId: stri
   return offer(actor, { warbandId, scenarioId, locationId: here });
 }
 
-/** Strike the jobs taken before a game and take their pay back out of the roster. For a draft, and a mistake. */
+/** Strike the jobs taken before a game and take their pay back out of the roster, for a mistake. Not routed yet, as `takeJobs`. */
 export async function undoJobs(actor: Actor, scenarioId: string, warbandId: string): Promise<void> {
   gmOnly(actor);
   const d = db();
@@ -237,19 +257,4 @@ export async function undoJobs(actor: Actor, scenarioId: string, warbandId: stri
     rating: sql`case when ${warbandTable.rating} > 0 then greatest(0, ${warbandTable.rating} - ${experience}) else 0 end`,
     version: sql`${warbandTable.version} + 1`, updatedAt: new Date(),
   }).where(eq(warbandTable.id, warbandId));
-}
-
-// ───────────────────────── the books the ceiling reads ─────────────────────────
-
-/**
- * Set a warband's logged rating and treasury, which the ceiling reads. Players do not log them on the site yet, so for
- * the draft the game master keeps them here; a rating of 0 is reckoned from the roster.
- */
-export async function setBooks(actor: Actor, warbandId: string, books: { rating?: number; gold?: number }): Promise<void> {
-  gmOnly(actor);
-  const set: Partial<typeof warbandTable.$inferInsert> = { updatedAt: new Date() };
-  if (books.rating !== undefined) set.rating = Math.max(0, Math.round(books.rating));
-  if (books.gold !== undefined) set.gold = Math.max(0, Math.round(books.gold));
-  const done = await db().update(warbandTable).set(set).where(eq(warbandTable.id, warbandId)).returning({ id: warbandTable.id });
-  if (!done.length) throw new LedgerError('No such warband has entered the gates.', 404);
 }

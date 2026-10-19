@@ -13,7 +13,7 @@ import { createArticle, deleteArticle, updateArticle } from '../../../server/cam
 import { deleteDocument, saveDocument } from '../../../server/content/curfew';
 import { setSetting } from '../../../server/campaign/settings';
 import { currentLocation } from '../../../server/curfew/service';
-import { addJob, removeJob, setBooks, takeJobs, undoJobs, updateJob } from '../../../server/campaign/jobs';
+import { addJob, removeJob, updateJob } from '../../../server/campaign/jobs';
 import { JOB_LEANS } from '../../../campaign/jobs';
 
 export const prerender = false;
@@ -42,14 +42,7 @@ const routes = {
   'article-update': route(z.object({ id: z.number().int().positive(), patch: z.object(article).partial() }), async (i, a) => ({ ok: true, message: 'Corrected.', article: await updateArticle(a, i.id, i.patch) }), 'gm'),
   'article-delete': route(z.object({ id: z.number().int().positive() }), async (i, a) => { await deleteArticle(a, i.id); return { ok: true, message: 'Pulled from the Cryer.' }; }, 'gm'),
   'content-save': route(z.object({ id: z.string().min(1).max(80), text: z.string().max(2_000_000), version: z.number().int().nullable() }), async (i, a) => { const d = await saveDocument(a, i.id, i.text, i.version); return { ok: true, message: `Saved as version ${d.version}. The engine reads it from now on.`, version: d.version }; }, 'gm'),
-  // the fountain post, a draft for game masters alone (campaign/jobs.ts)
-  'jobs-take': route(z.object({ scenarioId: z.string().min(1).max(120), warbandId: z.string().min(1).max(64) }), async (i, a) => {
-    const o = await takeJobs(a, i.scenarioId, i.warbandId, await here());
-    const pay = o.taken.reduce((n, t) => n + t.gold, 0), xp = o.taken.flatMap((t) => t.grants).reduce((n, g) => n + g.experience, 0);
-    return { ok: true, message: `${o.name} took ${o.taken.length} ${o.taken.length === 1 ? 'job' : 'jobs'}: ${pay} gc and ${xp} experience into the roster.` };
-  }, 'gm'),
-  'jobs-undo': route(z.object({ scenarioId: z.string().min(1).max(120), warbandId: z.string().min(1).max(64) }), async (i, a) => { await undoJobs(a, i.scenarioId, i.warbandId); return { ok: true, message: 'The jobs are struck and their pay taken back out of the roster.' }; }, 'gm'),
-  'jobs-books': route(z.object({ warbandId: z.string().min(1).max(64), rating: z.number().int().min(0).max(10_000), gold: z.number().int().min(0).max(100_000) }).partial().required({ warbandId: true }), async (i, a) => { await setBooks(a, i.warbandId, i); return { ok: true, message: 'The books are set.' }; }, 'gm'),
+  // the fountain post's boards, a draft for game masters alone (campaign/jobs.ts); the post itself is a dry run on its page
   'job-add': route(z.object({ locationId: z.string().min(1).max(64), job: z.object(job).partial().required({ title: true }) }), async (i, a) => { await addJob(a, i.locationId, i.job); return { ok: true, message: 'Nailed to the post.' }; }, 'gm'),
   'job-update': route(z.object({ jobId: z.number().int().positive(), patch: z.object(job).partial() }), async (i, a) => { await updateJob(a, i.jobId, i.patch); return { ok: true, message: 'The notice is rewritten.' }; }, 'gm'),
   'job-remove': route(z.object({ jobId: z.number().int().positive() }), async (i, a) => { await removeJob(a, i.jobId); return { ok: true, message: 'Torn down. What was done stays done.' }; }, 'gm'),

@@ -8,7 +8,7 @@ import { members, scenarios, warbandJobs, warbands } from '../db/schema.ts';
 import { claimWarband, getWarband } from './roster.ts';
 import { createScenario } from './scenarios.ts';
 import { getLocation } from './locations.ts';
-import { addJob, jobsTaken, listJobs, loadRecord, offer, removeJob, setBooks, takeJobs, undoJobs, updateJob, LedgerError } from './jobs.ts';
+import { addJob, jobsTaken, listJobs, loadRecord, offer, postOverview, removeJob, takeJobs, undoJobs, updateJob, withBooks, LedgerError } from './jobs.ts';
 import { locations as fixtures } from '../../data/locations.ts';
 import { powerOf, totalExperience } from '../../campaign/jobs.ts';
 
@@ -23,6 +23,7 @@ before(async () => {
 
 const refused = (status: number) => (e: unknown) => e instanceof LedgerError && e.status === status;
 const gold = async (id: string) => (await db().select({ gold: warbands.gold }).from(warbands).where(eq(warbands.id, id)))[0].gold;
+const setBooks = (id: string, rating: number, gold: number) => db().update(warbands).set({ rating, gold }).where(eq(warbands.id, id));
 const xpOf = async (id: string) => totalExperience({ warriors: (await getWarband(id))!.members.filter((m) => !m.dead).map((m) => ({ id: m.id, name: m.name, rank: m.rank, experience: m.experience ?? 0 })) });
 
 test('the boards are nailed up from the fixtures, each job at its point of interest', async () => {
@@ -40,21 +41,33 @@ test('the books are set for the ceiling: the Bitterbrows logged, the Welling Run
   // the Bitterbrows have fought once beside the Nordost Kin; give them a little experience to be measured against
   const bitter = (await getWarband('bitterbrow-expedition'))!;
   for (const m of bitter.members) await db().update(members).set({ experience: m.rank === 'hero' ? 20 : 4 }).where(eq(members.id, m.id));
-  await setBooks(gm, 'bitterbrow-expedition', { rating: 160, gold: 40 });
+  await setBooks('bitterbrow-expedition', 160, 40);
   const welling = (await getWarband('welling-rune'))!;
   for (const m of welling.members) await db().update(members).set({ experience: m.rank === 'hero' ? 2 : 0 }).where(eq(members.id, m.id));
-  await setBooks(gm, 'welling-rune', { rating: 0, gold: 0 });
-  await assert.rejects(setBooks(player, 'welling-rune', { gold: 999 }), refused(403));
+  await setBooks('welling-rune', 0, 0);
   const r = await loadRecord();
   const s = r.standings.find((x) => x.warbandId === 'welling-rune')!;
   assert.equal(s.active, true, 'kept by a player');
   assert.equal(s.played, 0);
 });
 
+test('a game master may reckon with figures of their own for the books, and nothing is saved', async () => {
+  const logged = await loadRecord();
+  const lifted = withBooks(logged, { 'bitterbrow-expedition': { rating: 400, gold: 7 }, nowhere: { rating: 1 } });
+  assert.equal(lifted.standings.find((s) => s.warbandId === 'bitterbrow-expedition')!.rating, 400);
+  assert.equal(lifted.standings.find((s) => s.warbandId === 'bitterbrow-expedition')!.gold, 7);
+  assert.equal(logged.standings.find((s) => s.warbandId === 'bitterbrow-expedition')!.rating, 160, 'the loaded record is not changed');
+  const o = await postOverview(gm, 'fussenbach', { 'nordost': { rating: 999 } });
+  assert.equal(o.record.standings.find((s) => s.warbandId === 'nordost')!.rating, 999);
+  assert.equal(o.logged.find((s) => s.warbandId === 'nordost')!.rating, (await loadRecord()).standings.find((s) => s.warbandId === 'nordost')!.rating, 'the logged books are what the database holds');
+  assert.equal((await db().select({ rating: warbands.rating }).from(warbands).where(eq(warbands.id, 'nordost')))[0].rating, 124, 'nothing written');
+  await assert.rejects(postOverview(player, 'fussenbach'), refused(403));
+});
+
 test('a dry run reckons the offer and writes nothing; a player may not look', async () => {
   const before = await gold('welling-rune');
   const o = await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach' });
-  assert.match(o.shut!, /dry run/);
+  assert.match(o.shut!, /As if a game were scheduled/);
   assert.equal(o.reckoning.pace, 1);
   assert.equal(o.reckoning.owed, 1);
   assert.ok(o.reckoning.ceiling);

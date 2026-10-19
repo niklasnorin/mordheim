@@ -2,7 +2,7 @@
 
 Between games every warband takes the place's work: the notices nailed to the fountain's post in Fussenbach's square, or the word passed along in Cutthroat's Haven. For a warband keeping pace it is **the usual work**, worth a few crowns. A warband that has fought fewer games than the rest took more of it, and when it next comes to the table it brings that pay home as gold and experience. This is the campaign's catch-up rule: everyone takes part before every game, but it pays well only those who are behind, and it never lifts them past those who play more.
 
-**Status: a draft, for game masters alone.** Players see none of it. A game master reads the post, sets the books it measures by and takes the jobs for a warband in the Watch House at `/admin/jobs/`, where any warband's offer can also be reckoned as a dry run that saves nothing.
+**Status: a draft, for game masters alone, and a dry run only.** Players see none of it, and nothing pays a warband yet. A game master reads the post in the Watch House at `/admin/jobs/`: every scheduled game's offers, any warband at any place, and the same again with figures of their own for any warband's rating and treasury. Nothing there writes to a warband; the boards of jobs are the one thing the page saves. The players are meant to run it themselves before their games, in time.
 
 ## What holds
 
@@ -32,7 +32,8 @@ All the dials are code, in `src/campaign/jobs.ts`. A change to one is a commit w
 - **`location_jobs`** is each place's board, kept by a game master: a job's name, what came of it, its lean, the point of interest it is done at, and whether it is withheld. A job's name is unique on its board. It is seeded once from the `jobs` lists in `src/data/locations.ts` (`ensureJobsSeeded`), which name their point of interest by name. Like the locations, the seed runs again if the table is ever empty, so take a board out of play by withholding its jobs rather than tearing them all down.
 - **`warband_jobs`** holds the jobs taken, one row each, with the job's words copied as they were and the pay as granted. `owed` says whether it was an owed job or the usual work; an owed row counts towards the warband's effective games for good, even if the game it was taken before is struck. The unique index on (warband, game, seq) is the once-only guard. Neon's HTTP driver has no transactions, so if two warbands take jobs at the very same moment, each may be worked out without counting the other; the next offer counts them both.
 - **Taking** (`takeJobs`) pays the experience into `members.experience` and the gold into `warbands.gold`, and moves a logged `warbands.rating` up with the experience. **Striking** (`undoJobs`) takes all of it back out.
-- **The books.** Players don't log rating or treasury on the site yet (both columns were unread until now), so for the draft the game master sets them on the post's page (`setBooks`). A rating of 0 is reckoned from the roster. Experience comes from the warriors' own records on the muster roll.
+- **The books.** The ceiling reads `warbands.rating` and `warbands.gold`, which nobody logs on the site yet, so the dry run lets a game master type figures of their own for any warband and reckon with them (`Books`, `withBooks`; carried in the page's address as `rating.<warband>` and `gold.<warband>`, never saved). A rating of 0 is reckoned from the roster. Experience comes from the warriors' own records on the muster roll.
+- **Paying, for later.** `takeJobs` and `undoJobs` write the jobs and their pay into the roster and take them back; they are tested, and no route calls them while the post is a dry run.
 
 ## The Watch House page (`/admin/jobs/`)
 
@@ -41,11 +42,10 @@ All the dials are code, in `src/campaign/jobs.ts`. A change to one is a commit w
 | Section | What it shows | Actions |
 | --- | --- | --- |
 | The rule | The rule as above, with the dials read from the code. | |
-| Where they stand | Every warband's games, jobs, effective games, experience, strength and jobs owed, with its rating and treasury. | `jobs-books` sets the rating and treasury |
-| Before the games | Every scheduled game and each attending warband's offer: owed, the ceiling and who sets it, the jobs drawn and their pay, and what the ceiling cut. Worked out at every look, and nothing is saved until **Take the work**. | `jobs-take`, and `jobs-undo` to strike the jobs again |
+| Where they stand | Every warband's games, jobs, effective games, experience, strength and jobs owed, with its rating and treasury as fields to try figures in. | **Reckon** reloads the page with those figures (a GET; nothing saved) |
+| Before the games | Every scheduled game and each attending warband's offer: owed, the ceiling and who sets it, the jobs drawn and their pay, and what the ceiling cut. Worked out at every look with the game's own seed, so these are the jobs the game would draw. | none |
 | Dry run | Any warband at any place, as if a game were scheduled there today. Nothing is written. The draw is seeded by the place rather than a game, so a real game's jobs may differ; the pay is worked out the same way. | none (a plain GET form) |
 | The boards | Each place's jobs, edited in place. | `job-add`, `job-update` (including *withheld*), `job-remove` |
-| Taken | Every job taken, newest first. | |
 
 ## Writing a job
 
@@ -53,7 +53,7 @@ A job is one or two short sentences, past tense: what the warband did and where,
 
 ## What a draft leaves for later
 
-- **Opening it to players.** A "Back from the fountain post" panel on the scenario page for the keeper of a warband that is owed, before the first turn, and the rating and treasury in the keeper's own warband form.
+- **Opening it to players.** The players are to run the post themselves: a "Back from the fountain post" panel on the scenario page for the keeper of each warband on the muster, before the first turn, calling `takeJobs`; the rating and treasury in the keeper's own warband form; and a game master's way to strike a mistake (`undoJobs`).
 - **The story.** The taken jobs in the warband's chronicle and on the location's map as a third colour of pin, and a Town Cryer dispatch in the place's own voice when a warband comes back from the post.
 - **Calibration.** A job pays fixed dice today. Once rating, treasury and experience are logged after every game, the pay could be set from the campaign's own average takings per game (about 0.6 of it), so it keeps pace as the campaign grows richer.
 - **Choices still open.** Whether the Curfew's nights should count towards the pace; whether players choose their own champion for a *champion* job (the draft picks the least experienced hero).

@@ -1,29 +1,26 @@
 ---
 // One warband's reckoning at the Fountain Post (campaign/jobs.ts), as the Watch House shows it: what is owed, the
-// ceiling it is held under, the jobs drawn and what each pays. A dry run and a real offer render alike; only a real
-// one, open, carries the button that takes the jobs. Every warband is offered the usual work; one behind the pace
-// is offered its owed jobs on top.
+// ceiling it is held under, the jobs drawn and what each pays. Every warband is offered the usual work; one behind the
+// pace is offered its owed jobs on top. The post is a dry run for now: nothing here takes the jobs.
 import type { Offer } from '../server/campaign/jobs';
 import type { PointOfInterest } from '../campaign/model';
 import { JOB_LEAN_LABEL, ratingOf, totalExperience } from '../campaign/jobs';
 
-interface Props { offer: Offer; points: PointOfInterest[]; places: Record<string, string>; names: Record<string, string> }
-const { offer: o, points, places, names } = Astro.props;
+interface Props { offer: Offer; points: PointOfInterest[]; places: Record<string, string>; names: Record<string, string>; /** Reckoned with the game master's own figures for this warband's books. */ whatIf?: boolean }
+const { offer: o, points, places, names, whatIf = false } = Astro.props;
 const r = o.reckoning;
 const pay = r.payout;
 const pointName = (id: number | null) => (id == null ? null : points.find((p) => p.id === id)?.name ?? null);
 const s = o.standing;
 const logged = s.rating > 0;
 const xpNow = totalExperience(s);
-const takenGold = o.taken.reduce((n, t) => n + t.gold, 0);
-const takenXp = o.taken.flatMap((t) => t.grants).reduce((n, g) => n + g.experience, 0);
 ---
 
 <article class="wh-post-offer" data-shut={o.shut ? 'true' : undefined}>
   <header class="wh-post-head">
     <h3 class="wh-h2">{o.name}</h3>
     <span class="wh-meta">
-      {o.scenario ? <span class:list={['wh-chip', { on: !o.shut && !!pay }]}>{o.taken.length ? 'Taken' : o.shut ? 'Shut' : pay ? 'Open' : 'Bare'}</span> : <span class="wh-chip">Dry run</span>}
+      {o.scenario ? <span class:list={['wh-chip', { on: !o.shut && !!pay }]}>{o.shut ? 'Shut' : pay ? 'Open' : 'Bare'}</span> : <span class="wh-chip">Dry run</span>}
       {o.locationId && <span class="wh-chip">{places[o.locationId] ?? o.locationId}</span>}
     </span>
   </header>
@@ -31,29 +28,14 @@ const takenXp = o.taken.flatMap((t) => t.grants).reduce((n, g) => n + g.experien
   <dl class="wh-dl">
     <dt>Games</dt><dd><b>{s.played}</b> played{s.jobs ? <>, <b>{s.jobs}</b> owed {s.jobs === 1 ? 'job' : 'jobs'} taken before</> : null}; the pace is <b>{r.pace}</b></dd>
     <dt>Owed</dt><dd><b>{r.owed}</b> {r.owed === 1 ? 'job' : 'jobs'} on top of the usual work{!r.ceiling ? '; nobody is ahead of them' : ''}</dd>
-    <dt>Strength</dt><dd>rating <b>{ratingOf(s)}</b> {logged ? '(logged)' : '(reckoned from the roster)'} + <b>{s.gold}</b> gc unspent = <b>{r.power}</b>{r.ceiling ? <>; the ceiling is <b>{r.ceiling.power}</b></> : null}</dd>
+    <dt>Strength</dt><dd>rating <b>{ratingOf(s)}</b> {whatIf ? '(your figure)' : logged ? '(logged)' : '(reckoned from the roster)'} + <b>{s.gold}</b> gc unspent = <b>{r.power}</b>{r.ceiling ? <>; the ceiling is <b>{r.ceiling.power}</b></> : null}</dd>
     <dt>Experience</dt><dd><b>{xpNow}</b> together{r.ceiling ? <>; the ceiling is <b>{r.ceiling.experience}</b>, and no hero past <b>{r.ceiling.warrior.hero ?? 0}</b>, no henchman past <b>{r.ceiling.warrior.henchman ?? 0}</b></> : null}</dd>
     {r.ceiling && <><dt>Held under</dt><dd>{r.ceiling.ahead.map((id) => names[id] ?? id).join(', ')}</dd></>}
   </dl>
 
-  {o.taken.length > 0 ? (
+  {pay ? (
     <>
-      <h4 class="wh-h3">Taken before {o.scenario?.title}</h4>
-      <ol class="wh-post-jobs">
-        {o.taken.map((t) => (
-          <li>
-            <b>{t.title}</b>{t.pointId != null && pointName(t.pointId) && <span class="wh-post-at"> · {pointName(t.pointId)}</span>}<span class:list={['wh-chip', { on: t.owed }]}>{t.owed ? 'Owed' : 'The usual work'}</span>
-            <p>{t.text}</p>
-            <p class="wh-post-pay"><b>{t.gold}</b> gc{t.grants.map((g) => <> · {g.name} +{g.experience}{g.advance && <span class="wh-chip on">Advance</span>}</>)}</p>
-          </li>
-        ))}
-      </ol>
-      <p class="wh-post-sum">Paid <b>{takenGold}</b> gc and <b>{takenXp}</b> experience, by {o.taken[0].takenBy ?? 'the Watch'}.</p>
-      <div class="wh-actions"><button type="button" class="cf-btn cf-btn-blood sm" data-act="admin/jobs-undo" data-body={JSON.stringify({ scenarioId: o.scenario!.id, warbandId: o.warbandId })} data-confirm={`Strike ${o.name}'s jobs before ${o.scenario!.title} and take ${takenGold} gc and ${takenXp} experience back out of the roster?`}>Strike the jobs</button></div>
-    </>
-  ) : pay ? (
-    <>
-      <h4 class="wh-h3">{o.scenario ? 'Nailed to the post for them' : 'What the post would pay now'}</h4>
+      <h4 class="wh-h3">{o.scenario ? `What the post would pay before ${o.scenario.title}` : 'What the post would pay now'}</h4>
       <ol class="wh-post-jobs">
         {pay.jobs.map((p) => (
           <li>
@@ -64,9 +46,7 @@ const takenXp = o.taken.flatMap((t) => t.grants).reduce((n, g) => n + g.experien
         ))}
       </ol>
       <p class="wh-post-sum">In all <b>{pay.gold}</b> gc and <b>{pay.experience}</b> experience; strength after <b>{pay.after.power}</b>{r.ceiling ? <> of <b>{r.ceiling.power}</b></> : null}.</p>
-      {o.shut ? <p class="wh-post-shut">{o.shut}</p> : (
-        <div class="wh-actions"><button type="button" class="cf-btn sm" data-act="admin/jobs-take" data-body={JSON.stringify({ scenarioId: o.scenario!.id, warbandId: o.warbandId })} data-confirm={`Take ${pay.jobs.length} ${pay.jobs.length === 1 ? 'job' : 'jobs'} for ${o.name} before ${o.scenario!.title}? ${pay.gold} gc goes into the treasury and ${pay.experience} experience to the warriors named.`}>Take the work</button></div>
-      )}
+      {o.shut && <p class="wh-post-shut">{o.shut}</p>}
     </>
   ) : (
     <p class="wh-post-shut">The post is bare: no job there is open to them.{o.shut && o.scenario ? ` ${o.shut}` : ''}</p>
