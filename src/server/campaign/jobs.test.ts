@@ -37,7 +37,7 @@ test('the boards are nailed up from the fixtures, each job at its point of inter
   assert.equal(fussenbach.filter((j) => j.pointId != null).length, fixtures.find((l) => l.id === 'fussenbach')!.jobs!.filter((j) => j.point).length, 'every named point was found');
 });
 
-test('the books are set for the ceiling: the Bitterbrows logged, the Welling Rune behind and kept by a player', async () => {
+test('the books are set for the match: the Bitterbrows logged, the Welling Rune weak and kept by a player', async () => {
   await claimWarband(player, 'welling-rune');
   // the Bitterbrows have fought once beside the Nordost Kin; give them a little experience to be measured against
   const bitter = (await getWarband('bitterbrow-expedition'))!;
@@ -48,8 +48,8 @@ test('the books are set for the ceiling: the Bitterbrows logged, the Welling Run
   await setBooks('welling-rune', 0, 0);
   const r = await loadRecord();
   const s = r.standings.find((x) => x.warbandId === 'welling-rune')!;
-  assert.equal(s.active, true, 'kept by a player');
   assert.equal(s.played, 0);
+  assert.equal(powerOf(s), 4 * 5 + 8, 'four warriors, reckoned from the roster');
 });
 
 test('a game master may reckon with figures of their own for the books, and nothing is saved', async () => {
@@ -67,12 +67,15 @@ test('a game master may reckon with figures of their own for the books, and noth
 
 test('a dry run reckons the offer and writes nothing; a player may not look', async () => {
   const before = await gold('welling-rune');
-  const o = await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach' });
+  const o = await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach', against: ['nordost'] });
   assert.match(o.shut!, /As if a game were scheduled/);
-  assert.equal(o.reckoning.pace, 1);
-  assert.equal(o.reckoning.owed, 1);
-  assert.ok(o.reckoning.ceiling);
-  assert.deepEqual(o.reckoning.payout?.jobs.map((p) => p.owed), [true, false], 'the owed job, then the usual work');
+  assert.equal(o.reckoning.match.stronger?.warbandId, 'nordost');
+  assert.equal(o.reckoning.match.target, Math.floor(0.8 * 134));
+  assert.equal(o.reckoning.owed, 3, 'far short of the Nordost Kin');
+  assert.deepEqual(o.reckoning.payout?.jobs.map((p) => p.owed), [true, true, true, false], 'the owed jobs, then the usual work');
+  const alone = await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach' });
+  assert.equal(alone.reckoning.owed, 0, 'against nobody, the usual work alone');
+  assert.match(alone.shut!, /against nobody/);
   assert.equal(await gold('welling-rune'), before);
   await assert.rejects(offer(player, { warbandId: 'welling-rune', locationId: 'fussenbach' }), refused(403));
   await assert.rejects(takeJobs(gm, 'nowhere', 'welling-rune'), refused(404));
@@ -96,7 +99,7 @@ test('a scheduled game opens the post; the jobs are paid into the roster once, a
   assert.equal(await xpOf('welling-rune'), xpBefore + pay.experience);
   assert.match(after.shut!, /already/);
   await assert.rejects(takeJobs(gm, game, 'welling-rune'), refused(409));
-  // the Nordost Kin are at the pace: the usual work alone, a few crowns and, on a 6, a point each to two
+  // the Nordost Kin are the stronger side: the usual work alone, a few crowns and, on a 6, a point each to two
   const nordostGold = await gold('nordost'), nordostXp = await xpOf('nordost');
   const usual = await takeJobs(gm, game, 'nordost', undefined, { dice: [12], experience: [6] });
   assert.equal(usual.taken.length, 1);
@@ -106,14 +109,13 @@ test('a scheduled game opens the post; the jobs are paid into the roster once, a
   assert.equal(await gold('nordost'), nordostGold + usual.taken[0].gold);
   assert.equal(usual.taken[0].grants.reduce((n, g) => n + g.experience, 0), 2);
   assert.equal(await xpOf('nordost'), nordostXp + 2);
-  // the ceiling held: no stronger than the weakest warband ahead
+  // the limits held: closer to the Nordost Kin, never level with them
   const r = await loadRecord();
   const me = r.standings.find((x) => x.warbandId === 'welling-rune')!;
-  const ahead = r.standings.filter((x) => x.warbandId !== 'welling-rune');
-  assert.ok(powerOf(me) <= Math.max(Math.min(...ahead.map(powerOf)), powerOf({ ...me, gold: goldBefore })));
-  assert.equal(me.jobs, pay.jobs.filter((p) => p.owed).length, 'only the owed jobs count towards the pace');
-  assert.equal(r.standings.find((x) => x.warbandId === 'nordost')!.jobs, 0, 'the usual work does not count');
-  assert.equal((await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach' })).reckoning.owed, 0, 'the gap is closed');
+  const them = r.standings.find((x) => x.warbandId === 'nordost')!;
+  assert.ok(powerOf(me) > 28, 'pulled closer');
+  assert.ok(powerOf(me) < powerOf(them), `${powerOf(me)} short of ${powerOf(them)}`);
+  assert.ok(o.reckoning.match.gap > (await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach', against: ['nordost'] })).reckoning.match.gap, 'the gap is narrower now');
 });
 
 test('the table may roll D66 for which notice; a number it may not have is refused, to roll again', async () => {

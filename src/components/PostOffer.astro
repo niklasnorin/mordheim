@@ -1,12 +1,12 @@
 ---
-// One warband's reckoning at the Fountain Post (campaign/jobs.ts), as the Watch House shows it: what is owed, the
-// ceiling it is held under, the jobs drawn and what each pays. Every warband is offered the usual work; one behind the
-// pace is offered its owed jobs on top. Each roll is the post's, or the table's typed in its box: a D66 for which notice,
+// One warband's reckoning at the Fountain Post (campaign/jobs.ts), as the Watch House shows it: the match, what is owed,
+// the jobs drawn and what each pays. Every warband is offered the usual work; one short of four fifths of the stronger
+// side of its game is offered owed jobs on top. Each roll is the post's, or the table's typed in its box: a D66 for which notice,
 // 2D6 for the gold, a D6 for the experience (part of the page's reckon form, carried in the address). The post
 // is a dry run for now: nothing here takes the jobs.
 import { diceKey, type Offer } from '../server/campaign/jobs';
 import type { PointOfInterest } from '../campaign/model';
-import { DICE_HIGH, DICE_LOW, EXPERIENCE_ROLL, USUAL_EXPERIENCE, JOB_LEAN_LABEL, ratingOf, totalExperience } from '../campaign/jobs';
+import { DICE_HIGH, DICE_LOW, EXPERIENCE_FLOOR, MATCH_TARGET, USUAL_EXPERIENCE, JOB_LEAN_LABEL, experienceShareOf, ratingOf, totalExperience } from '../campaign/jobs';
 
 interface Props { offer: Offer; points: PointOfInterest[]; places: Record<string, string>; names: Record<string, string>; /** Reckoned with the game master's own figures for this warband's books. */ whatIf?: boolean }
 const { offer: o, points, places, names, whatIf = false } = Astro.props;
@@ -18,9 +18,11 @@ const logged = s.rating > 0;
 const xpNow = totalExperience(s);
 const key = diceKey(o.warbandId, o.scenario?.id);
 const has = (list: readonly number[], d6: number) => list.includes(d6);
+const fraction = (x: number) => (x === 1 ? 'the whole' : x === EXPERIENCE_FLOOR ? 'the floor, a third' : x === 0.5 ? 'a half' : `${Math.round(x * 6)} sixths`);
 const experienceWord = (owed: boolean, d6: number) => (owed
-  ? (has(EXPERIENCE_ROLL.double, d6) ? 'twice the floor' : has(EXPERIENCE_ROLL.more, d6) ? 'a point over the floor' : 'the floor')
+  ? fraction(experienceShareOf(d6))
   : (has(USUAL_EXPERIENCE.two, d6) ? 'two points' : has(USUAL_EXPERIENCE.one, d6) ? 'a point' : 'none'));
+const m = r.match;
 ---
 
 <article class="wh-post-offer" data-shut={o.shut ? 'true' : undefined}>
@@ -33,11 +35,10 @@ const experienceWord = (owed: boolean, d6: number) => (owed
   </header>
 
   <dl class="wh-dl">
-    <dt>Games</dt><dd><b>{s.played}</b> played{s.jobs ? <>, <b>{s.jobs}</b> owed {s.jobs === 1 ? 'job' : 'jobs'} taken before</> : null}; the pace is <b>{r.pace}</b></dd>
-    <dt>Owed</dt><dd><b>{r.owed}</b> {r.owed === 1 ? 'job' : 'jobs'} on top of the usual work{!r.ceiling ? '; nobody is ahead of them' : ''}</dd>
-    <dt>Strength</dt><dd>rating <b>{ratingOf(s)}</b> {whatIf ? '(your figure)' : logged ? '(logged)' : '(reckoned from the roster)'} + <b>{s.gold}</b> gc unspent = <b>{r.power}</b>{r.ceiling ? <>; the ceiling is <b>{r.ceiling.power}</b></> : null}</dd>
-    <dt>Experience</dt><dd><b>{xpNow}</b> together{r.ceiling ? <>; the ceiling is <b>{r.ceiling.experience}</b>, and no hero past <b>{r.ceiling.warrior.hero ?? 0}</b>, no henchman past <b>{r.ceiling.warrior.henchman ?? 0}</b></> : null}</dd>
-    {r.ceiling && <><dt>Held under</dt><dd>{r.ceiling.ahead.map((id) => names[id] ?? id).join(', ')}</dd></>}
+    <dt>Against</dt><dd>{m.stronger ? <>the stronger side, <b>{names[m.stronger.warbandId] ?? m.stronger.name}</b>, strength <b>{m.stronger.power}</b></> : 'nobody stronger: the usual work alone'}</dd>
+    <dt>Strength</dt><dd>rating <b>{ratingOf(s)}</b> {whatIf ? '(your figure)' : logged ? '(logged)' : '(reckoned from the roster)'} + <b>{s.gold}</b> gc unspent = <b>{r.power}</b>{m.stronger ? <>; the target is <b>{m.target}</b>, {Math.round(MATCH_TARGET * 100)} in a hundred of theirs</> : null}</dd>
+    <dt>Owed</dt><dd><b>{r.owed}</b> {r.owed === 1 ? 'job' : 'jobs'} on top of the usual work{m.gap ? <>, to close a gap of <b>{m.gap}</b></> : m.stronger ? ', already near enough' : ''}</dd>
+    <dt>Experience</dt><dd><b>{xpNow}</b> together{m.stronger ? <>; no hero past <b>{m.stronger.best.hero ?? 0}</b>, no henchman past <b>{m.stronger.best.henchman ?? 0}</b></> : null}</dd>
   </dl>
 
   {pay ? (
@@ -59,12 +60,12 @@ const experienceWord = (owed: boolean, d6: number) => (owed
               ].join(' · ')}</span>
               {p.slot?.refused && <span class="wh-chip warn">{p.slot.refused} Roll again</span>}
             </div>
-            <p class="wh-post-pay"><b>{p.gold}</b> gc{p.gold < p.rolled && <span class="dim"> (rolled {p.rolled})</span>}{p.grants.map((g) => <> · {g.name} +{g.experience}{g.advance && <span class="wh-chip on">Advance</span>}</>)}{p.cut && <span class="wh-chip warn">Cut to the ceiling</span>}</p>
+            <p class="wh-post-pay"><b>{p.gold}</b> gc{p.gold < p.rolled && <span class="dim"> (rolled {p.rolled})</span>}{p.grants.map((g) => <> · {g.name} +{g.experience}{g.advance && <span class="wh-chip on">Advance</span>}</>)}{p.cut && <span class="wh-chip warn">Cut to the limit</span>}</p>
           </li>
         ))}
       </ol>
       <div class="wh-actions wh-post-reckon"><button type="submit" form="reckon" class="cf-btn cf-btn-ghost sm">Reckon with these rolls</button></div>
-      <p class="wh-post-sum">In all <b>{pay.gold}</b> gc and <b>{pay.experience}</b> experience; strength after <b>{pay.after.power}</b>{r.ceiling ? <> of <b>{r.ceiling.power}</b></> : null}.</p>
+      <p class="wh-post-sum">In all <b>{pay.gold}</b> gc and <b>{pay.experience}</b> experience; strength after <b>{pay.after.power}</b>{m.stronger ? <>, against their <b>{m.stronger.power}</b></> : null}.</p>
       {o.shut && <p class="wh-post-shut">{o.shut}</p>}
     </>
   ) : (

@@ -10,12 +10,12 @@ import { currentLocation, todayFor } from '../../server/curfew/service';
 import { diceKey, listJobs, offer, postOverview, type Books, type Offer, type PostRecord } from '../../server/campaign/jobs';
 import { numberBoard, type TableRolls } from '../../campaign/jobs';
 import { listLocations } from '../../server/campaign/locations';
-import { GOLD_PER_RATING, JOBS_AT_MOST, JOB_GOLD, JOB_LEANS, JOB_LEAN_LABEL, LEAN_GOLD, RATING_PER_WARRIOR, USUAL_SHARE, effectiveGames, jobsOwed, paceOf, powerOf, ratingOf, totalExperience, type Job, type Standing } from '../../campaign/jobs';
+import { GOLD_PER_RATING, JOBS_AT_MOST, JOB_GOLD, JOB_LEANS, JOB_LEAN_LABEL, JOB_SPAN, LEAN_SPLIT, MATCH_TARGET, RATING_PER_WARRIOR, USUAL_SHARE, matchFor, powerOf, ratingOf, totalExperience, type Job, type Standing } from '../../campaign/jobs';
 import type { CampaignLocation } from '../../campaign/model';
 import { formatImperial, imperialForDate } from '../../lib/calendar';
 
 // The Fountain Post, the campaign's catch-up rule, as a draft for game masters alone and only as a dry run: where every
-// warband stands against the pace, what the post would offer before each scheduled game, a dry run for any warband at
+// warband stands, what the post would offer before each scheduled game, a dry run for any warband at
 // any place, and the boards themselves. Nothing here writes to a warband: the rating and treasury typed into the table
 // are figures to reckon with, carried in the address, and the boards are the only thing saved.
 export const prerender = false;
@@ -29,6 +29,7 @@ const today = todayFor(null);
 
 let record: PostRecord | null = null, logged: Standing[] = [], offers: Offer[] = [], dry: Offer | null = null, places: CampaignLocation[] = [], board: Job[] = [], here = '';
 let trouble = false;
+let against: string | null = null;
 const q = Astro.url.searchParams;
 // the game master's own figures for the books, `rating.<warband>` and `gold.<warband>`: reckoned with, never saved
 const books: Books = {};
@@ -51,10 +52,13 @@ if (gm && viewer) {
     [places, board] = await Promise.all([listLocations(), listJobs()]);
     const o = await postOverview(viewer, here, books, rolls);
     record = o.record; logged = o.logged; offers = o.offers;
-    const behind = o.dry.find((d) => d.reckoning.owed > 0) ?? o.dry[0];
-    const warbandId = q.get('warband') && record.standings.some((s) => s.warbandId === q.get('warband')) ? q.get('warband')! : behind?.warbandId;
+    // the dry run's match: as chosen, or the weakest warband against the strongest
+    const byStrength = record.standings.slice().sort((a, b) => powerOf(a) - powerOf(b));
+    const known = (id: string | null) => (id && record!.standings.some((x) => x.warbandId === id) ? id : null);
+    const warbandId = known(q.get('warband')) ?? byStrength[0]?.warbandId;
+    against = q.has('against') ? known(q.get('against')) : (byStrength.at(-1)?.warbandId !== warbandId ? byStrength.at(-1)?.warbandId ?? null : null);
     const place = places.find((l) => l.id === q.get('place'))?.id ?? here;
-    if (warbandId) dry = await offer(viewer, { warbandId, locationId: place, rolls: rolls[diceKey(warbandId)] }, record);
+    if (warbandId) dry = await offer(viewer, { warbandId, locationId: place, against: against && against !== warbandId ? [against] : [], rolls: rolls[diceKey(warbandId)] }, record);
   } catch (e) { console.error('[fountain-post] unavailable', e); trouble = true; }
 }
 
@@ -65,14 +69,13 @@ const placeNames = Object.fromEntries(places.map((l) => [l.id, l.name]));
 const allPoints = places.flatMap((l) => l.points);
 // each notice's D66 number on its own board
 const numbers = new Map(places.flatMap((l) => [...numberBoard(board.filter((j) => j.locationId === l.id))]));
-const pace = record ? paceOf(record.standings) : 0;
 const upcoming = (record?.scenarios ?? []).filter((s) => s.status === 'upcoming');
 const imperial = (iso: string) => { try { return formatImperial(imperialForDate(iso), 'short'); } catch { return iso; } };
 const signInHref = `${base}/signin/?next=${encodeURIComponent(`${base}/admin/jobs/`)}`;
 const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places.find((l) => l.id === here);
 ---
 
-<Base title="The Fountain Post — The Watch House" description="The campaign's catch-up rule laid out for the game master: where every warband stands against the pace, what the post offers, and a dry run.">
+<Base title="The Fountain Post — The Watch House" description="The campaign's catch-up rule laid out for the game master: where every warband stands, what the post offers before each game, and a dry run.">
   <Fragment slot="head">
     <link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Barlow+Condensed:wght@600&display=swap" rel="stylesheet" />
     <meta name="theme-color" content="#0e0d0c" />
@@ -106,39 +109,35 @@ const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places
 
         <section class="wh-section" id="rule" aria-labelledby="rule-title">
           <h1 class="wh-h1" id="rule-title">Notices on the fountain post</h1>
-          <p class="wh-muted">Between games every warband takes the place's work, the notices nailed to the fountain's post in the square. For most it is the usual work and a few crowns. A warband that has fought fewer games than the rest took more of it, and when it next comes to the table it brings that pay home. For now this is a dry run for the Watch alone: nothing here pays a warband, and the players do not see it. One day they will run it themselves, before their games.</p>
+          <p class="wh-muted">Between games every warband takes the place's work, the notices nailed to the fountain's post in the square. Its purpose is the game ahead: to make the matchup as good a fight as it can be. For most it is the usual work and a few crowns. A warband weaker than the side it is about to meet took more of it, and brings that pay to the table. For now this is a dry run for the Watch alone: nothing here pays a warband, and the players do not see it. One day they will run it themselves, before their games.</p>
           <ul class="wh-tarot-rules">
-            <li>Every warband on a scheduled game takes <b>the usual work</b>: one job, paying one part in {Math.round(1 / USUAL_SHARE)} of a job's gold, at least 5 gc, and a chance of experience on its own D6: 1–3 none, 4–5 a point to the least experienced warrior it names, 6 a point each to the two least experienced (two to the one, if it names one). Even the warband leading the campaign takes it, for the telling. It does not count towards the pace.</li>
-            <li>The <b>pace</b> is the median of the warbands' games, counting the owed jobs each has taken as games (the higher middle when their number is even). Only warbands with a keeper, or a game fought, count. Today it is <b>{pace}</b>.</li>
-            <li>A warband is <b>owed</b> a job for every game it is behind the pace, at most <b>{JOBS_AT_MOST}</b> at one return, on top of the usual work. Owed jobs pay in full.</li>
+            <li>Every warband on a scheduled game takes <b>the usual work</b>: one job, paying one part in {Math.round(1 / USUAL_SHARE)} of a job's gold, at least 5 gc, and a chance of experience on its own D6: 1–3 none, 4–5 a point to the least experienced warrior it names, 6 a point each to the two least experienced (two to the one, if it names one). Even the strongest warband of the game takes it, for the telling.</li>
+            <li>The <b>match</b>: each warband is set against the strongest other warband on its game, the <b>stronger side</b>. Strength is the rating (logged, or reckoned at {RATING_PER_WARRIOR} a warrior plus their experience) with the unspent treasury at {GOLD_PER_RATING} gc a point. The <b>target</b> is {Math.round(MATCH_TARGET * 100)} parts in a hundred of the stronger side's strength.</li>
+            <li>A warband short of the target is <b>owed</b> a job for every {JOB_SPAN} points of strength it is short, at most <b>{JOBS_AT_MOST}</b>, on top of the usual work. The owed jobs share the gap between them.</li>
             <li>The post <b>opens</b> when a game is scheduled with the warband on its muster, and <b>shuts</b> at that game's first turn. The jobs come from the board of the place the game is fought in, or where the campaign is when the game names none.</li>
-            <li>The <b>ceiling</b>: the jobs never make a warband stronger than the weakest warband that has fought more. Strength is the rating (logged, or reckoned at {RATING_PER_WARRIOR} a warrior plus their experience) with the unspent treasury at {GOLD_PER_RATING} gc a point; the warband's experience together, and each hero's and henchman's, are held under the least of those ahead too. Every grant is cut to fit.</li>
+            <li>The <b>limits</b>: never level with the stronger side, nor past it. The owed jobs stop at the target, the usual work short of the stronger side's strength, and no warrior passes the stronger side's best of the same rank. Every grant is cut to fit. With every roll at its best the weaker side reaches the target; with ordinary rolls, a good way towards it.</li>
             <li>The <b>draw</b> is seeded by the warband and the game: the same game, the same jobs. Withheld jobs are never drawn, nor a job at a point of interest where a game is scheduled. Jobs the warband has not done lately come first.</li>
-            <li>The <b>rolls</b>: which notice (D66 on the board's numbers), the gold ({JOB_GOLD.dice}D6) and the experience (D6). The post rolls each, or the table rolls its own and types it in the job's box; an empty box is the post's roll. A notice the table may not have (withheld, where a game is set, already taken this return, or no notice at that number) is a roll again. Either way the ceiling holds.</li>
-            <li>The <b>experience</b> of an owed job, on its D6: 1–2 the floor (the lean's grant: every warrior +1, every hero +1, the leader +1, or the least experienced hero +2), 3–5 the floor and a point more to the least experienced warrior it names, 6 twice the floor. Never below the floor, unless the ceiling cuts it.</li>
-            <li>The <b>pay</b> of an owed job: {JOB_GOLD.dice}D6×{JOB_GOLD.times}+{JOB_GOLD.plus} gc, times its lean ({JOB_LEANS.map((l) => `${JOB_LEAN_LABEL[l].toLowerCase()} ×${LEAN_GOLD[l]}`).join(', ')}); experience as above. An advance reached is marked, to be rolled at the table.</li>
-            <li>One warband's jobs will move the next one's offer at once: every offer is reckoned from the record as it stands. The dials are code, in <code>src/campaign/jobs.ts</code>.</li>
+            <li>The <b>rolls</b>: which notice (D66 on the board's numbers), the gold ({JOB_GOLD.dice}D6) and the experience (D6). The post rolls each, or the table rolls its own and types it in the job's box; an empty box is the post's roll. A notice the table may not have (withheld, where a game is set, already taken this return, or no notice at that number) is a roll again. Either way the limits hold.</li>
+            <li>The <b>pay</b> of an owed job: its share of the gap, split by its lean between gold and experience ({JOB_LEANS.map((l) => `${JOB_LEAN_LABEL[l].toLowerCase()}: ${Math.round(LEAN_SPLIT[l] * 100)} in a hundred gold`).join('; ')}). The gold is paid at its {JOB_GOLD.dice}D6 out of 12, at {GOLD_PER_RATING} gc a point of strength; the experience at its D6 out of 6, never below the floor of a third (1–2 the floor), shared out a point at a time among those the lean names, least experienced first: every warrior, every hero, the leader, or the least experienced hero. An advance reached is marked, to be rolled at the table.</li>
+            <li>Every offer is reckoned from the record as it stands, against the warbands on the game's muster. The dials are code, in <code>src/campaign/jobs.ts</code>.</li>
           </ul>
         </section>
 
         <section class="wh-section" id="standing" aria-labelledby="standing-title">
           <h2 class="wh-h2" id="standing-title">Where they stand</h2>
-          <p class="wh-muted">The books the ceiling reads. Players do not log their rating and treasury on the site yet, so try figures of your own here and <b>Reckon</b>: every offer on the page is reckoned with them, and nothing is saved. A rating of <b>0</b> is reckoned from the roster. Experience is the warriors' own, from the muster roll.</p>
+          <p class="wh-muted">The books the match reads. Players do not log their rating and treasury on the site yet, so try figures of your own here and <b>Reckon</b>: every offer on the page is reckoned with them, and nothing is saved. A rating of <b>0</b> is reckoned from the roster. Experience is the warriors' own, from the muster roll.</p>
           {whatIf.size > 0 && <p class="wh-post-whatif">Reckoned with your figures for {[...whatIf].map((id) => names[id] ?? id).join(', ')}. <a href={`${base}/admin/jobs/`}>Back to the logged books</a>.</p>}
           <p class="wh-table-hint" aria-hidden="true">Scroll sideways for the rest of the table</p>
           <div class="wh-table-wrap" tabindex="0" role="region" aria-label="Where the warbands stand">
             <table class="wh-table">
-              <thead><tr><th scope="col">Warband</th><th scope="col" class="num">Played</th><th scope="col" class="num">Owed jobs taken</th><th scope="col" class="num">Counts as</th><th scope="col" class="num">Experience</th><th scope="col" class="num">Strength</th><th scope="col" class="num">Owed</th><th scope="col">Rating and treasury, to reckon with</th></tr></thead>
+              <thead><tr><th scope="col">Warband</th><th scope="col" class="num">Played</th><th scope="col" class="num">Experience</th><th scope="col" class="num">Strength</th><th scope="col">Rating and treasury, to reckon with</th></tr></thead>
               <tbody>
                 {record.standings.map((s) => (
                   <tr class="wh-row">
-                    <th scope="row" class="wh-keeper">{s.name}{!s.active && <small>not counted: no keeper, no game</small>}</th>
+                    <th scope="row" class="wh-keeper">{s.name}</th>
                     <td class="num">{s.played}</td>
-                    <td class="num">{s.jobs}</td>
-                    <td class="num">{effectiveGames(s)}</td>
                     <td class="num">{totalExperience(s)}</td>
                     <td class="num">{powerOf(s)}</td>
-                    <td class="num">{jobsOwed(s, record!.standings)}</td>
                     <td>
                       <div class="wh-form-inline wh-post-books">
                         <label>Rating<input type="number" form="reckon" name={`rating.${s.warbandId}`} min="0" max="10000" value={s.rating} /></label>
@@ -157,7 +156,7 @@ const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places
 
         <section class="wh-section" id="games" aria-labelledby="games-title">
           <h2 class="wh-h2" id="games-title">Before the games</h2>
-          <p class="wh-muted">Every scheduled game and what the post would offer each warband on its muster: the usual work for all, and the owed jobs for those behind. Reckoned afresh at every look, with the game's own seed, so these are the jobs the game would draw; nothing is taken.</p>
+          <p class="wh-muted">Every scheduled game and what the post would offer each warband on its muster: the usual work for all, and owed jobs for the weaker side. Reckoned afresh at every look, with the game's own seed, so these are the jobs the game would draw; nothing is taken.</p>
           {upcoming.length ? upcoming.map((s) => (
             <div class="wh-post-game">
               <h3 class="wh-h3"><a href={`${base}/scenarios/${s.id}/`}>{s.title}</a> · {imperial(s.playedOn)} · {s.locationId ? placeNames[s.locationId] ?? s.locationId : `${placeNames[here] ?? here}, where the campaign is`}{s.turn > 0 && ` · turn ${s.turn}`}</h3>
@@ -172,9 +171,10 @@ const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places
 
         <section class="wh-section" id="dry" aria-labelledby="dry-title">
           <h2 class="wh-h2" id="dry-title">Dry run</h2>
-          <p class="wh-muted">What the post would pay a warband now, at any place, as if a game were scheduled there today. Nothing is written. The draw is seeded by the place instead of a game, so a real game's jobs may differ; their pay is reckoned the same way.</p>
+          <p class="wh-muted">What the post would pay a warband now, against another, at any place, as if a game were scheduled there today. Nothing is written. The draw is seeded by the place instead of a game, so a real game's jobs may differ; their pay is reckoned the same way.</p>
           <form class="wh-form-inline" id="reckon" method="get" action={`${base}/admin/jobs/#dry`}>
-            <label>Warband <select name="warband">{record.standings.map((s) => <option value={s.warbandId} selected={s.warbandId === dry?.warbandId}>{s.name}</option>)}</select></label>
+            <label>Warband <select name="warband">{record.standings.map((s) => <option value={s.warbandId} selected={s.warbandId === dry?.warbandId}>{s.name} ({powerOf(s)})</option>)}</select></label>
+            <label>Against <select name="against"><option value="">Nobody</option>{record.standings.map((s) => <option value={s.warbandId} selected={s.warbandId === against}>{s.name} ({powerOf(s)})</option>)}</select></label>
             <label>Place <select name="place">{places.map((l) => <option value={l.id} selected={l.id === dryPlace?.id}>{l.name}{l.id === here ? ' (where the campaign is)' : ''}</option>)}</select></label>
             <button type="submit" class="cf-btn cf-btn-ghost sm">Reckon</button>
           </form>

@@ -1,13 +1,13 @@
 /**
  * The Fountain Post, as the database keeps it: each location's board of jobs, and the jobs each warband took before
- * a game. The rule (the pace, the ceiling, the draw and the pay) is pure in `campaign/jobs.ts`; this loads the record
+ * a game. The rule (the match, the draw, the pay and its limits) is pure in `campaign/jobs.ts`; this loads the record
  * into its `Standing`s, reckons, and writes what was paid into the roster.
  *
  * A draft, open to game masters alone and only as a dry run: the board is kept, and every warband's offer reckoned,
  * in the Watch House at `/admin/jobs/`, and nothing there writes to a warband. A game master may reckon with figures of
  * their own for any warband's rating and treasury (`Books`, `withBooks`), since nobody logs them yet. `takeJobs` and
  * `undoJobs` are the paying side, tested and waiting for the day the players run the post themselves; no route calls
- * them yet. Every reckoning reads the record as it stands, so one warband's jobs will move the next one's offer.
+ * them yet. Every reckoning reads the record as it stands, against the warbands on the game's muster.
  */
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
@@ -119,8 +119,7 @@ export async function loadRecord(): Promise<PostRecord> {
     const book = books.find((b) => b.id === w.id);
     const leader = leaderOf(w)?.id;
     return {
-      warbandId: w.id, name: w.name, active: !!w.ownerId || w.battles > 0, played: w.battles,
-      jobs: taken.filter((t) => t.warbandId === w.id && t.owed).length, rating: book?.rating ?? 0, gold: book?.gold ?? 0,
+      warbandId: w.id, name: w.name, played: w.battles, rating: book?.rating ?? 0, gold: book?.gold ?? 0,
       warriors: w.members.filter((m) => !m.dead).map((m) => ({ id: m.id, name: m.name, rank: m.rank, experience: m.experience ?? 0, leader: m.id === leader })),
     };
   });
@@ -149,6 +148,8 @@ export interface OfferQuery {
   scenarioId?: string | null;
   /** The board to reckon a dry run on, with no game; or where the campaign is, when the game names no location. */
   locationId?: string | null;
+  /** For a dry run with no game, the warbands it would meet. A scheduled game brings its own muster. */
+  against?: string[];
   /** The table's own rolls, place by place in the return (owed first, then the usual work): a D66 for which notice, 2D6 for the gold, a D6 for the experience; null where the post rolls. */
   rolls?: TableRolls;
 }
@@ -172,12 +173,15 @@ export async function offer(actor: Actor, q: OfferQuery, record?: PostRecord): P
   const lastTaken = Object.fromEntries(mine.filter((t) => t.jobId != null).map((t) => [t.jobId!, t.id]));
   const seed = jobSeed(q.warbandId, scenario?.id ?? `dry:${locationId ?? 'nowhere'}`);
   const taken = scenario ? mine.filter((t) => t.scenarioId === scenario.id) : [];
-  const shut = !scenario ? 'As if a game were scheduled here today.' : taken.length ? 'They took their jobs before this game already.' : shutBecause(scenario, q.warbandId) ?? (!locationId ? 'The game names no place, so there is no post to read.' : null);
+  // the match: the game's muster, or for a dry run the warbands it would meet
+  const facing = scenario ? scenario.warbands.map((w) => w.warbandId) : (q.against ?? []);
+  const others = r.standings.filter((o) => o.warbandId !== standing.warbandId && facing.includes(o.warbandId));
+  const shut = !scenario ? (others.length ? 'As if a game were scheduled here today.' : 'As if a game were scheduled here today, against nobody: the usual work alone.') : taken.length ? 'They took their jobs before this game already.' : shutBecause(scenario, q.warbandId) ?? (!locationId ? 'The game names no place, so there is no post to read.' : null);
   return {
     warbandId: standing.warbandId, name: standing.name,
     scenario: scenario ? { id: scenario.id, title: scenario.title, playedOn: scenario.playedOn } : null,
     locationId, shut, taken, standing,
-    reckoning: reckon(standing, r.standings, board, seed, { barredPoints, lastTaken, ...q.rolls }),
+    reckoning: reckon(standing, others, board, seed, { barredPoints, lastTaken, ...q.rolls }),
   };
 }
 
@@ -196,16 +200,14 @@ export function withBooks(record: PostRecord, books: Books = {}): PostRecord {
   };
 }
 
-/** Every warband's offer for every scheduled game it is on, and a dry run for each warband on no game. For the Watch House. */
-export async function postOverview(actor: Actor, here: string, books: Books = {}, rolls: Record<string, TableRolls> = {}): Promise<{ record: PostRecord; logged: Standing[]; offers: Offer[]; dry: Offer[] }> {
+/** Every warband's offer for every scheduled game it is on, for the Watch House, with the record (books applied) to reckon dry runs on. */
+export async function postOverview(actor: Actor, here: string, books: Books = {}, rolls: Record<string, TableRolls> = {}): Promise<{ record: PostRecord; logged: Standing[]; offers: Offer[] }> {
   gmOnly(actor);
   const loaded = await loadRecord();
   const record = withBooks(loaded, books);
   const offers: Offer[] = [];
   for (const s of upcomingOnly(record.scenarios)) for (const w of s.warbands) offers.push(await offer(actor, { warbandId: w.warbandId, scenarioId: s.id, locationId: here, rolls: rolls[diceKey(w.warbandId, s.id)] }, record));
-  const dry: Offer[] = [];
-  for (const w of record.standings) dry.push(await offer(actor, { warbandId: w.warbandId, locationId: here, rolls: rolls[diceKey(w.warbandId)] }, record));
-  return { record, logged: loaded.standings, offers, dry };
+  return { record, logged: loaded.standings, offers };
 }
 
 // ───────────────────────── taking the jobs ─────────────────────────
