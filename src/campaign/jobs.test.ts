@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DICE_HIGH, DICE_LOW, ERRAND_SHARE, EXPERIENCE_FLOOR, GOLD_PER_RATING, LEAN_GOLD, LEAN_SPLIT, MATCH_TARGET, SCOPE_FROM,
+  DICE_HIGH, DICE_LOW, ERRAND_SHARE, SIX_PAYS, EXPERIENCE_FLOOR, GOLD_PER_RATING, LEAN_GOLD, LEAN_SPLIT, MATCH_TARGET, SCOPE_FROM,
   dieFor, drawJobs, drawSlot, experienceShareOf, isD6, isD66, isDiceTotal, isNoticeRoll, jobSeed, matchFor, numberBoard, payJobs, powerOf,
   ratingOf, reckon, scopeFor, shutBecause, totalExperience, type Job, type JobScope, type Match, type Standing,
 } from './jobs.ts';
@@ -234,4 +234,30 @@ test('the table may roll for the notice; a number it may not have is refused, an
   assert.match(drawSlot(board, 'undertaking', 5, { pick: 11 })!.refused!, /Not a roll of D6/);
   const viaReckon = reckon(weak(), [strong()], board, 5, { picks: [3] }).payout!.jobs[0];
   assert.deepEqual([viaReckon.job.id, viaReckon.slot?.byHand], [23, true], 'the table’s pick reaches the pay');
+});
+
+test('a six on the experience die always pays at least a point, though never level with the stronger side', () => {
+  assert.equal(SIX_PAYS, 6);
+  const me = weak();
+  const atTarget: Match = { stronger: { warbandId: 'x', name: 'x', power: 200, best: { hero: 100, henchman: 100 } }, target: powerOf(me), gap: 0 };
+  // an errand with no room left under the stronger side but one: the six still pays its point
+  const tight: Match = { ...atTarget, stronger: { ...atTarget.stronger!, power: powerOf(me) + 2 } };
+  for (const lean of ['gold', 'experience', 'champion', 'even'] as const) {
+    const p = payJobs(me, tight, [{ job: job(1, 'errand', { lean }), owed: false, experienceDie: 6, dice: 12 }], 1).jobs[0];
+    assert.ok(xpOf(p.grants) >= 1, `${lean}: a six on an errand pays a point`);
+  }
+  // a commission at the target already: no room, and the six still pays one, past the target
+  const atIt = payJobs(me, { ...atTarget, gap: 6 }, [{ job: job(11, 'commission', { lean: 'gold' }), owed: true, experienceDie: 6 }], 1).jobs[0];
+  assert.equal(xpOf(atIt.grants), 1, 'past the target, a single point');
+  // every warrior already at the stronger side's best: the point goes to the least experienced anyway
+  const capped: Match = { stronger: { warbandId: 'x', name: 'x', power: 500, best: { hero: 0, henchman: 0 } }, target: 400, gap: 50 };
+  assert.deepEqual(payJobs(me, capped, [{ job: job(21, 'undertaking', { lean: 'champion' }), owed: true, experienceDie: 6 }], 1).jobs[0].grants.map((g) => [g.memberId, g.experience]), [['weak-2', 1]]);
+  // a warband with no heroes, on a job that names the leader: the least experienced warrior of the warband
+  const noHeroes = { ...me, warriors: me.warriors.map((w) => ({ ...w, rank: 'henchman' as const, leader: false })) };
+  assert.deepEqual(payJobs(noHeroes, { stronger: null, target: 0, gap: 0 }, [{ job: job(1, 'errand', { lean: 'gold' }), owed: false, experienceDie: 6 }], 1).jobs[0].grants.map((g) => g.memberId), ['weak-4']);
+  // one short of level with the stronger side: the point would make them level, so it is not paid
+  const level: Match = { ...atTarget, stronger: { ...atTarget.stronger!, power: powerOf(me) + 1 } };
+  assert.equal(xpOf(payJobs(me, level, [{ job: job(1, 'errand'), owed: false, experienceDie: 6 }], 1).jobs[0].grants), 0, 'never level');
+  // and a five pays nothing extra where there is no room
+  assert.equal(xpOf(payJobs(me, { ...atTarget, gap: 6 }, [{ job: job(11, 'commission', { lean: 'gold' }), owed: true, experienceDie: 5 }], 1).jobs[0].grants), 0);
 });

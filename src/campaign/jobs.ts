@@ -88,6 +88,8 @@ export const experienceShareOf = (d6: number) => Math.max(EXPERIENCE_FLOOR, d6 /
  */
 export const ERRAND_EXPERIENCE = { none: [1, 2, 3], one: [4, 5], two: [6] } as const;
 export const isD6 = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= 6;
+/** A six on the experience die always pays at least a point, whatever the job and past the limits, though never level with the stronger side. */
+export const SIX_PAYS = 6;
 
 /** The rulebook's experience at which a hero, or a henchman group, rolls an advance. */
 export const HERO_ADVANCES = [2, 4, 6, 8, 11, 14, 17, 20, 24, 28, 32, 36, 41, 46, 51, 57, 63, 69, 76, 83, 90];
@@ -339,7 +341,7 @@ export interface JobToPay {
  * the gold paid at its 2D6 out of 12 and the experience at its D6 out of 6, never below the floor, the experience shared
  * out a point at a time among those the lean names, least experienced first; what a warrior already at the stronger
  * side's best cannot take goes to the rest of the warband, and what nobody can take is paid in gold instead. An errand
- * pays a few crowns and a chance of a point or two. Experience is granted before gold, every point held under the limits as the warband's strength
+ * pays a few crowns and a chance of a point or two. A six on the experience die always pays at least a point (`SIX_PAYS`). Experience is granted before gold, every point held under the limits as the warband's strength
  * rises: the target for a commission or an undertaking, short of the stronger side for an errand, the stronger side's
  * best of the rank for each warrior. Gold is paid in fives, an errand at least five.
  */
@@ -387,6 +389,15 @@ export function payJobs(s: Standing, match: Match, jobs: JobToPay[], seed: numbe
     let spare = owed ? asked - granted : 0;
     for (const w of s.warriors.slice().sort((a, b) => xp.get(a.id)! - xp.get(b.id)!)) { if (spare <= 0 || room() <= 0) break; const k = grant(w, spare); spare -= k; granted += k; }
     if (granted < asked && !owed) jobCut = true;
+    // a six on the experience die always pays a point, past the target and a warrior's best if need be, though never
+    // level with the stronger side: to the least experienced warrior the job names, or of the warband if it names none
+    if (experienceDie === SIX_PAYS && granted === 0 && s.warriors.length && (!match.stronger || strength() + 1 < match.stronger.power)) {
+      const byXp = (list: Warrior[]) => list.slice().sort((a, b) => xp.get(a.id)! - xp.get(b.id)!)[0];
+      const w = byXp(named(job.lean, s.warriors)) ?? byXp(s.warriors);
+      xp.set(w.id, xp.get(w.id)! + 1); total += 1; rating += 1;
+      given.set(w.id, (given.get(w.id) ?? 0) + 1);
+      granted = 1;
+    }
     const grants: Grant[] = [...given].map(([id, n]) => {
       const w = s.warriors.find((x) => x.id === id)!;
       return { memberId: id, name: w.name, experience: n, advance: crossesAdvance(w.rank, w.experience, w.experience + n) };
