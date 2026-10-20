@@ -14,13 +14,13 @@ import { deleteDocument, saveDocument } from '../../../server/content/curfew';
 import { setSetting } from '../../../server/campaign/settings';
 import { currentLocation } from '../../../server/curfew/service';
 import { addJob, removeJob, updateJob } from '../../../server/campaign/jobs';
-import { JOB_LEANS } from '../../../campaign/jobs';
+import { JOB_LEANS, JOB_SCOPES } from '../../../campaign/jobs';
 
 export const prerender = false;
 
 // never steered: these actions reach every ledger
 const today = () => todayFor(null);
-const job = { title: z.string().max(80), text: z.string().max(1000), lean: z.enum(JOB_LEANS), // a select sends the point as a string, and nothing as empty
+const job = { title: z.string().max(80), text: z.string().max(1000), lean: z.enum(JOB_LEANS), scope: z.enum(JOB_SCOPES), // a select sends the point as a string, and nothing as empty
   pointId: z.preprocess((v) => (v === '' || v == null ? null : Number(v)), z.number().int().positive().nullable()), withheld: z.boolean() };
 const here = async () => (await currentLocation(today())).id;
 const article = { headline: z.string().max(200), byline: z.string().max(200), body: z.string().max(4000), notice: z.boolean(), locationId: z.string().max(64), published: z.boolean(), sort: z.number().int() };
@@ -45,7 +45,7 @@ const routes = {
   // the fountain post's boards, a draft for game masters alone (campaign/jobs.ts); the post itself is a dry run on its page
   'job-add': route(z.object({ locationId: z.string().min(1).max(64), job: z.object(job).partial().required({ title: true }) }), async (i, a) => { await addJob(a, i.locationId, i.job); return { ok: true, message: 'Nailed to the post.' }; }, 'gm'),
   'job-update': route(z.object({ jobId: z.number().int().positive(), patch: z.object(job).partial() }), async (i, a) => { await updateJob(a, i.jobId, i.patch); return { ok: true, message: 'The notice is rewritten.' }; }, 'gm'),
-  'job-remove': route(z.object({ jobId: z.number().int().positive() }), async (i, a) => { await removeJob(a, i.jobId); return { ok: true, message: 'Torn down. What was done stays done.' }; }, 'gm'),
+  'job-remove': route(z.object({ jobId: z.number().int().positive() }), async (i, a) => { const r = await removeJob(a, i.jobId); return { ok: true, message: r.withheld ? 'A notice of the seed’s: withheld rather than torn down, so the seed does not nail it up again.' : 'Torn down. What was done stays done.' }; }, 'gm'),
   'content-delete': route(z.object({ id: z.string().min(1).max(80) }), async (i, a) => { await deleteDocument(a, i.id, (await currentLocation(today())).id); return { ok: true, message: 'The place is off the map. Its last version is kept.' }; }, 'gm'),
 };
 

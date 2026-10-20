@@ -3,7 +3,7 @@
  * the warbands table is empty the fixtures are imported once, so a fresh database (local PGlite, a new Neon) shows
  * the campaign as it was recorded. After that the database rules and the fixtures are never read again.
  */
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
 import { locationJobs, locationPoints, locations, members, newsArticles, scenarioMembers, scenarioOutOfAction, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
 import { warbands as seedWarbands } from '../../data/warbands.ts';
@@ -53,26 +53,38 @@ export async function seedLocationsIfEmpty(): Promise<boolean> {
 let jobsSeeded: Promise<void> | undefined;
 
 /**
- * Nail the fixtures' jobs to the posts if no location has any. Kept apart as the locations are: the boards came later
- * still. A job names its point of interest by name, found among the location's points as they stand.
+ * Nail the fixtures' jobs to the posts. Kept apart as the locations are: the boards came later still. An empty board is
+ * given the whole seed; a board already nailed up is given the seed's jobs it lacks, by title, and a seed job nobody has
+ * edited on the site (its `updated_at` still its `created_at`) follows the seed's words, scope, lean, point and order,
+ * so a rewrite of the seed reaches a live board without touching what a game master has made their own. A job names
+ * its point of interest by name, found among the location's points as they stand.
  */
 export function ensureJobsSeeded(): Promise<void> {
-  jobsSeeded ??= ensureLocationsSeeded().then(seedJobsIfEmpty).then(() => undefined, (e) => { jobsSeeded = undefined; throw e; });
+  jobsSeeded ??= ensureLocationsSeeded().then(seedJobs).then(() => undefined, (e) => { jobsSeeded = undefined; throw e; });
   return jobsSeeded;
 }
 
-export async function seedJobsIfEmpty(): Promise<boolean> {
+/** Bring the boards up to the seed, as `ensureJobsSeeded` says. Answers how many jobs were nailed up or brought up to date. */
+export async function seedJobs(): Promise<number> {
   const d = db();
-  const [{ n }] = await d.select({ n: sql<number>`count(*)::int` }).from(locationJobs);
-  if (n > 0) return false;
-  const [placed, points] = await Promise.all([d.select({ id: locations.id }).from(locations), d.select().from(locationPoints)]);
+  const [placed, points, existing] = await Promise.all([d.select({ id: locations.id }).from(locations), d.select().from(locationPoints), d.select().from(locationJobs)]);
   const here = new Set(placed.map((l) => l.id));
-  const rows = seedLocations.filter((l) => here.has(l.id)).flatMap((l) => (l.jobs ?? []).map((j, i) => ({
-    locationId: l.id, pointId: points.find((p) => p.locationId === l.id && p.name === j.point)?.id ?? null, title: j.title, text: j.text, lean: j.lean, sort: i + 1,
+  const wanted = seedLocations.filter((l) => here.has(l.id)).flatMap((l) => (l.jobs ?? []).map((j, i) => ({
+    locationId: l.id, pointId: points.find((p) => p.locationId === l.id && p.name === j.point)?.id ?? null, title: j.title, text: j.text, lean: j.lean, scope: j.scope, sort: i + 1,
   })));
+  const fresh = wanted.filter((w) => !existing.some((e) => e.locationId === w.locationId && e.title === w.title));
   // two cold starts may race; a job's title is its own on its board
-  if (rows.length) await d.insert(locationJobs).values(rows).onConflictDoNothing();
-  return true;
+  if (fresh.length) await d.insert(locationJobs).values(fresh).onConflictDoNothing();
+  let changed = fresh.length;
+  for (const w of wanted) {
+    const e = existing.find((x) => x.locationId === w.locationId && x.title === w.title);
+    if (!e || e.updatedAt.getTime() !== e.createdAt.getTime()) continue;
+    if (e.text === w.text && e.lean === w.lean && e.scope === w.scope && e.pointId === w.pointId && e.sort === w.sort) continue;
+    // still the seed's own: it follows the seed, and stays untouched for the next rewrite
+    await d.update(locationJobs).set({ text: w.text, lean: w.lean, scope: w.scope, pointId: w.pointId, sort: w.sort, updatedAt: e.createdAt }).where(eq(locationJobs.id, e.id));
+    changed++;
+  }
+  return changed;
 }
 
 /** Where the campaign began, and where the seeded battles were fought. */

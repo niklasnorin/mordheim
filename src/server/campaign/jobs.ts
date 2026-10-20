@@ -14,12 +14,13 @@ import { db } from '../db/client.ts';
 import { locationJobs, locationPoints, locations, members, warbandJobs, warbands as warbandTable } from '../db/schema.ts';
 import { LedgerError } from '../../curfew/ledger.ts';
 import { leaderOf, type Scenario, type Warband } from '../../campaign/model.ts';
-import { DICE_HIGH, DICE_LOW, JOB_LEANS, isD6, isD66, isDiceTotal, jobSeed, reckon, shutBecause, type Grant, type Job, type JobLean, type Reckoning, type Standing, type TableRolls } from '../../campaign/jobs.ts';
+import { DICE_HIGH, DICE_LOW, JOB_LEANS, JOB_SCOPES, isD6, isDiceTotal, jobSeed, reckon, shutBecause, type Grant, type Job, type JobLean, type JobScope, type Reckoning, type Standing, type TableRolls } from '../../campaign/jobs.ts';
 import { proseSource } from '../../campaign/prose.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { listWarbands } from './roster.ts';
 import { listScenarios, upcomingOnly } from './scenarios.ts';
 import { ensureJobsSeeded } from './seed.ts';
+import { locations as seedLocations } from '../../data/locations.ts';
 
 export { LedgerError };
 
@@ -29,7 +30,7 @@ function gmOnly(actor: Actor): void { if (!isGm(actor)) throw new LedgerError('T
 // ───────────────────────── the board ─────────────────────────
 
 type JobRow = typeof locationJobs.$inferSelect;
-const jobOf = (r: JobRow): Job => ({ id: r.id, locationId: r.locationId, pointId: r.pointId, title: r.title, text: r.text, lean: r.lean, withheld: r.withheld, sort: r.sort });
+const jobOf = (r: JobRow): Job => ({ id: r.id, locationId: r.locationId, pointId: r.pointId, title: r.title, text: r.text, lean: r.lean, scope: r.scope, withheld: r.withheld, sort: r.sort });
 
 /** Every job on every board, or on one location's, in the game master's order. */
 export async function listJobs(locationId?: string): Promise<Job[]> {
@@ -38,7 +39,7 @@ export async function listJobs(locationId?: string): Promise<Job[]> {
   return rows.map(jobOf);
 }
 
-export interface JobInput { title: string; text?: string; lean?: JobLean; pointId?: number | null; withheld?: boolean }
+export interface JobInput { title: string; text?: string; lean?: JobLean; scope?: JobScope; pointId?: number | null; withheld?: boolean }
 
 async function pointIn(locationId: string, pointId: number | null | undefined): Promise<number | null> {
   if (pointId == null) return null;
@@ -47,6 +48,7 @@ async function pointIn(locationId: string, pointId: number | null | undefined): 
   return pointId;
 }
 const leanOf = (given: string | undefined, fallback: JobLean): JobLean => (given && (JOB_LEANS as readonly string[]).includes(given) ? (given as JobLean) : fallback);
+const scopeOf = (given: string | undefined, fallback: JobScope): JobScope => (given && (JOB_SCOPES as readonly string[]).includes(given) ? (given as JobScope) : fallback);
 /** A title is its own on its board; the seed relies on it. */
 async function titleFree(locationId: string, title: string, except?: number): Promise<void> {
   const rows = await db().select({ id: locationJobs.id }).from(locationJobs).where(and(eq(locationJobs.locationId, locationId), eq(locationJobs.title, title))).limit(1);
@@ -62,7 +64,7 @@ export async function addJob(actor: Actor, locationId: string, input: JobInput):
   if (!title) throw new LedgerError('The job needs a name.');
   await titleFree(locationId, title);
   const [{ n }] = await db().select({ n: sql<number>`coalesce(max(${locationJobs.sort}), 0)::int` }).from(locationJobs).where(eq(locationJobs.locationId, locationId));
-  await db().insert(locationJobs).values({ locationId, title, text: proseSource(input.text, 1000), lean: leanOf(input.lean, 'even'), pointId: await pointIn(locationId, input.pointId), withheld: !!input.withheld, sort: n + 1 });
+  await db().insert(locationJobs).values({ locationId, title, text: proseSource(input.text, 1000), lean: leanOf(input.lean, 'even'), scope: scopeOf(input.scope, 'errand'), pointId: await pointIn(locationId, input.pointId), withheld: !!input.withheld, sort: n + 1 });
   return listJobs(locationId);
 }
 
@@ -79,23 +81,35 @@ export async function updateJob(actor: Actor, jobId: number, patch: Partial<JobI
   if (patch.title !== undefined) { const title = clean(patch.title, 80); if (!title) throw new LedgerError('The job needs a name.'); await titleFree(j.locationId, title, j.id); set.title = title; }
   if (patch.text !== undefined) set.text = proseSource(patch.text, 1000);
   if (patch.lean !== undefined) set.lean = leanOf(patch.lean, j.lean);
+  if (patch.scope !== undefined) set.scope = scopeOf(patch.scope, j.scope);
   if (patch.pointId !== undefined) set.pointId = await pointIn(j.locationId, patch.pointId);
   if (patch.withheld !== undefined) set.withheld = !!patch.withheld;
   await db().update(locationJobs).set(set).where(eq(locationJobs.id, jobId));
   return listJobs(j.locationId);
 }
 
-/** Take a job off the board for good. What was taken from it stays in the warbands' records, in its own words. */
-export async function removeJob(actor: Actor, jobId: number): Promise<Job[]> {
+/** Whether a job is one of the seed's own, which the seed would nail up again if it were gone. */
+const isSeedJob = (j: Pick<JobRow, 'locationId' | 'title'>) => seedLocations.some((l) => l.id === j.locationId && (l.jobs ?? []).some((f) => f.title === j.title));
+
+/**
+ * Take a job off the board. A job of the game master's own goes for good; one of the seed's is withheld instead, and
+ * counted as edited, so the seed neither nails it up again nor rewrites it. What was taken from it stays in the
+ * warbands' records, in its own words. Answers whether it went or was withheld.
+ */
+export async function removeJob(actor: Actor, jobId: number): Promise<{ jobs: Job[]; withheld: boolean }> {
   gmOnly(actor);
   const j = await jobRow(jobId);
+  if (isSeedJob(j)) {
+    await db().update(locationJobs).set({ withheld: true, updatedAt: new Date() }).where(eq(locationJobs.id, jobId));
+    return { jobs: await listJobs(j.locationId), withheld: true };
+  }
   await db().delete(locationJobs).where(eq(locationJobs.id, jobId));
-  return listJobs(j.locationId);
+  return { jobs: await listJobs(j.locationId), withheld: false };
 }
 
 // ───────────────────────── the warbands as the rule sees them ─────────────────────────
 
-export interface TakenJob { id: number; warbandId: string; scenarioId: string | null; seq: number; jobId: number | null; locationId: string | null; pointId: number | null; title: string; text: string; lean: string; owed: boolean; pick: number | null; pickByHand: boolean; dice: number | null; byHand: boolean; experienceDie: number | null; experienceByHand: boolean; gold: number; grants: Grant[]; takenBy: string | null; takenAt: Date }
+export interface TakenJob { id: number; warbandId: string; scenarioId: string | null; seq: number; jobId: number | null; locationId: string | null; pointId: number | null; title: string; text: string; lean: string; scope: string; owed: boolean; pick: number | null; pickByHand: boolean; dice: number | null; byHand: boolean; experienceDie: number | null; experienceByHand: boolean; gold: number; grants: Grant[]; takenBy: string | null; takenAt: Date }
 type TakenRow = typeof warbandJobs.$inferSelect;
 const takenOf = (r: TakenRow): TakenJob => ({ ...r, grants: (r.grants as Grant[]) ?? [] });
 
@@ -119,7 +133,7 @@ export async function loadRecord(): Promise<PostRecord> {
     const book = books.find((b) => b.id === w.id);
     const leader = leaderOf(w)?.id;
     return {
-      warbandId: w.id, name: w.name, played: w.battles, rating: book?.rating ?? 0, gold: book?.gold ?? 0,
+      warbandId: w.id, name: w.name, rating: book?.rating ?? 0, gold: book?.gold ?? 0,
       warriors: w.members.filter((m) => !m.dead).map((m) => ({ id: m.id, name: m.name, rank: m.rank, experience: m.experience ?? 0, leader: m.id === leader })),
     };
   });
@@ -228,16 +242,15 @@ export async function takeJobs(actor: Actor, scenarioId: string, warbandId: stri
   gmOnly(actor);
   if (rolls.dice?.some((n) => n != null && !isDiceTotal(n))) throw new LedgerError(`Two dice show ${DICE_LOW} to ${DICE_HIGH}. Roll again, or let the post roll.`);
   if (rolls.experience?.some((n) => n != null && !isD6(n))) throw new LedgerError('A die shows 1 to 6. Roll again, or let the post roll.');
-  if (rolls.picks?.some((n) => n != null && !isD66(n))) throw new LedgerError('A notice is rolled on D66: 11 to 66, each die 1 to 6.');
   const o = await offer(actor, { warbandId, scenarioId, locationId: here, rolls });
   const refused = o.reckoning.payout?.jobs.find((p) => p.slot?.refused);
-  if (refused) throw new LedgerError(`${refused.slot!.refused} Roll again for that notice, or let the post draw it.`, 409);
+  if (refused) throw new LedgerError(`${refused.slot!.refused} Roll again for the notice, or let the post draw it.`, 409);
   if (o.shut) throw new LedgerError(o.shut, 409);
   const pay = o.reckoning.payout;
   if (!pay || !pay.jobs.length) throw new LedgerError('The post is bare: no job there is open to them.', 409);
   const d = db();
   const rows = pay.jobs.map((p, i) => ({
-    warbandId, scenarioId, seq: i + 1, jobId: p.job.id, locationId: p.job.locationId, pointId: p.job.pointId, title: p.job.title, text: p.job.text, lean: p.job.lean, owed: p.owed, pick: p.slot?.number ?? null, pickByHand: !!p.slot?.byHand, dice: p.dice, byHand: p.byHand, experienceDie: p.experienceDie, experienceByHand: p.experienceByHand, gold: p.gold, grants: p.grants, takenBy: actor.name,
+    warbandId, scenarioId, seq: i + 1, jobId: p.job.id, locationId: p.job.locationId, pointId: p.job.pointId, title: p.job.title, text: p.job.text, lean: p.job.lean, scope: o.reckoning.scope, owed: p.owed, pick: p.slot?.number ?? null, pickByHand: !!p.slot?.byHand, dice: p.dice, byHand: p.byHand, experienceDie: p.experienceDie, experienceByHand: p.experienceByHand, gold: p.gold, grants: p.grants, takenBy: actor.name,
   }));
   const first = await d.insert(warbandJobs).values(rows[0]).onConflictDoNothing().returning({ id: warbandJobs.id });
   if (!first.length) throw new LedgerError('They took their jobs before this game already.', 409);

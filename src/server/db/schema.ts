@@ -469,9 +469,10 @@ export const locationStock = pgTable(
 );
 
 /**
- * The Fountain Post: the work a location offers a warband that has missed games (`campaign/jobs.ts`), as the game
- * master keeps it. A job may be done at a point of interest (`point_id`), and leans its pay one way (`lean`); a
- * withheld one stays on the board's list but is never drawn. Seeded from `src/data/locations.ts` when the table is empty.
+ * The Fountain Post: the work a location offers a warband before a game (`campaign/jobs.ts`), as the game master keeps
+ * it. A job is an errand, a commission or an undertaking (`scope`), may be done at a point of interest (`point_id`), and
+ * leans its pay one way (`lean`); a withheld one stays on the board's list but is never drawn. Seeded from
+ * `src/data/locations.ts`; a seed job nobody has touched follows the seed as it changes (`ensureJobsSeeded`).
  */
 export const locationJobs = pgTable(
   'location_jobs',
@@ -482,6 +483,8 @@ export const locationJobs = pgTable(
     title: text('title').notNull(),
     text: text('text').notNull().default(''),
     lean: text('lean', { enum: ['gold', 'experience', 'champion', 'even'] }).notNull().default('even'),
+    /** How big a job it is: an errand (the usual work), a commission, or an undertaking. The gap of the match picks the scope. */
+    scope: text('scope', { enum: ['errand', 'commission', 'undertaking'] }).notNull().default('errand'),
     withheld: boolean('withheld').notNull().default(false),
     sort: integer('sort').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -509,6 +512,8 @@ export const warbandJobs = pgTable(
     title: text('title').notNull(),
     text: text('text').notNull().default(''),
     lean: text('lean').notNull().default('even'),
+    /** The job's scope as taken, and whether it was sized to the match's gap (a commission or an undertaking) rather than an errand. */
+    scope: text('scope').notNull().default('errand'),
     owed: boolean('owed').notNull().default(true),
     /** The notice's D66 number on its board, and whether the table rolled for it or the post drew it. */
     pick: integer('pick'),

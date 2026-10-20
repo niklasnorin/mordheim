@@ -148,6 +148,13 @@
       "when": 1792439349178,
       "tag": "0020_table-rolls",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792509895883,
+      "tag": "0021_job-scopes",
+      "breakpoints": true
     }
   ]
 }

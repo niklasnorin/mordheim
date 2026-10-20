@@ -21,7 +21,7 @@ Example, `templates.scavenge.boon` in Mordheim: "{name} went sifting in {distric
 
 ### A job on the fountain post (`location_jobs`, `src/data/locations.ts`)
 
-The vignette's cousin, in the past tense: one or two short sentences, what the warband did and where, then one thing noticed. A job may touch the place's story as far as the Curfew's pack does: it may see what the pack's rumours, details and crossroads already say, and it never contradicts them, resolves a thread or adds a fact to one. See `docs/fountain-post.md`.
+The vignette's cousin, in the past tense: what the warband did and where, then what was noticed. An errand is a sentence or two, a commission two or three, an undertaking four or five, with more scope and more of the place's lore. Deadpan grimdark: the horror is noticed, never remarked on, and the last line is a dry turn, not a joke. A job may touch the place's story as far as the Curfew's pack does: it may see what the pack's rumours, details and crossroads already say, and it never contradicts them, resolves a thread or adds a fact to one. See `docs/fountain-post.md`.
 
 ## 2. The Town Cryer article (`src/data/news.ts`)
 

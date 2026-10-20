@@ -267,3 +267,5 @@
 .wh-post-dice b { color: var(--candle); font-family: var(--label); font-weight: 600; }
 .wh-post-who { color: var(--bone-dim); font-size: 0.8rem; flex-basis: 100%; }
 .wh-post-number { font-family: var(--label); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--candle); border: 1px solid var(--candle-dim); padding: 0.05rem 0.4rem; margin-right: 0.4rem; }
+ul.wh-post-jobs { list-style: none; padding-left: 0; }
+.wh-post-scope { font-family: var(--label); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem; color: var(--bone); margin: 1rem 0 0.5rem; } .wh-post-scope small { color: var(--bone-dim); text-transform: none; letter-spacing: 0; font-family: var(--body); font-size: 0.85rem; margin-left: 0.4rem; }
