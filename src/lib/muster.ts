@@ -207,7 +207,6 @@ export function mountMuster(o: {
     const from = card.getBoundingClientRect();
     dossier.hidden = false;
     dossier.scrollTop = 0;
-    document.documentElement.classList.add('tk-held');
     card.style.visibility = 'hidden';
     history.pushState({ ...(history.state ?? {}), tkCard: id }, '');
     pin.focus({ preventScroll: true });
@@ -225,7 +224,6 @@ export function mountMuster(o: {
     inner.style.transition = ''; inner.style.transform = ''; inner.style.opacity = '';
     const finish = () => {
       dossier.hidden = true;
-      document.documentElement.classList.remove('tk-held');
       open = null; closing = false;
       const card = cardFor(id);
       if (card) { card.style.visibility = ''; card.focus({ preventScroll: true }); }

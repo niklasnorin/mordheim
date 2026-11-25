@@ -298,12 +298,13 @@ html:has(.tk-pager), html:has(.tk-pager) body { touch-action: pan-y pinch-zoom; 
 @media (max-width: 22rem) { .tk-wr-kills { display: none; } }
 
 /* the card lifted: pinned at the top, the warrior under it; a tap on it puts it back */
-html.tk-held { overflow: hidden; }
+/* the page behind is not locked: anything set on <html> to lock it narrowed the whole screen on an iPhone. The lifted card
+   is always just scrollable and keeps its scrolling to itself, so the page behind stays where it was */
 .tk-dossier { position: fixed; inset: 0; z-index: 25; overflow-y: auto; overscroll-behavior: contain; background: var(--bg); scrollbar-width: none; touch-action: pan-y pinch-zoom; }
 /* it scrolls on its own, so it says again that sideways is the page's (a swipe across puts the card back);
    and no scrollbar of its own: on a screen that keeps them showing it was a dark strip down the right and a narrower page */
 .tk-dossier::-webkit-scrollbar { display: none; }
-.tk-dossier-inner { max-width: 40rem; margin: 0 auto; padding: 0 1rem calc(2rem + env(safe-area-inset-bottom, 0px)); }
+.tk-dossier-inner { box-sizing: border-box; min-height: calc(100% + 1px); max-width: 40rem; margin: 0 auto; padding: 0 1rem calc(2rem + env(safe-area-inset-bottom, 0px)); }
 .tk-wr.pinned { position: sticky; top: 0; z-index: 1; margin-top: calc(.75rem + env(safe-area-inset-top, 0px)); border-color: var(--gold-dim); border-left-color: var(--gold); background: linear-gradient(150deg, #1d2a1f, #141b17); box-shadow: 0 0 0 .75rem var(--bg), 0 14px 30px -10px #000; }
 .tk-wr.pinned[data-down='true'] { border-left-color: var(--blood-bright); }
 .tk-wr.pinned .tk-wr-chev { color: var(--gold); }
