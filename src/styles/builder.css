@@ -1,0 +1,84 @@
+/* ═══════════════════════════════════════════
+   The warband builder: a roster as cards, the purse held in view, a sheet to choose from.
+   On top of manage.css; thumbs first.
+   ═══════════════════════════════════════════ */
+
+.bd-top { display: flex; gap: .75rem 1rem; align-items: end; flex-wrap: wrap; margin-bottom: 1rem; }
+.bd-top .mg-field { flex: 1 1 14rem; margin: 0; }
+.bd[aria-busy='true'] { opacity: .75; }
+
+/* the purse: what is spent, what is left, the rating and the size, held at the top while the roster scrolls */
+.bd-purse { position: sticky; top: 0; z-index: 15; display: flex; flex-wrap: wrap; gap: .25rem 1.2rem; padding: .7rem .9rem; margin: 0 -1rem .9rem; background: var(--bg); border-bottom: 1px solid var(--border); box-shadow: 0 8px 16px -12px #000c; font: var(--text-ui)/1.5 var(--font-utility); color: var(--ink-dim); }
+.bd-purse b { color: var(--parchment); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bd-purse .over, .bd-purse .over b { color: var(--blood-bright); }
+
+.bd-problems { list-style: none; margin: 0 0 1rem; padding: .6rem .9rem; border: 1px solid var(--blood); background: #1a0f0d; color: var(--parchment); font-size: var(--text-ui); display: grid; gap: .25rem; }
+.bd-problems li::before { content: '✕ '; color: var(--blood-bright); }
+.bd-problems.small { margin: .6rem 0 0; }
+.bd-fine { color: var(--green-wyrd); font-size: var(--text-ui); font-style: italic; margin: 0 0 1rem; }
+
+.bd-config { display: flex; justify-content: space-between; gap: .75rem; align-items: center; padding: .55rem .9rem; margin-bottom: .6rem; border: 1px dashed var(--gold-dim); font-size: var(--text-ui); color: var(--ink-dim); }
+.bd-config b { color: var(--parchment); font-weight: normal; }
+
+.bd-warriors { display: grid; gap: .8rem; }
+.bd-card { border: 1px solid var(--border); background: var(--bg-panel); padding: .85rem .9rem 1rem; min-width: 0; }
+.bd-card.hero { border-color: var(--gold-dim); }
+.bd-card-head { display: grid; gap: .4rem; }
+.bd-names { display: grid; gap: .35rem; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
+.bd-name { width: 100%; min-height: var(--control-size); padding: .35rem .55rem; background: transparent; border: 0; border-bottom: 1px solid var(--border); color: var(--parchment); font: 1.15rem/1.2 'Pirata One', Georgia, serif; }
+.bd-name:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.bd-name[readonly] { border-bottom-color: transparent; }
+.bd-kind { display: flex; flex-wrap: wrap; gap: .3rem 1rem; align-items: center; color: var(--blood-bright); font-size: var(--text-ui); font-variant: small-caps; letter-spacing: .04em; }
+.bd-cost { margin-left: auto; color: var(--gold); font-variant: normal; font-variant-numeric: tabular-nums; }
+.bd-count { display: inline-flex; gap: .4rem; align-items: center; color: var(--parchment); font-variant: normal; }
+.bd-count .mg-btn { min-width: var(--control-size); padding: 0; }
+.bd-line { display: flex; flex-wrap: wrap; gap: .3rem .6rem; align-items: center; margin: .2rem 0 .6rem; font-size: var(--text-ui); }
+.bd-line b { color: var(--parchment); }
+.bd-card .mg-h3 { font-size: 1rem; margin: .7rem 0 .35rem; color: var(--gold); }
+
+.bd-chips { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem; }
+.bd-chip { display: inline-flex; align-items: stretch; border: 1px solid var(--border); background: #0f1512; font-size: var(--text-ui); }
+.bd-chip-name { display: inline-flex; align-items: center; min-height: 2.25rem; padding: 0 .6rem; color: var(--ink); background: none; border: 0; font: inherit; }
+button.bd-chip-name { cursor: pointer; text-decoration: underline dotted var(--gold-dim); text-underline-offset: .2em; }
+button.bd-chip-name:hover { color: var(--parchment); }
+.bd-chip-x { min-width: 2.25rem; border: 0; border-left: 1px solid var(--border); background: none; color: var(--ink-dim); cursor: pointer; font-size: 1.1rem; }
+.bd-chip-x:hover { color: var(--blood-bright); }
+.bd-chip.fixed { border-style: dashed; }
+.bd-dismiss { margin-left: auto; }
+
+.bd-hire { margin: 1rem 0; }
+.bd-stash-short { margin: 1.2rem 0; padding: .7rem .9rem; border: 1px solid var(--border); font-size: var(--text-ui); }
+
+/* the sheet: what may be chosen, by section, from the bottom of the screen on a phone */
+.bd-sheet { width: min(100%, 34rem); max-height: min(85vh, 46rem); margin: auto auto 0; padding: 0 0 1rem; border: 1px solid var(--gold-dim); background: var(--bg-panel); color: var(--ink); overflow: auto; overscroll-behavior: contain; }
+@media (min-width: 640px) { .bd-sheet { margin: auto; } }
+.bd-sheet::backdrop { background: #000a; }
+.bd-sheet-head { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .7rem .9rem; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
+.bd-sheet-head h2 { font: normal 1.3rem/1.2 'Pirata One', Georgia, serif; color: var(--parchment); }
+.bd-sec { padding: .4rem .9rem 0; }
+.bd-sec-title { margin: .6rem 0 .3rem; color: var(--gold); font: var(--text-meta)/1.5 var(--font-utility); text-transform: uppercase; letter-spacing: .14em; }
+.bd-options { list-style: none; display: grid; }
+.bd-option { display: flex; gap: .6rem; align-items: center; width: 100%; min-height: var(--control-size); padding: .3rem .2rem; border: 0; border-bottom: 1px solid #1f2620; background: none; color: var(--ink); font: var(--text-ui)/1.4 var(--font-utility); text-align: left; cursor: pointer; }
+.bd-option:hover:not([disabled]) { background: #151c18; color: var(--parchment); }
+.bd-option[disabled] { opacity: .45; cursor: not-allowed; }
+.bd-option-name { flex: 1; }
+.bd-option-cost { color: var(--gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* the keeper's stash and trading post, between games */
+.bd-panel { margin: 1.5rem 0; padding: .9rem; border: 1px solid var(--gold-dim); background: var(--bg-panel); }
+.bd-panel > h2 { font: normal 1.4rem/1.2 'Pirata One', Georgia, serif; color: var(--parchment); margin-bottom: .5rem; }
+.bd-rows { list-style: none; display: grid; gap: .35rem; }
+.bd-row { display: flex; flex-wrap: wrap; gap: .4rem .8rem; align-items: center; padding: .4rem 0; border-bottom: 1px solid #1f2620; font-size: var(--text-ui); }
+.bd-row > .bd-row-name { flex: 1 1 10rem; color: var(--parchment); }
+.bd-row select, .bd-row input { min-height: 2.25rem; background: #0f1512; color: var(--ink); border: 1px solid var(--border); padding: 0 .4rem; font: inherit; max-width: 100%; }
+.bd-row input[type=number] { width: 5rem; }
+.bd-log { list-style: none; display: grid; gap: .3rem; font-size: var(--text-ui); color: var(--ink-dim); }
+.bd-log li { display: flex; gap: .6rem; justify-content: space-between; border-bottom: 1px solid #1f2620; padding: .3rem 0; }
+.bd-log .gold { color: var(--gold); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bd-log .struck { text-decoration: line-through; opacity: .6; }
+
+@media print {
+  .bd-purse { position: static; box-shadow: none; }
+  .bd-top, .bd-hire, .bd-out, .mg-top, .mg-actions, .bd-chip-x, .bd-sheet { display: none !important; }
+  .bd-card { break-inside: avoid; }
+}

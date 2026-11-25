@@ -56,6 +56,7 @@ const free = warbands.filter((w) => !w.ownerId);
 
         <section class="mg-section">
           <div class="mg-section-head"><h2 class="mg-h2">Found a warband</h2></div>
+          <p class="mg-lede">Raise them in <a href={`${base}/builder/`}>the warband builder</a>: hired and armed from their own lists with the 500 crowns, the rest in their stash, the roster kept for you from then on. Or register the company by name alone, and write the warriors in by hand.</p>
           <form class="mg-panel mg-form" data-api="warbands/create">
             <label class="mg-field">Name<input name="name" required maxlength="80" placeholder="The Grey Hand" /></label>
             <label class="mg-field">Kind<input name="type" required maxlength="60" placeholder="Skaven, Reiklanders, Witch Hunters…" /></label>

@@ -1,0 +1,125 @@
+---
+/**
+ * The warband builder, for practice: any warband in the catalogue, hired and equipped from its own lists with the
+ * 500 crowns, reckoned as it goes, kept in this browser. A player who keeps no warband yet may found this one: the
+ * roster goes to the record, and what was not spent goes into its stash.
+ */
+import Base from '../../layouts/Base.astro';
+import ManageTop from '../../components/ManageTop.astro';
+import '../../styles/manage.css';
+import '../../styles/builder.css';
+import { base } from '../../lib/site';
+import { hasDatabase } from '../../server/db/client';
+import { getActor, isGm } from '../../server/roles';
+import { ownWarband } from '../../server/campaign/roster';
+import { catalogueIndex } from '../../builder/data';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const viewer = ready ? await getActor(Astro.request) : null;
+let mine: { id: string; name: string } | undefined;
+if (viewer) { try { const w = await ownWarband(viewer.id); if (w) mine = { id: w.id, name: w.name }; } catch (e) { console.error('[builder] unavailable', e); } }
+// a player founds one warband; a game master may found any, for a player to take up
+const mayFound = !!viewer && (isGm(viewer) || !mine);
+const warbands = catalogueIndex.warbands;
+---
+
+<Base title="Warband builder — Mordheim" description="Hire and equip a Mordheim warband from its own lists, with the crowns and the rating reckoned as you go.">
+  <main class="mg mg-page" id="main-content" data-base={base}>
+    <ManageTop crumbs={[{ label: 'Warbands', href: `${base}/warbands/` }, { label: 'The builder' }]} viewer={viewer} />
+    <div class="mg-hero">
+      <p class="mg-kicker">The muster</p>
+      <h1 class="mg-h1">Raise a warband</h1>
+      <p class="mg-lede">Five hundred crowns, a warband’s own lists and its rules. Hire, arm and name them; what you do not spend goes into the stash. Nothing here is kept but in this browser{mayFound ? ', until you found them' : ''}.</p>
+    </div>
+
+    <div class="bd-top">
+      <label class="mg-field">Warband
+        <select id="bd-type">
+          {warbands.map((w) => <option value={w.slug}>{w.name}{w.grade && w.grade !== '1a' ? ` (grade ${w.grade})` : ''}</option>)}
+        </select>
+      </label>
+      <button type="button" class="mg-btn ghost sm" id="bd-reset">Start again</button>
+    </div>
+
+    <div class="bd" id="bd-root" aria-live="polite"><p class="mg-empty">Opening the lists…</p></div>
+
+    <section class="mg-section bd-out">
+      <div class="mg-actions">
+        <button type="button" class="mg-btn ghost" id="bd-copy">Copy as text</button>
+        <button type="button" class="mg-btn ghost" onclick="print()">Print</button>
+      </div>
+      {mayFound && (
+        <details class="mg-editor" id="bd-found">
+          <summary>Found this warband</summary>
+          <form class="mg-form" id="bd-found-form">
+            <label class="mg-field">The warband’s name<input name="name" required maxlength="80" placeholder="The Silver Hand" /></label>
+            {viewer && isGm(viewer) && <label class="mg-field">For which player, by name<input name="player" maxlength="40" placeholder="Left for a player to take up" /></label>}
+            <p class="mg-note">The roster goes to the record as it stands, every warrior with the name given here (one left blank is named after their kind; the keeper may rename them on the warband’s page). The 500 crowns are paid in, the warriors and their gear paid for, and what is left goes into the stash. The rules must be met first.</p>
+            <div class="mg-actions end"><button type="submit" class="mg-btn">Found them</button></div>
+          </form>
+        </details>
+      )}
+      {!viewer && ready && <p class="mg-note"><a href={`${base}/signin/?next=${encodeURIComponent(`${base}/builder/`)}`}>Sign in</a> to found a warband from the builder.</p>}
+      {viewer && mine && !isGm(viewer) && <p class="mg-note">You keep <a href={`${base}/warbands/${mine.id}/`}>{mine.name}</a>; this is practice. Their own roster is kept on <a href={`${base}/warbands/${mine.id}/roster/`}>their roster page</a>.</p>}
+    </section>
+  </main>
+</Base>
+
+<script>
+  import { catalogueIndex, loadBundle } from '../../lib/builder-data';
+  import { emptyState, localDriver, mountBuilder, textOf, type State, type View } from '../../lib/builder';
+  import { postApi, ensureToast } from '../../lib/manage';
+  import { summarise } from '../../builder/rules';
+
+  const main = document.getElementById('main-content')!;
+  const base = main.dataset.base ?? '';
+  const root = document.getElementById('bd-root')!;
+  const select = document.getElementById('bd-type') as HTMLSelectElement;
+  const toast = ensureToast();
+  const KEY = 'builder:practice:v1';
+  type Saved = { slug: string; rosters: Record<string, Pick<State, 'roster' | 'names'>> };
+  const read = (): Saved => { try { const s = JSON.parse(localStorage.getItem(KEY) ?? 'null'); if (s && typeof s.slug === 'string') return s; } catch { /* no storage */ } return { slug: catalogueIndex.warbands[0]?.slug ?? '', rosters: {} }; };
+  const write = (s: Saved) => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* no storage */ } };
+  let saved = read();
+  let view: View | undefined;
+
+  async function open(slug: string, fresh = false) {
+    const bundle = await loadBundle(slug);
+    const kept = fresh ? undefined : saved.rosters[slug];
+    const state: State = kept ? { bundle, roster: kept.roster, names: kept.names ?? {}, stash: null } : emptyState(bundle);
+    saved.slug = slug;
+    const save = (s: State) => { saved.rosters[slug] = { roster: s.roster, names: s.names }; write(saved); };
+    save(state);
+    view?.root.replaceChildren();
+    document.querySelectorAll('dialog.bd-sheet').forEach((d) => d.remove());
+    view = mountBuilder(root, state, localDriver('practice', save));
+  }
+
+  if (catalogueIndex.warbands.some((w) => w.slug === saved.slug)) select.value = saved.slug;
+  select.addEventListener('change', () => void open(select.value));
+  document.getElementById('bd-reset')!.addEventListener('click', () => { if (confirm('Start this warband again from nothing?')) void open(select.value, true); });
+  document.getElementById('bd-copy')!.addEventListener('click', async () => {
+    if (!view) return;
+    try { await navigator.clipboard.writeText(textOf(view.state)); toast('The roster is copied.'); } catch { toast('The roster could not be copied from here.'); }
+  });
+  const form = document.getElementById('bd-found-form') as HTMLFormElement | null;
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!view) return;
+    const s = summarise(view.state.bundle, view.state.roster);
+    if (s.errors.length) { toast(s.errors[0]); return; }
+    const data = new FormData(form);
+    const button = form.querySelector('button[type=submit]') as HTMLButtonElement;
+    button.disabled = true;
+    try {
+      const out = await postApi(base, 'warbands/found', { name: String(data.get('name') ?? ''), player: String(data.get('player') ?? '') || undefined, roster: view.state.roster, names: view.state.names });
+      const id = (out.warband as { id: string }).id;
+      delete saved.rosters[view.state.roster.catalogue]; write(saved);
+      location.href = `${base}/warbands/${id}/roster/`;
+    } catch (err) { toast((err as Error).message); button.disabled = false; }
+  });
+  open(select.value).catch((e) => { root.replaceChildren(); root.append(Object.assign(document.createElement('p'), { className: 'mg-empty', textContent: (e as Error).message })); });
+</script>

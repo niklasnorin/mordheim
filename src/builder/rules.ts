@@ -49,6 +49,10 @@ export interface Warrior {
   experience: number;
   /** The selection ids of their gear, for moving it. */
   gear: { id: string; name: string; target: string; count: number }[];
+  /** Everything else under them by selection, for changing it: skills, rules, old wounds, advances. */
+  parts: { id: string; name: string; kind: 'skill' | 'injury' | 'advance'; count: number }[];
+  /** Their experience selection, if the catalogue gives them one. */
+  experienceId?: string;
   /** Gold and rating, with everything they carry. */
   cost: number;
   rating: number;
@@ -78,16 +82,17 @@ function sortOut(v: SelectionView, into: Warrior, underContainer = false): void 
   for (const c of v.children) {
     if (c.type === 'model') { sortOut(c, into, underContainer); continue; }
     if (SKIP.test(c.name)) { if (/^Promoted$/i.test(c.name)) into.promoted = true; continue; }
-    if (/^Experience$/i.test(c.name)) { into.experience += c.count; continue; }
+    if (/^Experience$/i.test(c.name)) { into.experience += c.count; into.experienceId ??= c.id; continue; }
     if (CONTAINERS.test(c.name) && !c.profiles.length) { sortOut(c, into, true); continue; }
-    if (c.groups.some((g) => ADVANCE_GROUPS.test(g))) continue;
-    if (c.groups.some((g) => /Serious Injuries/i.test(g))) { for (let i = 0; i < c.count; i++) into.injuries.push(c.name); continue; }
+    if (c.groups.some((g) => ADVANCE_GROUPS.test(g))) { into.parts.push({ id: c.id, name: c.name, kind: 'advance', count: c.count }); continue; }
+    if (c.groups.some((g) => /Serious Injuries/i.test(g))) { for (let i = 0; i < c.count; i++) into.injuries.push(c.name); into.parts.push({ id: c.id, name: c.name, kind: 'injury', count: c.count }); continue; }
     if (isGear(c, underContainer)) {
       into.equipment.push(c.count > 1 ? `${c.name} ×${c.count}` : c.name);
       into.gear.push({ id: c.id, name: c.name, target: c.target, count: c.count });
       continue;
     }
     into.skills.push(c.name);
+    into.parts.push({ id: c.id, name: c.name, kind: 'skill', count: c.count });
     // a skill or rule may carry its own choices (a spell list, a mutation's form)
     if (c.children.length) sortOut(c, into, false);
   }
@@ -108,7 +113,7 @@ export function warriorsOf(b: Bundle, roster: Roster, ev: Evaluation = evaluate(
     const w: Warrior = {
       id: s.id, kind: hero ? 'hero' : 'henchmen', type: nodeOf(b, s.entry)?.name ?? v.name, count: model ? model.count : v.count,
       members: s.members ?? [], modelId: model?.id, promoted: false,
-      stats: statlineOf(v.profiles.some((p) => p.typeName === 'Model') ? v : model), equipment: [], skills: [...v.rules], injuries: [], experience: 0, gear: [],
+      stats: statlineOf(v.profiles.some((p) => p.typeName === 'Model') ? v : model), equipment: [], skills: [...v.rules], injuries: [], experience: 0, gear: [], parts: [],
       cost: v.total.points ?? 0, rating: v.total['wb-rating'] ?? 0, errors: v.errors,
     };
     sortOut(v, w);
@@ -160,4 +165,30 @@ export function summarise(b: Bundle, roster: Roster): Summary {
   // the data's own advice on promotion is for BattleScribe's way of doing it; the site promotes for you
   const own = errors.filter((e) => !/duplicate the group/i.test(e));
   return { warriors, size, heroes, spent: (ev.totals.points ?? 0) - stashGold, rating: ev.totals['wb-rating'] ?? 0, errors: [...new Set(own)], warnings: ev.warnings };
+}
+
+// ───────────────────────── the roster as text ─────────────────────────
+
+const statText = (s: Statline) => `M${s.M} WS${s.WS} BS${s.BS} S${s.S} T${s.T} W${s.W} I${s.I} A${s.A} Ld${s.Ld}`;
+
+/** The roster written out plainly, for pasting where the other players read it. */
+export function rosterText(b: Bundle, roster: Roster, opts: { name?: string; names?: Record<string, string[]>; stash?: number } = {}): string {
+  const s = summarise(b, roster);
+  const lines: string[] = [];
+  const title = b.catalogue.title ?? b.catalogue.name;
+  lines.push(opts.name ? `${opts.name} (${title})` : title);
+  lines.push(`${s.spent} gc in warriors and gear${opts.stash != null ? `, ${opts.stash} gc in the stash` : ''}; rating ${s.rating}; ${s.size} warriors, ${s.heroes} heroes.`);
+  for (const w of s.warriors) {
+    const names = (opts.names?.[w.id] ?? w.members).filter(Boolean);
+    const who = names.length ? ` — ${names.join(', ')}` : '';
+    lines.push('');
+    lines.push(`${w.kind === 'henchmen' && w.count > 1 ? `${w.type} ×${w.count}` : w.type}${who} (${w.cost} gc)`);
+    lines.push(`  ${statText(w.stats)}${w.experience ? `, ${w.experience} experience` : ''}`);
+    if (w.equipment.length) lines.push(`  Gear: ${w.equipment.join(', ')}`);
+    if (w.skills.length) lines.push(`  Skills and rules: ${w.skills.join(', ')}`);
+    if (w.injuries.length) lines.push(`  Old wounds: ${w.injuries.join(', ')}`);
+  }
+  const items = stashItems(b, roster);
+  if (items.length) { lines.push(''); lines.push(`Stash: ${items.map((i) => (i.count > 1 ? `${i.name} ×${i.count}` : i.name)).join(', ')}`); }
+  return lines.join('\n');
 }
