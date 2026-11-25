@@ -24,7 +24,10 @@ If `npm test` fails at import, Node is older than 22.12 (`nvm use`) or a relativ
 ```sh
 node .claude/skills/record-battle/scripts/check-history.mjs   # archives, rosters, Chronicle, dates (0 errors)
 node .claude/skills/curfew-pack/scripts/lint-pack.mjs         # packs, Moons, Omens, charms (0 errors; read the warnings)
+node scripts/builder/normalise.mjs --check [../mordheim-fork]   # the builder's catalogue: in step with the data files, nothing the engine does not read
 ```
+
+The catalogue check needs the BattleScribe data files checked out (by default beside this repository as `../mordheim-fork`); without them it says so and passes. When it reports the JSON out of date, run it without `--check` and commit `src/data/builder/`.
 
 ## 3. The diff, read as a reviewer
 
