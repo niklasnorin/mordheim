@@ -253,7 +253,9 @@
    the viewer's own first. The track is moved by hand; a page not in view folds to nothing between swipes.
    ═══════════════════════════════════════════ */
 .tk-bands li[data-warband] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.tk-pager { margin: 0 -1rem; overflow-x: hidden; overflow-x: clip; touch-action: pan-y; }
+.tk-pager { margin: 0 -1rem; overflow-x: hidden; overflow-x: clip; }
+/* the swipe is the page's own anywhere on it: the browser keeps the vertical scroll and the pinch, and leaves sideways to the pager */
+html:has(.tk-pager), html:has(.tk-pager) body { touch-action: pan-y pinch-zoom; }
 .tk-track { display: flex; align-items: flex-start; will-change: transform; }
 .tk-page { flex: 0 0 100%; min-width: 0; box-sizing: border-box; padding: 0 1rem; }
 .tk-pager:not(.moving) .tk-page:not(.on) { height: 0; overflow: hidden; visibility: hidden; }

@@ -294,13 +294,14 @@ export function mountMuster(o: {
   // a swipe: decided as sideways once the finger has gone further across than down, then followed
   let start: { x: number; y: number; t: number; id: number } | null = null;
   let sideways = false, dx = 0, swallow = false;
-  pager.addEventListener('pointerdown', (e) => {
+  // listened for on the whole document, so a swipe over empty space, the masthead or the bar turns the page as well
+  document.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' || !e.isPrimary || pages.length < 2 || open) return;
-    if ((e.target as Element).closest('input, textarea, select, dialog, .tc-drawer')) return;
+    if ((e.target as Element).closest('input, textarea, select, dialog, .tc-drawer, .tk-dossier')) return;
     start = { x: e.clientX, y: e.clientY, t: e.timeStamp, id: e.pointerId };
     sideways = false; dx = 0;
   });
-  pager.addEventListener('pointermove', (e) => {
+  document.addEventListener('pointermove', (e) => {
     if (!start || e.pointerId !== start.id) return;
     const mx = e.clientX - start.x, my = e.clientY - start.y;
     if (!sideways) {
@@ -331,10 +332,10 @@ export function mountMuster(o: {
     setTimeout(end, 500);
     place(0, true, to);
   };
-  pager.addEventListener('pointerup', release);
-  pager.addEventListener('pointercancel', release);
+  document.addEventListener('pointerup', release);
+  document.addEventListener('pointercancel', release);
   // the tap that ends a swipe is not a tap on what it ended on
-  pager.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
+  document.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
 
   pager.addEventListener('click', (e) => {
     const card = (e.target as Element).closest<HTMLElement>('.tk-wr[data-member]');
