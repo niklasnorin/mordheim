@@ -83,6 +83,8 @@ export interface Warband {
   /** Order on the home page. */
   sort: number;
   version: number;
+  /** Whether the warband builder keeps its roster: its warriors' numbers then come from it, and its stash from the log. */
+  built?: boolean;
 }
 
 /** A member's condition at the end of a scenario. */

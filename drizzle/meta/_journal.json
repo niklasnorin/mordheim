@@ -162,6 +162,13 @@
       "when": 1795644236014,
       "tag": "0022_member-equipment",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795645324076,
+      "tag": "0023_warband-roster",
+      "breakpoints": true
     }
   ]
 }

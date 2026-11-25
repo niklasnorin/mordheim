@@ -61,7 +61,8 @@ export function fill(b: Bundle, roster: Roster, parentId: string | null, newId: 
         owe(o.children);
         continue;
       }
-      if (o.min > o.count) { const s = { id: newId(), entry: o.id, count: o.min - o.count, children: [] }; list.push(s); added.push(s.id); }
+      const need = parentId ? o.min : Math.max(o.min, o.rosterMin);
+      if (need > o.count && (parentId || !o.type || o.type === 'upgrade')) { const s = { id: newId(), entry: o.id, count: need - o.count, children: [] }; list.push(s); added.push(s.id); }
     }
   };
   owe(optionsUnder(b, roots, parent));

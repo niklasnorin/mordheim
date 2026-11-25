@@ -7,6 +7,8 @@ import { z } from 'zod';
 import { dispatch, route } from '../../../server/api';
 import { addChapter, IMAGE_TYPES, moveChapter, removeChapter, updateChapter, uploadImage } from '../../../server/campaign/chapters';
 import { removePortrait, setPortrait, uploadPortraitSource } from '../../../server/campaign/portraits';
+import { buyItem, changeRoster, drawUp, dropRoster, foundWarband, hire, income, keepViewFor, loseWarrior, moveGear, promote, recruit, sellItem, undoLast } from '../../../server/campaign/keep';
+import type { Roster, Selection } from '../../../builder/evaluate';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, releaseWarband, removeMember, reorderMembers, updateMember, updateWarband } from '../../../server/campaign/roster';
 
 export const prerender = false;
@@ -29,7 +31,35 @@ const chapterId = z.number().int().positive();
 const crop = z.object({ x: z.number().min(-50).max(50), y: z.number().min(-50).max(50), w: z.number().positive().max(50), h: z.number().positive().max(50) });
 const warbandFields = { name: z.string().max(80), type: z.string().max(60), sigil: z.string().max(3), lore: z.string().max(4000), player: z.string().max(40), crest: z.string().max(120) };
 
+// a roster as the builder sends it; the service checks it against the catalogue
+const selection: z.ZodType<Selection> = z.lazy(() => z.object({ id: z.string().min(1).max(40), entry: z.string().min(1).max(80), count: z.number().int().min(1).max(999), children: z.array(selection).max(200), members: z.array(z.string().max(64)).max(5).optional() }));
+const roster: z.ZodType<Roster> = z.object({ catalogue: z.string().min(1).max(60), selections: z.array(selection).max(200) });
+const names = z.record(z.string().max(40), z.array(z.string().max(80)).max(5));
+const op = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('add'), parent: z.string().max(40).nullable(), entry: z.string().max(80), count: z.number().int().min(1).max(999).optional() }),
+  z.object({ kind: z.literal('count'), id: z.string().max(40), count: z.number().int().min(1).max(999) }),
+  z.object({ kind: z.literal('remove'), id: z.string().max(40) }),
+  z.object({ kind: z.literal('move'), id: z.string().max(40), to: z.string().max(40).nullable(), entry: z.string().max(80) }),
+]);
+const kept = { warbandId: id, version: z.number().int().min(0) };
+
 const routes = {
+  // the warband builder: founding, drawing up a written roster, and keeping it between games
+  found: route(z.object({ name: z.string().max(80), player: z.string().max(40).optional(), roster, names }), (i, a) => foundWarband(a, i).then((warband) => ({ warband }))),
+  keep: route(z.object({ warbandId: id }), (i, a) => keepViewFor(a, i.warbandId).then((keep) => ({ keep }))),
+  'draw-up': route(z.object({ warbandId: id, roster, names: names.optional(), gold: z.number().int().min(0).max(100000), shards: z.number().int().min(0).max(999).optional() }), (i, a) => drawUp(a, i.warbandId, i).then((keep) => ({ keep }))),
+  'roster-op': route(z.object({ ...kept, op, free: z.boolean().optional() }), (i, a) => changeRoster(a, i.warbandId, i.version, i.op, !!i.free).then((keep) => ({ keep }))),
+  hire: route(z.object({ ...kept, entry: z.string().max(80), names: z.array(z.string().max(80)).max(5) }), (i, a) => hire(a, i.warbandId, i.version, i.entry, i.names).then((keep) => ({ keep }))),
+  recruit: route(z.object({ ...kept, groupId: z.string().max(40), name: z.string().max(80) }), (i, a) => recruit(a, i.warbandId, i.version, i.groupId, i.name).then((keep) => ({ keep }))),
+  'move-gear': route(z.object({ ...kept, itemId: z.string().max(40), to: z.string().max(40) }), (i, a) => moveGear(a, i.warbandId, i.version, i.itemId, i.to).then((keep) => ({ keep }))),
+  sell: route(z.object({ ...kept, itemId: z.string().max(40), count: z.number().int().min(1).max(99) }), (i, a) => sellItem(a, i.warbandId, i.version, i.itemId, i.count).then((keep) => ({ keep }))),
+  buy: route(z.object({ ...kept, itemId: z.string().max(64), count: z.number().int().min(1).max(20), price: z.number().int().min(0).max(100000) }), (i, a) => buyItem(a, i.warbandId, i.version, i.itemId, i.count, i.price).then((keep) => ({ keep }))),
+  lose: route(z.object({ ...kept, memberId: id, scenarioId: z.string().max(64).nullable().optional() }), (i, a) => loseWarrior(a, i.warbandId, i.version, i.memberId, i.scenarioId ?? null).then((keep) => ({ keep }))),
+  promote: route(z.object({ ...kept, memberId: id }), (i, a) => promote(a, i.warbandId, i.version, i.memberId).then((keep) => ({ keep }))),
+  income: route(z.object({ ...kept, found: z.number().int().min(0).max(99).optional(), sold: z.number().int().min(0).max(99).optional(), gold: z.number().int().min(-100000).max(100000).optional(), text: z.string().max(200).optional(), scenarioId: z.string().max(64).nullable().optional() }), (i, a) => income(a, i.warbandId, i.version, i).then((keep) => ({ keep }))),
+  undo: route(z.object({ warbandId: id }), (i, a) => undoLast(a, i.warbandId).then((keep) => ({ keep }))),
+  'drop-roster': route(z.object({ warbandId: id }), (i, a) => dropRoster(a, i.warbandId).then((keep) => ({ keep })), 'gm'),
+
   create: route(z.object({ ...warbandFields }).partial().required({ name: true, type: true }), (i, a) => createWarband(a, i).then((warband) => ({ warband }))),
   update: route(z.object({ warbandId: id, patch: z.object(warbandFields).partial() }), (i, a) => updateWarband(a, i.warbandId, i.patch).then((warband) => ({ warband }))),
   claim: route(z.object({ warbandId: id }), (i, a) => claimWarband(a, i.warbandId).then((warband) => ({ warband }))),

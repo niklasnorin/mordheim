@@ -50,7 +50,7 @@ export async function listWarbands(): Promise<Warband[]> {
 function warbandOf(w: WarbandRow, ownerName: string | null, memberRows: MemberRow[], battles: number, victories: number): Warband {
   return {
     id: w.id, name: w.name, type: w.type, sigil: w.sigil, crest: w.crest ?? undefined, ownerId: w.ownerId, player: ownerName ?? w.player,
-    battles, victories, lore: w.lore, sort: w.sort, version: w.version,
+    battles, victories, lore: w.lore, sort: w.sort, version: w.version, built: w.roster != null,
     members: memberRows.map(memberOf),
   };
 }
@@ -236,6 +236,19 @@ export async function addMember(actor: Actor, warbandId: string, input: MemberIn
   return (await getWarband(warbandId))!;
 }
 
+/**
+ * A new warrior's row, for the builder: a name, a rank and a role, and an id chosen once from the name. The rest is
+ * written from the roster straight after.
+ */
+export async function insertMemberRow(warbandId: string, name: string, rank: 'hero' | 'henchman', role: string): Promise<string> {
+  const d = db();
+  const taken = new Set((await d.select({ id: members.id }).from(members)).map((r) => r.id));
+  const id = unique(slugify(name.split(/\s+/)[0]), taken);
+  const [{ n }] = await d.select({ n: sql<number>`coalesce(max(${members.sort}), 0)::int` }).from(members).where(eq(members.warbandId, warbandId));
+  await d.insert(members).values({ id, warbandId, name: clean(name, 80) || role, role: clean(role, 60), rank, portrait: portraitFor(name || role), stats: statlineOf(undefined), equipment: [], sort: n + 1 });
+  return id;
+}
+
 function portraitFor(name: string): string {
   const words = name.split(/\s+/).filter(Boolean);
   return ((words[0]?.[0] ?? '') + (words[1]?.[0] ?? words[0]?.[1] ?? '')).toUpperCase();
@@ -252,6 +265,9 @@ export async function updateMember(actor: Actor, memberId: string, patch: Partia
   const w = await warbandRow(m.warbandId);
   mayEdit(actor, w);
   const set: Partial<typeof members.$inferInsert> = { updatedAt: new Date() };
+  // a warband kept by the builder has its warriors' numbers from the roster; the record keeps their names and stories
+  const built = w.roster != null;
+  if (built) { delete patch.role; delete patch.rank; delete patch.stats; delete patch.experience; delete patch.skills; delete patch.equipment; delete patch.injuries; }
   if (patch.name !== undefined) { const name = clean(patch.name, 80); if (!name) throw new LedgerError('The warrior needs a name.'); set.name = name; set.portrait = portraitFor(name); }
   if (patch.role !== undefined) set.role = clean(patch.role, 60);
   if (patch.rank !== undefined) set.rank = patch.rank === 'hero' ? 'hero' : 'henchman';
@@ -265,6 +281,8 @@ export async function updateMember(actor: Actor, memberId: string, patch: Partia
   if (patch.dead !== undefined) { set.dead = patch.dead; set.death = patch.dead ? deathOf(patch.death, m.death as Death | null) : null; }
   else if (patch.death !== undefined && m.dead) set.death = deathOf(patch.death, m.death as Death | null);
   await db().update(members).set(set).where(eq(members.id, memberId));
+  // a warrior of a built warband who falls leaves its roster, and what they carried is lost with them
+  if (built && patch.dead === true && !m.dead) { const { dropFromRoster } = await import('./keep.ts'); await dropFromRoster(actor, m.warbandId, memberId); }
   await touch(m.warbandId);
   return (await getWarband(m.warbandId))!;
 }

@@ -100,6 +100,9 @@ const overview = warband?.lore.trim() ?? '';
         <section class="mg-section wb-pane" id="roster" data-pane hidden>
           <div class="mg-section-head">
             <h2 class="mg-h2">The muster roll</h2>
+            {warband.built
+              ? <a class="mg-btn ghost sm" href={`${base}/warbands/${warband.id}/roster/`}>{canEdit ? 'The roster, the stash and the trading post' : 'The roster'}</a>
+              : canEdit && <a class="mg-btn ghost sm" href={`${base}/warbands/${warband.id}/roster/`}>Draw up the roster in the builder</a>}
           </div>
           <p class="mg-muted wb-hint">{canEdit ? 'Open a warrior to read them, or to change them.' : 'Open a warrior to read their record.'}</p>
           {warband.members.length === 0 && <p class="mg-empty">No warriors yet. {canEdit ? 'Add the first below.' : 'The roll is blank.'}</p>}
@@ -164,8 +167,10 @@ const overview = warband?.lore.trim() ?? '';
                               )}
                               <div class="mg-two">
                                 <label class="mg-field">Name<input name="patch.name" required maxlength="80" value={m.name} /></label>
-                                <label class="mg-field">Role<input name="patch.role" maxlength="60" value={m.role} placeholder="Elder, Jaeger, Ogre…" /></label>
+                                <label class="mg-field">Role<input name="patch.role" maxlength="60" value={m.role} placeholder="Elder, Jaeger, Ogre…" readonly={warband!.built} /></label>
                               </div>
+                              {warband!.built && <p class="mg-note">Kind, rank, experience, characteristics, gear, skills and old wounds are kept by <a href={`${base}/warbands/${warband!.id}/roster/`}>the roster</a>.</p>}
+                              {!warband!.built && <>
                               <div class="mg-two">
                                 <label class="mg-field">Rank<select name="patch.rank"><option value="hero" selected={m.rank === 'hero'}>Hero</option><option value="henchman" selected={m.rank === 'henchman'}>Henchman</option></select></label>
                                 <label class="mg-field">Experience<input name="patch.experience" type="number" min="0" max="999" value={m.experience ?? ''} data-nullable /></label>
@@ -177,6 +182,7 @@ const overview = warband?.lore.trim() ?? '';
                               <label class="mg-field">Gear<textarea name="patch.equipment" data-list>{m.equipment.join('\n')}</textarea><small>One per line: weapons, armour and whatever else they carry.</small></label>
                               <label class="mg-field">Skills &amp; special rules<textarea name="patch.skills" data-list>{m.skills.join('\n')}</textarea><small>One per line. Prayers and spells go here too.</small></label>
                               <label class="mg-field">Old wounds<textarea name="patch.injuries" data-list>{m.injuries.join('\n')}</textarea><small>One per line, as rolled on the serious injury table.</small></label>
+                              </>}
                               <label class="mg-field">Tale<textarea name="patch.lore" data-markdown maxlength="4000">{m.lore}</textarea></label>
                               <label class="mg-field check"><input type="checkbox" name="patch.dead" checked={m.dead} /> Fallen</label>
                               <div class="mg-two">
@@ -197,7 +203,8 @@ const overview = warband?.lore.trim() ?? '';
               );
             })}
           </ul>
-          {canEdit && (
+          {canEdit && warband.built && <p class="mg-note">New warriors are hired on <a href={`${base}/warbands/${warband.id}/roster/#hire`}>the roster</a>, paid from the stash.</p>}
+          {canEdit && !warband.built && (
             <details class="mg-editor wb-add" id="add-warrior">
               <summary>Add a warrior to the roll</summary>
               <form class="mg-form" data-api="warbands/add-member" data-json={JSON.stringify({ warbandId: warband.id })}>

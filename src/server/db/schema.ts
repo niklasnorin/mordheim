@@ -171,12 +171,45 @@ export const warbands = pgTable(
     wyrdstone: integer('wyrdstone').notNull().default(0),
     gold: integer('gold').notNull().default(0),
     lore: text('lore').notNull().default(''),
+    /**
+     * The warband as the builder keeps it (`Roster` in builder/evaluate.ts): the selections from its catalogue, each
+     * hero and henchman group naming its warriors. Null for a warband whose roster is still written by hand; once set,
+     * the warriors' statlines, gear, skills, old wounds and experience are read from it.
+     */
+    roster: jsonb('roster'),
     sort: integer('sort').notNull().default(0),
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('warbands_owner_idx').on(t.ownerId)],
+);
+
+/**
+ * What came into a warband's stash and went out of it, and every change to its roster, one line each: founding,
+ * hiring, buying, selling, gear moved, a warrior lost, experience, advances, jobs and income. The stash's gold is the
+ * sum of `gold` over the lines not struck, and its wyrdstone the sum of `shards`; neither is stored anywhere else.
+ * `before` is the roster as it stood, so the last line can be struck and the roster put back.
+ */
+export const warbandLog = pgTable(
+  'warband_log',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    warbandId: text('warband_id').notNull().references(() => warbands.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    gold: integer('gold').notNull().default(0),
+    shards: integer('shards').notNull().default(0),
+    text: text('text').notNull().default(''),
+    before: jsonb('before'),
+    /** The warriors the line struck from the roster, to give back if it is struck. */
+    members: jsonb('members'),
+    scenarioId: text('scenario_id').references(() => scenarios.id, { onDelete: 'set null' }),
+    authorId: text('author_id'),
+    authorName: text('author_name').notNull().default(''),
+    struck: boolean('struck').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('warband_log_warband_idx').on(t.warbandId)],
 );
 
 /** The warriors. Ids are unique across the campaign, as the archives and the ledgers key on them alone. */

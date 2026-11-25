@@ -320,6 +320,8 @@ export interface OptionView {
   max: number;
   /** How many more may be taken here, the warband's own limits counted too; -1 for no limit. */
   left: number;
+  /** The least the whole warband must have of it (a limit across the roster), for an option at the root. */
+  rosterMin: number;
   children: OptionView[];
   problems: string[];
 }
@@ -363,6 +365,7 @@ export function optionsUnder(b: Bundle, roots: Placed[], parent: Placed | null):
       if (!st.hidden && count < min && (parent !== null || n.kind === 'e')) problems.push(`${name}: at least ${min} must be taken${parent ? ` for ${parentName(b, parent, roots)}` : ''}.`);
       // a limit across the whole warband
       let left = max >= 0 ? Math.max(0, max - count) : -1;
+      let rosterMin = 0;
       for (const c of n.constraints) {
         if (c.field !== 'selections' || (c.scope !== 'roster' && c.scope !== 'force')) continue;
         const v = st.limits.get(c.id) ?? c.value;
@@ -370,8 +373,9 @@ export function optionsUnder(b: Bundle, roots: Placed[], parent: Placed | null):
         if (c.type === 'max' && v >= 0 && across > v) problems.push(v === 0 ? `${name}: the warband may take none.` : `${name}: no more than ${v} in the warband.`);
         if (c.type === 'max' && v >= 0) left = left < 0 ? Math.max(0, v - across) : Math.min(left, Math.max(0, v - across));
         if (c.type === 'min' && !st.hidden && across < v && parent === null) problems.push(`${name}: the warband needs at least ${v}.`);
+        if (c.type === 'min' && v > rosterMin) rosterMin = v;
       }
-      out.push({ kind: n.kind === 'g' ? 'group' : 'entry', id: n.id, name, type: n.type, hidden: st.hidden, each: st.costs, count, min, max, left, children, problems });
+      out.push({ kind: n.kind === 'g' ? 'group' : 'entry', id: n.id, name, type: n.type, hidden: st.hidden, each: st.costs, count, min, max, left, rosterMin, children, problems });
     }
     return out;
   };

@@ -1,0 +1,90 @@
+---
+/**
+ * A warband's roster, kept by the builder: its warriors from the catalogue, their gear and skills, the stash, the
+ * trading post where the campaign is, and the log. A warband still written by hand is drawn up here first, from its
+ * record, for its keeper to correct and confirm. Everyone reads the roster; the stash and the log are the keeper's.
+ */
+import Base from '../../../layouts/Base.astro';
+import ManageTop from '../../../components/ManageTop.astro';
+import '../../../styles/manage.css';
+import '../../../styles/builder.css';
+import { base } from '../../../lib/site';
+import { hasDatabase } from '../../../server/db/client';
+import { getActor, isGm } from '../../../server/roles';
+import { getWarband } from '../../../server/campaign/roster';
+import { catalogueForType, keepViewFor, proposalFor } from '../../../server/campaign/keep';
+import { listScenarios } from '../../../server/campaign/scenarios';
+import type { PageData } from '../../../lib/keep';
+import type { Warband } from '../../../campaign/model';
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const viewer = ready ? await getActor(Astro.request) : null;
+let warband: Warband | undefined;
+let data: PageData | undefined;
+let problem = '';
+if (ready) {
+  try {
+    warband = await getWarband(Astro.params.id!);
+    if (warband) {
+      const gm = isGm(viewer);
+      const canEdit = gm || (!!viewer && warband.ownerId === viewer.id);
+      const games = (await listScenarios()).filter((s) => s.status === 'played' && s.warbands.some((p) => p.warbandId === warband!.id)).reverse().map((s) => ({ id: s.id, title: s.title }));
+      if (warband.built) {
+        const keep = await keepViewFor(viewer, warband.id);
+        data = { mode: 'keep', base, canEdit, gm, keep: JSON.parse(JSON.stringify(keep)), games };
+      } else if (canEdit) {
+        try {
+          const proposal = await proposalFor(warband.id);
+          data = { mode: 'draw', base, canEdit, gm, proposal, keep: { warbandId: warband.id, name: warband.name, version: warband.version, catalogue: proposal.catalogue, roster: null, names: {}, gold: 0, shards: 0, log: [], post: null } };
+        } catch (e) { problem = (e as Error).message; }
+      }
+    }
+  } catch (e) { console.error('[roster] unavailable', e); }
+}
+if (!warband) Astro.response.status = 404;
+const catalogue = data?.keep?.catalogue ?? (warband ? catalogueForType(warband.type) : undefined);
+---
+
+<Base title={warband ? `${warband.name}: the roster — Mordheim` : 'No such warband — Mordheim'}>
+  <main class="mg mg-page" id="main-content" data-base={base}>
+    <ManageTop crumbs={[{ label: 'Warbands', href: `${base}/warbands/` }, ...(warband ? [{ label: warband.name, href: `${base}/warbands/${warband.id}/` }] : []), { label: 'The roster' }]} viewer={viewer} />
+    {!warband && <div class="mg-hero"><h1 class="mg-h1">No such warband</h1></div>}
+    {warband && (
+      <>
+        <div class="mg-hero">
+          <p class="mg-kicker">{warband.type}{warband.player ? <> · kept by {warband.player}</> : null}</p>
+          <h1 class="mg-h1">{data?.mode === 'draw' ? 'Draw up the roster' : 'The roster'}</h1>
+          {data?.mode === 'draw' && <p class="mg-lede">Drawn up from the muster roll as it is written: each warrior found among the {warband.type}’ fighters, their gear, skills and wounds by name, the rest as advances. Put right what is wrong, then confirm it below.</p>}
+          {data?.mode === 'keep' && data.canEdit && <p class="mg-lede">Between games: hire, arm and advance them here. Gear bought from their own lists is paid from the stash; gear taken off goes into it; the trading post is where the campaign is now.</p>}
+        </div>
+        {!data && !warband.built && (
+          <p class="mg-empty">{problem || (catalogue ? 'This warband’s roster is written by hand on its muster roll.' : `The builder has no catalogue for ${warband.type}; the roster stays written by hand.`)} <a href={`${base}/warbands/${warband.id}/#roster`}>The muster roll</a>.</p>
+        )}
+        {data && (
+          <>
+            <div class="bd" id="bd-root" aria-live="polite"><p class="mg-empty">Opening the lists…</p></div>
+            <script type="application/json" id="bd-data" set:html={JSON.stringify({ ...data, catalogue }).replace(/</g, '\\u003c')} />
+          </>
+        )}
+      </>
+    )}
+  </main>
+</Base>
+
+<script>
+  import { loadBundle } from '../../../lib/builder-data';
+  import { mountDraw, mountKeep, type PageData } from '../../../lib/keep';
+
+  const root = document.getElementById('bd-root');
+  const raw = document.getElementById('bd-data');
+  if (root && raw) {
+    const data = JSON.parse(raw.textContent ?? '{}') as PageData & { catalogue: string };
+    loadBundle(data.catalogue).then((bundle) => {
+      if (data.mode === 'keep') mountKeep(root, data, bundle);
+      else if (data.mode === 'draw') mountDraw(root, data, bundle);
+    }).catch((e) => { root.textContent = (e as Error).message; });
+  }
+</script>

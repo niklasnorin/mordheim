@@ -58,6 +58,10 @@ export interface Driver {
   warriorExtras?(view: View, w: Warrior): Child[];
   /** Whether the card's own buttons are offered (a keeper between games takes gear through the stash instead). */
   canChange?: boolean;
+  /** Warriors are hired by name through the page's own form, not the hiring sheet. */
+  hireByName?: boolean;
+  /** Whether a group's size is changed with − and + (not when each henchman is a warrior on the record). */
+  groupCounts?: boolean;
 }
 export interface View { root: HTMLElement; state: State; summary: Summary; ev: Evaluation; driver: Driver; refresh(next: State): void; pick(parent: string | null, filter: PickFilter, title: string): void; act(op: Op): Promise<void> }
 export type PickFilter = 'gear' | 'more' | 'hire' | 'all';
@@ -214,8 +218,8 @@ export function mountBuilder(root: HTMLElement, initial: State, driver: Driver):
       problems ?? '',
       ...configCards,
       h('section', { class: 'bd-warriors', 'aria-label': 'The warriors' }, ...(cards.length ? cards : [h('p', { class: 'mg-empty' }, 'No warriors yet. Hire the first below; a warband needs its leader.')])),
-      driver.canChange ? h('div', { class: 'bd-hire' }, h('button', { type: 'button', class: 'mg-btn wide', onclick: () => view.pick(null, 'hire', 'Hire a warrior') }, 'Hire a warrior')) : '',
-      state.stash != null || items.length ? h('section', { class: 'bd-stash-short' }, h('h3', { class: 'mg-h3' }, 'In the stash'), items.length ? h('p', {}, items.map((i) => (i.count > 1 ? `${i.name} ×${i.count}` : i.name)).join(', ')) : h('p', { class: 'mg-muted' }, 'No gear in the stash.')) : '',
+      driver.canChange && !driver.hireByName ? h('div', { class: 'bd-hire' }, h('button', { type: 'button', class: 'mg-btn wide', onclick: () => view.pick(null, 'hire', 'Hire a warrior') }, 'Hire a warrior')) : '',
+      driver.mode !== 'keep' && (state.stash != null || items.length) ? h('section', { class: 'bd-stash-short' }, h('h3', { class: 'mg-h3' }, 'In the stash'), items.length ? h('p', {}, items.map((i) => (i.count > 1 ? `${i.name} ×${i.count}` : i.name)).join(', ')) : h('p', { class: 'mg-muted' }, 'No gear in the stash.')) : '',
     );
     driver.after?.(view);
   }
@@ -240,7 +244,7 @@ export function mountBuilder(root: HTMLElement, initial: State, driver: Driver):
         if (driver.rename) view.refresh(await driver.rename(view.state, w.id, list));
       },
     }));
-    const count = w.kind === 'henchmen' && w.modelId && canChange && !w.promoted
+    const count = w.kind === 'henchmen' && w.modelId && canChange && driver.groupCounts !== false && !w.promoted
       ? h('span', { class: 'bd-count' },
         h('button', { type: 'button', class: 'mg-btn ghost sm', 'aria-label': 'One fewer', disabled: w.count <= 1, onclick: () => view.act({ kind: 'count', id: w.modelId!, count: w.count - 1 }) }, '−'),
         h('b', {}, `×${w.count}`),
@@ -268,7 +272,7 @@ export function mountBuilder(root: HTMLElement, initial: State, driver: Driver):
       canChange ? h('div', { class: 'mg-actions' },
         h('button', { type: 'button', class: 'mg-btn sm', onclick: () => view.pick(w.id, 'gear', `Gear for ${names[0] || w.type}`) }, 'Equip'),
         h('button', { type: 'button', class: 'mg-btn ghost sm', onclick: () => view.pick(w.id, 'more', `Skills and more for ${names[0] || w.type}`) }, 'Skills and more'),
-        h('button', { type: 'button', class: 'mg-btn ghost sm bd-dismiss', onclick: () => { if (confirm(`Strike ${names[0] || `the ${w.type}`} from the roster?`)) void view.act({ kind: 'remove', id: w.id }); } }, 'Dismiss')) : null,
+        h('button', { type: 'button', class: 'mg-btn ghost sm bd-dismiss', onclick: () => { if (confirm(driver.mode === 'keep' ? `Dismiss ${names.join(', ') || `the ${w.type}`}? Only a warrior who has fought in no recorded battle is dismissed; their gear goes into the stash.` : `Strike ${names[0] || `the ${w.type}`} from the roster?`)) void view.act({ kind: 'remove', id: w.id }); } }, 'Dismiss')) : null,
       ...(driver.warriorExtras?.(view, w) ?? []),
       w.errors.length ? h('ul', { class: 'bd-problems small' }, ...w.errors.filter((e) => !/duplicate the group/i.test(e)).map((e) => h('li', {}, e))) : null,
     );
