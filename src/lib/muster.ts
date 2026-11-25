@@ -353,40 +353,51 @@ export function mountMuster(o: {
     requestAnimationFrame(() => place(0, true, i));
   }
 
-  // a swipe: decided as sideways once the finger has gone further across than down, then followed
-  let start: { x: number; y: number; t: number; id: number } | null = null;
-  let sideways = false, dx = 0, swallow = false;
-  // listened for on the whole document, so a swipe over empty space, the masthead or the bar turns the page as well
-  document.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' || !e.isPrimary || pages.length < 2 || open) return;
-    if ((e.target as Element).closest('input, textarea, select, dialog, .tc-drawer, .tk-dossier')) return;
-    start = { x: e.clientX, y: e.clientY, t: e.timeStamp, id: e.pointerId };
-    sideways = false; dx = 0;
-  });
-  document.addEventListener('pointermove', (e) => {
-    if (!start || e.pointerId !== start.id) return;
-    const mx = e.clientX - start.x, my = e.clientY - start.y;
-    if (!sideways) {
-      if (Math.abs(my) > 10 && Math.abs(my) > Math.abs(mx)) { start = null; return; }
-      if (Math.abs(mx) < 10) return;
-      sideways = true;
-      pager.setPointerCapture(e.pointerId);
+  // a swipe: decided on the finger's first move, as the lifted card's is and for the same reason (a phone commits a touch
+  // to scrolling on its first move), then followed. Here the log's scroll comes first, so only a first move further
+  // across than down is claimed. Listened for on the whole document, so a swipe over empty space, the masthead or the
+  // bar turns the page as well.
+  let swipe: { x: number; y: number; across: boolean; dx: number; trail: { x: number; t: number }[] } | null = null;
+  let swallow = false;
+  document.addEventListener('touchstart', (e) => {
+    swipe = null;
+    if (e.touches.length !== 1 || pages.length < 2 || open) return;
+    if ((e.target as Element).closest?.('input, textarea, select, dialog, .tc-drawer, .tk-dossier')) return;
+    const t = e.touches[0];
+    swipe = { x: t.clientX, y: t.clientY, across: false, dx: 0, trail: [{ x: t.clientX, t: e.timeStamp }] };
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (!swipe) return;
+    if (e.touches.length !== 1) { if (swipe.across) { place(0, true); const i = index; setTimeout(() => settle(i), 350); } swipe = null; return; }
+    const t = e.touches[0];
+    const mx = t.clientX - swipe.x, my = t.clientY - swipe.y;
+    if (!swipe.across) {
+      if (!mx && !my) return;
+      if (Math.abs(mx) <= Math.abs(my)) { swipe = null; return; }
+      swipe.across = true;
       prepare();
     }
+    e.preventDefault();
+    swipe.trail.push({ x: t.clientX, t: e.timeStamp });
+    if (swipe.trail.length > 6) swipe.trail.shift();
     // past either end it gives a little and no more
     const edge = (index === 0 && mx > 0) || (index === pages.length - 1 && mx < 0);
-    dx = edge ? mx / 4 : mx;
-    place(dx, false);
-  });
-  const release = (e: PointerEvent) => {
-    if (!start || e.pointerId !== start.id) return;
-    const was = start; start = null;
-    if (!sideways) return;
+    swipe.dx = edge ? mx / 4 : mx;
+    place(swipe.dx, false);
+  }, { passive: false });
+  const release = (e: TouchEvent) => {
+    if (!swipe) return;
+    const was = swipe; swipe = null;
+    if (!was.across) return;
     swallow = true; setTimeout(() => { swallow = false; }, 50);
     const width = pager.clientWidth || 1;
-    const speed = dx / Math.max(1, e.timeStamp - was.t);
+    // how fast the finger was going as it let go, from its last few moves, and which way
+    const first = was.trail[0], last = was.trail[was.trail.length - 1];
+    const speed = (last.x - first.x) / Math.max(1, last.t - first.t);
+    const far = Math.abs(was.dx) > width * .2;
+    const flung = Math.abs(speed) > .3 && Math.sign(speed) === Math.sign(was.dx);
     let to = index;
-    if (e.type !== 'pointercancel' && (Math.abs(dx) > width * .22 || Math.abs(speed) > .45)) to = index + (dx < 0 ? 1 : -1);
+    if (e.type !== 'touchcancel' && was.dx && (far || flung)) to = index + (was.dx < 0 ? 1 : -1);
     to = Math.max(0, Math.min(pages.length - 1, to));
     let done = false;
     const end = () => { if (done) return; done = true; settle(to); };
@@ -394,8 +405,8 @@ export function mountMuster(o: {
     setTimeout(end, 500);
     place(0, true, to);
   };
-  document.addEventListener('pointerup', release);
-  document.addEventListener('pointercancel', release);
+  document.addEventListener('touchend', release);
+  document.addEventListener('touchcancel', release);
   // the tap that ends a swipe is not a tap on what it ended on
   document.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
 
