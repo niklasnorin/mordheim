@@ -11,6 +11,8 @@ The roster lives in the database and is kept on the site. A player founds their 
 
 ## 1. Found it
 
+**The usual way now is the warband builder** at `/builder/`: choose the warband's kind from the catalogue, hire and arm them from their own lists with the 500 crowns, name every warrior, and **Found this warband** (API `found`, `foundWarband` in `src/server/campaign/keep.ts`). The roster must meet the rules; the warriors are entered on the record with their statlines, gear, skills and experience from the catalogue, and what was not spent goes into the stash. From then on the roster, the stash and the trading post are kept at `/warbands/<id>/roster/`; the warband's page keeps the overview, the names, the portraits and the stories. The manual way below is for a warband whose kind the builder has no catalogue for (`src/data/builder/index.json` lists them), or one written by hand that will be drawn up in the builder later.
+
 At `/warbands/`, **Found a warband**: name (may begin with "The"; the engine strips it where a vignette says "the {rival}"), kind (the rulebook warband type), the overview (the `lore` field: one paragraph for the other players, in the roster voice, `docs/agents/writing.md` §4). Rating, gold and wyrdstone are not tracked for now, so there is nothing else to fill in. The id is chosen once from the name (`the-grey-hand` becomes `grey-hand`) and never changes: it becomes the ledger's key, the dispatch key and the `warbandId` in every scenario record. The sigil is two letters from the name unless a game master sets one.
 
 ## 2. Enter the warriors (`/warbands/<id>/`, **Add a warrior**)
