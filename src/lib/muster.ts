@@ -3,7 +3,8 @@
  * in the viewer's own warband, then the other side's (each warband at the table has its page; the viewer's comes
  * first when they keep one), every warrior a compact card with their portrait and name. A tap on a card lifts it to
  * the top of the screen, pinned there, with the rest of the warrior under it: the statline, the skills and injuries,
- * and what has befallen them in this game. A tap on the pinned card, Escape or the phone's back puts it back.
+ * and what has befallen them in this game. A tap on the pinned card, a swipe across it either way, Escape or the
+ * phone's back puts it back.
  *
  * The pager is a track moved by hand rather than a scroll container, so the document keeps its own scroll (the
  * masthead stays sticky) and each page keeps where it was read to. A page not in view folds to nothing, so a short
@@ -99,11 +100,14 @@ export function mountMuster(o: {
     track.append(page);
   });
 
-  // the dots under the row of warbands: where you are, and a tap to any page
+  // the dots under the masthead: where you are, and a tap to any page
   const labelOf = (i: number) => (i === 0 ? 'The table' : bands[i - 1].mine ? 'Yours' : bands[i - 1].name.replace(/^The /i, ''));
   const dots = h('nav', { class: 'tk-dots', 'aria-label': 'The table and the warbands' },
     ...pages.map((_, i) => h('button', { type: 'button', class: 'tk-dot', 'data-go': String(i), 'aria-label': i === 0 ? 'The table' : bands[i - 1].name, 'aria-current': i === 0 ? 'page' : undefined }, h('span', {}, labelOf(i)))));
   if (bands.length) pager.before(dots);
+  // the row of warbands, lit for whose turn it is, belongs to the table: it slides away with it, and the dots take its place under the masthead
+  const turnRow = root.querySelector('.tk-bands');
+  if (turnRow) tablePage.prepend(turnRow);
 
   // ───────────────────────── the cards ─────────────────────────
 
@@ -153,10 +157,13 @@ export function mountMuster(o: {
 
   const pin = h('button', { type: 'button', class: 'tk-wr pinned' });
   const sheet = h('div', { class: 'tk-dossier-body' });
-  const dossier = h('div', { class: 'tk-dossier', role: 'dialog', 'aria-modal': 'true', hidden: true }, h('div', { class: 'tk-dossier-inner' }, pin, sheet));
+  const inner = h('div', { class: 'tk-dossier-inner' }, pin, sheet);
+  const dossier = h('div', { class: 'tk-dossier', role: 'dialog', 'aria-modal': 'true', hidden: true }, inner);
   root.append(dossier);
   let open: { m: MusterWarrior; b: MusterBand } | null = null;
   let closing = false;
+  /** How far across a swipe had carried the lifted card when it let go, so putting it back starts from there. */
+  let fling = 0;
 
   function fillDossier(): void {
     if (!open) return;
@@ -214,6 +221,8 @@ export function mountMuster(o: {
   function closeCard(): void {
     if (!open || closing) return;
     const id = open.m.id;
+    const dx = fling; fling = 0;
+    inner.style.transition = ''; inner.style.transform = ''; inner.style.opacity = '';
     const finish = () => {
       dossier.hidden = true;
       document.documentElement.classList.remove('tk-held');
@@ -225,9 +234,9 @@ export function mountMuster(o: {
     if (reduced() || !card) { finish(); return; }
     closing = true;
     const from = pin.getBoundingClientRect(), to = card.getBoundingClientRect();
-    sheet.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(1.5rem)' }], { duration: 180, easing: 'ease-in', fill: 'forwards' });
+    sheet.animate([{ opacity: dx ? .6 : 1, transform: `translateX(${dx}px)` }, { opacity: 0, transform: `translate(${dx}px, 1.5rem)` }], { duration: 180, easing: 'ease-in', fill: 'forwards' });
     dossier.animate([{}, { backgroundColor: 'rgba(8, 10, 9, 0)' }], { duration: 300, easing: 'ease-in', fill: 'forwards' });
-    const a = pin.animate([{ transform: 'none' }, { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px)` }], { duration: 300, easing: EASE, fill: 'forwards' });
+    const a = pin.animate([{ transform: `translateX(${dx}px)` }, { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px)` }], { duration: 300, easing: EASE, fill: 'forwards' });
     a.onfinish = () => { finish(); for (const x of dossier.getAnimations({ subtree: true })) x.cancel(); };
   }
 
@@ -237,6 +246,41 @@ export function mountMuster(o: {
   dossier.addEventListener('click', (e) => { if (e.target === dossier) putBack(); });
   addEventListener('popstate', () => { if (open) closeCard(); });
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && open) { e.preventDefault(); putBack(); } });
+
+  // a swipe across the lifted card, either way, puts it back: it follows the finger, and goes home if let go far or fast enough
+  let lift: { x: number; y: number; t: number; id: number; across: boolean; dx: number } | null = null;
+  let swallowLift = false;
+  dossier.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' || !e.isPrimary || closing) return;
+    lift = { x: e.clientX, y: e.clientY, t: e.timeStamp, id: e.pointerId, across: false, dx: 0 };
+  });
+  dossier.addEventListener('pointermove', (e) => {
+    if (!lift || e.pointerId !== lift.id) return;
+    const mx = e.clientX - lift.x, my = e.clientY - lift.y;
+    if (!lift.across) {
+      if (Math.abs(my) > 10 && Math.abs(my) > Math.abs(mx)) { lift = null; return; }
+      if (Math.abs(mx) < 10) return;
+      lift.across = true;
+      dossier.setPointerCapture(e.pointerId);
+    }
+    lift.dx = mx;
+    inner.style.transition = 'none';
+    inner.style.transform = `translateX(${mx}px)`;
+    inner.style.opacity = String(Math.max(.4, 1 - Math.abs(mx) / (dossier.clientWidth || 1)));
+  });
+  const letGo = (e: PointerEvent) => {
+    if (!lift || e.pointerId !== lift.id) return;
+    const was = lift; lift = null;
+    if (!was.across) return;
+    swallowLift = true; setTimeout(() => { swallowLift = false; }, 50);
+    const speed = Math.abs(was.dx) / Math.max(1, e.timeStamp - was.t);
+    if (e.type !== 'pointercancel' && (Math.abs(was.dx) > (dossier.clientWidth || 1) * .2 || speed > .45)) { fling = was.dx; putBack(); return; }
+    inner.style.transition = `transform 220ms ${EASE}, opacity 220ms`;
+    inner.style.transform = ''; inner.style.opacity = '';
+  };
+  dossier.addEventListener('pointerup', letGo);
+  dossier.addEventListener('pointercancel', letGo);
+  dossier.addEventListener('click', (e) => { if (swallowLift) { e.stopPropagation(); e.preventDefault(); } }, true);
 
   // ───────────────────────── the pager ─────────────────────────
 

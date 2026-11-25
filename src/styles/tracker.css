@@ -261,7 +261,7 @@ html:has(.tk-pager), html:has(.tk-pager) body { touch-action: pan-y pinch-zoom; 
 .tk-pager:not(.moving) .tk-page:not(.on) { height: 0; overflow: hidden; visibility: hidden; }
 
 /* where you are: a dot for each page, the one in view named */
-.tk-dots { display: flex; justify-content: center; align-items: center; gap: .1rem; padding: .15rem 0 0; }
+.tk-dots { display: flex; justify-content: center; align-items: center; gap: .1rem; padding: .35rem 0 .1rem; }
 .tk-dot { display: grid; place-items: center; min-width: 1.6rem; min-height: 1.6rem; padding: .2rem; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
 .tk-dot span { display: block; width: .45rem; height: .45rem; overflow: hidden; border-radius: 1rem; background: var(--border); color: transparent; font: var(--text-meta)/1.2 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; transition: background .2s, color .2s; }
 .tk-dot:hover span { background: var(--ink-dim); }
@@ -299,7 +299,10 @@ html:has(.tk-pager), html:has(.tk-pager) body { touch-action: pan-y pinch-zoom; 
 
 /* the card lifted: pinned at the top, the warrior under it; a tap on it puts it back */
 html.tk-held { overflow: hidden; }
-.tk-dossier { position: fixed; inset: 0; z-index: 25; overflow-y: auto; overscroll-behavior: contain; background: var(--bg); }
+.tk-dossier { position: fixed; inset: 0; z-index: 25; overflow-y: auto; overscroll-behavior: contain; background: var(--bg); scrollbar-width: none; touch-action: pan-y pinch-zoom; }
+/* it scrolls on its own, so it says again that sideways is the page's (a swipe across puts the card back);
+   and no scrollbar of its own: on a screen that keeps them showing it was a dark strip down the right and a narrower page */
+.tk-dossier::-webkit-scrollbar { display: none; }
 .tk-dossier-inner { max-width: 40rem; margin: 0 auto; padding: 0 1rem calc(2rem + env(safe-area-inset-bottom, 0px)); }
 .tk-wr.pinned { position: sticky; top: 0; z-index: 1; margin-top: calc(.75rem + env(safe-area-inset-top, 0px)); border-color: var(--gold-dim); border-left-color: var(--gold); background: linear-gradient(150deg, #1d2a1f, #141b17); box-shadow: 0 0 0 .75rem var(--bg), 0 14px 30px -10px #000; }
 .tk-wr.pinned[data-down='true'] { border-left-color: var(--blood-bright); }
