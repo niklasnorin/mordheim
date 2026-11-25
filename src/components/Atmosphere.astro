@@ -2,7 +2,8 @@
 import Icon from './Icon.astro';
 import { asset } from '../lib/site';
 // Atmospheric layers: rain, crows, fog, lightning, vignette (night)
-// and autumn leaves, foggy city skyline (day) — with a day/night switch
+// and autumn leaves, foggy city skyline (day) — with a day/night switch.
+// A calm page (`data-calm` on <html>, Base's `calm`) keeps the backdrop but none of the weather or the birds.
 ---
 
 <canvas id="rain-canvas" aria-hidden="true"></canvas>
@@ -215,13 +216,16 @@ import { asset } from '../lib/site';
     #theme-toggle { top: .5rem; }
   }
 
+  :global(html[data-calm]) :is(#rain-canvas, #leaf-canvas, #crow-canvas, #crow-canvas-front, .lightning) { display: none !important; }
+
   @media (prefers-reduced-motion: reduce) {
     #rain-canvas, #leaf-canvas, #crow-canvas, #crow-canvas-front { display: none !important; }
   }
 </style>
 
 <script>
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // a calm page runs none of the animation at all, not merely hides it
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.hasAttribute('data-calm');
 
   /* ── Day/night switch ── */
   const root = document.documentElement;

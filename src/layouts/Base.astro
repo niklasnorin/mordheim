@@ -7,16 +7,19 @@ import '../styles/markdown.css';
 interface Props {
   title: string;
   description?: string;
+  /** No rain, crows or lightning: for a page used at the table, where they only distract and drain the battery. */
+  calm?: boolean;
 }
 
 const {
   title,
+  calm = false,
   description = 'A grimdark campaign chronicle for our Mordheim game group. Warbands, news, and tales from the City of the Damned.',
 } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-calm={calm ? "" : undefined}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
