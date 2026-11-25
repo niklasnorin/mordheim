@@ -72,6 +72,8 @@ button.bd-chip-name:hover { color: var(--parchment); }
 .bd-row > .bd-row-name { flex: 1 1 10rem; color: var(--parchment); }
 .bd-row select, .bd-row input { min-height: 2.25rem; background: #0f1512; color: var(--ink); border: 1px solid var(--border); padding: 0 .4rem; font: inherit; max-width: 100%; }
 .bd-row input[type=number] { width: 5rem; }
+/* what a game owes: a roll to make, an advance to take */
+.bd-roll { color: var(--blood-bright); }
 .bd-log { list-style: none; display: grid; gap: .3rem; font-size: var(--text-ui); color: var(--ink-dim); }
 .bd-log li { display: flex; gap: .6rem; justify-content: space-between; border-bottom: 1px solid #1f2620; padding: .3rem 0; }
 .bd-log .gold { color: var(--gold); white-space: nowrap; font-variant-numeric: tabular-nums; }

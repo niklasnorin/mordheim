@@ -667,6 +667,68 @@ export async function income(actor: Actor, warbandId: string, version: number, i
   return keepView(warbandId);
 }
 
+/**
+ * Pay into a built warband: gold into the stash and experience onto the warriors, one line in the log. Returns false
+ * for a warband still written by hand, which the caller pays its own way. A henchman group's experience is the group's:
+ * the most any of its warriors was given.
+ */
+export async function payIn(actor: Actor, warbandId: string, pay: { gold: number; xp: Map<string, number>; kind: string; text: string; scenarioId?: string | null }): Promise<boolean> {
+  const w = await row(warbandId);
+  if (!w.roster) return false;
+  const roster = w.roster as Roster;
+  const b = bundleOrRefuse(roster.catalogue);
+  const next = addExperience(b, roster, pay.xp);
+  if (next !== roster) await save(warbandId, w.version, next);
+  await project(b, next);
+  const total = [...pay.xp.values()].reduce((a, n) => a + n, 0);
+  await log(warbandId, actor, { kind: pay.kind, gold: pay.gold, text: `${pay.text}${total ? `; ${total > 0 ? '+' : ''}${total} experience` : ''}.`, before: roster, scenarioId: pay.scenarioId ?? null });
+  return true;
+}
+
+/** Add (or take away) experience by warrior, through each warrior's experience on the roster. */
+function addExperience(b: Bundle, roster: Roster, xp: Map<string, number>): Roster {
+  if (![...xp.values()].some(Boolean)) return roster;
+  let next = structuredClone(roster);
+  for (const w of warriorsOf(b, roster)) {
+    const given = w.members.map((m) => xp.get(m) ?? 0).filter(Boolean);
+    if (!given.length) continue;
+    const n = given.reduce((a, x) => (Math.abs(x) > Math.abs(a) ? x : a), 0);
+    const total = Math.max(0, w.experience + n);
+    if (w.experienceId) {
+      if (total > 0) next = setCount(next, w.experienceId, total);
+      else next = removeSelection(next, w.experienceId);
+    } else if (total > 0) {
+      const o = flatOptions(optionsUnder(b, place(b, next), findPlaced(place(b, next), w.id) ?? null)).find((x) => !x.hidden && /^Experience$/i.test(x.name));
+      if (o) next = addSelection(b, next, w.id, o.id, randomId, total).roster;
+    }
+  }
+  return next;
+}
+
+/**
+ * The experience a played game gave, entered once per game: what the table agreed for each warrior (the page suggests
+ * it from the record, `aftermath` in builder/aftermath.ts). Refused a second time for the same game.
+ */
+export async function awardExperience(actor: Actor, warbandId: string, version: number, scenarioId: string, awards: Record<string, number>): Promise<KeepView> {
+  const k = await loadKept(actor, warbandId, version);
+  const already = await db().select({ id: warbandLog.id }).from(warbandLog).where(and(eq(warbandLog.warbandId, warbandId), eq(warbandLog.scenarioId, scenarioId), eq(warbandLog.kind, 'experience'), eq(warbandLog.struck, false))).limit(1);
+  if (already.length) throw new LedgerError('The experience for that game is in already. Take the line back to enter it again.', 409);
+  const [game] = await db().select({ title: scenarios.title, status: scenarios.status }).from(scenarios).where(eq(scenarios.id, scenarioId)).limit(1);
+  if (!game || game.status !== 'played') throw new LedgerError('Experience comes after a game is played.');
+  const xp = new Map<string, number>();
+  for (const w of warriorsOf(k.b, k.roster)) {
+    const n = Math.floor(awards[w.id] ?? 0);
+    if (n < 0 || n > 20) throw new LedgerError('Experience from a game is a few points at most.');
+    if (n) xp.set(w.members[0] ?? w.id, n);
+  }
+  const next = addExperience(k.b, k.roster, xp);
+  const total = [...xp.values()].reduce((a, n) => a + n, 0);
+  await save(warbandId, version, next);
+  await project(k.b, next);
+  await log(warbandId, actor, { kind: 'experience', text: `Experience from ${game.title}: ${total} in all.`, before: k.roster, scenarioId });
+  return keepView(warbandId);
+}
+
 /** Strike the last line of the log and put the roster back as it stood before it. The keeper or a game master. */
 export async function undoLast(actor: Actor, warbandId: string): Promise<KeepView> {
   const w = await row(warbandId);

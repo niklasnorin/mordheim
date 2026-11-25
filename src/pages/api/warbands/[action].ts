@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { dispatch, route } from '../../../server/api';
 import { addChapter, IMAGE_TYPES, moveChapter, removeChapter, updateChapter, uploadImage } from '../../../server/campaign/chapters';
 import { removePortrait, setPortrait, uploadPortraitSource } from '../../../server/campaign/portraits';
-import { buyItem, changeRoster, drawUp, dropRoster, foundWarband, hire, income, keepViewFor, loseWarrior, moveGear, promote, recruit, sellItem, undoLast } from '../../../server/campaign/keep';
+import { awardExperience, buyItem, changeRoster, drawUp, dropRoster, foundWarband, hire, income, keepViewFor, loseWarrior, moveGear, promote, recruit, sellItem, undoLast } from '../../../server/campaign/keep';
 import type { Roster, Selection } from '../../../builder/evaluate';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, releaseWarband, removeMember, reorderMembers, updateMember, updateWarband } from '../../../server/campaign/roster';
 
@@ -57,6 +57,7 @@ const routes = {
   lose: route(z.object({ ...kept, memberId: id, scenarioId: z.string().max(64).nullable().optional() }), (i, a) => loseWarrior(a, i.warbandId, i.version, i.memberId, i.scenarioId ?? null).then((keep) => ({ keep }))),
   promote: route(z.object({ ...kept, memberId: id }), (i, a) => promote(a, i.warbandId, i.version, i.memberId).then((keep) => ({ keep }))),
   income: route(z.object({ ...kept, found: z.number().int().min(0).max(99).optional(), sold: z.number().int().min(0).max(99).optional(), gold: z.number().int().min(-100000).max(100000).optional(), text: z.string().max(200).optional(), scenarioId: z.string().max(64).nullable().optional() }), (i, a) => income(a, i.warbandId, i.version, i).then((keep) => ({ keep }))),
+  award: route(z.object({ ...kept, scenarioId: z.string().max(64), awards: z.record(z.string().max(40), z.number().int().min(0).max(20)) }), (i, a) => awardExperience(a, i.warbandId, i.version, i.scenarioId, i.awards).then((keep) => ({ keep }))),
   undo: route(z.object({ warbandId: id }), (i, a) => undoLast(a, i.warbandId).then((keep) => ({ keep }))),
   'drop-roster': route(z.object({ warbandId: id }), (i, a) => dropRoster(a, i.warbandId).then((keep) => ({ keep })), 'gm'),
 

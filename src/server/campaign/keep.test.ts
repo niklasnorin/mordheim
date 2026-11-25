@@ -164,3 +164,23 @@ test('a written warband is drawn up from its record and confirmed by its keeper'
   assert.equal(w.members.find((m) => m.id === 'agnar')!.role, 'Elder');
   await assert.rejects(drawUp(gm, 'nordost', { roster: p.roster, gold: 0 }), (e: unknown) => e instanceof LedgerError && e.status === 409);
 });
+
+test('a played game’s experience goes onto the roster once, and the Fountain Post pays a built warband through its log', async () => {
+  const { listScenarios } = await import('./scenarios.ts');
+  const { payIn, awardExperience: award } = await import('./keep.ts');
+  const game = (await listScenarios()).find((s) => s.status === 'played' && s.warbands.some((p) => p.warbandId === 'nordost'))!;
+  assert.ok(game, 'the seed has a played game for the Kin');
+  let v = await keepView('nordost');
+  const b = bundleFor('ostlanders')!;
+  const elder = warriorsOf(b, v.roster!).find((w) => w.type === 'Elder')!;
+  v = await award(gm, 'nordost', v.version, game.id, { [elder.id]: 2 });
+  assert.equal(warriorsOf(b, v.roster!).find((w) => w.type === 'Elder')!.experience, elder.experience + 2);
+  assert.equal((await getWarband('nordost'))!.members.find((m) => m.id === 'agnar')!.experience, elder.experience + 2);
+  await assert.rejects(award(gm, 'nordost', v.version, game.id, { [elder.id]: 1 }), (e: unknown) => e instanceof LedgerError && e.status === 409);
+  const gold = v.gold;
+  assert.equal(await payIn(gm, 'nordost', { gold: 15, xp: new Map([['agnar', 1]]), kind: 'job', text: 'The Fountain Post: a test' }), true);
+  v = await keepView('nordost');
+  assert.equal(v.gold, gold + 15);
+  assert.equal(warriorsOf(b, v.roster!).find((w) => w.type === 'Elder')!.experience, elder.experience + 3);
+  assert.equal(await payIn(gm, 'bitterbrow-expedition', { gold: 5, xp: new Map(), kind: 'job', text: 'x' }), false, 'a written warband is paid its own way');
+});

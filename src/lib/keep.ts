@@ -12,6 +12,7 @@ import { priceRange, rolled, saleOf } from '../builder/stash.ts';
 import type { Op } from '../builder/ops.ts';
 import { nodeOf } from '../builder/catalogue.ts';
 import type { StockLine } from '../campaign/trading.ts';
+import { aftermath, type GameRecord } from '../builder/aftermath.ts';
 import { h, localDriver, mountBuilder, type Driver, type State, type View } from './builder.ts';
 import { ensureToast, postApi } from './manage.ts';
 
@@ -24,7 +25,7 @@ export interface KeepData {
   names: Record<string, string[]>;
   gold: number;
   shards: number;
-  log: { id: number; kind: string; gold: number; shards: number; text: string; authorName: string; struck: boolean; createdAt: string; undoable: boolean }[];
+  log: { id: number; kind: string; gold: number; shards: number; text: string; authorName: string; struck: boolean; createdAt: string; undoable: boolean; scenarioId: string | null }[];
   post: { id: string; name: string; lines: StockLine[] } | null;
 }
 export interface PageData {
@@ -34,8 +35,8 @@ export interface PageData {
   gm: boolean;
   keep?: KeepData;
   proposal?: { roster: Roster; names: Record<string, string[]>; notes: string[]; catalogue: string };
-  /** Played scenarios the warband fought in, newest first, for income and losses to name. */
-  games?: { id: string; title: string }[];
+  /** Played scenarios the warband fought in, newest first, with what the record says of them, for experience and income. */
+  games?: ({ id: string; title: string } & GameRecord)[];
 }
 
 const gc = (n: number) => `${n} gc`;
@@ -151,6 +152,35 @@ export function mountKeep(root: HTMLElement, data: PageData, bundle: Bundle): vo
       h('p', { class: 'mg-note' }, `Shards sold fetch the rulebook’s rate for a warband of ${v.summary.size}, once after each game; the rest stay in the stash.${data.gm ? ' A game master may take crowns away with a figure below nought.' : ''}`),
     ) : null;
 
+    // what the last games gave: experience suggested from the record, entered once a game
+    const owed = (data.games ?? []).filter((g) => !keep.log.some((l) => !l.struck && l.kind === 'experience' && l.scenarioId === g.id)).slice(0, 3);
+    const after = data.canEdit && owed.length ? h('section', { class: 'bd-panel', id: 'after' },
+      h('h2', {}, 'After the game'),
+      ...owed.map((g) => {
+        const awards = aftermath(warriors, g);
+        const inputs = new Map<string, HTMLInputElement>();
+        return h('details', { class: 'mg-editor', open: g === owed[0] ? true : undefined },
+          h('summary', {}, g.title),
+          h('div', {},
+            h('ul', { class: 'bd-rows' }, ...awards.map((a) => {
+              const w = warriors.find((x) => x.id === a.warriorId)!;
+              const names = (v.state.names[w.id] ?? []).join(', ') || w.type;
+              const input = h('input', { type: 'number', min: 0, max: 20, value: a.suggested, 'aria-label': `Experience for ${names}` }) as HTMLInputElement;
+              inputs.set(w.id, input);
+              const why = [a.survived ? 'came through' : a.fought ? '' : 'did not fight', a.takedowns ? `${a.takedowns} put out of action` : '', a.leader ? 'led them to victory' : ''].filter(Boolean).join(', ');
+              const roll = a.outOfAction.map((m) => v.state.names[w.id]?.[w.members.indexOf(m)] ?? w.type);
+              return h('li', { class: 'bd-row' },
+                h('span', { class: 'bd-row-name' }, names, h('small', { class: 'mg-muted' }, why ? ` — ${why}` : ''),
+                  roll.length ? h('small', { class: 'bd-roll' }, ` · out of action: ${roll.join(', ')}, ${w.kind === 'hero' ? 'to roll on the serious injury table (Skills and more, or Fell)' : 'dead on a 1 or 2 (Fell)'}`) : null,
+                  a.advances ? h('small', { class: 'bd-roll' }, ` · ${a.advances === 1 ? 'an advance' : `${a.advances} advances`} due`) : null),
+                input);
+            })),
+            h('div', { class: 'mg-actions end' }, h('button', { type: 'button', class: 'mg-btn sm', onclick: () => void run('award', { scenarioId: g.id, awards: Object.fromEntries([...inputs].map(([id, i]) => [id, Number(i.value) || 0])) }) }, 'Enter the experience')),
+            h('p', { class: 'mg-note' }, 'Suggested from the battle’s record: one for coming through, one for each enemy a hero put out of action, one more for a winning leader. Change any figure the table agreed otherwise; an advance is taken under Skills and more.'),
+          ));
+      }),
+    ) : null;
+
     // the log
     const logBox = keep.log.length ? h('section', { class: 'bd-panel', id: 'log' },
       h('h2', {}, 'The log'),
@@ -160,7 +190,7 @@ export function mountKeep(root: HTMLElement, data: PageData, bundle: Bundle): vo
         l.undoable && data.canEdit ? h('button', { type: 'button', class: 'mg-link', onclick: () => { if (confirm('Take this line back, and the roster with it?')) void run('undo', {}); } }, 'Take back') : null))),
     ) : null;
 
-    wrap.append(...[stash, hiring, shop, incomeBox, logBox].filter((x): x is HTMLElement => !!x));
+    wrap.append(...[after, stash, hiring, shop, incomeBox, logBox].filter((x): x is HTMLElement => !!x));
     if (data.gm) wrap.append(h('p', { class: 'mg-note' }, h('button', { type: 'button', class: 'mg-link', onclick: () => { if (confirm('Put this warband’s roster back in the record’s hands, written by hand? The log is struck through.')) void postApi(data.base, 'warbands/drop-roster', { warbandId: keep.warbandId }).then(() => location.reload(), (e) => toast((e as Error).message)); } }, 'Put the roster back to hand-written'), ' (game masters)'));
     v.root.append(wrap);
   }

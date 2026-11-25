@@ -123,14 +123,17 @@ export async function jobsTaken(warbandId?: string): Promise<TakenJob[]> {
 export interface PostRecord { warbands: Warband[]; standings: Standing[]; taken: TakenJob[]; scenarios: Scenario[] }
 
 export async function loadRecord(): Promise<PostRecord> {
-  const [list, books, taken, scenarios] = await Promise.all([
+  const { booksOf } = await import('./keep.ts');
+  const [list, logged, taken, scenarios, kept] = await Promise.all([
     listWarbands(),
     db().select({ id: warbandTable.id, rating: warbandTable.rating, gold: warbandTable.gold }).from(warbandTable),
     jobsTaken(),
     listScenarios(),
+    booksOf(),
   ]);
   const standings = list.map((w): Standing => {
-    const book = books.find((b) => b.id === w.id);
+    // a warband kept by the builder has its books from its roster and its stash; the others as logged by hand
+    const book = kept[w.id] ?? logged.find((b) => b.id === w.id);
     const leader = leaderOf(w)?.id;
     return {
       warbandId: w.id, name: w.name, rating: book?.rating ?? 0, gold: book?.gold ?? 0,
@@ -257,6 +260,8 @@ export async function takeJobs(actor: Actor, scenarioId: string, warbandId: stri
   if (rows.length > 1) await d.insert(warbandJobs).values(rows.slice(1)).onConflictDoNothing();
   const xp = new Map<string, number>();
   for (const g of pay.jobs.flatMap((p) => p.grants)) xp.set(g.memberId, (xp.get(g.memberId) ?? 0) + g.experience);
+  const { payIn } = await import('./keep.ts');
+  if (await payIn(actor, warbandId, { gold: pay.gold, xp, kind: 'job', scenarioId, text: `The Fountain Post: ${pay.jobs.map((p) => p.job.title).join('; ')}` })) return offer(actor, { warbandId, scenarioId, locationId: here });
   for (const [memberId, n] of xp) await d.update(members).set({ experience: sql`coalesce(${members.experience}, 0) + ${n}`, updatedAt: new Date() }).where(eq(members.id, memberId));
   await d.update(warbandTable).set({
     gold: sql`${warbandTable.gold} + ${pay.gold}`,
@@ -275,8 +280,10 @@ export async function undoJobs(actor: Actor, scenarioId: string, warbandId: stri
   const taken = gone.map(takenOf);
   const xp = new Map<string, number>();
   for (const g of taken.flatMap((t) => t.grants)) xp.set(g.memberId, (xp.get(g.memberId) ?? 0) + g.experience);
-  for (const [memberId, n] of xp) await d.update(members).set({ experience: sql`greatest(0, coalesce(${members.experience}, 0) - ${n})`, updatedAt: new Date() }).where(eq(members.id, memberId));
   const gold = taken.reduce((n, t) => n + t.gold, 0), experience = [...xp.values()].reduce((a, b) => a + b, 0);
+  const { payIn } = await import('./keep.ts');
+  if (await payIn(actor, warbandId, { gold: -gold, xp: new Map([...xp].map(([k, v]) => [k, -v])), kind: 'job', scenarioId, text: 'The Fountain Post’s jobs struck, their pay taken back' })) return;
+  for (const [memberId, n] of xp) await d.update(members).set({ experience: sql`greatest(0, coalesce(${members.experience}, 0) - ${n})`, updatedAt: new Date() }).where(eq(members.id, memberId));
   await d.update(warbandTable).set({
     gold: sql`greatest(0, ${warbandTable.gold} - ${gold})`,
     rating: sql`case when ${warbandTable.rating} > 0 then greatest(0, ${warbandTable.rating} - ${experience}) else 0 end`,

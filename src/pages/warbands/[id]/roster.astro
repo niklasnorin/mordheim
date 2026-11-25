@@ -31,7 +31,10 @@ if (ready) {
     if (warband) {
       const gm = isGm(viewer);
       const canEdit = gm || (!!viewer && warband.ownerId === viewer.id);
-      const games = (await listScenarios()).filter((s) => s.status === 'played' && s.warbands.some((p) => p.warbandId === warband!.id)).reverse().map((s) => ({ id: s.id, title: s.title }));
+      const games = (await listScenarios()).filter((s) => s.status === 'played' && s.warbands.some((p) => p.warbandId === warband!.id)).reverse().map((s) => {
+        const mine = s.warbands.find((p) => p.warbandId === warband!.id)!;
+        return { id: s.id, title: s.title, result: mine.result ?? null, members: mine.members.map((m) => ({ memberId: m.memberId, status: m.status })), takedowns: s.outOfAction.map((o) => ({ attackerId: o.attackerId, targetId: o.targetId ?? null })) };
+      });
       if (warband.built) {
         const keep = await keepViewFor(viewer, warband.id);
         data = { mode: 'keep', base, canEdit, gm, keep: JSON.parse(JSON.stringify(keep)), games };
