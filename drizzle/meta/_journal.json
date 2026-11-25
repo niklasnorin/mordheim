@@ -155,6 +155,13 @@
       "when": 1792509895883,
       "tag": "0021_job-scopes",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795644236014,
+      "tag": "0022_member-equipment",
+      "breakpoints": true
     }
   ]
 }

@@ -4,7 +4,7 @@ import { chapterNumeral, leaderOf, normaliseBlocks, paragraphsOf, type Member } 
 
 const member = (id: string, over: Partial<Member> = {}): Member => ({
   id, warbandId: 'w', name: id, role: '', rank: 'henchman', portrait: '', epithet: '', dead: false,
-  stats: { M: 4, WS: 3, BS: 3, S: 3, T: 3, W: 1, I: 3, A: 1, Ld: 7 }, skills: [], injuries: [], lore: '', sort: 0, ...over,
+  stats: { M: 4, WS: 3, BS: 3, S: 3, T: 3, W: 1, I: 3, A: 1, Ld: 7 }, skills: [], equipment: [], injuries: [], lore: '', sort: 0, ...over,
 });
 
 test('the leader is the living warrior with the Leader rule, wherever they stand on the roll', () => {

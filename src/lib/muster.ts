@@ -27,6 +27,7 @@ export interface MusterWarrior {
   stats: Statline;
   experience: number | null;
   skills: string[];
+  equipment: string[];
   injuries: string[];
 }
 export interface MusterBand {
@@ -188,6 +189,7 @@ export function mountMuster(o: {
       ),
       h('dl', { class: 'tk-stats', 'aria-label': 'Statline' }, ...STAT_KEYS.map((k) => h('div', { title: STAT_NAMES[k] }, h('dt', {}, k), h('dd', {}, String(m.stats?.[k] ?? '–'))))),
       game.length ? h('section', {}, h('h3', { class: 'tk-turn-label' }, 'This game'), h('ul', { class: 'tk-dossier-list' }, ...game)) : null,
+      m.equipment?.length ? h('section', {}, h('h3', { class: 'tk-turn-label' }, 'Gear'), h('ul', { class: 'tk-dossier-list' }, ...m.equipment.map((x) => h('li', {}, x)))) : null,
       m.skills.length ? h('section', {}, h('h3', { class: 'tk-turn-label' }, 'Skills and rules'), h('ul', { class: 'tk-dossier-list' }, ...m.skills.map((x) => h('li', {}, x)))) : null,
       m.injuries.length ? h('section', {}, h('h3', { class: 'tk-turn-label' }, 'Injuries'), h('ul', { class: 'tk-dossier-list injuries' }, ...m.injuries.map((x) => h('li', {}, x)))) : null,
       h('a', { class: 'tk-btn ghost wide', href: `${base}/warbands/${b.id}/#${m.id}` }, 'Their whole record'),

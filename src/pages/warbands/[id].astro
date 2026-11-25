@@ -138,6 +138,7 @@ const overview = warband?.lore.trim() ?? '';
                           <thead><tr>{STAT_KEYS.map((k) => <th scope="col"><abbr title={STAT_NAMES[k]}>{k}</abbr></th>)}</tr></thead>
                           <tbody><tr>{STAT_KEYS.map((k) => <td>{m.stats[k]}</td>)}</tr></tbody>
                         </table>
+                        {m.equipment.length > 0 && <><h4 class="mg-h3">Gear</h4><ul class="mg-list">{m.equipment.map((x) => <li>{x}</li>)}</ul></>}
                         {m.skills.length > 0 && <><h4 class="mg-h3">Skills &amp; special rules</h4><ul class="mg-list">{m.skills.map((x) => <li>{x}</li>)}</ul></>}
                         {m.injuries.length > 0 && <><h4 class="mg-h3">Old wounds</h4><ul class="mg-list">{m.injuries.map((x) => <li>{x}</li>)}</ul></>}
                         {m.lore.trim() && <><h4 class="mg-h3">Tale</h4><Markdown class="mg-lede" text={m.lore} /></>}
@@ -173,7 +174,8 @@ const overview = warband?.lore.trim() ?? '';
                               <fieldset class="mg-fieldset"><legend>Characteristics</legend>
                                 <div class="mg-stats">{STAT_KEYS.map((k) => <label>{k}<input name={`patch.stats.${k}`} type="number" min="0" max="10" value={m.stats[k]} inputmode="numeric" aria-label={STAT_NAMES[k]} /></label>)}</div>
                               </fieldset>
-                              <label class="mg-field">Skills &amp; special rules<textarea name="patch.skills" data-list>{m.skills.join('\n')}</textarea><small>One per line. Prayers and spells go here too. Weapons and gear are not tracked.</small></label>
+                              <label class="mg-field">Gear<textarea name="patch.equipment" data-list>{m.equipment.join('\n')}</textarea><small>One per line: weapons, armour and whatever else they carry.</small></label>
+                              <label class="mg-field">Skills &amp; special rules<textarea name="patch.skills" data-list>{m.skills.join('\n')}</textarea><small>One per line. Prayers and spells go here too.</small></label>
                               <label class="mg-field">Old wounds<textarea name="patch.injuries" data-list>{m.injuries.join('\n')}</textarea><small>One per line, as rolled on the serious injury table.</small></label>
                               <label class="mg-field">Tale<textarea name="patch.lore" data-markdown maxlength="4000">{m.lore}</textarea></label>
                               <label class="mg-field check"><input type="checkbox" name="patch.dead" checked={m.dead} /> Fallen</label>
@@ -210,6 +212,7 @@ const overview = warband?.lore.trim() ?? '';
                 <fieldset class="mg-fieldset"><legend>Characteristics</legend>
                   <div class="mg-stats">{STAT_KEYS.map((k) => <label>{k}<input name={`member.stats.${k}`} type="number" min="0" max="10" value={{ M: 4, WS: 3, BS: 3, S: 3, T: 3, W: 1, I: 3, A: 1, Ld: 7 }[k]} inputmode="numeric" aria-label={STAT_NAMES[k]} /></label>)}</div>
                 </fieldset>
+                <label class="mg-field">Gear<textarea name="member.equipment" data-list></textarea><small>One per line: weapons, armour and whatever else they carry.</small></label>
                 <label class="mg-field">Skills &amp; special rules<textarea name="member.skills" data-list></textarea><small>One per line.</small></label>
                 <label class="mg-field">Tale<textarea name="member.lore" data-markdown maxlength="4000" placeholder="Two to four sentences: who they are through habit, and one physical or historical detail."></textarea></label>
                 <div class="mg-actions end"><button type="submit" class="mg-btn">Enter them on the roll</button></div>

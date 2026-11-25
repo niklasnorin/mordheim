@@ -48,8 +48,10 @@ export interface Member {
   death?: Death;
   stats: Statline;
   experience?: number;
-  /** Skills, special rules and prayers, one line each. Weapons and gear are not tracked. */
+  /** Skills, special rules and prayers, one line each. */
   skills: string[];
+  /** What they carry, one line a piece: weapons, armour and gear. */
+  equipment: string[];
   /** Lasting injuries rolled on the serious injury table. */
   injuries: string[];
   lore: string;

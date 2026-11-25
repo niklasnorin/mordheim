@@ -875,3 +875,15 @@ test('pictures at the table: kept large with a small one for the log, by the tur
   await deleteScenario(gm, s.id);
   assert.equal(await getImage(last.image), undefined, 'a scenario takes its pictures with it');
 });
+
+test('the warriors carry their gear: the seed gives it once, the keeper changes it, a null left by an older database is filled', async () => {
+  const kin = (await getWarband('nordost'))!;
+  const torgrim = kin.members.find((m) => m.id === 'torgrim')!;
+  assert.deepEqual(torgrim.equipment, fixtures.find((w) => w.id === 'nordost')!.members.find((m) => m.id === 'torgrim')!.equipment);
+  const keeper = kin.ownerId ? actorOf(kin.ownerId, 'Keeper') : gm;
+  const changed = await updateMember(keeper, 'torgrim', { equipment: ['Bow', 'Dagger', 'Hunting arrows', ' '] });
+  assert.deepEqual(changed.members.find((m) => m.id === 'torgrim')!.equipment, ['Bow', 'Dagger', 'Hunting arrows']);
+  const added = await addMember(gm, 'nordost', { name: 'Hild Nordost', equipment: ['Spear'] });
+  assert.deepEqual(added.members.find((m) => m.name === 'Hild Nordost')!.equipment, ['Spear']);
+  await removeMember(gm, added.members.find((m) => m.name === 'Hild Nordost')!.id);
+});

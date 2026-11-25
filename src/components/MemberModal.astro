@@ -79,6 +79,12 @@ const statNames = {
           </details>
           <div class="profile-section">
             {m.experience !== undefined && <p><strong>Experience:</strong> {m.experience}</p>}
+            {m.equipment.length > 0 && (
+              <>
+                <h4>Gear</h4>
+                <ul>{m.equipment.map((x) => <li>{x}</li>)}</ul>
+              </>
+            )}
             {m.skills.length > 0 && (
               <>
                 <h4>Skills & Special Rules</h4>

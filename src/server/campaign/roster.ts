@@ -14,7 +14,7 @@ import { STAT_KEYS, slugify, type Death, type Member, type Statline, type Warban
 import type { PortraitCrop } from '../../campaign/portrait.ts';
 import { proseSource } from '../../campaign/prose.ts';
 import { isGm, type Actor } from '../roles.ts';
-import { ensureSeeded } from './seed.ts';
+import { ensureEquipmentSeeded, ensureSeeded } from './seed.ts';
 
 export { LedgerError };
 
@@ -25,7 +25,7 @@ function memberOf(r: MemberRow): Member {
   return {
     id: r.id, warbandId: r.warbandId, name: r.name, role: r.role, rank: r.rank, portrait: r.portrait, epithet: r.epithet, dead: r.dead,
     death: (r.death as Death | null) ?? undefined, stats: r.stats as Statline, experience: r.experience ?? undefined,
-    skills: (r.skills as string[]) ?? [], injuries: (r.injuries as string[]) ?? [], lore: r.lore, sort: r.sort,
+    skills: (r.skills as string[]) ?? [], equipment: (r.equipment as string[] | null) ?? [], injuries: (r.injuries as string[]) ?? [], lore: r.lore, sort: r.sort,
     picture: r.portraitImage && r.portraitSource && r.portraitCrop ? { image: r.portraitImage, source: r.portraitSource, crop: r.portraitCrop as PortraitCrop } : undefined,
   };
 }
@@ -33,6 +33,7 @@ function memberOf(r: MemberRow): Member {
 /** Every warband with its members, home-page order, plus the tallies from the played scenarios. */
 export async function listWarbands(): Promise<Warband[]> {
   await ensureSeeded();
+  await ensureEquipmentSeeded();
   const d = db();
   const [rows, memberRows, tallies] = await Promise.all([
     d.select({ w: warbands, ownerName: user.name }).from(warbands).leftJoin(user, eq(user.id, warbands.ownerId)).orderBy(asc(warbands.sort), asc(warbands.createdAt)),
@@ -206,7 +207,7 @@ export async function deleteWarband(actor: Actor, id: string): Promise<void> {
 
 export interface MemberInput {
   name: string; role?: string; rank?: 'hero' | 'henchman'; epithet?: string; stats?: Partial<Statline>; experience?: number | null;
-  skills?: string[]; injuries?: string[]; lore?: string; dead?: boolean; death?: Partial<Death> | null;
+  skills?: string[]; equipment?: string[]; injuries?: string[]; lore?: string; dead?: boolean; death?: Partial<Death> | null;
 }
 
 export function statlineOf(given: Partial<Statline> | undefined, base?: Statline): Statline {
@@ -228,7 +229,7 @@ export async function addMember(actor: Actor, warbandId: string, input: MemberIn
   await d.insert(members).values({
     id, warbandId, name, role: clean(input.role, 60), rank: input.rank === 'hero' ? 'hero' : 'henchman', portrait: portraitFor(name), epithet: clean(input.epithet, 120),
     stats: statlineOf(input.stats), experience: input.experience == null ? null : bounded(input.experience, 0, 999, 'Experience'),
-    skills: lines(input.skills), injuries: lines(input.injuries), lore: proseSource(input.lore, 4000), sort: n + 1,
+    skills: lines(input.skills), equipment: lines(input.equipment), injuries: lines(input.injuries), lore: proseSource(input.lore, 4000), sort: n + 1,
     dead: !!input.dead, death: input.dead ? deathOf(input.death, null) : null,
   });
   await touch(warbandId);
@@ -258,6 +259,7 @@ export async function updateMember(actor: Actor, memberId: string, patch: Partia
   if (patch.stats !== undefined) set.stats = statlineOf(patch.stats, m.stats as Statline);
   if (patch.experience !== undefined) set.experience = patch.experience == null ? null : bounded(patch.experience, 0, 999, 'Experience');
   if (patch.skills !== undefined) set.skills = lines(patch.skills);
+  if (patch.equipment !== undefined) set.equipment = lines(patch.equipment);
   if (patch.injuries !== undefined) set.injuries = lines(patch.injuries);
   if (patch.lore !== undefined) set.lore = proseSource(patch.lore, 4000);
   if (patch.dead !== undefined) { set.dead = patch.dead; set.death = patch.dead ? deathOf(patch.death, m.death as Death | null) : null; }

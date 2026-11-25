@@ -18,7 +18,7 @@ const lines = z.array(z.string().max(200)).max(30);
 const death = z.object({ date: z.string().max(80).optional(), epitaph: z.string().max(200).optional(), order: z.number().int().optional() }).nullable();
 const memberFields = {
   name: z.string().max(80), role: z.string().max(60), rank: z.enum(['hero', 'henchman']), epithet: z.string().max(120), stats, experience: z.number().int().min(0).max(999).nullable(),
-  skills: lines, injuries: lines, lore: z.string().max(4000), dead: z.boolean(), death,
+  skills: lines, equipment: lines, injuries: lines, lore: z.string().max(4000), dead: z.boolean(), death,
 };
 const block = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('text'), text: z.string().max(20000) }),

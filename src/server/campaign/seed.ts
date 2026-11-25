@@ -3,7 +3,7 @@
  * the warbands table is empty the fixtures are imported once, so a fresh database (local PGlite, a new Neon) shows
  * the campaign as it was recorded. After that the database rules and the fixtures are never read again.
  */
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
 import { locationJobs, locationPoints, locations, members, newsArticles, scenarioMembers, scenarioOutOfAction, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
 import { warbands as seedWarbands } from '../../data/warbands.ts';
@@ -21,7 +21,27 @@ export function ensureSeeded(): Promise<void> {
 }
 
 /** For tests and a reset: forget that the check was made. */
-export function forgetSeeded(): void { seeded = undefined; locationsSeeded = undefined; jobsSeeded = undefined; }
+export function forgetSeeded(): void { seeded = undefined; locationsSeeded = undefined; jobsSeeded = undefined; equipmentSeeded = undefined; }
+
+let equipmentSeeded: Promise<void> | undefined;
+
+/**
+ * Give the warriors their gear once. Gear came after the roster: a database seeded before it has every warrior's
+ * `equipment` null, so a warrior the fixtures know is given the fixture's gear, and every other null becomes an empty
+ * list. A list once written, even an empty one, is never touched again.
+ */
+export function ensureEquipmentSeeded(): Promise<void> {
+  equipmentSeeded ??= seedEquipment().then(() => undefined, (e) => { equipmentSeeded = undefined; throw e; });
+  return equipmentSeeded;
+}
+
+async function seedEquipment(): Promise<void> {
+  const d = db();
+  const unset = await d.select({ id: members.id }).from(members).where(isNull(members.equipment));
+  if (!unset.length) return;
+  const known = new Map(seedWarbands.flatMap((w) => w.members).map((m) => [m.id, m.equipment ?? []]));
+  for (const { id } of unset) await d.update(members).set({ equipment: known.get(id) ?? [] }).where(and(eq(members.id, id), isNull(members.equipment)));
+}
 
 let locationsSeeded: Promise<void> | undefined;
 
@@ -109,7 +129,7 @@ export async function seedCampaign(): Promise<void> {
     for (const [j, m] of w.members.entries()) {
       await d.insert(members).values({
         id: m.id, warbandId: w.id, name: m.name, role: m.role, rank: m.rank, portrait: m.portrait, epithet: m.epithet, dead: !!m.dead, death: m.death ?? null,
-        stats: m.stats, experience: m.experience ?? null, skills: [...m.skills, ...(m.prayers ?? []).map((p) => `Prayer: ${p}`)], injuries: m.injuries ?? [], lore: m.lore, sort: j + 1,
+        stats: m.stats, experience: m.experience ?? null, skills: [...m.skills, ...(m.prayers ?? []).map((p) => `Prayer: ${p}`)], equipment: m.equipment ?? [], injuries: m.injuries ?? [], lore: m.lore, sort: j + 1,
       }).onConflictDoNothing();
     }
   }

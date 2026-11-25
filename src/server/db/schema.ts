@@ -200,6 +200,8 @@ export const members = pgTable(
     experience: integer('experience'),
     skills: jsonb('skills').notNull().default([]),
     injuries: jsonb('injuries').notNull().default([]),
+    /** What the warrior carries, one line a piece ("Sword", "Light armour"). Null until written: a row from before gear was kept, which the seed fills once. */
+    equipment: jsonb('equipment'),
     lore: text('lore').notNull().default(''),
     sort: integer('sort').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
