@@ -247,3 +247,77 @@
   .tk-sheet { margin: auto; max-height: 85vh; }
   .tk-bar .tk-btn { flex-direction: row; font-size: var(--text-ui); }
 }
+
+/* ═══════════════════════════════════════════
+   The muster at the table (lib/muster.ts): the table is the first page, each warband's warriors a swipe away,
+   the viewer's own first. The track is moved by hand; a page not in view folds to nothing between swipes.
+   ═══════════════════════════════════════════ */
+.tk-bands li[data-warband] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.tk-pager { margin: 0 -1rem; overflow-x: hidden; overflow-x: clip; touch-action: pan-y; }
+.tk-track { display: flex; align-items: flex-start; will-change: transform; }
+.tk-page { flex: 0 0 100%; min-width: 0; box-sizing: border-box; padding: 0 1rem; }
+.tk-pager:not(.moving) .tk-page:not(.on) { height: 0; overflow: hidden; visibility: hidden; }
+
+/* where you are: a dot for each page, the one in view named */
+.tk-dots { display: flex; justify-content: center; align-items: center; gap: .1rem; padding: .15rem 0 0; }
+.tk-dot { display: grid; place-items: center; min-width: 1.6rem; min-height: 1.6rem; padding: .2rem; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
+.tk-dot span { display: block; width: .45rem; height: .45rem; overflow: hidden; border-radius: 1rem; background: var(--border); color: transparent; font: var(--text-meta)/1.2 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; transition: background .2s, color .2s; }
+.tk-dot:hover span { background: var(--ink-dim); }
+.tk-dot[aria-current='page'] span { width: auto; height: auto; max-width: 11rem; text-overflow: ellipsis; padding: .12rem .6rem; background: #1d2a1f; color: var(--parchment); box-shadow: inset 0 0 0 1px var(--gold-dim); }
+.tk-dot:focus-visible { outline: none; }
+.tk-dot:focus-visible span { box-shadow: 0 0 0 2px var(--gold); }
+
+/* a warband's page: its crest and name, then a card per warrior */
+.tk-roll-head { display: flex; align-items: center; gap: .75rem; padding: .8rem 0 .6rem; }
+.tk-roll-mark { display: grid; place-items: center; flex: none; width: 2.3rem; height: 2.6rem; color: var(--gold); font: var(--text-ui)/1 var(--font-utility); }
+.tk-roll-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.tk-roll-name { margin: 0; font: normal 1.55rem/1.1 'Pirata One', Georgia, serif; color: var(--parchment); letter-spacing: .02em; overflow-wrap: anywhere; }
+.tk-roll-sub { margin: .1rem 0 0; color: var(--ink-dim); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .1em; }
+.tk-roll-list { list-style: none; padding: 0 0 1rem; margin: 0; display: grid; gap: .45rem; }
+
+/* a warrior, compact: the portrait small, the name, and what the game has done to them */
+.tk-wr { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .75rem; width: 100%; min-height: 4.1rem; padding: .4rem .7rem .4rem .4rem; border: 1px solid var(--border); border-left: 3px solid var(--gold-dim); background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); color: var(--parchment); text-align: left; font: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: border-color .2s, background .2s; }
+.tk-wr:hover { border-color: var(--gold-dim); }
+.tk-wr:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.tk-wr-face { display: block; width: 2.5rem; aspect-ratio: 3 / 4; overflow: hidden; border: 1px solid var(--gold-dim); background: #0d1210; box-shadow: 0 4px 10px -5px #000c; }
+.tk-wr-face img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tk-wr-face.letters { display: grid; place-items: center; color: var(--gold); font: normal 1.15rem/1 'Pirata One', Georgia, serif; letter-spacing: .04em; }
+.tk-wr-text { display: grid; gap: .1rem; min-width: 0; }
+.tk-wr-name { font: normal 1.25rem/1.1 'Pirata One', Georgia, serif; letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tk-wr-role { color: var(--ink-dim); font: var(--text-meta)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tk-wr-marks { display: flex; align-items: center; gap: .45rem; }
+.tk-wr-ooa, .tk-wr-kills { padding: .1rem .4rem; border: 1px solid; font: var(--text-meta)/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.tk-wr-ooa { color: var(--blood-bright); border-color: var(--blood); background: #2a1616; }
+.tk-wr-kills { color: var(--gold); border-color: var(--gold-dim); }
+.tk-wr-chev { color: var(--ink-dim); font: 1.5rem/1 var(--font-utility); width: 1rem; text-align: center; }
+.tk-wr[data-down='true'] { border-left-color: var(--blood); }
+.tk-wr[data-down='true'] .tk-wr-face { border-color: var(--blood); }
+.tk-wr[data-down='true'] .tk-wr-face img { filter: grayscale(.85) sepia(.25) brightness(.8); }
+@media (max-width: 22rem) { .tk-wr-kills { display: none; } }
+
+/* the card lifted: pinned at the top, the warrior under it; a tap on it puts it back */
+html.tk-held { overflow: hidden; }
+.tk-dossier { position: fixed; inset: 0; z-index: 25; overflow-y: auto; overscroll-behavior: contain; background: var(--bg); }
+.tk-dossier-inner { max-width: 40rem; margin: 0 auto; padding: 0 1rem calc(2rem + env(safe-area-inset-bottom, 0px)); }
+.tk-wr.pinned { position: sticky; top: 0; z-index: 1; margin-top: calc(.75rem + env(safe-area-inset-top, 0px)); border-color: var(--gold-dim); border-left-color: var(--gold); background: linear-gradient(150deg, #1d2a1f, #141b17); box-shadow: 0 0 0 .75rem var(--bg), 0 14px 30px -10px #000; }
+.tk-wr.pinned[data-down='true'] { border-left-color: var(--blood-bright); }
+.tk-wr.pinned .tk-wr-chev { color: var(--gold); }
+.tk-dossier-body { display: grid; gap: 1.1rem; padding-top: 1.25rem; }
+.tk-dossier-lead { display: flex; gap: 1rem; align-items: flex-start; }
+.tk-dossier-face { display: block; flex: none; width: 7.5rem; aspect-ratio: 3 / 4; overflow: hidden; border: 1px solid var(--gold-dim); background: #0d1210; box-shadow: 0 0 0 4px #1a1208, 0 0 0 5px var(--gold-dim), 0 16px 30px -12px #000; margin: 5px; }
+.tk-dossier-face img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tk-dossier-kind { margin: 0; color: var(--gold); font: var(--text-meta)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .18em; }
+.tk-dossier-epithet { margin: .35rem 0 0; color: var(--parchment); font-style: italic; }
+.tk-dossier-xp { margin: .35rem 0 0; color: var(--ink-dim); font: var(--text-ui)/1.4 var(--font-utility); text-transform: uppercase; letter-spacing: .08em; }
+.tk-dossier-xp b { color: var(--parchment); font: normal 1.3rem/1 'Pirata One', Georgia, serif; letter-spacing: .02em; }
+.tk-stats { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); margin: 0; border: 1px solid var(--border); background: #0d1210; }
+.tk-stats div { display: grid; justify-items: center; gap: .15rem; padding: .45rem 0 .5rem; border-left: 1px solid var(--border); }
+.tk-stats div:first-child { border-left: 0; }
+.tk-stats dt { color: var(--gold); font: var(--text-meta)/1 var(--font-utility); letter-spacing: .04em; }
+.tk-stats dd { margin: 0; color: var(--parchment); font: normal 1.35rem/1 'Pirata One', Georgia, serif; }
+.tk-dossier-body section { display: grid; gap: .4rem; }
+.tk-dossier-body h3 { margin: 0; }
+.tk-dossier-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .3rem; }
+.tk-dossier-list li { padding: .45rem .7rem; border: 1px solid var(--border); background: linear-gradient(150deg, var(--bg-panel2), var(--bg-panel)); color: var(--parchment); }
+.tk-dossier-list small { display: block; margin-top: .2rem; color: var(--ink-dim); font-style: italic; font-size: var(--text-ui); }
+.tk-dossier-list li.fell, .tk-dossier-list.injuries li { border-left: 3px solid var(--blood); }

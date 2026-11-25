@@ -10,7 +10,7 @@ import Icon from '../../../components/Icon.astro';
 import WarbandLabel from '../../../components/WarbandLabel.astro';
 import '../../../styles/tracker.css';
 import '../../../styles/tarot.css';
-import { base } from '../../../lib/site';
+import { asset, base } from '../../../lib/site';
 import { hasDatabase } from '../../../server/db/client';
 import { getActor, isGm } from '../../../server/roles';
 import { getScenario, mayTrack } from '../../../server/campaign/scenarios';
@@ -33,9 +33,13 @@ if (ready) {
 }
 if (!scenario) return Astro.redirect(`${base}/scenarios/`);
 
-// the table: the attending warbands and their warriors, once; the log is what changes
+// the table: the attending warbands and their warriors, once, enough of each for the muster's cards; the log is what changes
 const roster = scenario.warbands.map((p) => warbands.find((w) => w.id === p.warbandId)).filter((w): w is Warband => !!w).map((w) => ({
-  id: w.id, name: w.name, members: w.members.map((m) => ({ id: m.id, name: m.name, role: m.role, dead: m.dead })),
+  id: w.id, name: w.name, crest: w.crest ? asset(w.crest) : null, sigil: w.sigil, mine: !!viewer && w.ownerId === viewer.id,
+  members: w.members.map((m) => ({
+    id: m.id, name: m.name, role: m.role, dead: m.dead, rank: m.rank, portrait: m.portrait, picture: m.picture?.image ?? null,
+    epithet: m.epithet, stats: m.stats, experience: m.experience ?? null, skills: m.skills, injuries: m.injuries,
+  })),
 }));
 // the Tarot's hands this phone holds: the keeper's own warband, every attending one for a game master; never the other side's
 const hands = scenario.tarot && viewer ? scenario.warbands.map((p) => warbands.find((w) => w.id === p.warbandId)).filter((w): w is Warband => !!w && (isGm(viewer) || w.ownerId === viewer.id)).map((w) => ({ id: w.id, name: w.name })) : [];

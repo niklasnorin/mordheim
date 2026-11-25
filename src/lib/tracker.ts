@@ -10,6 +10,7 @@
  * called on the last round.
  * The camera puts a picture in the log, taken there and then or chosen from the phone's library: it is made ready
  * here at high resolution (lib/photo.ts) and goes up as a form, the one request that is not JSON.
+ * A swipe right to left brings in the warbands at the table, the viewer's own first (lib/muster.ts).
  */
 import { SCENARIO_RESULTS, scoresOf, tallyOf, type OutOfAction, type Scenario, type ScenarioEvent, type ScenarioResult } from '../campaign/model';
 import { SIDES, SIDE_LABEL, houseScenario, inWords, resultsOf, rollBrings, turnEnds, verdictOf } from '../campaign/house';
@@ -18,8 +19,10 @@ import { cardById } from '../campaign/tarot';
 import { activeWarband, lastOfRound, orderComplete, placed, turnOrder } from '../campaign/turns';
 import { CARD_ICON, mountTarot, type TarotMount } from './tarot';
 import { preparePhoto, type Photo } from './photo';
+import { mountMuster, type MusterBand } from './muster';
 
-export interface TrackerRoster { id: string; name: string; members: { id: string; name: string; role: string; dead: boolean }[] }
+/** A warband at the table with its warriors, as the muster pages draw them (lib/muster.ts). */
+export type TrackerRoster = MusterBand;
 export interface TrackerState {
   base: string;
   roster: TrackerRoster[];
@@ -158,7 +161,11 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
       h('button', { type: 'button', class: 'tk-btn', 'data-open': 'note' }, svg(ICON.quill), 'Note'),
     ));
   const sheet = h('dialog', { class: 'tk-sheet' });
-  root.append(turnBox, holdBox, objectiveBox, tallyBox, logBox, bar, sheet);
+  // the table is the first page; the warbands' musters are a swipe away beside it
+  const tablePage = h('div', { class: 'tk-table' }, turnBox, holdBox, objectiveBox, tallyBox, logBox);
+  const pager = h('div', { class: 'tk-pager' }, tablePage);
+  root.append(pager, bar, sheet);
+  const muster = mountMuster({ root, pager, base: state.base, roster: state.roster, scenario: state.scenario });
   // the Tarot of the Damned: the keeper's hidden hand in a drawer, and any card held up to read from the log
   const tarot: TarotMount | null = state.scenario.tarot ? mountTarot(root, {
     base: state.base, scenarioId: state.scenario.id, hands: state.hands, names: Object.fromEntries(state.roster.map((w) => [w.id, w.name])), scenario: () => state.scenario, toast,
@@ -202,6 +209,7 @@ export function mountTracker(root: HTMLElement, initial: TrackerState): void {
     renderLog(s);
     bar.dataset.may = String(state.may);
     tarot?.sync(s);
+    muster.sync(s);
   }
 
   function renderTurn(s: Scenario): void {
