@@ -245,39 +245,59 @@ export function mountMuster(o: {
   addEventListener('popstate', () => { if (open) closeCard(); });
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && open) { e.preventDefault(); putBack(); } });
 
-  // a swipe across the lifted card, either way, puts it back: it follows the finger, and goes home if let go far or fast enough
-  let lift: { x: number; y: number; t: number; id: number; across: boolean; dx: number } | null = null;
+  // a swipe across the lifted card, either way, puts it back: it follows the finger, and goes home if let go far or fast
+  // enough. Told by touch events, not pointer ones, and decided on the first move: the lifted card scrolls, and a phone
+  // (Safari above all) commits a touch to scrolling on its first move unless that move is stopped, after which a sideways
+  // swipe is only ever cancelled. So a first move that leans sideways is claimed there and then, and one that leans
+  // down is left to scroll.
+  let lift: { x: number; y: number; across: boolean; dx: number; trail: { x: number; t: number }[] } | null = null;
   let swallowLift = false;
-  dossier.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' || !e.isPrimary || closing) return;
-    lift = { x: e.clientX, y: e.clientY, t: e.timeStamp, id: e.pointerId, across: false, dx: 0 };
-  });
-  dossier.addEventListener('pointermove', (e) => {
-    if (!lift || e.pointerId !== lift.id) return;
-    const mx = e.clientX - lift.x, my = e.clientY - lift.y;
-    if (!lift.across) {
-      if (Math.abs(my) > 10 && Math.abs(my) > Math.abs(mx)) { lift = null; return; }
-      if (Math.abs(mx) < 10) return;
-      lift.across = true;
-      dossier.setPointerCapture(e.pointerId);
-    }
-    lift.dx = mx;
+  const follow = (dx: number) => {
     inner.style.transition = 'none';
-    inner.style.transform = `translateX(${mx}px)`;
-    inner.style.opacity = String(Math.max(.4, 1 - Math.abs(mx) / (dossier.clientWidth || 1)));
-  });
-  const letGo = (e: PointerEvent) => {
-    if (!lift || e.pointerId !== lift.id) return;
-    const was = lift; lift = null;
-    if (!was.across) return;
-    swallowLift = true; setTimeout(() => { swallowLift = false; }, 50);
-    const speed = Math.abs(was.dx) / Math.max(1, e.timeStamp - was.t);
-    if (e.type !== 'pointercancel' && (Math.abs(was.dx) > (dossier.clientWidth || 1) * .2 || speed > .45)) { fling = was.dx; putBack(); return; }
+    inner.style.transform = `translateX(${dx}px)`;
+    inner.style.opacity = String(Math.max(.4, 1 - Math.abs(dx) / (dossier.clientWidth || 1)));
+  };
+  const springBack = () => {
     inner.style.transition = `transform 220ms ${EASE}, opacity 220ms`;
     inner.style.transform = ''; inner.style.opacity = '';
   };
-  dossier.addEventListener('pointerup', letGo);
-  dossier.addEventListener('pointercancel', letGo);
+  dossier.addEventListener('touchstart', (e) => {
+    if (closing || e.touches.length !== 1) { lift = null; return; }
+    const t = e.touches[0];
+    lift = { x: t.clientX, y: t.clientY, across: false, dx: 0, trail: [{ x: t.clientX, t: e.timeStamp }] };
+  }, { passive: true });
+  dossier.addEventListener('touchmove', (e) => {
+    if (!lift) return;
+    if (e.touches.length !== 1) { if (lift.across) springBack(); lift = null; return; }
+    const t = e.touches[0];
+    const mx = t.clientX - lift.x, my = t.clientY - lift.y;
+    if (!lift.across) {
+      if (!mx && !my) return;
+      // the first move decides, and sideways is given the benefit of a slant
+      if (Math.abs(mx) * 1.3 < Math.abs(my)) { lift = null; return; }
+      lift.across = true;
+    }
+    e.preventDefault();
+    lift.dx = mx;
+    lift.trail.push({ x: t.clientX, t: e.timeStamp });
+    if (lift.trail.length > 6) lift.trail.shift();
+    follow(mx);
+  }, { passive: false });
+  const letGo = (e: TouchEvent) => {
+    if (!lift) return;
+    const was = lift; lift = null;
+    if (!was.across) return;
+    swallowLift = true; setTimeout(() => { swallowLift = false; }, 50);
+    // how fast the finger was going as it let go, from its last few moves, and which way
+    const first = was.trail[0], last = was.trail[was.trail.length - 1];
+    const speed = (last.x - first.x) / Math.max(1, last.t - first.t);
+    const far = Math.abs(was.dx) > (dossier.clientWidth || 1) * .18;
+    const flung = Math.abs(speed) > .3 && Math.sign(speed) === Math.sign(was.dx);
+    if (e.type !== 'touchcancel' && was.dx && (far || flung)) { fling = was.dx; putBack(); return; }
+    springBack();
+  };
+  dossier.addEventListener('touchend', letGo);
+  dossier.addEventListener('touchcancel', letGo);
   dossier.addEventListener('click', (e) => { if (swallowLift) { e.stopPropagation(); e.preventDefault(); } }, true);
 
   // ───────────────────────── the pager ─────────────────────────
