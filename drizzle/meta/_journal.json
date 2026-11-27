@@ -169,6 +169,13 @@
       "when": 1795645324076,
       "tag": "0023_warband-roster",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795807842633,
+      "tag": "0024_campaigns",
+      "breakpoints": true
     }
   ]
 }

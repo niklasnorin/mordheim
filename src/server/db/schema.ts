@@ -9,6 +9,14 @@
  */
 import { boolean, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
+/**
+ * The campaign a row belongs to (`campaigns.id`). The default is the first campaign's id, so the rows written before
+ * there were campaigns fall into it when the column is added; every insert names its campaign all the same, and a
+ * later migration drops the default and adds the foreign key once the first campaign's row exists everywhere.
+ */
+export const FIRST_CAMPAIGN_ID = 'mordheim-2000';
+const campaignId = () => text('campaign_id').notNull().default(FIRST_CAMPAIGN_ID);
+
 // ───────────────────────── auth (Better Auth core schema) ─────────────────────────
 
 export const user = pgTable('user', {
@@ -81,13 +89,14 @@ export const curfewLedgers = pgTable(
   'curfew_ledgers',
   {
     warbandId: text('warband_id').primaryKey(),
+    campaignId: campaignId(),
     ownerId: text('owner_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
     state: jsonb('state').notNull(),
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('curfew_ledgers_owner_idx').on(t.ownerId)],
+  (t) => [uniqueIndex('curfew_ledgers_owner_idx').on(t.campaignId, t.ownerId)],
 );
 
 /**
@@ -100,7 +109,8 @@ export const cryerDispatches = pgTable(
   'cryer_dispatches',
   {
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-    key: text('key').notNull().unique(),
+    campaignId: campaignId(),
+    key: text('key').notNull(),
     warbandId: text('warband_id').notNull(),
     night: integer('night').notNull(),
     kind: text('kind', { enum: ['headline', 'happening', 'notice'] }).notNull(),
@@ -108,7 +118,7 @@ export const cryerDispatches = pgTable(
     body: text('body'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('cryer_dispatches_night_idx').on(t.night)],
+  (t) => [index('cryer_dispatches_night_idx').on(t.campaignId, t.night), uniqueIndex('cryer_dispatches_key_idx').on(t.campaignId, t.key)],
 );
 
 /**
@@ -119,6 +129,7 @@ export const cryerDispatches = pgTable(
  */
 export const curfewMoves = pgTable('curfew_moves', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  campaignId: campaignId(),
   locationId: text('location_id').notNull(),
   fromNight: integer('from_night').notNull(),
   movedAt: timestamp('moved_at', { withTimezone: true }).notNull().defaultNow(),
@@ -128,6 +139,7 @@ export const curfewMoves = pgTable('curfew_moves', {
 export const curfewRuns = pgTable('curfew_runs', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
   ranAt: timestamp('ran_at', { withTimezone: true }).notNull().defaultNow(),
+  campaignId: campaignId(),
   source: text('source', { enum: ['cron', 'admin'] }).notNull(),
   night: integer('night').notNull(),
   ledgers: integer('ledgers').notNull(),
@@ -160,6 +172,9 @@ export const warbands = pgTable(
   'warbands',
   {
     id: text('id').primaryKey(),
+    campaignId: campaignId(),
+    /** The warband this one was carried over from, in another campaign (campaign/carry.ts); null for one founded here. */
+    carriedFromId: text('carried_from_id'),
     name: text('name').notNull(),
     type: text('type').notNull(),
     sigil: text('sigil').notNull(),
@@ -182,7 +197,7 @@ export const warbands = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('warbands_owner_idx').on(t.ownerId)],
+  (t) => [uniqueIndex('warbands_owner_idx').on(t.campaignId, t.ownerId), index('warbands_campaign_idx').on(t.campaignId)],
 );
 
 /**
@@ -218,6 +233,8 @@ export const members = pgTable(
   {
     id: text('id').primaryKey(),
     warbandId: text('warband_id').notNull().references(() => warbands.id, { onDelete: 'cascade' }),
+    /** The warrior this one was carried over from, in another campaign; null for one recruited here. */
+    carriedFromId: text('carried_from_id'),
     name: text('name').notNull(),
     role: text('role').notNull().default(''),
     rank: text('rank', { enum: ['hero', 'henchman'] }).notNull().default('henchman'),
@@ -295,6 +312,7 @@ export const images = pgTable(
  */
 export const scenarios = pgTable('scenarios', {
   id: text('id').primaryKey(),
+  campaignId: campaignId(),
   sequence: integer('sequence').notNull(),
   status: text('status', { enum: ['upcoming', 'played'] }).notNull().default('upcoming'),
   title: text('title').notNull(),
@@ -334,7 +352,7 @@ export const scenarios = pgTable('scenarios', {
   createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [index('scenarios_campaign_idx').on(t.campaignId)]);
 
 /** A warband attending a scenario, its result once played, and its own prologue and epilogue. */
 export const scenarioWarbands = pgTable(
@@ -488,6 +506,7 @@ export const locationStock = pgTable(
   'location_stock',
   {
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    campaignId: campaignId(),
     locationId: text('location_id').notNull().references(() => locations.id, { onDelete: 'cascade' }),
     itemId: text('item_id').notNull(),
     custom: boolean('custom').notNull().default(false),
@@ -500,7 +519,7 @@ export const locationStock = pgTable(
     sort: integer('sort').notNull().default(0),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('location_stock_item_idx').on(t.locationId, t.itemId)],
+  (t) => [uniqueIndex('location_stock_item_idx').on(t.campaignId, t.locationId, t.itemId)],
 );
 
 /**
@@ -513,6 +532,7 @@ export const locationJobs = pgTable(
   'location_jobs',
   {
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    campaignId: campaignId(),
     locationId: text('location_id').notNull().references(() => locations.id, { onDelete: 'cascade' }),
     pointId: integer('point_id').references(() => locationPoints.id, { onDelete: 'set null' }),
     title: text('title').notNull(),
@@ -525,7 +545,7 @@ export const locationJobs = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('location_jobs_location_idx').on(t.locationId), uniqueIndex('location_jobs_title_idx').on(t.locationId, t.title)],
+  (t) => [index('location_jobs_location_idx').on(t.locationId), uniqueIndex('location_jobs_title_idx').on(t.campaignId, t.locationId, t.title)],
 );
 
 /**
@@ -571,6 +591,7 @@ export const warbandJobs = pgTable(
 /** The Town Cryer's articles and notices, written by game masters, printed where the campaign is. */
 export const newsArticles = pgTable('news_articles', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  campaignId: campaignId(),
   headline: text('headline').notNull(),
   byline: text('byline').notNull().default(''),
   body: text('body').notNull(),
@@ -583,10 +604,29 @@ export const newsArticles = pgTable('news_articles', {
 });
 
 /**
- * The Curfew's content, one JSON document each: `omens`, `moons`, `tokens`, and `location:<id>` for every
- * place. The engine reads whatever is here; the files under src/data/curfew/ are the seed and the tests' fixture.
+ * The Curfew's content, one JSON document per campaign each: `omens`, `moons`, `tokens`, and `location:<id>` for
+ * every place. The engine reads whatever is here for the campaign; the files under src/data/curfew/ (through the
+ * campaign's setting) are the seed and the tests' fixture.
  */
-export const curfewContent = pgTable('curfew_content', {
+export const curfewContent = pgTable(
+  'curfew_documents',
+  {
+    campaignId: text('campaign_id').notNull(),
+    id: text('id').notNull(),
+    document: jsonb('document').notNull(),
+    version: integer('version').notNull().default(1),
+    updatedBy: text('updated_by'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.campaignId, t.id] })],
+);
+
+/**
+ * The Curfew's documents as they were kept before there were campaigns, one set for the whole site. `ensureCampaigns`
+ * copies them into `curfew_documents` for the first campaign once; nothing reads them after that, and a later
+ * migration drops the table.
+ */
+export const legacyCurfewContent = pgTable('curfew_content', {
   id: text('id').primaryKey(),
   document: jsonb('document').notNull(),
   version: integer('version').notNull().default(1),
@@ -599,18 +639,59 @@ export const curfewContentRevisions = pgTable(
   'curfew_content_revisions',
   {
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    campaignId: campaignId(),
     contentId: text('content_id').notNull(),
     document: jsonb('document').notNull(),
     version: integer('version').notNull(),
     savedBy: text('saved_by'),
     savedAt: timestamp('saved_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('curfew_content_revisions_content_idx').on(t.contentId)],
+  (t) => [index('curfew_content_revisions_content_idx').on(t.campaignId, t.contentId)],
+);
+
+// ───────────────────────── the campaigns ─────────────────────────
+
+/**
+ * The campaigns: one run of play each, with its own warbands, scenarios, nights and broadsheet (`docs/campaigns.md`).
+ * The id is forever: it seeds every roll of the Curfew's dice, so it never changes; nor, once the campaign is live, do
+ * `start`, `timezone` and `anchor`, which say which night and which Imperial day a real day is. `setting` names the
+ * template it was made from (`src/data/settings/`); `tuning` is the Curfew's constants (the rest of `campaign.json`)
+ * and `options` the campaign's switches (`CampaignOptions` in campaign/campaign.ts). A draft is seen by game masters
+ * alone; a finished or archived campaign has no more nights.
+ */
+export const campaigns = pgTable('campaigns', {
+  id: text('id').primaryKey(),
+  slug: text('slug').notNull().unique(),
+  name: text('name').notNull(),
+  setting: text('setting').notNull(),
+  status: text('status', { enum: ['draft', 'live', 'finished', 'archived'] }).notNull().default('draft'),
+  start: text('start').notNull(),
+  timezone: text('timezone').notNull(),
+  anchor: jsonb('anchor').notNull(),
+  tuning: jsonb('tuning').notNull(),
+  options: jsonb('options').notNull().default({}),
+  sort: integer('sort').notNull().default(0),
+  createdBy: text('created_by'),
+  version: integer('version').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Which of the atlas's locations a campaign fights in, in order. The locations themselves are shared. */
+export const campaignLocations = pgTable(
+  'campaign_locations',
+  {
+    campaignId: text('campaign_id').notNull().references(() => campaigns.id, { onDelete: 'cascade' }),
+    locationId: text('location_id').notNull().references(() => locations.id, { onDelete: 'cascade' }),
+    sort: integer('sort').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.campaignId, t.locationId] })],
 );
 
 /**
- * The campaign's switches, one row each, set by the admin in the Watch House: `standingsVisible` says whether the
- * home page prints the standings table and the cards their ratings (hidden until the admin says otherwise).
+ * The site's switches, one row each, set by the admin in the Watch House: `frontDoor` names the campaign the site's
+ * plain addresses show. Before there were campaigns `standingsVisible` lived here; it is now a campaign's option,
+ * carried across once by `ensureCampaigns`.
  */
 export const campaignSettings = pgTable('campaign_settings', {
   key: text('key').primaryKey(),

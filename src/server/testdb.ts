@@ -9,6 +9,7 @@ import { useDb } from './db/client.ts';
 import * as schema from './db/schema.ts';
 import { forgetSeeded } from './campaign/seed.ts';
 import { forgetContentSeeded } from './content/curfew.ts';
+import { forgetCampaigns } from './campaign/campaigns.ts';
 
 export async function testDatabase() {
   const pg = new PGlite();
@@ -20,6 +21,7 @@ export async function testDatabase() {
   useDb(db as never);
   forgetSeeded();
   forgetContentSeeded();
+  forgetCampaigns();
   return { pg, db, schema };
 }
 

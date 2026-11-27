@@ -5,7 +5,9 @@
  */
 import { desc, eq, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { curfewContent, curfewContentRevisions } from '../db/schema.ts';
+import { curfewContent, curfewContentRevisions, FIRST_CAMPAIGN_ID } from '../db/schema.ts';
+import { ensureCampaigns } from '../campaign/campaigns.ts';
+import { and } from 'drizzle-orm';
 import { BUILT_IN_DOCUMENTS, MOONS, useContent } from '../../curfew/engine.ts';
 import { builtInRows, documentsFrom, isLocationDoc, validateDocument, type DocumentId } from '../../curfew/packs.ts';
 import { LedgerError } from '../../curfew/ledger.ts';
@@ -21,9 +23,10 @@ const PRIME_TTL_MS = 20_000;
 /** Write the built-in documents if the table is empty. */
 async function ensureContentSeeded(): Promise<void> {
   seeded ??= (async () => {
-    const [{ n }] = await db().select({ n: sql<number>`count(*)::int` }).from(curfewContent);
+    await ensureCampaigns();
+    const [{ n }] = await db().select({ n: sql<number>`count(*)::int` }).from(curfewContent).where(eq(curfewContent.campaignId, FIRST_CAMPAIGN_ID));
     if (n > 0) return;
-    for (const r of builtInRows(BUILT_IN_DOCUMENTS)) await db().insert(curfewContent).values({ id: r.id, document: r.document }).onConflictDoNothing();
+    for (const r of builtInRows(BUILT_IN_DOCUMENTS)) await db().insert(curfewContent).values({ campaignId: FIRST_CAMPAIGN_ID, id: r.id, document: r.document }).onConflictDoNothing();
   })().catch((e) => { seeded = undefined; throw e; });
   return seeded;
 }
@@ -33,14 +36,14 @@ export function forgetContentSeeded(): void { seeded = undefined; primedAt = 0; 
 export async function primeContent(force = false): Promise<void> {
   if (!force && Date.now() - primedAt < PRIME_TTL_MS) return;
   await ensureContentSeeded();
-  const rows = await db().select({ id: curfewContent.id, document: curfewContent.document }).from(curfewContent);
+  const rows = await db().select({ id: curfewContent.id, document: curfewContent.document }).from(curfewContent).where(eq(curfewContent.campaignId, FIRST_CAMPAIGN_ID));
   useContent(documentsFrom(rows));
   primedAt = Date.now();
 }
 
 export async function listDocuments(): Promise<ContentDocument[]> {
   await ensureContentSeeded();
-  const rows = await db().select().from(curfewContent).orderBy(curfewContent.id);
+  const rows = await db().select().from(curfewContent).where(eq(curfewContent.campaignId, FIRST_CAMPAIGN_ID)).orderBy(curfewContent.id);
   return rows.map((r) => ({ id: r.id, document: r.document, version: r.version, updatedAt: r.updatedAt, updatedBy: r.updatedBy, bytes: JSON.stringify(r.document).length }));
 }
 
@@ -49,7 +52,7 @@ export async function getDocument(id: string): Promise<ContentDocument | undefin
 }
 
 export async function documentRevisions(id: string, limit = 10): Promise<{ id: number; version: number; savedAt: Date; savedBy: string | null; document: unknown }[]> {
-  const rows = await db().select().from(curfewContentRevisions).where(eq(curfewContentRevisions.contentId, id)).orderBy(desc(curfewContentRevisions.id)).limit(limit);
+  const rows = await db().select().from(curfewContentRevisions).where(and(eq(curfewContentRevisions.campaignId, FIRST_CAMPAIGN_ID), eq(curfewContentRevisions.contentId, id))).orderBy(desc(curfewContentRevisions.id)).limit(limit);
   return rows.map((r) => ({ id: r.id, version: r.version, savedAt: r.savedAt, savedBy: r.savedBy, document: r.document }));
 }
 
@@ -72,11 +75,11 @@ export async function saveDocument(actor: Actor, id: string, text: string, versi
   const existing = known.find((k) => k.id === id);
   if (existing) {
     if (version !== null && version !== existing.version) throw new LedgerError('Somebody saved this document while you were editing it. Reload and try again.', 409);
-    await d.insert(curfewContentRevisions).values({ contentId: id, document: existing.document, version: existing.version, savedBy: existing.updatedBy });
-    await d.update(curfewContent).set({ document: doc, version: existing.version + 1, updatedBy: actor.name, updatedAt: new Date() }).where(eq(curfewContent.id, id));
+    await d.insert(curfewContentRevisions).values({ campaignId: FIRST_CAMPAIGN_ID, contentId: id, document: existing.document, version: existing.version, savedBy: existing.updatedBy });
+    await d.update(curfewContent).set({ document: doc, version: existing.version + 1, updatedBy: actor.name, updatedAt: new Date() }).where(and(eq(curfewContent.campaignId, FIRST_CAMPAIGN_ID), eq(curfewContent.id, id)));
   } else {
     if (!isLocationDoc(id)) throw new LedgerError('Only a new place may be added; the decks already exist.', 404);
-    await d.insert(curfewContent).values({ id, document: doc, updatedBy: actor.name });
+    await d.insert(curfewContent).values({ campaignId: FIRST_CAMPAIGN_ID, id, document: doc, updatedBy: actor.name });
   }
   await primeContent(true);
   return (await getDocument(id))!;
@@ -91,8 +94,8 @@ export async function deleteDocument(actor: Actor, id: string, currentLocationId
   if (loc === currentLocationId) throw new LedgerError('The campaign is there now. Move it first.', 409);
   const existing = await getDocument(id);
   if (!existing) throw new LedgerError('No such document.', 404);
-  await db().insert(curfewContentRevisions).values({ contentId: id, document: existing.document, version: existing.version, savedBy: existing.updatedBy });
-  await db().delete(curfewContent).where(eq(curfewContent.id, id));
+  await db().insert(curfewContentRevisions).values({ campaignId: FIRST_CAMPAIGN_ID, contentId: id, document: existing.document, version: existing.version, savedBy: existing.updatedBy });
+  await db().delete(curfewContent).where(and(eq(curfewContent.campaignId, FIRST_CAMPAIGN_ID), eq(curfewContent.id, id)));
   await primeContent(true);
 }
 
