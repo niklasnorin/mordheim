@@ -1,8 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import '../../styles/curfew.css';
-import campaign from '../../data/curfew/campaign.json';
-import { base } from '../../lib/site';
+import { base as siteRoot } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
 import { DEV_LOGIN_PASSWORD, env, isAdminEmail } from '../../server/env';
 import { getViewer } from '../../server/session';
@@ -10,10 +9,13 @@ import PlaceBand from '../../components/PlaceBand.astro';
 import { currentLocation, listClaims, loadOwnLedger, todayFor, type Claim, type LedgerView } from '../../server/curfew/service';
 import { isDryRun } from '../../server/curfew/dry';
 import { listWarbands } from '../../server/campaign/roster';
-import { primeContent } from '../../server/content/curfew';
-import { DEFAULT_LOCATION, currentDocuments, type Location } from '../../curfew/engine';
-import { clientDocuments } from '../../curfew/packs';
+import { clientWorld, worldOrBuiltIn } from '../../server/content/curfew';
+import type { Location } from '../../curfew/engine';
 import type { Warband } from '../../campaign/model';
+/** Links and API calls stay in the campaign this page is in; files under public/ are the site's (`siteRoot`). */
+const base = Astro.locals.base;
+const campaign = Astro.locals.campaign;
+const world = await worldOrBuiltIn(campaign);
 
 // The Ledger is personal: rendered on request, never cached.
 export const prerender = false;
@@ -22,27 +24,27 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 const ready = hasDatabase();
 const viewer = ready ? await getViewer(Astro.request) : null;
 // a game master may look at another night; a player always sees tonight
-const today = todayFor(Astro.url, viewer);
+const today = todayFor(campaign, Astro.url, viewer);
 let view: LedgerView | null = null;
 let claims: Claim[] = [];
 let trouble = false;
 // Where the campaign is colours the page before anyone signs in; without a database it is Mordheim.
-let location: Location = DEFAULT_LOCATION;
+let location: Location = world.engine.DEFAULT_LOCATION;
 let warbands: Warband[] = [];
 if (ready) {
-  try { await primeContent(); [location, warbands] = await Promise.all([currentLocation(today), listWarbands()]); } catch (e) { console.error('[curfew] location unavailable', e); }
+  try { [location, warbands] = await Promise.all([currentLocation(campaign.id, today), listWarbands(campaign.id)]); } catch (e) { console.error('[curfew] location unavailable', e); }
 }
 // With the Debug strip on, a game master's visit is a dry run: nothing this request computes is saved.
 const dry = !!viewer && isDryRun(Astro.request, viewer);
 if (viewer) {
-  try { [view, claims] = await Promise.all([loadOwnLedger(viewer.id, today, dry ? {} : undefined), listClaims()]); } catch (e) { console.error('[curfew] ledger unavailable', e); trouble = true; }
+  try { [view, claims] = await Promise.all([loadOwnLedger(campaign.id, viewer.id, today, dry ? {} : undefined), listClaims(campaign.id)]); } catch (e) { console.error('[curfew] ledger unavailable', e); trouble = true; }
 }
 // The roster and the content the page's script needs, as the database has them: the engine in the browser reads the same words as the server.
 const boot = {
   today, debug: env.CURFEW_DEBUG, dry, viewer: viewer ? { id: viewer.id, name: viewer.name, admin: isAdminEmail(viewer.email) } : null, view, locationId: location.id,
   claims: claims.map((c) => ({ warbandId: c.warbandId, ownerId: c.ownerId, ownerName: c.ownerName })),
   warbands: warbands.map((w) => ({ id: w.id, name: w.name, type: w.type, sigil: w.sigil, player: w.player, ownerId: w.ownerId ?? null, members: w.members.map((m) => ({ id: m.id, name: m.name, role: m.role, dead: m.dead, stats: m.stats })) })),
-  content: clientDocuments(currentDocuments()),
+  ...clientWorld(world),
 };
 ---
 
@@ -52,7 +54,7 @@ const boot = {
     <meta name="theme-color" content="#0e0d0c" />
   </Fragment>
 
-  <main class="curfew cf-wrap" id="main-content" data-base={base} data-start={campaign.start}>
+  <main class="curfew cf-wrap" id="main-content" data-base={base} data-assets={siteRoot} data-start={campaign.start}>
     <header class="cf-top">
       <a class="cf-back" href={`${base}/`}>← Mordheim</a>
       <a class="cf-wordmark" href={`${base}/curfew/`}>Curfew</a>
@@ -141,8 +143,8 @@ const boot = {
           <div class="cf-omen-card-col">
             <div class="cf-card" id="omen-card">
               <div class="cf-card-inner">
-                <img class="cf-back-img" src={`${base}/curfew/omens/back.png`} alt="" width="1050" height="1800" />
-                <img class="cf-face" id="omen-img" src={`${base}/curfew/omens/back.png`} alt="" width="1050" height="1800" />
+                <img class="cf-back-img" src={`${siteRoot}/curfew/omens/back.png`} alt="" width="1050" height="1800" />
+                <img class="cf-face" id="omen-img" src={`${siteRoot}/curfew/omens/back.png`} alt="" width="1050" height="1800" />
               </div>
             </div>
             <ul class="cf-tilts" id="omen-tilts" aria-label="Tonight's odds"></ul>
@@ -208,25 +210,28 @@ const boot = {
   import { authClientFor, wireSignIn } from '../../lib/signin';
   import {
     CAMPAIGN, ERRANDS, ERRAND_LABEL, HAND_SIZE, availability, moonForNight, omenForNight, tiltFor, titleFor, nextTitle, tokenById, dateForNight, statEdge, ERRAND_STATS, STAT_LABEL,
-    blurbFor, isErrandAt, locationById, moonBoostAt, unavailableReason, useContent,
+    blurbFor, isErrandAt, locationById, moonBoostAt, unavailableReason, useWorld,
     type CurfewDocuments, type Errand, type MemberLike, type NightResult, type Order, type TokenOffer,
   } from '../../curfew/engine';
   import * as engine from '../../curfew/engine';
   import { keptMembers, keptReason, lastGivenOrders, restingMembers, standingOrders, type WarbandState } from '../../curfew/ledger';
   import { sealSvg } from '../../curfew/glyphs';
   import { carryDate, clearSandbox, debugEnabled, loadSandbox, renderDebugBar, saveSandbox, setDebug } from '../../curfew/debug';
-  import { formatImperial, imperialForDate } from '../../lib/calendar';
+  import { anchorOf, formatImperial, imperialForDate, useAnchor } from '../../lib/calendar';
+  import type { CampaignConfig } from '../../campaign/campaign';
 
   interface View { warbandId: string; state: WarbandState; today: number; recovering: string[]; fresh: boolean; locationId: string; dry?: boolean; wouldPrint?: { headline: string }[] }
   interface BootWarband { id: string; name: string; type: string; sigil: string; player: string; ownerId: string | null; members: (MemberLike & { dead: boolean })[] }
-  interface Boot { today: number; debug: boolean; dry: boolean; viewer: { id: string; name: string; admin: boolean } | null; view: View | null; locationId: string; claims: { warbandId: string; ownerId: string; ownerName: string }[]; warbands: BootWarband[]; content: CurfewDocuments }
+  interface Boot { today: number; debug: boolean; dry: boolean; viewer: { id: string; name: string; admin: boolean } | null; view: View | null; locationId: string; claims: { warbandId: string; ownerId: string; ownerName: string }[]; warbands: BootWarband[]; campaign: CampaignConfig; content: CurfewDocuments }
 
   document.body.classList.add('curfew-body');
   const root = document.getElementById('main-content')!;
   const base = root.dataset.base ?? '';
+  const assets = root.dataset.assets ?? '';
   const boot: Boot = JSON.parse(document.getElementById('boot')!.textContent || '{}');
-  // the same content the server resolved with, so the page's words and odds agree with the ledger's
-  useContent(boot.content);
+  // the same campaign and content the server resolved with, so the page's words, dates and odds agree with the ledger's
+  useWorld({ campaign: boot.campaign, content: boot.content });
+  useAnchor(anchorOf(boot.campaign.anchor));
   const TOKEN_TYPES = () => engine.TOKEN_TYPES;
   const warbands = boot.warbands;
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -336,7 +341,7 @@ const boot = {
   }
   function renderNightline() {
     const moon = moonForNight(today);
-    const mark = `<img class="cf-place-mark" src="${base}/curfew/places/${place.id}-mark.jpg" alt="" width="96" height="96" />`;
+    const mark = `<img class="cf-place-mark" src="${assets}/curfew/places/${place.id}-mark.jpg" alt="" width="96" height="96" />`;
     $('nightline').innerHTML = today < 1
       ? `${mark}${esc(Settlement())} sleeps until <strong>${esc(prettyDate(1))}</strong>`
       : `${mark}Night <strong>${today}</strong> · ${esc(place.name)} · ${esc(imperialDate(today, 'day'))} · ${esc(moon.name)}`;
@@ -348,7 +353,7 @@ const boot = {
     if (!band || band.dataset.place === place.id) return;
     band.dataset.place = place.id;
     const art = $<HTMLImageElement>('place-art');
-    art.src = `${base}/curfew/places/${place.id}-band.jpg`;
+    art.src = `${assets}/curfew/places/${place.id}-band.jpg`;
     art.style.objectPosition = place.art?.focus ?? '50% 50%';
     $('place-name').textContent = place.name;
     $('place-sub').textContent = place.title;
@@ -515,7 +520,7 @@ const boot = {
   function renderOmen() {
     const omen = omenForNight(today), moon = moonForNight(today);
     const img = $<HTMLImageElement>('omen-img');
-    img.src = `${base}${omen.image}`; img.alt = `${omen.title}. ${omen.reading}`;
+    img.src = `${assets}${omen.image}`; img.alt = `${omen.title}. ${omen.reading}`;
     const tilts = place.errands.map((e) => ({ e, t: tiltFor(e, omen, moon, place) })).filter((x) => x.t !== 0);
     $('omen-tilts').innerHTML = tilts.length
       ? tilts.map(({ e, t }) => `<li class="cf-tilt ${t > 0 ? 'up' : 'down'}"><span>${esc(ERRAND_LABEL[e])}</span><span aria-label="${t > 0 ? 'favoured' : 'perilous'} ${Math.abs(t)}">${t > 0 ? '▲'.repeat(t) : '▼'.repeat(-t)}</span></li>`).join('')

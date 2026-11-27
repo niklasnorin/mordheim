@@ -8,8 +8,10 @@
  */
 import Icon from './Icon.astro';
 import '../styles/locations.css';
-import { base } from '../lib/site';
+import { base as siteRoot } from '../lib/site';
 import { fightPosition, pinned, type CampaignLocation, type MapPosition, type Scenario } from '../campaign/model';
+/** Links and API calls stay in the campaign this page is in; files under public/ are the site's (`siteRoot`). */
+const base = Astro.locals.base;
 
 interface Props {
   location: CampaignLocation;
@@ -35,7 +37,7 @@ const side = (p: MapPosition) => (p.y < 14 ? 'below' : '');
 {location.map && (
   <figure class:list={['lmap', { 'is-picker': picker, quiet }]} data-map>
     <div class="lmap-frame" data-frame>
-      <img class="lmap-img" src={`${base}${location.map}`} alt={`A map of ${location.name}`} loading="lazy" decoding="async" />
+      <img class="lmap-img" src={`${siteRoot}${location.map}`} alt={`A map of ${location.name}`} loading="lazy" decoding="async" />
       {points.map((p) => picker ? (
         <button type="button" class:list={['lmap-pin', 'poi', side(p)]} style={at(p)} data-pin-point={p.id} data-x={p.x} data-y={p.y} aria-label={`Set the fight at ${p.name}`}>
           <span class="lmap-dot"></span><span class="lmap-label">{p.name}</span>

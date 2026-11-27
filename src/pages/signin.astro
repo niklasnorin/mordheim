@@ -7,10 +7,12 @@
 import Base from '../layouts/Base.astro';
 import ManageTop from '../components/ManageTop.astro';
 import '../styles/manage.css';
-import { base } from '../lib/site';
+
 import { hasDatabase } from '../server/db/client';
 import { DEV_LOGIN_PASSWORD, env } from '../server/env';
 import { getActor } from '../server/roles';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');

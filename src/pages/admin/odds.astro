@@ -2,15 +2,21 @@
 import Base from '../../layouts/Base.astro';
 import '../../styles/curfew.css';
 import '../../styles/admin.css';
-import { base } from '../../lib/site';
+
 import { hasDatabase } from '../../server/db/client';
 import { admission } from '../../server/admin/guard';
-import { CAMPAIGN, ERRANDS, ERRAND_LABEL, LOCATIONS, TOKEN_CHANCE, FAVOUR, YIELDS, locationById, outcomeOdds } from '../../curfew/engine';
+import { ERRANDS, ERRAND_LABEL, TOKEN_CHANCE, FAVOUR, YIELDS, outcomeOdds } from '../../curfew/engine';
 import { PRINT_CHANCE } from '../../curfew/cryer';
-import { TILTS, TILT_SOURCES, KINDS, charmOdds, crossroadsOdds, errandExpectation, happeningOdds, simulateNights, standingExpectation } from '../../curfew/odds';
+import { TILTS, TILT_SOURCES, KINDS, errandExpectation, standingExpectation } from '../../curfew/odds';
 import { listWarbands } from '../../server/campaign/roster';
-import { primeContent } from '../../server/content/curfew';
+import { worldOrBuiltIn } from '../../server/content/curfew';
 import type { Warband } from '../../campaign/model';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
+// the odds of the campaign this page is in: its dials, its places
+const world = await worldOrBuiltIn(Astro.locals.campaign);
+const { CAMPAIGN, LOCATIONS, locationById } = world.engine;
+const { charmOdds, crossroadsOdds, happeningOdds, simulateNights } = world.odds;
 
 // The game master's odds table. Pure arithmetic on the engine's constants, plus a simulation of real nights; nothing here reads or writes a ledger.
 export const prerender = false;
@@ -20,7 +26,7 @@ const ready = hasDatabase();
 const { viewer, gm: admin } = ready ? await admission(Astro.request) : { viewer: null, gm: false };
 if (ready && !admin) Astro.response.status = viewer ? 403 : 401;
 let warbands: Warband[] = [];
-if (admin) { try { await primeContent(); warbands = await listWarbands(); } catch (e) { console.error('[odds] roster unavailable', e); } }
+if (admin) { try { warbands = await listWarbands(Astro.locals.campaign.id); } catch (e) { console.error('[odds] roster unavailable', e); } }
 
 const q = Astro.url.searchParams;
 const place = locationById(q.get('place'));

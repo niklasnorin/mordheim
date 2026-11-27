@@ -7,7 +7,9 @@
  */
 import type { Member } from '../campaign/model';
 import { PORTRAIT_SIZE } from '../campaign/portrait';
-import { base } from '../lib/site';
+
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
 
 interface Props {
   member: Member;

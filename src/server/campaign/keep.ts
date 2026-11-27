@@ -16,17 +16,20 @@ import { LedgerError } from '../../curfew/ledger.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { getWarband, insertMemberRow, ownWarband, touch } from './roster.ts';
 import { ensureSeeded } from './seed.ts';
+import { writableCampaign } from './guard.ts';
+import { getCampaign } from './campaigns.ts';
 import { bundleFor, catalogueSlugs } from '../../builder/data.ts';
 import { nodeOf, type Bundle } from '../../builder/catalogue.ts';
 import { evaluate, findPlaced, place, reachable, type Roster, type Selection } from '../../builder/evaluate.ts';
 import { applyOp, randomId, type Op } from '../../builder/ops.ts';
 import { addSelection, findSelection, flatOptions, moveSelection, optionAt, parentOf, removeSelection, RosterError, setCount, walk } from '../../builder/roster.ts';
 import { optionsUnder } from '../../builder/evaluate.ts';
-import { GROUP_MAX, STARTING_GOLD, slugForType, stashItems, stashOf, summarise, warriorsOf, type Warrior } from '../../builder/rules.ts';
+import { GROUP_MAX, slugForType, stashItems, stashOf, summarise, warriorsOf, type Warrior } from '../../builder/rules.ts';
 import { chartItemFor, priceRange, saleOf } from '../../builder/stash.ts';
 import { propose, type Proposal } from '../../builder/propose.ts';
 import { stockOf, type StockLine } from '../../campaign/trading.ts';
-import { formatImperial, imperialForDate } from '../../lib/calendar.ts';
+import { anchorFor, formatImperial, imperialForDate } from '../../lib/calendar.ts';
+import { DEFAULT_CAMPAIGN } from '../../campaign/campaign.ts';
 import type { Warband } from '../../campaign/model.ts';
 
 export { LedgerError };
@@ -57,9 +60,9 @@ async function row(warbandId: string): Promise<WarbandRow> {
   if (!rows.length) throw new LedgerError('No such warband has entered the gates.', 404);
   return rows[0];
 }
-function mayKeep(actor: Actor, w: WarbandRow): void {
-  if (isGm(actor) || w.ownerId === actor.id) return;
-  throw new LedgerError('That warband is not yours to keep.', 403);
+async function mayKeep(actor: Actor, w: WarbandRow): Promise<void> {
+  if (!isGm(actor) && w.ownerId !== actor.id) throw new LedgerError('That warband is not yours to keep.', 403);
+  await writableCampaign(actor, w.campaignId);
 }
 function bundleOrRefuse(slug: string): Bundle {
   const b = bundleFor(slug);
@@ -74,13 +77,15 @@ async function sums(warbandId: string): Promise<{ gold: number; shards: number }
   return { gold: r?.gold ?? 0, shards: r?.shards ?? 0 };
 }
 
-/** The trading post where the campaign is now: the record's location of that id, laid over the chart. */
-export async function currentPost(): Promise<KeepView['post']> {
+/** The trading post where a campaign is now: the record's location of that id, laid over the chart, with the campaign's stock. */
+export async function currentPost(campaignId: string): Promise<KeepView['post']> {
   try {
     const { currentLocation, todayFor } = await import('../curfew/service.ts');
-    const place = await currentLocation(todayFor(null));
+    const campaign = await getCampaign(campaignId);
+    if (!campaign) return null;
+    const place = await currentLocation(campaignId, todayFor(campaign, null));
     const { getLocation } = await import('./locations.ts');
-    const loc = await getLocation(place.id);
+    const loc = await getLocation(place.id, campaignId);
     return { id: place.id, name: loc?.name ?? place.name, lines: stockOf(loc?.stock ?? []) };
   } catch (e) {
     console.error('[keep] no trading post', e);
@@ -101,7 +106,7 @@ export async function keepView(warbandId: string): Promise<KeepView> {
   return {
     warbandId, name: w.name, version: w.version, catalogue: roster?.catalogue ?? catalogueForType(w.type) ?? '', roster, names, gold, shards,
     log: logRows.map((l) => ({ id: l.id, kind: l.kind, gold: l.gold, shards: l.shards, text: l.text, authorName: l.authorName, struck: l.struck, createdAt: l.createdAt, scenarioId: l.scenarioId, undoable: !!lastOpen && l.id === lastOpen.id && l.before != null })),
-    post: roster ? await currentPost() : null,
+    post: roster ? await currentPost(w.campaignId) : null,
   };
 }
 
@@ -189,11 +194,17 @@ async function save(warbandId: string, version: number, roster: Roster): Promise
 
 export interface FoundInput { name: string; player?: string; roster: Roster; names: Record<string, string[]> }
 
-/** Found a warband from the builder: the roster as sent, its warriors on the record, 500 crowns in and the rest in the stash. */
-export async function foundWarband(actor: Actor, input: FoundInput): Promise<Warband> {
+/**
+ * Found a warband in a campaign from the builder: the roster as sent, its warriors on the record, the campaign's
+ * starting crowns in (500 unless it says otherwise) and the rest in the stash. The campaign may allow only some lists.
+ */
+export async function foundWarband(actor: Actor, campaignId: string, input: FoundInput): Promise<Warband> {
   await ensureSeeded();
-  if (!isGm(actor) && (await ownWarband(actor.id))) throw new LedgerError('You already keep a warband. Give it up before founding another.', 409);
+  const campaign = await writableCampaign(actor, campaignId);
+  const STARTING_GOLD = campaign.options.startingCrowns;
+  if (!isGm(actor) && (await ownWarband(actor.id, campaignId))) throw new LedgerError('You already keep a warband. Give it up before founding another.', 409);
   const slug = input.roster?.catalogue;
+  if (campaign.options.catalogues && !campaign.options.catalogues.includes(slug)) throw new LedgerError(`${campaign.name} does not take that warband list.`);
   const b = bundleOrRefuse(slug);
   const roster = checkSent(b, slug, input.roster);
   walk(roster.selections, (s) => { delete s.members; });
@@ -203,7 +214,7 @@ export async function foundWarband(actor: Actor, input: FoundInput): Promise<War
   if (stashItems(b, roster).length) throw new LedgerError('A new warband’s stash holds only the crowns it did not spend.');
   if (!s.warriors.length) throw new LedgerError('A warband needs its warriors.');
   const { createWarband } = await import('./roster.ts');
-  const w = await createWarband(actor, { name: input.name, type: b.catalogue.title ?? b.catalogue.name, player: input.player });
+  const w = await createWarband(actor, campaignId, { name: input.name, type: b.catalogue.title ?? b.catalogue.name, player: input.player });
   await attachMembers(b, w.id, roster, input.names ?? {}, new Set());
   await db().update(warbands).set({ roster, version: w.version + 1, updatedAt: new Date() }).where(eq(warbands.id, w.id));
   await project(b, roster);
@@ -227,7 +238,7 @@ export async function proposalFor(warbandId: string): Promise<Proposal & { catal
  */
 export async function drawUp(actor: Actor, warbandId: string, input: { roster: Roster; names?: Record<string, string[]>; gold: number; shards?: number }): Promise<KeepView> {
   const w = await row(warbandId);
-  mayKeep(actor, w);
+  await mayKeep(actor, w);
   if (w.roster) throw new LedgerError('The warband’s roster is kept already.', 409);
   const slug = catalogueForType(w.type);
   if (!slug || input.roster?.catalogue !== slug) throw new LedgerError('The roster is for another kind of warband.');
@@ -266,7 +277,7 @@ export async function dropRoster(actor: Actor, warbandId: string): Promise<KeepV
 interface Loaded { w: WarbandRow; b: Bundle; roster: Roster; gold: number; shards: number }
 async function loadKept(actor: Actor, warbandId: string, version: number): Promise<Loaded> {
   const w = await row(warbandId);
-  mayKeep(actor, w);
+  await mayKeep(actor, w);
   if (!w.roster) throw new LedgerError('The warband’s roster is still written by hand. Draw it up first.', 409);
   if (w.version !== version) throw new LedgerError('The roster was changed elsewhere meanwhile; it has been brought up to date. Try again.', 409);
   const roster = w.roster as Roster;
@@ -520,7 +531,7 @@ export async function sellItem(actor: Actor, warbandId: string, version: number,
   if (kindOf(b, roster, itemId).kind !== 'stash-item') throw new LedgerError('Only what is in the stash is sold; put it there first.');
   const item = findSelection(roster.selections, itemId)!;
   if (!Number.isInteger(count) || count < 1 || count > item.count) throw new LedgerError(`The stash has ${item.count}.`);
-  const post = await currentPost();
+  const post = await currentPost(k.w.campaignId);
   const ev = evaluate(b, roster);
   const v = ev.byId.get(itemId)!;
   const node = nodeOf(b, item.entry)!;
@@ -542,7 +553,7 @@ export async function buyItem(actor: Actor, warbandId: string, version: number, 
   const k = await loadKept(actor, warbandId, version);
   const { b, roster } = k;
   await betweenGames(warbandId);
-  const post = await currentPost();
+  const post = await currentPost(k.w.campaignId);
   const line = post?.lines.find((l) => l.itemId === itemId && l.available);
   if (!line) throw new LedgerError(`${post?.name ?? 'The trading post'} does not have that to sell.`);
   if (!Number.isInteger(count) || count < 1 || count > 20) throw new LedgerError('Buy one at a time, or a few.');
@@ -589,7 +600,8 @@ export async function loseWarrior(actor: Actor, warbandId: string, version: numb
   const k = await loadKept(actor, warbandId, version);
   if (!warriorsOf(k.b, k.roster).some((x) => x.members.includes(memberId))) throw new LedgerError('That warrior is not on the roster.');
   const today = new Date().toISOString().slice(0, 10);
-  await db().update(members).set({ dead: true, death: { date: formatImperial(imperialForDate(today)), order: Date.now(), epitaph: '' }, updatedAt: new Date() }).where(eq(members.id, memberId));
+  const campaign = (await getCampaign(k.w.campaignId)) ?? DEFAULT_CAMPAIGN;
+  await db().update(members).set({ dead: true, death: { date: formatImperial(imperialForDate(today, anchorFor(campaign))), order: Date.now(), epitaph: '' }, updatedAt: new Date() }).where(eq(members.id, memberId));
   await dropFromRoster(actor, warbandId, memberId, scenarioId);
   return keepView(warbandId);
 }
@@ -732,7 +744,7 @@ export async function awardExperience(actor: Actor, warbandId: string, version: 
 /** Strike the last line of the log and put the roster back as it stood before it. The keeper or a game master. */
 export async function undoLast(actor: Actor, warbandId: string): Promise<KeepView> {
   const w = await row(warbandId);
-  mayKeep(actor, w);
+  await mayKeep(actor, w);
   const [last] = await db().select().from(warbandLog).where(and(eq(warbandLog.warbandId, warbandId), eq(warbandLog.struck, false))).orderBy(desc(warbandLog.id)).limit(1);
   if (!last || last.before == null) throw new LedgerError('There is nothing to take back.');
   const before = last.before as Roster;
@@ -753,8 +765,8 @@ export async function undoLast(actor: Actor, warbandId: string): Promise<KeepVie
 }
 
 /** The log of every built warband's stash, for the Watch House and the Fountain Post: gold and rating as the roster has them. */
-export async function booksOf(): Promise<Record<string, { gold: number; rating: number }>> {
-  const rows = await db().select({ id: warbands.id, roster: warbands.roster }).from(warbands).orderBy(asc(warbands.sort));
+export async function booksOf(campaignId: string): Promise<Record<string, { gold: number; rating: number }>> {
+  const rows = await db().select({ id: warbands.id, roster: warbands.roster }).from(warbands).where(eq(warbands.campaignId, campaignId)).orderBy(asc(warbands.sort));
   const out: Record<string, { gold: number; rating: number }> = {};
   for (const r of rows) {
     if (!r.roster) continue;

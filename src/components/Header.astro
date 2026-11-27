@@ -1,8 +1,9 @@
 ---
 import Icon from './Icon.astro';
-import { asset, base } from '../lib/site';
-import { imperialForDate } from '../lib/calendar';
-import campaign from '../data/curfew/campaign.json' with { type: 'json' };
+import { asset } from '../lib/site';
+import { imperialForDate, anchorFor } from '../lib/calendar';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
 
 interface Props {
   /** The campaign's counts, read from the database by the page. */
@@ -13,8 +14,9 @@ interface Props {
   standings?: boolean;
 }
 const { warbands, scenarios, fallen, standings = true } = Astro.props;
+const campaign = Astro.locals.campaign;
 // the year the campaign stands in today, counted by the Imperial Calendar from the first game
-const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campaign.timezone }).format(new Date())).year;
+const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campaign.timezone }).format(new Date()), anchorFor(Astro.locals.campaign)).year;
 ---
 
   <div class="header-bar" id="campaign-navigation" data-me={`${base}/api/account/me`}>

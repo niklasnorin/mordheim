@@ -73,11 +73,11 @@ export function memberNights(ledgers: Ledger[]): Record<string, MemberNights> {
   return out;
 }
 
-export function warbandStandings(ledgers: Ledger[]): Record<string, WarbandStanding> {
+export function warbandStandings(ledgers: Ledger[], title: (renown: number) => string = titleFor): Record<string, WarbandStanding> {
   const out: Record<string, WarbandStanding> = {};
   for (const { warband, state } of ledgers) {
     out[warband.id] = {
-      warbandId: warband.id, title: titleFor(state.renown), renown: state.renown, favour: state.favour, shards: state.shards,
+      warbandId: warband.id, title: title(state.renown), renown: state.renown, favour: state.favour, shards: state.shards,
       nights: state.nights.length, nightsOut: state.nights.filter((n) => n.results.length > 0).length, charms: state.hand.length,
     };
   }

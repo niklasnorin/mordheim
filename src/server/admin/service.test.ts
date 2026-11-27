@@ -8,6 +8,7 @@ import { burnLedger, deleteDispatch, ledgerDetail, listPlayers, moveCampaign, ov
 import { warbands } from '../../data/warbands.ts';
 
 const GM = 'user-gm', PLAYER = 'user-player';
+const C = 'mordheim-2000';
 
 before(async () => {
   const { db } = await testDatabase();
@@ -21,12 +22,12 @@ before(async () => {
     { id: 's1', token: 't1', userId: PLAYER, expiresAt: soon },
     { id: 's2', token: 't2', userId: PLAYER, expiresAt: new Date(Date.now() - 1000) },
   ]);
-  await claimWarband(PLAYER, 'nordost', 3);
-  await actions.orders(PLAYER, 3, [{ memberId: 'agnar', errand: 'carouse' }]);
+  await claimWarband(C, PLAYER, 'nordost', 3);
+  await actions.orders(C, PLAYER, 3, [{ memberId: 'agnar', errand: 'carouse' }]);
 });
 
 test('the overview knows the night, who keeps what, and who is behind', async () => {
-  const o = await overview(6);
+  const o = await overview(C, 6);
   assert.equal(o.today, 6);
   assert.ok(o.omen.title && o.moon.name);
   assert.equal(o.counts.warbands, warbands.length);
@@ -46,62 +47,62 @@ test('the overview knows the night, who keeps what, and who is behind', async ()
 });
 
 test('the overview knows where the campaign is, and the moves newest first', async () => {
-  await moveCampaign('fussenbach', 6);
-  let o = await overview(6);
+  await moveCampaign(C, 'fussenbach', 6);
+  let o = await overview(C, 6);
   assert.equal(o.location.id, 'fussenbach');
   assert.equal(o.moves.length, 1);
   assert.equal(o.moves[0].fromNight, 6);
-  await moveCampaign('mordheim', 7);
-  o = await overview(7);
+  await moveCampaign(C, 'mordheim', 7);
+  o = await overview(C, 7);
   assert.equal(o.location.id, 'mordheim');
   assert.deepEqual(o.moves.map((m) => m.locationId), ['mordheim', 'fussenbach']);
-  assert.equal((await overview(6)).location.id, 'fussenbach', 'night 6 was in the village');
+  assert.equal((await overview(C, 6)).location.id, 'fussenbach', 'night 6 was in the village');
 });
 
 test('players list their sessions, warband and last visit', async () => {
-  const players = await listPlayers();
+  const players = await listPlayers(C);
   const p = players.find((x) => x.id === PLAYER)!;
   assert.equal(p.sessions, 1);
   assert.ok(p.lastSeen instanceof Date);
   assert.equal(p.warband?.id, 'nordost');
   assert.equal(await revokeSessions(PLAYER), 2);
-  assert.equal((await listPlayers()).find((x) => x.id === PLAYER)!.sessions, 0);
+  assert.equal((await listPlayers(C)).find((x) => x.id === PLAYER)!.sessions, 0);
 });
 
 test('midnight by hand writes the dawns and is recorded', async () => {
-  const r = await runMidnight(6);
+  const r = await runMidnight(C, 6);
   assert.equal(r.ledgers, 1);
   assert.equal(r.nights, 3, 'nights 3, 4 and 5');
-  const o = await overview(6);
+  const o = await overview(C, 6);
   assert.equal(o.runs.length, 1);
   assert.equal(o.runs[0].source, 'admin');
   assert.equal(o.ledgers.find((l) => l.warbandId === 'nordost')!.behind, 0);
-  const detail = await ledgerDetail('nordost', 6);
+  const detail = await ledgerDetail(C, 'nordost', 6);
   assert.equal(detail?.state.nights.length, 3);
-  assert.equal(await ledgerDetail('bitterbrow-expedition', 6), null);
+  assert.equal(await ledgerDetail(C, 'bitterbrow-expedition', 6), null);
 });
 
 test('the Watch posts and pulls notices in the Cryer', async () => {
-  await assert.rejects(postNotice('   ', 6), LedgerError);
-  const notice = await postNotice('  Curfew  falls an hour earlier tonight. ', 6);
+  await assert.rejects(postNotice(C, '   ', 6), LedgerError);
+  const notice = await postNotice(C, '  Curfew  falls an hour earlier tonight. ', 6);
   assert.equal(notice.kind, 'notice');
   assert.equal(notice.headline, 'Curfew falls an hour earlier tonight.');
   assert.equal(notice.warbandName, 'The Watch');
-  const printed = await recentDispatches(6, 20);
+  const printed = await recentDispatches(C, 6, 20);
   assert.ok(printed.some((d) => d.id === notice.id));
   await deleteDispatch(notice.id);
   await assert.rejects(deleteDispatch(notice.id), LedgerError);
-  assert.ok(!(await recentDispatches(6, 20)).some((d) => d.id === notice.id));
+  assert.ok(!(await recentDispatches(C, 6, 20)).some((d) => d.id === notice.id));
 });
 
 test('burning keeps the keeper; releasing frees the warband', async () => {
-  await burnLedger('nordost', 6);
-  const o = await overview(6);
+  await burnLedger(C, 'nordost', 6);
+  const o = await overview(C, 6);
   const nordost = o.ledgers.find((l) => l.warbandId === 'nordost')!;
   assert.equal(nordost.keeper?.name, 'Player');
   assert.equal(nordost.state?.nights.length, 0);
-  await assert.rejects(burnLedger('bitterbrow-expedition', 6), LedgerError);
+  await assert.rejects(burnLedger(C, 'bitterbrow-expedition', 6), LedgerError);
   await releaseLedger('nordost');
-  assert.equal((await overview(6)).counts.ledgers, 0);
+  assert.equal((await overview(C, 6)).counts.ledgers, 0);
   await assert.rejects(releaseLedger('nordost'), LedgerError);
 });

@@ -2,16 +2,22 @@
 import Base from '../../layouts/Base.astro';
 import '../../styles/curfew.css';
 import '../../styles/admin.css';
-import { base } from '../../lib/site';
+import { base as siteRoot } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
 import { admission } from '../../server/admin/guard';
 import { overview, type Overview } from '../../server/admin/service';
 import { todayFor } from '../../server/curfew/service';
 import { listArticles } from '../../server/campaign/news';
 import type { NewsArticle } from '../../campaign/model';
-import { CAMPAIGN, ERRAND_LABEL, HAND_SIZE, TOKEN_TYPES, dateForNight, moonForNight, tokenById } from '../../curfew/engine';
+import { ERRAND_LABEL, HAND_SIZE } from '../../curfew/engine';
+import { worldOrBuiltIn } from '../../server/content/curfew';
 import { sealSvg } from '../../curfew/glyphs';
-import { formatImperial, imperialForDate } from '../../lib/calendar';
+import { formatImperial, imperialForDate, anchorFor } from '../../lib/calendar';
+/** Links and API calls stay in the campaign this page is in; files under public/ are the site's (`siteRoot`). */
+const base = Astro.locals.base;
+const campaign = Astro.locals.campaign;
+const CAMPAIGN = campaign;
+const { TOKEN_TYPES, dateForNight, moonForNight, tokenById } = (await worldOrBuiltIn(campaign)).engine;
 
 // The game master's console. Personal, current, never cached.
 export const prerender = false;
@@ -19,13 +25,13 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 
 const ready = hasDatabase();
 // The console reads and acts on every ledger, so its clock is never steered: a debug date here would write other players' nights.
-const today = todayFor(null);
+const today = todayFor(campaign, null);
 const { viewer, gm, admin } = ready ? await admission(Astro.request) : { viewer: null, gm: false, admin: false };
 let data: Overview | null = null;
 let articles: NewsArticle[] = [];
 let trouble = false;
 if (gm) {
-  try { [data, articles] = await Promise.all([overview(today), listArticles()]); } catch (e) { console.error('[watch-house] overview unavailable', e); trouble = true; }
+  try { [data, articles] = await Promise.all([overview(campaign.id, today), listArticles(campaign.id)]); } catch (e) { console.error('[watch-house] overview unavailable', e); trouble = true; }
 }
 if (ready && !gm) Astro.response.status = viewer ? 403 : 401;
 const ROLE: Record<string, string> = { admin: 'Admin', gm: 'Game Master', player: 'Player' };
@@ -35,7 +41,7 @@ const tz = CAMPAIGN.timezone;
 const when = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
 const day = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'short', year: 'numeric' }).format(d);
 const nightDate = (n: number) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(dateForNight(n) + 'T12:00:00Z'));
-const imperialDate = (n: number) => formatImperial(imperialForDate(dateForNight(n)));
+const imperialDate = (n: number) => formatImperial(imperialForDate(dateForNight(n), anchorFor(Astro.locals.campaign)));
 const plural = (n: number, one: string, many = one + 's') => `${n} ${n === 1 ? one : many}`;
 const TONIGHT: Record<string, string> = { given: 'Orders given', barred: 'Door barred', standing: 'Standing orders', nothing: '—' };
 const KIND: Record<string, string> = { headline: 'Heard', happening: 'Happening', notice: 'Notice' };
@@ -85,7 +91,7 @@ const lastRun = data?.runs[0];
           <h1 class="wh-h1" id="tonight-title">{today < 1 ? 'Before the first night' : `Night ${today}`}</h1>
           <div class="wh-tonight">
             <figure class="wh-omen">
-              <img src={`${base}${data.omen.image}`} alt="" width="1050" height="1800" />
+              <img src={`${siteRoot}${data.omen.image}`} alt="" width="1050" height="1800" />
               <figcaption>
                 <b>{data.omen.title}</b>
                 {data.omen.reading}

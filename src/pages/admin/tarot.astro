@@ -2,10 +2,12 @@
 import Base from '../../layouts/Base.astro';
 import '../../styles/curfew.css';
 import '../../styles/admin.css';
-import { base } from '../../lib/site';
+import { base as siteRoot } from '../../lib/site';
 import { hasDatabase } from '../../server/db/client';
 import { admission } from '../../server/admin/guard';
 import { CARD_LASTS, DOOR_CARD, HAND_SIZE, TAROT, TAROT_KIND_LABEL, TAROT_NAME, TAROT_RULES, WALL_CARD, type TarotKind } from '../../campaign/tarot';
+/** Links and API calls stay in the campaign this page is in; files under public/ are the site's (`siteRoot`). */
+const base = Astro.locals.base;
 
 // The game master's view of the Tarot of the Damned: the deck card by card with what each does, and the hand's rules. Read from the rule itself; nothing here reads or writes a hand.
 export const prerender = false;
@@ -64,7 +66,7 @@ const signInHref = `${base}/signin/?next=${encodeURIComponent(`${base}/admin/tar
           <ol class="wh-tarot">
             {TAROT.map((c) => (
               <li class="wh-tarot-card" data-kind={c.kind} id={`card-${c.id}`}>
-                <img src={`${base}${c.image}`} alt="" width="1050" height="1800" loading="lazy" decoding="async" />
+                <img src={`${siteRoot}${c.image}`} alt="" width="1050" height="1800" loading="lazy" decoding="async" />
                 <div class="wh-tarot-text">
                   <div class="wh-tarot-kicker"><span class="wh-tarot-numeral">{c.numeral}</span><span class="wh-tarot-kind">{TAROT_KIND_LABEL[c.kind]}</span>{c.only && <span class="wh-tarot-hour">{HOUR_LABEL[c.only]}</span>}</div>
                   <h2 class="wh-h2">{c.title}</h2>

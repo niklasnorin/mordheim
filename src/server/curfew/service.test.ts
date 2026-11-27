@@ -6,12 +6,14 @@ import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import * as schema from '../db/schema.ts';
 import { testDatabase } from '../testdb.ts';
-import { actions, campaignMoves, claimWarband, currentLocation, listClaims, loadOwnLedger, moveCampaign, recentDispatches, reconcileAll, releaseWarband, LedgerError } from './service.ts';
+import { actions, campaignMoves, claimWarband, currentLocation, listClaims, loadOwnLedger, moveCampaign, recentDispatches, reconcileCampaign, releaseWarband, LedgerError } from './service.ts';
 import { dispatchesForNight } from '../../curfew/cryer.ts';
 import { listWarbands } from '../campaign/roster.ts';
 import { restingMembers } from '../../curfew/ledger.ts';
 
 const NIKLAS = 'user-niklas', RIVAL = 'user-rival';
+/** The first campaign, which the seed fills. */
+const C = 'mordheim-2000';
 
 before(async () => {
   const { db } = await testDatabase();
@@ -22,193 +24,193 @@ before(async () => {
 });
 
 test('a player claims one warband, and a warband has one keeper', async () => {
-  assert.equal(await loadOwnLedger(NIKLAS, 5), null);
-  const view = await claimWarband(NIKLAS, 'nordost', 5);
+  assert.equal(await loadOwnLedger(C, NIKLAS, 5), null);
+  const view = await claimWarband(C, NIKLAS, 'nordost', 5);
   assert.equal(view.state.firstSeen, 5);
   assert.equal(view.state.lastResolved, 4);
-  await assert.rejects(claimWarband(NIKLAS, 'bitterbrow-expedition', 5), (e: unknown) => e instanceof LedgerError && e.status === 409);
-  await assert.rejects(claimWarband(RIVAL, 'nordost', 5), (e: unknown) => e instanceof LedgerError && e.status === 409);
-  await assert.rejects(claimWarband(RIVAL, 'nobody', 5), (e: unknown) => e instanceof LedgerError && e.status === 404);
-  assert.deepEqual(await listClaims(), [{ warbandId: 'nordost', ownerId: NIKLAS, ownerName: 'Niklas', ledger: true }]);
-  assert.equal((await listWarbands()).find((w) => w.id === 'nordost')!.ownerId, NIKLAS, 'claiming the ledger claims the warband');
+  await assert.rejects(claimWarband(C, NIKLAS, 'bitterbrow-expedition', 5), (e: unknown) => e instanceof LedgerError && e.status === 409);
+  await assert.rejects(claimWarband(C, RIVAL, 'nordost', 5), (e: unknown) => e instanceof LedgerError && e.status === 409);
+  await assert.rejects(claimWarband(C, RIVAL, 'nobody', 5), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  assert.deepEqual(await listClaims(C), [{ warbandId: 'nordost', ownerId: NIKLAS, ownerName: 'Niklas', ledger: true }]);
+  assert.equal((await listWarbands(C)).find((w) => w.id === 'nordost')!.ownerId, NIKLAS, 'claiming the ledger claims the warband');
 });
 
 test('orders are saved, the next visit writes the dawn, and the Town Cryer gets its dispatches', async () => {
-  const given = await actions.orders(NIKLAS, 5, [{ memberId: 'agnar', errand: 'carouse' }, { memberId: 'torgrim', errand: 'scavenge' }]);
+  const given = await actions.orders(C, NIKLAS, 5, [{ memberId: 'agnar', errand: 'carouse' }, { memberId: 'torgrim', errand: 'scavenge' }]);
   assert.equal(given.state.orders[5].length, 2);
   assert.equal(given.fresh, false);
-  await assert.rejects(actions.orders(NIKLAS, 5, [{ memberId: 'agnar', errand: 'carouse' }, { memberId: 'skalle', errand: 'pray' }, { memberId: 'torgrim', errand: 'scavenge' }]), LedgerError);
+  await assert.rejects(actions.orders(C, NIKLAS, 5, [{ memberId: 'agnar', errand: 'carouse' }, { memberId: 'skalle', errand: 'pray' }, { memberId: 'torgrim', errand: 'scavenge' }]), LedgerError);
 
-  const dawn = await loadOwnLedger(NIKLAS, 6);
+  const dawn = await loadOwnLedger(C, NIKLAS, 6);
   assert.ok(dawn && dawn.fresh, 'night 5 was written by this visit');
   assert.equal(dawn.state.nights.length, 1);
   assert.equal(dawn.state.nights[0].night, 5);
-  const again = await loadOwnLedger(NIKLAS, 6);
+  const again = await loadOwnLedger(C, NIKLAS, 6);
   assert.equal(again!.fresh, false, 'a second look writes nothing new');
 
-  const nordost = (await listWarbands()).find((w) => w.id === 'nordost')!;
+  const nordost = (await listWarbands(C)).find((w) => w.id === 'nordost')!;
   const expected = dispatchesForNight(nordost, dawn.state.nights[0], dawn.state.headlines);
-  const printed = await recentDispatches(6);
+  const printed = await recentDispatches(C, 6);
   assert.deepEqual(printed.map((d) => d.key).sort(), expected.map((d) => d.key).sort(), 'exactly what the dice chose, once');
   for (const d of printed) assert.equal(d.warbandName, 'The Nordost Kin');
 });
 
 test('the midnight cron writes every ledger and is harmless to run twice', async () => {
-  await claimWarband(RIVAL, 'bitterbrow-expedition', 6);
-  const first = await reconcileAll(9);
+  await claimWarband(C, RIVAL, 'bitterbrow-expedition', 6);
+  const first = await reconcileCampaign(C, 9);
   assert.equal(first.ledgers, 2);
   assert.equal(first.nights, 3 + 3, 'nights 6, 7, 8 for both');
-  const second = await reconcileAll(9);
+  const second = await reconcileCampaign(C, 9);
   assert.equal(second.nights, 0);
-  const view = await loadOwnLedger(RIVAL, 9);
+  const view = await loadOwnLedger(C, RIVAL, 9);
   assert.equal(view!.state.lastResolved, 8);
   assert.ok(view!.state.nights.every((n) => n.results.every((r) => r.standing)), 'nobody gave orders: standing orders at half yield');
-  const printed = await recentDispatches(9, 50);
+  const printed = await recentDispatches(C, 9, 50);
   assert.ok(printed.every((d) => d.night <= 8));
 });
 
 test('two writes racing on the same ledger both land', async () => {
-  const before = (await loadOwnLedger(NIKLAS, 9))!;
+  const before = (await loadOwnLedger(C, NIKLAS, 9))!;
   const resting = restingMembers(before.state, 9);
-  const nordost = (await listWarbands()).find((w) => w.id === 'nordost')!;
+  const nordost = (await listWarbands(C)).find((w) => w.id === 'nordost')!;
   const free = nordost.members.find((m) => !m.dead && !resting.includes(m.id) && !before.recovering.includes(m.id))!;
   await Promise.all([
-    actions.orders(NIKLAS, 9, [{ memberId: free.id, errand: 'pray' }]),
-    actions.heal(NIKLAS, 9, 'mjolnir'),
+    actions.orders(C, NIKLAS, 9, [{ memberId: free.id, errand: 'pray' }]),
+    actions.heal(C, NIKLAS, 9, 'mjolnir'),
   ]);
-  const view = await loadOwnLedger(NIKLAS, 9);
+  const view = await loadOwnLedger(C, NIKLAS, 9);
   assert.deepEqual(view!.state.orders[9].map((o) => o.memberId), [free.id]);
   assert.ok(view!.state.healed.includes('mjolnir'));
 });
 
 test('the Eve: the City Provides, the table is laid, the fight is recorded', async () => {
-  let view = await actions.eveOpen(RIVAL, 9);
+  let view = await actions.eveOpen(C, RIVAL, 9);
   assert.equal(view.state.hand.length, 1, 'an empty Hand is dealt one charm');
   assert.equal(view.state.provided?.night, 9);
-  view = await actions.eveLay(RIVAL, 9, view.state.hand.map((h) => h.id));
+  view = await actions.eveLay(C, RIVAL, 9, view.state.hand.map((h) => h.id));
   assert.match(view.state.eve!.ticket, /^EVE-1-/);
-  await assert.rejects(actions.eveLay(RIVAL, 9, []), LedgerError);
-  view = await actions.eveUndo(RIVAL, 9);
+  await assert.rejects(actions.eveLay(C, RIVAL, 9, []), LedgerError);
+  view = await actions.eveUndo(C, RIVAL, 9);
   assert.equal(view.state.eve, undefined);
-  view = await actions.eveLay(RIVAL, 9, []);
+  view = await actions.eveLay(C, RIVAL, 9, []);
   assert.match(view.state.eve!.ticket, /^EVE-0-/);
-  view = await actions.eveDone(RIVAL, 9);
+  view = await actions.eveDone(C, RIVAL, 9);
   assert.equal(view.state.fights.length, 1);
   assert.match(view.state.nights.at(-1)!.header, /the fight/);
   assert.equal(view.state.hand.length, 0);
 });
 
 test('the game master moves the campaign; nights resolve where the campaign was, and the Curfew follows', async () => {
-  assert.equal((await currentLocation(9)).id, 'mordheim');
-  assert.deepEqual(await campaignMoves(), []);
-  await assert.rejects(moveCampaign('mordheim', 9), (e: unknown) => e instanceof LedgerError && e.status === 409);
-  await assert.rejects(moveCampaign('atlantis', 9), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  assert.equal((await currentLocation(C, 9)).id, 'mordheim');
+  assert.deepEqual(await campaignMoves(C), []);
+  await assert.rejects(moveCampaign(C, 'mordheim', 9), (e: unknown) => e instanceof LedgerError && e.status === 409);
+  await assert.rejects(moveCampaign(C, 'atlantis', 9), (e: unknown) => e instanceof LedgerError && e.status === 404);
   // orders for tonight given in the city, for an errand the village lacks
-  const before = await loadOwnLedger(NIKLAS, 9);
-  const free = (await listWarbands()).find((w) => w.id === 'nordost')!.members.find((m) => !m.dead && !restingMembers(before!.state, 9).includes(m.id) && !before!.recovering.includes(m.id))!;
-  await actions.orders(NIKLAS, 9, [{ memberId: free.id, errand: 'train' }]);
-  const moved = await moveCampaign('fussenbach', 9);
+  const before = await loadOwnLedger(C, NIKLAS, 9);
+  const free = (await listWarbands(C)).find((w) => w.id === 'nordost')!.members.find((m) => !m.dead && !restingMembers(before!.state, 9).includes(m.id) && !before!.recovering.includes(m.id))!;
+  await actions.orders(C, NIKLAS, 9, [{ memberId: free.id, errand: 'train' }]);
+  const moved = await moveCampaign(C, 'fussenbach', 9);
   assert.equal(moved.id, 'fussenbach');
-  assert.equal((await campaignMoves())[0].fromNight, 9);
-  const view = await loadOwnLedger(NIKLAS, 9);
+  assert.equal((await campaignMoves(C))[0].fromNight, 9);
+  const view = await loadOwnLedger(C, NIKLAS, 9);
   assert.equal(view!.locationId, 'fussenbach', 'the view says where the campaign is tonight');
-  await assert.rejects(actions.orders(NIKLAS, 9, [{ memberId: free.id, errand: 'train' }]), (e: unknown) => e instanceof LedgerError && /Pit/.test(e.message));
-  const dawn = await loadOwnLedger(NIKLAS, 10);
+  await assert.rejects(actions.orders(C, NIKLAS, 9, [{ memberId: free.id, errand: 'train' }]), (e: unknown) => e instanceof LedgerError && /Pit/.test(e.message));
+  const dawn = await loadOwnLedger(C, NIKLAS, 10);
   const last = dawn!.state.nights.at(-1)!;
   assert.equal(last.night, 9);
   assert.equal(last.locationId, 'fussenbach');
   assert.deepEqual(last.results.map((r) => r.errand), ['carouse'], 'the order for the Pit went to the Flagon');
   assert.ok(dawn!.state.nights.filter((n) => n.night < 9).every((n) => n.locationId === 'mordheim'), 'earlier nights stay in the city');
   assert.ok(dawn!.state.headlines.some((h) => h.night === 9 && /Cracked Flagon/.test(h.text)));
-  const printed = await recentDispatches(10, 50);
+  const printed = await recentDispatches(C, 10, 50);
   assert.ok(printed.some((d) => d.night === 9 && d.kind === 'headline' && /Cracked Flagon/.test(d.headline)), 'the arrival reaches the Cryer');
   // the Eve deals from the village's charms too
-  await actions.eveDone(RIVAL, 10).catch(() => {});
-  const eve = await actions.eveOpen(RIVAL, 10);
+  await actions.eveDone(C, RIVAL, 10).catch(() => {});
+  const eve = await actions.eveOpen(C, RIVAL, 10);
   assert.equal(eve.locationId, 'fussenbach');
   assert.equal(eve.state.hand.length, 1);
   // and home again
-  await moveCampaign('mordheim', 11);
-  assert.equal((await currentLocation(11)).id, 'mordheim');
-  assert.equal((await currentLocation(10)).id, 'fussenbach', 'the past keeps its place');
-  const home = await loadOwnLedger(NIKLAS, 12);
+  await moveCampaign(C, 'mordheim', 11);
+  assert.equal((await currentLocation(C, 11)).id, 'mordheim');
+  assert.equal((await currentLocation(C, 10)).id, 'fussenbach', 'the past keeps its place');
+  const home = await loadOwnLedger(C, NIKLAS, 12);
   assert.equal(home!.state.nights.find((n) => n.night === 10)!.locationId, 'fussenbach');
   assert.equal(home!.state.nights.find((n) => n.night === 11)!.locationId, 'mordheim');
 });
 
 test('burning starts afresh; giving up frees the warband', async () => {
-  const burnt = await actions.reset(NIKLAS, 9);
+  const burnt = await actions.reset(C, NIKLAS, 9);
   assert.equal(burnt.state.nights.length, 0);
   assert.equal(burnt.state.firstSeen, 9);
-  await releaseWarband(NIKLAS);
-  assert.equal(await loadOwnLedger(NIKLAS, 9), null);
-  assert.deepEqual((await listClaims()).map((c) => c.warbandId), ['bitterbrow-expedition']);
-  const taken = await claimWarband(NIKLAS, 'nordost', 9);
+  await releaseWarband(C, NIKLAS);
+  assert.equal(await loadOwnLedger(C, NIKLAS, 9), null);
+  assert.deepEqual((await listClaims(C)).map((c) => c.warbandId), ['bitterbrow-expedition']);
+  const taken = await claimWarband(C, NIKLAS, 'nordost', 9);
   assert.equal(taken.warbandId, 'nordost');
 });
 
 test('a road is taken through the service, once, and the Cryer prints the night only then', async () => {
   const { waitingCrossroads, keptMembers } = await import('../../curfew/ledger.ts');
-  const nordost = (await listWarbands()).find((w) => w.id === 'nordost')!;
+  const nordost = (await listWarbands(C)).find((w) => w.id === 'nordost')!;
   let today = 12, waiting: Awaited<ReturnType<typeof loadOwnLedger>> = null;
   for (; today < 400; today++) {
-    const view = (await loadOwnLedger(NIKLAS, today))!;
+    const view = (await loadOwnLedger(C, NIKLAS, today))!;
     if (waitingCrossroads(view.state)) { waiting = view; break; }
     const free = nordost.members.filter((m) => !m.dead && !restingMembers(view.state, today).includes(m.id) && !keptMembers(view.state, today).includes(m.id) && !view.recovering.includes(m.id)).slice(0, 2);
-    await actions.orders(NIKLAS, today, free.map((m, i) => ({ memberId: m.id, errand: (['scavenge', 'carouse', 'spy', 'pray', 'trade', 'train'] as const)[(today + i) % 6] })));
+    await actions.orders(C, NIKLAS, today, free.map((m, i) => ({ memberId: m.id, errand: (['scavenge', 'carouse', 'spy', 'pray', 'trade', 'train'] as const)[(today + i) % 6] })));
   }
   assert.ok(waiting, 'a crossroads was met');
   const night = waitingCrossroads(waiting!.state)!;
   assert.equal(night.night, today - 1);
-  const printedBefore = (await recentDispatches(today, 200)).filter((d) => d.night === night.night && d.kind === 'happening');
+  const printedBefore = (await recentDispatches(C, today, 200)).filter((d) => d.night === night.night && d.kind === 'happening');
   assert.equal(printedBefore.length, 0, 'the broadsheet waits');
   const road = night.crossroads!.options[0];
-  const view = await actions.decide(NIKLAS, today, night.night, road.id);
+  const view = await actions.decide(C, NIKLAS, today, night.night, road.id);
   const decided = view.state.nights.find((n) => n.night === night.night)!.crossroads!.decided!;
   assert.equal(decided.roadId, road.id);
   assert.equal(decided.on, today);
-  await assert.rejects(actions.decide(NIKLAS, today, night.night, road.id), (e: unknown) => e instanceof LedgerError && /decided/.test(e.message));
+  await assert.rejects(actions.decide(C, NIKLAS, today, night.night, road.id), (e: unknown) => e instanceof LedgerError && /decided/.test(e.message));
   const expected = dispatchesForNight(nordost, view.state.nights.find((n) => n.night === night.night)!, view.state.headlines);
-  const printed = await recentDispatches(today, 200);
+  const printed = await recentDispatches(C, today, 200);
   for (const d of expected) assert.ok(printed.some((p) => p.key === d.key), `${d.key} reached the Cryer on the decision`);
 });
 
 test('a dry run computes the night and saves nothing; the sandbox it answers with is the base of the next step', async () => {
   const { waitingCrossroads } = await import('../../curfew/ledger.ts');
-  const real = (await loadOwnLedger(NIKLAS, 400))!;
+  const real = (await loadOwnLedger(C, NIKLAS, 400))!;
   const realNights = real.state.nights.length, realState = JSON.parse(JSON.stringify(real.state));
-  const printedBefore = (await recentDispatches(500, 500)).length;
+  const printedBefore = (await recentDispatches(C, 500, 500)).length;
   // step one: orders for tonight, dry, on the real ledger as the base
-  const nordost = (await listWarbands()).find((w) => w.id === 'nordost')!;
+  const nordost = (await listWarbands(C)).find((w) => w.id === 'nordost')!;
   const free = nordost.members.filter((m) => !m.dead && !restingMembers(real.state, 400).includes(m.id) && !real.recovering.includes(m.id)).slice(0, 2);
-  let dry = await actions.orders(NIKLAS, 400, free.map((m) => ({ memberId: m.id, errand: 'pray' })), {});
+  let dry = await actions.orders(C, NIKLAS, 400, free.map((m) => ({ memberId: m.id, errand: 'pray' })), {});
   assert.equal(dry.dry, true);
   assert.equal(dry.state.orders[400].length, free.length);
   assert.deepEqual(Array.isArray(dry.wouldPrint), true);
-  assert.equal((await loadOwnLedger(NIKLAS, 400))!.state.orders[400], undefined, 'the real ledger has no such orders');
+  assert.equal((await loadOwnLedger(C, NIKLAS, 400))!.state.orders[400], undefined, 'the real ledger has no such orders');
   // step two: the next morning, with the sandbox as the base: the dry night is written in the sandbox only
-  dry = await actions.look(NIKLAS, 401, { base: dry.state });
+  dry = await actions.look(C, NIKLAS, 401, { base: dry.state });
   assert.equal(dry.state.nights.length, realNights + 1);
   assert.deepEqual(dry.state.nights.at(-1)!.results.map((r) => r.errand), free.map(() => 'pray'), 'the sandbox remembers the dry orders');
   assert.ok(dry.wouldPrint!.every((d) => d.night === 400));
   // many nights, decisions included, and still nothing real moves
   for (let t = 402; t < 430; t++) {
     const waiting = waitingCrossroads(dry.state);
-    if (waiting) dry = await actions.decide(NIKLAS, t - 1, waiting.night, waiting.crossroads!.options[0].id, { base: dry.state });
-    dry = await actions.look(NIKLAS, t, { base: dry.state });
+    if (waiting) dry = await actions.decide(C, NIKLAS, t - 1, waiting.night, waiting.crossroads!.options[0].id, { base: dry.state });
+    dry = await actions.look(C, NIKLAS, t, { base: dry.state });
   }
   assert.ok(dry.state.nights.length >= realNights + 20);
-  const after = (await loadOwnLedger(NIKLAS, 400))!;
+  const after = (await loadOwnLedger(C, NIKLAS, 400))!;
   assert.equal(after.state.nights.length, realNights, 'the real ledger is where it was');
   assert.deepEqual(JSON.parse(JSON.stringify(after.state)), realState, 'in every field');
-  assert.equal((await recentDispatches(500, 500)).length, printedBefore, 'the Cryer got nothing from the dry run');
+  assert.equal((await recentDispatches(C, 500, 500)).length, printedBefore, 'the Cryer got nothing from the dry run');
   // a sandbox from another warband is ignored: the real ledger is the base
-  const other = await actions.look(NIKLAS, 400, { base: { ...dry.state, warbandId: 'bitterbrow-expedition' } });
+  const other = await actions.look(C, NIKLAS, 400, { base: { ...dry.state, warbandId: 'bitterbrow-expedition' } });
   assert.equal(other.state.nights.length, realNights);
   // the Eve dry: the City Provides in the sandbox only
-  const eve = await actions.eveOpen(NIKLAS, 400, { base: { ...real.state, hand: [] } });
+  const eve = await actions.eveOpen(C, NIKLAS, 400, { base: { ...real.state, hand: [] } });
   assert.equal(eve.state.hand.length, 1);
-  assert.deepEqual((await loadOwnLedger(NIKLAS, 400))!.state.hand, real.state.hand);
+  assert.deepEqual((await loadOwnLedger(C, NIKLAS, 400))!.state.hand, real.state.hand);
 });
 
 test('a dry run needs debug on, a game master, and the strip\'s cookie', async () => {
@@ -238,21 +240,21 @@ test('a dry run needs debug on, a game master, and the strip\'s cookie', async (
 
 test('the clock is steered only for a game master: a player, the cron and the Watch House always get the real night', async () => {
   const { todayFor } = await import('./service.ts');
-  const { currentNight } = await import('../../curfew/engine.ts');
+  const { DEFAULT_CAMPAIGN: campaign, nightNow } = await import('../../campaign/campaign.ts');
   const { env } = await import('../env.ts');
   const url = new URL('http://localhost/curfew/?date=2026-10-01');
-  const wanted = 22, real = currentNight();
+  const wanted = 22, real = nightNow(campaign);
   const before = { debug: env.CURFEW_DEBUG, admins: env.ADMIN_EMAILS.slice() };
   try {
     (env as { CURFEW_DEBUG: boolean }).CURFEW_DEBUG = true;
     env.ADMIN_EMAILS.splice(0, env.ADMIN_EMAILS.length, 'gm@example.com');
-    assert.equal(todayFor(url, { id: 'g', name: 'GM', email: 'GM@example.com' }), wanted, 'a game master may look at another night');
-    assert.equal(todayFor(url, { id: 'p', name: 'Player', email: 'player@example.com' }), real, 'a player never can');
-    assert.equal(todayFor(url, null), real, 'nobody signed in');
-    assert.equal(todayFor(url), real, 'no viewer given');
-    assert.equal(todayFor(null, { id: 'g', name: 'GM', email: 'gm@example.com' }), real, 'a null URL is never steered, whoever asks');
+    assert.equal(todayFor(campaign, url, { id: 'g', name: 'GM', email: 'GM@example.com' }), wanted, 'a game master may look at another night');
+    assert.equal(todayFor(campaign, url, { id: 'p', name: 'Player', email: 'player@example.com' }), real, 'a player never can');
+    assert.equal(todayFor(campaign, url, null), real, 'nobody signed in');
+    assert.equal(todayFor(campaign, url), real, 'no viewer given');
+    assert.equal(todayFor(campaign, null, { id: 'g', name: 'GM', email: 'gm@example.com' }), real, 'a null URL is never steered, whoever asks');
     (env as { CURFEW_DEBUG: boolean }).CURFEW_DEBUG = false;
-    assert.equal(todayFor(url, { id: 'g', name: 'GM', email: 'gm@example.com' }), real, 'debug off: not even a game master');
+    assert.equal(todayFor(campaign, url, { id: 'g', name: 'GM', email: 'gm@example.com' }), real, 'debug off: not even a game master');
   } finally {
     (env as { CURFEW_DEBUG: boolean }).CURFEW_DEBUG = before.debug;
     env.ADMIN_EMAILS.splice(0, env.ADMIN_EMAILS.length, ...before.admins);

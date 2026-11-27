@@ -10,7 +10,7 @@ import Icon from '../../../components/Icon.astro';
 import WarbandLabel from '../../../components/WarbandLabel.astro';
 import '../../../styles/tracker.css';
 import '../../../styles/tarot.css';
-import { asset, base } from '../../../lib/site';
+import { asset, herePath } from '../../../lib/site';
 import { hasDatabase } from '../../../server/db/client';
 import { getActor, isGm } from '../../../server/roles';
 import { getScenario, mayTrack } from '../../../server/campaign/scenarios';
@@ -18,6 +18,9 @@ import { listWarbands } from '../../../server/campaign/roster';
 import { tallyOf, type Scenario, type Warband } from '../../../campaign/model';
 import { inSentence, objectiveOf } from '../../../campaign/objective';
 import type { TrackerState } from '../../../lib/tracker';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
+const cid = Astro.locals.campaign.id;
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -27,7 +30,9 @@ const viewer = ready ? await getActor(Astro.request) : null;
 let scenario: Scenario | undefined, warbands: Warband[] = [], may = false;
 if (ready) {
   try {
-    [scenario, warbands] = await Promise.all([getScenario(Astro.params.id!), listWarbands()]);
+    [scenario, warbands] = await Promise.all([getScenario(Astro.params.id!), listWarbands(cid)]);
+    // a scenario of another campaign is not posted here
+    if (scenario && scenario.campaignId !== cid) scenario = undefined;
     if (scenario) may = await mayTrack(viewer, scenario.id);
   } catch (e) { console.error('[tracker] unavailable', e); }
 }
@@ -44,7 +49,7 @@ const roster = scenario.warbands.map((p) => warbands.find((w) => w.id === p.warb
 // the Tarot's hands this phone holds: the keeper's own warband, every attending one for a game master; never the other side's
 const hands = scenario.tarot && viewer ? scenario.warbands.map((p) => warbands.find((w) => w.id === p.warbandId)).filter((w): w is Warband => !!w && (isGm(viewer) || w.ownerId === viewer.id)).map((w) => ({ id: w.id, name: w.name })) : [];
 // signed out, the way in is offered where the watching is explained, since a phone's masthead has no room for it
-const state: TrackerState = { base, roster, may, hands, scenario, signIn: ready && !viewer ? `${base}/signin/?next=${encodeURIComponent(Astro.url.pathname)}` : null };
+const state: TrackerState = { base, roster, may, hands, scenario, signIn: ready && !viewer ? `${base}/signin/?next=${encodeURIComponent(herePath(Astro.locals, Astro.url))}` : null };
 const tally = tallyOf(scenario);
 const objective = objectiveOf(scenario);
 const sub = [tally ? `counting ${tally.toLowerCase()}` : null, objective ? `holding ${inSentence(objective.name)}` : null, scenario.tarot ? 'the Tarot in play' : null].filter(Boolean).join(' · ');
@@ -58,7 +63,7 @@ const sub = [tally ? `counting ${tally.toLowerCase()}` : null, objective ? `hold
         <h1 class="tk-title">{scenario.title}</h1>
         <p class="tk-sub"><span class="tk-sub-kind">{scenario.rulebookScenario ?? 'Custom scenario'}</span><span class="tk-round"></span>{sub && <span class="tk-sub-more"> · {sub}</span>}</p>
       </div>
-      {ready && !viewer && <a class="tk-back tk-signin" href={`${base}/signin/?next=${encodeURIComponent(Astro.url.pathname)}`}>Sign in</a>}
+      {ready && !viewer && <a class="tk-back tk-signin" href={`${base}/signin/?next=${encodeURIComponent(herePath(Astro.locals, Astro.url))}`}>Sign in</a>}
       <span class="tk-live" data-on="true" title="Following the table" aria-hidden="true"></span>
     </header>
     <!-- the warbands at the table in a row, in the order they play, without their "The" to fit a phone; the client lights whose turn it is and keeps the order -->

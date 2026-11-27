@@ -8,7 +8,7 @@ import Base from '../../../layouts/Base.astro';
 import ManageTop from '../../../components/ManageTop.astro';
 import '../../../styles/manage.css';
 import '../../../styles/builder.css';
-import { base } from '../../../lib/site';
+
 import { hasDatabase } from '../../../server/db/client';
 import { getActor, isGm } from '../../../server/roles';
 import { getWarband } from '../../../server/campaign/roster';
@@ -16,6 +16,9 @@ import { catalogueForType, keepViewFor, proposalFor } from '../../../server/camp
 import { listScenarios } from '../../../server/campaign/scenarios';
 import type { PageData } from '../../../lib/keep';
 import type { Warband } from '../../../campaign/model';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
+const cid = Astro.locals.campaign.id;
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -28,10 +31,11 @@ let problem = '';
 if (ready) {
   try {
     warband = await getWarband(Astro.params.id!);
+    if (warband && warband.campaignId !== cid) warband = undefined;
     if (warband) {
       const gm = isGm(viewer);
       const canEdit = gm || (!!viewer && warband.ownerId === viewer.id);
-      const games = (await listScenarios()).filter((s) => s.status === 'played' && s.warbands.some((p) => p.warbandId === warband!.id)).reverse().map((s) => {
+      const games = (await listScenarios(cid)).filter((s) => s.status === 'played' && s.warbands.some((p) => p.warbandId === warband!.id)).reverse().map((s) => {
         const mine = s.warbands.find((p) => p.warbandId === warband!.id)!;
         return { id: s.id, title: s.title, result: mine.result ?? null, members: mine.members.map((m) => ({ memberId: m.memberId, status: m.status })), takedowns: s.outOfAction.map((o) => ({ attackerId: o.attackerId, targetId: o.targetId ?? null })) };
       });

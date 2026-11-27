@@ -6,7 +6,9 @@ import Icon from './Icon.astro';
 import WarriorStory from './WarriorStory.astro';
 import Portrait from './Portrait.astro';
 import Markdown from './Markdown.astro';
-import { asset, base } from '../lib/site';
+import { asset } from '../lib/site';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
 
 interface Props {
   warbands: Warband[];

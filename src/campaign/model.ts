@@ -67,6 +67,10 @@ export interface PortraitPicture { image: string; source: string; crop: Portrait
 
 export interface Warband {
   id: string;
+  /** The campaign it belongs to (`docs/campaigns.md`). Left out by the seed fixtures, which are the first campaign's. */
+  campaignId?: string;
+  /** The warband this one was carried over from, in another campaign. */
+  carriedFromId?: string | null;
   name: string;
   type: string;
   sigil: string;
@@ -188,6 +192,8 @@ export interface NarrativeRevision {
 
 export interface Scenario {
   id: string;
+  /** The campaign it belongs to. Left out by the seed fixtures, which are the first campaign's. */
+  campaignId?: string;
   /** 1-based play order; higher = more recent. Upcoming scenarios are ordered by date. */
   sequence: number;
   status: ScenarioStatus;

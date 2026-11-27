@@ -1,17 +1,19 @@
 /**
  * The Watch House: what the game master sees and may do. Read-mostly, and every write is one the
- * Curfew service or the auth tables already understand; nothing here invents new state.
+ * Curfew service or the auth tables already understand; nothing here invents new state. Everything but the players and
+ * their sessions is one campaign's, named first; the accounts are the site's.
  */
 import { and, desc, eq, gt, isNotNull, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
 import { cryerDispatches, curfewLedgers, curfewRuns, session, user, warbands as warbandTable } from '../db/schema.ts';
 import { pendingResets } from '../account/service.ts';
 import { env } from '../env.ts';
-import { LOCATIONS, locationForNight, moonForNight, omenForNight, titleFor, dateForNight, type Location, type Omen, type Moon } from '../../curfew/engine.ts';
+import type { Location, Omen, Moon } from '../../curfew/engine.ts';
 import { coerceState, freshState, waitingCrossroads, type WarbandState } from '../../curfew/ledger.ts';
-import { LedgerError, THE_WATCH, campaignMoves, dispatchSource, moveCampaign, reconcileAll, recentDispatches, type CampaignMove, type PrintedDispatch, type RunResult } from '../curfew/service.ts';
+import { LedgerError, THE_WATCH, campaignMoves, dispatchSource, moveCampaign, reconcileCampaign, recentDispatches, type CampaignMove, type PrintedDispatch, type RunResult } from '../curfew/service.ts';
 import { loadRoster } from '../campaign/roster.ts';
-import { primeContent } from '../content/curfew.ts';
+import { worldFor } from '../content/curfew.ts';
+import { listCampaigns } from '../campaign/campaigns.ts';
 import { roleFor, type Role } from '../roles.ts';
 import { getSettings, type CampaignSettings } from '../campaign/settings.ts';
 
@@ -34,7 +36,10 @@ export interface LedgerRow {
 
 export interface PlayerRow {
   id: string; name: string; email: string; image: string | null; createdAt: Date;
-  sessions: number; lastSeen: Date | null; warband?: { id: string; name: string };
+  sessions: number; lastSeen: Date | null;
+  /** The warband they keep in this campaign, and in the others, by campaign name. */
+  warband?: { id: string; name: string };
+  elsewhere: { campaign: string; name: string }[];
   admin: boolean;
   role: Role;
   /** When an unspent reset word issued for them runs out, if there is one. */
@@ -58,19 +63,20 @@ export interface Overview {
 
 export interface HealthItem { label: string; ok: boolean | null; detail: string }
 
-export async function overview(today: number): Promise<Overview> {
-  await primeContent();
+export async function overview(campaignId: string, today: number): Promise<Overview> {
+  const { engine } = await worldFor(campaignId);
+  const { titleFor } = engine;
   const d = db();
-  const { warbands } = await loadRoster();
+  const { warbands } = await loadRoster(campaignId);
   const [ledgerRows, players, dispatches, runs, dispatchCount, sessionCount, moves, settings] = await Promise.all([
-    d.select({ ledger: curfewLedgers, keeper: { id: user.id, name: user.name, email: user.email } }).from(curfewLedgers).innerJoin(user, eq(user.id, curfewLedgers.ownerId)),
-    listPlayers(),
-    recentDispatches(today, 12),
-    d.select().from(curfewRuns).orderBy(desc(curfewRuns.ranAt)).limit(8),
-    d.select({ n: sql<number>`count(*)::int` }).from(cryerDispatches),
+    d.select({ ledger: curfewLedgers, keeper: { id: user.id, name: user.name, email: user.email } }).from(curfewLedgers).innerJoin(user, eq(user.id, curfewLedgers.ownerId)).where(eq(curfewLedgers.campaignId, campaignId)),
+    listPlayers(campaignId),
+    recentDispatches(campaignId, today, 12),
+    d.select().from(curfewRuns).where(eq(curfewRuns.campaignId, campaignId)).orderBy(desc(curfewRuns.ranAt)).limit(8),
+    d.select({ n: sql<number>`count(*)::int` }).from(cryerDispatches).where(eq(cryerDispatches.campaignId, campaignId)),
     d.select({ n: sql<number>`count(*)::int` }).from(session).where(gt(session.expiresAt, new Date())),
-    campaignMoves(),
-    getSettings(),
+    campaignMoves(campaignId),
+    getSettings(campaignId),
   ]);
 
   const ledgers: LedgerRow[] = warbands.map((w) => {
@@ -86,8 +92,8 @@ export async function overview(today: number): Promise<Overview> {
   });
 
   return {
-    today, date: dateForNight(today), omen: omenForNight(today), moon: moonForNight(today),
-    location: locationForNight(today, moves), locations: LOCATIONS, moves: moves.slice().reverse(),
+    today, date: engine.dateForNight(today), omen: engine.omenForNight(today), moon: engine.moonForNight(today),
+    location: engine.locationForNight(today, moves), locations: engine.LOCATIONS, moves: moves.slice().reverse(),
     ledgers, players, dispatches, runs,
     counts: { players: players.length, ledgers: ledgerRows.length, warbands: warbands.length, dispatches: dispatchCount[0]?.n ?? 0, sessions: sessionCount[0]?.n ?? 0 },
     health: health(runs[0]),
@@ -109,13 +115,15 @@ function health(lastRun?: typeof curfewRuns.$inferSelect): HealthItem[] {
   return items;
 }
 
-export async function listPlayers(): Promise<PlayerRow[]> {
+export async function listPlayers(campaignId: string): Promise<PlayerRow[]> {
   const d = db();
-  const [users, sessions, { warbands }, resets] = await Promise.all([
+  const [users, sessions, { warbands }, resets, kept, campaigns] = await Promise.all([
     d.select().from(user).orderBy(user.createdAt),
     d.select({ userId: session.userId, updatedAt: session.updatedAt, expiresAt: session.expiresAt }).from(session),
-    loadRoster(),
+    loadRoster(campaignId),
     pendingResets(),
+    d.select({ ownerId: warbandTable.ownerId, campaignId: warbandTable.campaignId, name: warbandTable.name }).from(warbandTable).where(isNotNull(warbandTable.ownerId)),
+    listCampaigns(),
   ]);
   const now = Date.now();
   return users.map((u) => {
@@ -126,6 +134,7 @@ export async function listPlayers(): Promise<PlayerRow[]> {
       sessions: mine.filter((s) => s.expiresAt.getTime() > now).length,
       lastSeen: mine.length ? new Date(Math.max(...mine.map((s) => s.updatedAt.getTime()))) : null,
       warband: warband ? { id: warband.id, name: warband.name } : undefined,
+      elsewhere: kept.filter((k) => k.ownerId === u.id && k.campaignId !== campaignId).map((k) => ({ campaign: campaigns.find((c) => c.id === k.campaignId)?.name ?? k.campaignId, name: k.name })),
       admin: env.ADMIN_EMAILS.includes(u.email.toLowerCase()),
       role: roleFor(u.email, u.role),
       resetUntil: resets.get(u.id),
@@ -136,8 +145,8 @@ export async function listPlayers(): Promise<PlayerRow[]> {
 // ───────────────────────── actions ─────────────────────────
 
 /** Burn a warband's ledger: a fresh start tonight, the keeper unchanged. */
-export async function burnLedger(warbandId: string, today: number): Promise<void> {
-  const { warbands } = await loadRoster();
+export async function burnLedger(campaignId: string, warbandId: string, today: number): Promise<void> {
+  const { warbands } = await loadRoster(campaignId);
   const warband = warbands.find((w) => w.id === warbandId);
   if (!warband) throw new LedgerError('No such warband.', 404);
   const updated = await db().update(curfewLedgers).set({ state: freshState(warband, today), version: sql`${curfewLedgers.version} + 1`, updatedAt: new Date() }).where(eq(curfewLedgers.warbandId, warbandId)).returning({ id: curfewLedgers.warbandId });
@@ -162,25 +171,24 @@ export async function deleteDispatch(id: number): Promise<void> {
   if (!deleted.length) throw new LedgerError('That dispatch is already gone.', 404);
 }
 
-/** A notice from the Watch, printed in the Town Cryer tonight. */
-export async function postNotice(text: string, today: number): Promise<PrintedDispatch> {
+/** A notice from the Watch, printed in a campaign's Town Cryer tonight. */
+export async function postNotice(campaignId: string, text: string, today: number): Promise<PrintedDispatch> {
   const headline = text.trim().replace(/\s+/g, ' ');
   if (!headline) throw new LedgerError('The notice needs words.');
   if (headline.length > 200) throw new LedgerError('The notice is too long for the broadsheet.');
   const key = `${THE_WATCH}:${today}:${Date.now().toString(36)}`;
-  const [row] = await db().insert(cryerDispatches).values({ key, warbandId: THE_WATCH, night: Math.max(1, today), kind: 'notice', headline }).returning();
+  const [row] = await db().insert(cryerDispatches).values({ campaignId, key, warbandId: THE_WATCH, night: Math.max(1, today), kind: 'notice', headline }).returning();
   return { id: row.id, key: row.key, warbandId: row.warbandId, night: row.night, kind: row.kind, headline: row.headline, warbandName: dispatchSource({ warbands: [], injured: {} }, row.warbandId) };
 }
 
-export async function runMidnight(today: number): Promise<RunResult> {
-  return reconcileAll(today, 'admin');
+export async function runMidnight(campaignId: string, today: number): Promise<RunResult> {
+  return reconcileCampaign(campaignId, today, 'admin');
 }
 
 /** Everything the console needs to show one ledger up close. */
-export async function ledgerDetail(warbandId: string, today: number): Promise<{ state: WarbandState; keeper: { name: string; email: string } } | null> {
-  await primeContent();
-  const rows = await db().select({ ledger: curfewLedgers, keeper: { name: user.name, email: user.email } }).from(curfewLedgers).innerJoin(user, eq(user.id, curfewLedgers.ownerId)).where(eq(curfewLedgers.warbandId, warbandId)).limit(1);
-  const { warbands } = await loadRoster();
+export async function ledgerDetail(campaignId: string, warbandId: string, today: number): Promise<{ state: WarbandState; keeper: { name: string; email: string } } | null> {
+  const rows = await db().select({ ledger: curfewLedgers, keeper: { name: user.name, email: user.email } }).from(curfewLedgers).innerJoin(user, eq(user.id, curfewLedgers.ownerId)).where(and(eq(curfewLedgers.warbandId, warbandId), eq(curfewLedgers.campaignId, campaignId))).limit(1);
+  const { warbands } = await loadRoster(campaignId);
   const warband = warbands.find((w) => w.id === warbandId);
   if (!rows.length || !warband) return null;
   return { state: coerceState(rows[0].ledger.state, warband, today), keeper: rows[0].keeper };

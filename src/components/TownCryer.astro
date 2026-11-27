@@ -3,9 +3,9 @@ import Icon from './Icon.astro';
 import Markdown from './Markdown.astro';
 import type { NewsArticle } from '../campaign/model';
 import { type PrintedDispatch } from '../server/curfew/service';
-import { bylineFor } from '../curfew/cryer';
-import { dateForNight, locationForNight, type Move } from '../curfew/engine';
-import { formatImperial, imperialForDate } from '../lib/calendar';
+import type { Move } from '../curfew/engine';
+import { worldOrBuiltIn } from '../server/content/curfew';
+import { formatImperial, imperialForDate, anchorFor } from '../lib/calendar';
 
 interface Props {
   today: number;
@@ -16,10 +16,13 @@ interface Props {
   moves: Move[];
 }
 const { today, articles, dispatches, moves } = Astro.props;
+const { engine, cryer } = await worldOrBuiltIn(Astro.locals.campaign);
+const { dateForNight, locationForNight } = engine;
+const { bylineFor } = cryer;
 // The broadsheet is printed where the campaign is.
 const place = locationForNight(today, moves);
 // Dated by the Imperial Calendar, counted on from the first game.
-const imperial = (night: number) => imperialForDate(dateForNight(night));
+const imperial = (night: number) => imperialForDate(dateForNight(night), anchorFor(Astro.locals.campaign));
 const editions: Record<string, string> = { mordheim: 'Issue I', fussenbach: 'Fussenbach Edition' };
 const issue = `${editions[place.id] ?? `${place.name} Edition`} — ${formatImperial(imperial(today))}`;
 const lastNight = dispatches.filter((d) => d.night === today - 1);

@@ -5,7 +5,7 @@
  * the broadsheet occasionally picks up one member's night as a "happening": a boon or a poor night more
  * often than a fair one, never a night on standing orders. One happening per warband per night at most.
  */
-import { CAMPAIGN, DEFAULT_LOCATION, hashSeed, locationById, pick, rng, type Location, type NightResult, type Outcome, type WarbandLike } from './engine.ts';
+import { currentEngine, engineVersion, type Engine, hashSeed, pick, rng, type Location, type NightResult, type Outcome, type WarbandLike } from './engine.ts';
 import type { Headline } from './ledger.ts';
 
 export interface Dispatch {
@@ -25,42 +25,61 @@ function fill(template: string, slots: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, k) => slots[k] ?? `{${k}}`);
 }
 
-/** The dispatches one resolved night gives the Cryer, headlines first. */
-export function dispatchesForNight(warband: WarbandLike, night: NightResult, headlines: Headline[]): Dispatch[] {
-  const out: Dispatch[] = [];
-  headlines.filter((h) => h.night === night.night).forEach((h, i) => {
-    out.push({ key: `${warband.id}:${night.night}:h${i}`, warbandId: warband.id, night: night.night, kind: 'headline', headline: h.text });
-  });
-  const happening = happeningFor(warband, night);
-  if (happening) out.push(happening);
-  return out;
-}
+/** The Cryer for one engine: the dispatches of its campaign's nights, worded where they happened. Pure. */
+export function createCryer(engine: Engine) {
+  const { CAMPAIGN, DEFAULT_LOCATION, locationById } = engine;
 
-/** The one member's night the broadsheet picks up, if the dice say so. The headline is worded where the night happened. */
-export function happeningFor(warband: WarbandLike, night: NightResult): Dispatch | null {
-  const r = rng(hashSeed(CAMPAIGN.id, 'cryer', warband.id, night.night));
-  const location = locationById(night.locationId);
-  // a night whose crossroads still waits is not yet a story; the decision publishes it
-  if (night.crossroads && !night.crossroads.decided) return null;
-  for (const res of night.results) {
-    if (res.standing) continue;
-    const member = warband.members.find((m) => m.id === res.memberId);
-    if (!member) continue;
-    if (r() >= PRINT_CHANCE[res.outcome]) continue;
-    const bank = location.cryer.headlines[res.errand]?.[res.outcome] ?? DEFAULT_LOCATION.cryer.headlines[res.errand]?.[res.outcome];
-    if (!bank?.length) continue;
-    const slots = { first: member.name.split(' ')[0], name: member.name, warband: warband.name };
-    return {
-      key: `${warband.id}:${night.night}:e`, warbandId: warband.id, night: night.night, kind: 'happening',
-      headline: fill(pick(r, bank), slots),
-      body: night.crossroads?.memberId === res.memberId && night.crossroads.decided
-        ? `${res.prose} ${night.crossroads.setup} ${night.crossroads.decided.outcome}`
-        : `${res.prose} ${night.detail}`,
-    };
+
+  /** The dispatches one resolved night gives the Cryer, headlines first. */
+  function dispatchesForNight(warband: WarbandLike, night: NightResult, headlines: Headline[]): Dispatch[] {
+    const out: Dispatch[] = [];
+    headlines.filter((h) => h.night === night.night).forEach((h, i) => {
+      out.push({ key: `${warband.id}:${night.night}:h${i}`, warbandId: warband.id, night: night.night, kind: 'headline', headline: h.text });
+    });
+    const happening = happeningFor(warband, night);
+    if (happening) out.push(happening);
+    return out;
   }
-  return null;
-}
 
-export function bylineFor(warbandId: string, night: number, location: Location = DEFAULT_LOCATION): string {
-  return pick(rng(hashSeed(CAMPAIGN.id, 'byline', warbandId, night)), location.cryer.bylines);
+  /** The one member's night the broadsheet picks up, if the dice say so. The headline is worded where the night happened. */
+  function happeningFor(warband: WarbandLike, night: NightResult): Dispatch | null {
+    const r = rng(hashSeed(CAMPAIGN.id, 'cryer', warband.id, night.night));
+    const location = locationById(night.locationId);
+    // a night whose crossroads still waits is not yet a story; the decision publishes it
+    if (night.crossroads && !night.crossroads.decided) return null;
+    for (const res of night.results) {
+      if (res.standing) continue;
+      const member = warband.members.find((m) => m.id === res.memberId);
+      if (!member) continue;
+      if (r() >= PRINT_CHANCE[res.outcome]) continue;
+      const bank = location.cryer.headlines[res.errand]?.[res.outcome] ?? DEFAULT_LOCATION.cryer.headlines[res.errand]?.[res.outcome];
+      if (!bank?.length) continue;
+      const slots = { first: member.name.split(' ')[0], name: member.name, warband: warband.name };
+      return {
+        key: `${warband.id}:${night.night}:e`, warbandId: warband.id, night: night.night, kind: 'happening',
+        headline: fill(pick(r, bank), slots),
+        body: night.crossroads?.memberId === res.memberId && night.crossroads.decided
+          ? `${res.prose} ${night.crossroads.setup} ${night.crossroads.decided.outcome}`
+          : `${res.prose} ${night.detail}`,
+      };
+    }
+    return null;
+  }
+
+  function bylineFor(warbandId: string, night: number, location: Location = DEFAULT_LOCATION): string {
+    return pick(rng(hashSeed(CAMPAIGN.id, 'byline', warbandId, night)), location.cryer.bylines);
+  }
+
+  return { dispatchesForNight, happeningFor, bylineFor };
 }
+export type Cryer = ReturnType<typeof createCryer>;
+
+// The exports below follow the engine in force (`useWorld` in engine.ts); the server calls a campaign's own Cryer.
+let built: { version: number; cryer: Cryer } | undefined;
+function current(): Cryer {
+  if (!built || built.version !== engineVersion()) built = { version: engineVersion(), cryer: createCryer(currentEngine()) };
+  return built.cryer;
+}
+export const dispatchesForNight: Cryer['dispatchesForNight'] = (...a) => current().dispatchesForNight(...a);
+export const happeningFor: Cryer['happeningFor'] = (...a) => current().happeningFor(...a);
+export const bylineFor: Cryer['bylineFor'] = (...a) => current().bylineFor(...a);

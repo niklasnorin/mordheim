@@ -3,7 +3,7 @@ import Base from '../../layouts/Base.astro';
 import PostOffer from '../../components/PostOffer.astro';
 import '../../styles/curfew.css';
 import '../../styles/admin.css';
-import { base } from '../../lib/site';
+
 import { hasDatabase } from '../../server/db/client';
 import { admission } from '../../server/admin/guard';
 import { currentLocation, todayFor } from '../../server/curfew/service';
@@ -12,7 +12,10 @@ import { numberBoard, type TableRolls } from '../../campaign/jobs';
 import { listLocations } from '../../server/campaign/locations';
 import { ERRAND_SHARE, GOLD_PER_RATING, JOB_GOLD, JOB_LEANS, JOB_LEAN_LABEL, JOB_SCOPES, JOB_SCOPE_LABEL, JOB_SCOPE_PLURAL, LEAN_SPLIT, MATCH_TARGET, RATING_PER_WARRIOR, SCOPE_FROM, dieFor, powerOf, ratingOf, totalExperience, type Job, type Standing } from '../../campaign/jobs';
 import type { CampaignLocation } from '../../campaign/model';
-import { formatImperial, imperialForDate } from '../../lib/calendar';
+import { formatImperial, imperialForDate, anchorFor } from '../../lib/calendar';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
+const campaign = Astro.locals.campaign;
 
 // The Fountain Post, the campaign's catch-up rule, as a draft for game masters alone and only as a dry run: where every
 // warband stands, what the post would offer before each scheduled game, a dry run for any warband at
@@ -25,7 +28,7 @@ const ready = hasDatabase();
 const { viewer, gm } = ready ? await admission(Astro.request) : { viewer: null, gm: false };
 if (ready && !gm) Astro.response.status = viewer ? 403 : 401;
 // the post reckons from the record, never the steered clock
-const today = todayFor(null);
+const today = todayFor(campaign, null);
 
 let record: PostRecord | null = null, logged: Standing[] = [], offers: Offer[] = [], dry: Offer | null = null, places: CampaignLocation[] = [], board: Job[] = [], here = '';
 let trouble = false;
@@ -48,9 +51,9 @@ for (const [key, value] of q) {
 }
 if (gm && viewer) {
   try {
-    here = (await currentLocation(today)).id;
-    [places, board] = await Promise.all([listLocations(), listJobs()]);
-    const o = await postOverview(viewer, here, books, rolls);
+    here = (await currentLocation(campaign.id, today)).id;
+    [places, board] = await Promise.all([listLocations(campaign.id), listJobs(campaign.id)]);
+    const o = await postOverview(viewer, campaign.id, here, books, rolls);
     record = o.record; logged = o.logged; offers = o.offers;
     // the dry run's match: as chosen, or the weakest warband against the strongest
     const byStrength = record.standings.slice().sort((a, b) => powerOf(a) - powerOf(b));
@@ -58,7 +61,7 @@ if (gm && viewer) {
     const warbandId = known(q.get('warband')) ?? byStrength[0]?.warbandId;
     against = q.has('against') ? known(q.get('against')) : (byStrength.at(-1)?.warbandId !== warbandId ? byStrength.at(-1)?.warbandId ?? null : null);
     const place = places.find((l) => l.id === q.get('place'))?.id ?? here;
-    if (warbandId) dry = await offer(viewer, { warbandId, locationId: place, against: against && against !== warbandId ? [against] : [], rolls: rolls[diceKey(warbandId)] }, record);
+    if (warbandId) dry = await offer(viewer, campaign.id, { warbandId, locationId: place, against: against && against !== warbandId ? [against] : [], rolls: rolls[diceKey(warbandId)] }, record);
   } catch (e) { console.error('[fountain-post] unavailable', e); trouble = true; }
 }
 
@@ -70,7 +73,7 @@ const allPoints = places.flatMap((l) => l.points);
 // each notice's D66 number on its own board
 const numbers = new Map(places.flatMap((l) => [...numberBoard(board.filter((j) => j.locationId === l.id))]));
 const upcoming = (record?.scenarios ?? []).filter((s) => s.status === 'upcoming');
-const imperial = (iso: string) => { try { return formatImperial(imperialForDate(iso), 'short'); } catch { return iso; } };
+const imperial = (iso: string) => { try { return formatImperial(imperialForDate(iso, anchorFor(Astro.locals.campaign)), 'short'); } catch { return iso; } };
 const signInHref = `${base}/signin/?next=${encodeURIComponent(`${base}/admin/jobs/`)}`;
 const dryPlace = places.find((l) => l.id === (q.get('place') ?? here)) ?? places.find((l) => l.id === here);
 ---

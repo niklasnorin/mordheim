@@ -13,6 +13,9 @@ import { locations as fixtures } from '../../data/locations.ts';
 import { seedJobs } from './seed.ts';
 import { numberBoard, powerOf, totalExperience } from '../../campaign/jobs.ts';
 
+/** The first campaign, which the seed fills. */
+const C = 'mordheim-2000';
+
 const gm = actorOf('user-gm', 'Game Master', 'gm');
 const player = actorOf('user-player', 'Player');
 let game = '';
@@ -28,18 +31,18 @@ const setBooks = (id: string, rating: number, gold: number) => db().update(warba
 const xpOf = async (id: string) => totalExperience({ warriors: (await getWarband(id))!.members.filter((m) => !m.dead).map((m) => ({ id: m.id, name: m.name, rank: m.rank, experience: m.experience ?? 0 })) });
 
 test('the boards are nailed up from the fixtures, each job at its point of interest', async () => {
-  const fussenbach = await listJobs('fussenbach');
+  const fussenbach = await listJobs(C, 'fussenbach');
   assert.equal(fussenbach.length, fixtures.find((l) => l.id === 'fussenbach')!.jobs!.length);
-  const bridge = (await getLocation('fussenbach'))!.points.find((p) => p.name === 'The bridge')!;
+  const bridge = (await getLocation('fussenbach', C))!.points.find((p) => p.name === 'The bridge')!;
   assert.equal(fussenbach.find((j) => j.title === 'Keeping the bridge')!.pointId, bridge.id);
   assert.equal(fussenbach.find((j) => j.title === 'Wading for the algae men')!.pointId, null, 'the silt flats are not pinned');
-  assert.ok((await listJobs('mordheim')).length > 0);
+  assert.ok((await listJobs(C, 'mordheim')).length > 0);
   for (const l of fixtures) for (const j of l.jobs ?? []) if (j.point) assert.ok(l.points.some((p) => p.name === j.point), `${j.title}: ${j.point} is not a point of ${l.name}`);
   assert.equal(fussenbach.filter((j) => j.pointId != null).length, fixtures.find((l) => l.id === 'fussenbach')!.jobs!.filter((j) => j.point).length, 'every named point was found');
 });
 
 test('a seed job nobody has touched follows the seed; one a game master has edited stays theirs', async () => {
-  const board = await listJobs('fussenbach');
+  const board = await listJobs(C, 'fussenbach');
   const flagon = board.find((j) => j.title === 'Closing time at the Flagon')!;
   const bridge = board.find((j) => j.title === 'Keeping the bridge')!;
   // as an older seed left them: other words, the default scope, and one job missing altogether
@@ -49,7 +52,7 @@ test('a seed job nobody has touched follows the seed; one a game master has edit
   await updateJob(gm, bridge.id, { text: 'The game master’s own words.' });
   await db().delete(locationJobs).where(eq(locationJobs.title, 'The vigil in the nave'));
   assert.ok((await seedJobs()) >= 2, 'the missing job nailed up, the untouched one brought up to date');
-  const after = await listJobs('fussenbach');
+  const after = await listJobs(C, 'fussenbach');
   const fixture = fixtures.find((l) => l.id === 'fussenbach')!.jobs!;
   assert.equal(after.find((j) => j.id === flagon.id)!.text, fixture.find((j) => j.title === 'Closing time at the Flagon')!.text, 'untouched: follows the seed');
   assert.equal(after.find((j) => j.id === bridge.id)!.text, 'The game master’s own words.', 'edited: left alone');
@@ -68,50 +71,50 @@ test('the books are set for the match: the Bitterbrows logged, the Welling Rune 
   const welling = (await getWarband('welling-rune'))!;
   for (const m of welling.members) await db().update(members).set({ experience: m.rank === 'hero' ? 2 : 0 }).where(eq(members.id, m.id));
   await setBooks('welling-rune', 0, 0);
-  const r = await loadRecord();
+  const r = await loadRecord(C);
   const s = r.standings.find((x) => x.warbandId === 'welling-rune')!;
   assert.equal(powerOf(s), 4 * 5 + 8, 'four warriors, reckoned from the roster');
 });
 
 test('a game master may reckon with figures of their own for the books, and nothing is saved', async () => {
-  const logged = await loadRecord();
+  const logged = await loadRecord(C);
   const lifted = withBooks(logged, { 'bitterbrow-expedition': { rating: 400, gold: 7 }, nowhere: { rating: 1 } });
   assert.equal(lifted.standings.find((s) => s.warbandId === 'bitterbrow-expedition')!.rating, 400);
   assert.equal(lifted.standings.find((s) => s.warbandId === 'bitterbrow-expedition')!.gold, 7);
   assert.equal(logged.standings.find((s) => s.warbandId === 'bitterbrow-expedition')!.rating, 160, 'the loaded record is not changed');
-  const o = await postOverview(gm, 'fussenbach', { 'nordost': { rating: 999 } });
+  const o = await postOverview(gm, C, 'fussenbach', { 'nordost': { rating: 999 } });
   assert.equal(o.record.standings.find((s) => s.warbandId === 'nordost')!.rating, 999);
-  assert.equal(o.logged.find((s) => s.warbandId === 'nordost')!.rating, (await loadRecord()).standings.find((s) => s.warbandId === 'nordost')!.rating, 'the logged books are what the database holds');
+  assert.equal(o.logged.find((s) => s.warbandId === 'nordost')!.rating, (await loadRecord(C)).standings.find((s) => s.warbandId === 'nordost')!.rating, 'the logged books are what the database holds');
   assert.equal((await db().select({ rating: warbands.rating }).from(warbands).where(eq(warbands.id, 'nordost')))[0].rating, 124, 'nothing written');
-  await assert.rejects(postOverview(player, 'fussenbach'), refused(403));
+  await assert.rejects(postOverview(player, C, 'fussenbach'), refused(403));
 });
 
 test('a dry run reckons the offer and writes nothing; a player may not look', async () => {
   const before = await gold('welling-rune');
-  const o = await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach', against: ['nordost'] });
+  const o = await offer(gm, C, { warbandId: 'welling-rune', locationId: 'fussenbach', against: ['nordost'] });
   assert.match(o.shut!, /As if a game were scheduled/);
   assert.equal(o.reckoning.match.stronger?.warbandId, 'nordost');
   assert.equal(o.reckoning.match.target, Math.floor(0.8 * 134));
   assert.equal(o.reckoning.scope, 'undertaking', 'far short of the Nordost Kin');
   assert.equal(o.reckoning.payout?.jobs.length, 1, 'one job');
   assert.equal(o.reckoning.payout?.jobs[0].job.scope, 'undertaking');
-  const alone = await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach' });
+  const alone = await offer(gm, C, { warbandId: 'welling-rune', locationId: 'fussenbach' });
   assert.equal(alone.reckoning.scope, 'errand', 'against nobody, an errand');
   assert.match(alone.shut!, /against nobody/);
   assert.equal(await gold('welling-rune'), before);
-  await assert.rejects(offer(player, { warbandId: 'welling-rune', locationId: 'fussenbach' }), refused(403));
+  await assert.rejects(offer(player, C, { warbandId: 'welling-rune', locationId: 'fussenbach' }), refused(403));
   await assert.rejects(takeJobs(gm, 'nowhere', 'welling-rune'), refused(404));
 });
 
 test('a scheduled game opens the post; the jobs are paid into the roster once, and never the next field', async () => {
-  const bridge = (await getLocation('fussenbach'))!.points.find((p) => p.name === 'The bridge')!;
-  const s = await createScenario(gm, { title: 'At the bridge', playedOn: '2026-11-01', warbandIds: ['welling-rune', 'nordost'], locationId: 'fussenbach', pointId: bridge.id });
+  const bridge = (await getLocation('fussenbach', C))!.points.find((p) => p.name === 'The bridge')!;
+  const s = await createScenario(gm, C, { title: 'At the bridge', playedOn: '2026-11-01', warbandIds: ['welling-rune', 'nordost'], locationId: 'fussenbach', pointId: bridge.id });
   game = s.id;
-  const o = await offer(gm, { warbandId: 'welling-rune', scenarioId: game });
+  const o = await offer(gm, C, { warbandId: 'welling-rune', scenarioId: game });
   assert.equal(o.shut, null);
   const pay = o.reckoning.payout!;
   assert.ok(pay.gold > 0 && pay.experience > 0, `something is paid: ${pay.gold} gc, ${pay.experience} experience`);
-  for (let i = 0; i < 5; i++) assert.notEqual((await offer(gm, { warbandId: 'welling-rune', scenarioId: game })).reckoning.payout!.jobs[0].job.pointId, bridge.id, 'nobody sweeps the bridge before the fight there');
+  for (let i = 0; i < 5; i++) assert.notEqual((await offer(gm, C, { warbandId: 'welling-rune', scenarioId: game })).reckoning.payout!.jobs[0].job.pointId, bridge.id, 'nobody sweeps the bridge before the fight there');
   const [goldBefore, xpBefore] = [await gold('welling-rune'), await xpOf('welling-rune')];
   const after = await takeJobs(gm, game, 'welling-rune');
   assert.equal(after.taken.length, pay.jobs.length);
@@ -134,32 +137,32 @@ test('a scheduled game opens the post; the jobs are paid into the roster once, a
   assert.equal(usual.taken[0].grants.reduce((n, g) => n + g.experience, 0), 2);
   assert.equal(await xpOf('nordost'), nordostXp + 2);
   // the limits held: closer to the Nordost Kin, never level with them
-  const r = await loadRecord();
+  const r = await loadRecord(C);
   const me = r.standings.find((x) => x.warbandId === 'welling-rune')!;
   const them = r.standings.find((x) => x.warbandId === 'nordost')!;
   assert.ok(powerOf(me) > 28, 'pulled closer');
   assert.ok(powerOf(me) < powerOf(them), `${powerOf(me)} short of ${powerOf(them)}`);
-  assert.ok(o.reckoning.match.gap > (await offer(gm, { warbandId: 'welling-rune', locationId: 'fussenbach', against: ['nordost'] })).reckoning.match.gap, 'the gap is narrower now');
+  assert.ok(o.reckoning.match.gap > (await offer(gm, C, { warbandId: 'welling-rune', locationId: 'fussenbach', against: ['nordost'] })).reckoning.match.gap, 'the gap is narrower now');
 });
 
 test('the table may roll D66 for which notice; a number it may not have is refused, to roll again', async () => {
-  const board = await listJobs('fussenbach');
+  const board = await listJobs(C, 'fussenbach');
   const numbers = numberBoard(board);
   const bridge = board.find((j) => j.title === 'Keeping the bridge')!;
   const flagon = board.find((j) => j.title === 'Closing time at the Flagon')!;
-  const o = await offer(gm, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach', rolls: { picks: [numbers.get(flagon.id)!] } });
+  const o = await offer(gm, C, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach', rolls: { picks: [numbers.get(flagon.id)!] } });
   assert.equal(o.reckoning.payout!.jobs[0].job.id, flagon.id);
   assert.equal(o.reckoning.payout!.jobs[0].slot?.byHand, true);
   // the bridge is where the game is set: rolled at the table, it is refused
-  const barred = await offer(gm, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach', rolls: { picks: [numbers.get(bridge.id)!] } });
+  const barred = await offer(gm, C, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach', rolls: { picks: [numbers.get(bridge.id)!] } });
   assert.match(barred.reckoning.payout!.jobs[0].slot!.refused!, /game is set/);
   assert.notEqual(barred.reckoning.payout!.jobs[0].job.id, bridge.id, 'the post drew another');
 });
 
 test('the table may roll the dice and say the totals; the post rolls the rest', async () => {
-  const post = (await offer(gm, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach' })).reckoning.payout!;
+  const post = (await offer(gm, C, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach' })).reckoning.payout!;
   assert.ok(post.jobs.every((p) => !p.byHand));
-  const hand = (await offer(gm, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach', rolls: { dice: [11] } })).reckoning.payout!;
+  const hand = (await offer(gm, C, { warbandId: 'bitterbrow-expedition', locationId: 'fussenbach', rolls: { dice: [11] } })).reckoning.payout!;
   assert.deepEqual(hand.jobs.map((p) => [p.job.id, p.dice, p.byHand]), [[post.jobs[0].job.id, 11, true]], 'the same job, the table’s roll');
   await assert.rejects(takeJobs(gm, game, 'welling-rune', undefined, { dice: [13] }), (e) => e instanceof LedgerError && /2 to 12/.test(e.message));
   await assert.rejects(takeJobs(gm, game, 'welling-rune', undefined, { experience: [7] }), (e) => e instanceof LedgerError && /1 to 6/.test(e.message));
@@ -178,20 +181,20 @@ test('the jobs can be undone, and the post shuts once the game has begun', async
 });
 
 test('the game master keeps the board; a player may not', async () => {
-  const before = (await listJobs('fussenbach')).length;
-  const list = await addJob(gm, 'fussenbach', { title: 'Eel-weirs at dawn', text: 'Cleared the eel-weirs.', lean: 'gold' });
+  const before = (await listJobs(C, 'fussenbach')).length;
+  const list = await addJob(gm, C, 'fussenbach', { title: 'Eel-weirs at dawn', text: 'Cleared the eel-weirs.', lean: 'gold' });
   assert.equal(list.length, before + 1);
   const added = list.find((j) => j.title === 'Eel-weirs at dawn')!;
-  await assert.rejects(addJob(gm, 'fussenbach', { title: 'Eel-weirs at dawn' }), refused(409));
-  await assert.rejects(addJob(player, 'fussenbach', { title: 'Mine' }), refused(403));
+  await assert.rejects(addJob(gm, C, 'fussenbach', { title: 'Eel-weirs at dawn' }), refused(409));
+  await assert.rejects(addJob(player, C, 'fussenbach', { title: 'Mine' }), refused(403));
   assert.equal((await updateJob(gm, added.id, { withheld: true })).find((j) => j.id === added.id)!.withheld, true);
-  const mordheimPoint = (await getLocation('mordheim'))!.points[0];
+  const mordheimPoint = (await getLocation('mordheim', C))!.points[0];
   await assert.rejects(updateJob(gm, added.id, { pointId: mordheimPoint.id }), refused(404), 'a point of another place');
   assert.equal((await removeJob(gm, added.id)).jobs.length, before, 'a job of the game master’s own goes for good');
-  const seedOne = (await listJobs('fussenbach')).find((j) => j.title === 'Pumpkins for the ale')!;
+  const seedOne = (await listJobs(C, 'fussenbach')).find((j) => j.title === 'Pumpkins for the ale')!;
   const torn = await removeJob(gm, seedOne.id);
   assert.equal(torn.withheld, true, 'a seed job is withheld instead');
   assert.equal(torn.jobs.find((j) => j.id === seedOne.id)!.withheld, true);
   await seedJobs();
-  assert.equal((await listJobs('fussenbach')).find((j) => j.id === seedOne.id)!.withheld, true, 'and the seed leaves it withheld');
+  assert.equal((await listJobs(C, 'fussenbach')).find((j) => j.id === seedOne.id)!.withheld, true, 'and the seed leaves it withheld');
 });

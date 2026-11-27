@@ -13,17 +13,19 @@ import Portrait from '../../components/Portrait.astro';
 import Markdown from '../../components/Markdown.astro';
 import '../../styles/manage.css';
 import '../../styles/portrait.css';
-import { asset, base } from '../../lib/site';
+import { asset } from '../../lib/site';
 import { markdownText } from '../../lib/markdown';
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm, listUsers } from '../../server/roles';
 import { getWarband, listWarbands } from '../../server/campaign/roster';
 import { listScenarios, memberStories, type MemberChapter } from '../../server/campaign/scenarios';
 import { curfewStory, todayFor } from '../../server/curfew/service';
-import { primeContent } from '../../server/content/curfew';
 import { STAT_KEYS, STAT_NAMES, type Scenario, type StoryChapter, type Warband } from '../../campaign/model';
 import { listChapters } from '../../server/campaign/chapters';
 import type { MemberNights } from '../../curfew/story';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
+const cid = Astro.locals.campaign.id;
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -35,10 +37,11 @@ let nights: Record<string, MemberNights> = {}, roster: Warband[] = [], scenarios
 let players: { id: string; name: string; email: string }[] = [];
 if (ready) {
   try {
-    await primeContent();
     warband = await getWarband(Astro.params.id!);
+    // a warband of another campaign is not mustered here
+    if (warband && warband.campaignId !== cid) warband = undefined;
     if (warband) {
-      const [list, story, all, written] = await Promise.all([listScenarios(), curfewStory(todayFor(null)), listWarbands(), listChapters(warband.id)]);
+      const [list, story, all, written] = await Promise.all([listScenarios(cid), curfewStory(cid, todayFor(Astro.locals.campaign, null)), listWarbands(cid), listChapters(warband.id)]);
       chapters = written;
       scenarios = list;
       stories = memberStories(scenarios);

@@ -196,3 +196,25 @@ export const isIsoDate = (s: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(s) &
 export function isTimeZone(tz: string): boolean {
   try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch { return false; }
 }
+
+// ───────────────────────── the clock ─────────────────────────
+// The same arithmetic as the engine's `localDate` and `nightForDate`, for the server to know which night it is in a
+// campaign without building its engine. `src/campaign/campaign.test.ts` holds the two to each other.
+
+/** A real day as YYYY-MM-DD where the campaign is played: a night turns over at midnight there. */
+export function localDateIn(timeZone: string, now: Date = new Date()): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+    const get = (t: string) => parts.find((p) => p.type === t)!.value;
+    return `${get('year')}-${get('month')}-${get('day')}`;
+  } catch {
+    return now.toISOString().slice(0, 10);
+  }
+}
+const utcDay = (date: string): number => { const [y, m, d] = date.split('-').map(Number); return Math.floor(Date.UTC(y, m - 1, d) / 86400000); };
+/** The campaign's night on a real day: night 1 is its start, a day before it night 0 or less, when nothing happens. */
+export const nightOn = (c: Pick<CampaignConfig, 'start'>, date: string): number => utcDay(date) - utcDay(c.start) + 1;
+/** The campaign's night now, by its own clock. */
+export const nightNow = (c: Pick<CampaignConfig, 'start' | 'timezone'>, now: Date = new Date()): number => nightOn(c, localDateIn(c.timezone, now));
+/** The real day a campaign's night falls on, YYYY-MM-DD. */
+export const dateOfNight = (c: Pick<CampaignConfig, 'start'>, night: number): string => new Date((utcDay(c.start) + night - 1) * 86400000).toISOString().slice(0, 10);

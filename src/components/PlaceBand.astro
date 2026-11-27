@@ -4,7 +4,7 @@
  * The art is cut and graded by `scripts/curfew/render-places.py`; where it is framed is the pack's own
  * business (`art.focus`), so a new place ships its band with the rest of its content.
  */
-import { base } from '../lib/site';
+import { base as siteRoot } from '../lib/site';
 import type { Location } from '../curfew/engine';
 
 interface Props { place: Location }
@@ -15,7 +15,7 @@ const { place } = Astro.props;
   <img
     class="cf-place-art"
     id="place-art"
-    src={`${base}/curfew/places/${place.id}-band.jpg`}
+    src={`${siteRoot}/curfew/places/${place.id}-band.jpg`}
     style={`object-position:${place.art?.focus ?? '50% 50%'}`}
     alt=""
     width="1100"

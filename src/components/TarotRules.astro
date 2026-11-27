@@ -4,7 +4,7 @@
  * the hand and the deck folded away for anyone who wants to read ahead. The cards are `campaign/tarot.ts`.
  */
 import { TAROT, TAROT_KIND_LABEL, TAROT_NAME, TAROT_RULES } from '../campaign/tarot';
-import { base } from '../lib/site';
+import { base as siteRoot } from '../lib/site';
 ---
 
 <h3>Tarot of the Damned</h3>
@@ -18,7 +18,7 @@ import { base } from '../lib/site';
   <ol class="tarot-list">
     {TAROT.map((c) => (
       <li>
-        <img src={`${base}${c.image}`} alt="" width="70" height="120" loading="lazy" decoding="async" />
+        <img src={`${siteRoot}${c.image}`} alt="" width="70" height="120" loading="lazy" decoding="async" />
         <div>
           <b>{c.numeral}. {c.title}</b> <small>{TAROT_KIND_LABEL[c.kind]}</small>
           <p>{c.rule}</p>

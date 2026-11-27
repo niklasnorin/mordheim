@@ -7,11 +7,13 @@
 import type { Member, Warband } from '../campaign/model';
 import type { MemberChapter } from '../server/campaign/scenarios';
 import type { MemberNights, NightEntry } from '../curfew/story';
-import { dateForNight, locationById } from '../curfew/engine';
-import { formatImperial, imperialForDate } from '../lib/calendar';
+import { worldOrBuiltIn } from '../server/content/curfew';
+import { formatImperial, imperialForDate, anchorFor } from '../lib/calendar';
 import Icon from './Icon.astro';
-import { base } from '../lib/site';
+
 import '../styles/story.css';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
 
 interface Props {
   member: Member;
@@ -27,9 +29,10 @@ const { member: m, chapters, nights: curfew, warbands } = Astro.props;
 const first = m.name.split(' ')[0];
 const memberName = (id: string) => warbands.flatMap((w) => w.members).find((x) => x.id === id)?.name ?? id;
 const scenarioUrl = (id: string) => `${base}/scenarios/${id}/`;
-const imperialOf = (day: string) => formatImperial(imperialForDate(day));
+const { dateForNight, locationById } = (await worldOrBuiltIn(Astro.locals.campaign)).engine;
+const imperialOf = (day: string) => formatImperial(imperialForDate(day, anchorFor(Astro.locals.campaign)));
 /** A night's date as the Empire writes it, counted on from the first game. */
-const imperialDay = (night: number) => formatImperial(imperialForDate(dateForNight(night)), 'day');
+const imperialDay = (night: number) => formatImperial(imperialForDate(dateForNight(night), anchorFor(Astro.locals.campaign)), 'day');
 const outcomeLabel = { boon: 'a good night', fair: 'a fair night', poor: 'a poor night' } as const;
 const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
 

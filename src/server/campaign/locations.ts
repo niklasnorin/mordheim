@@ -8,7 +8,7 @@
  */
 import { and, asc, eq, isNotNull, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { images, locationPoints, locationStock, locations, scenarios } from '../db/schema.ts';
+import { campaignLocations, images, locationPoints, locationStock, locations, scenarios } from '../db/schema.ts';
 import { LedgerError } from '../../curfew/ledger.ts';
 import { positionOf, slugify, type CampaignLocation, type PointOfInterest } from '../../campaign/model.ts';
 import { COMMON, tradeItemById, type StockEntry } from '../../campaign/trading.ts';
@@ -16,6 +16,7 @@ import { proseSource } from '../../campaign/prose.ts';
 import { IMAGE_MAX_BYTES, looksLike, type ImageType } from './chapters.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { ensureLocationsSeeded } from './seed.ts';
+import { ensureCampaigns } from './campaigns.ts';
 
 export { LedgerError };
 
@@ -39,24 +40,46 @@ function locationOf(r: Row, points: PointRow[], stock: StockRow[]): CampaignLoca
   };
 }
 
-/** Every location, in the game master's order, with its points and its stock. */
-export async function listLocations(): Promise<CampaignLocation[]> {
+/**
+ * Every location a campaign fights in, in the game master's order, with its points and the campaign's own stock.
+ * The places themselves are the atlas's, shared between campaigns; which of them a campaign uses, and its trading posts
+ * and job boards there, are the campaign's.
+ */
+export async function listLocations(campaignId: string): Promise<CampaignLocation[]> {
   await ensureLocationsSeeded();
+  await ensureCampaigns();
   const d = db();
   const [rows, points, stock] = await Promise.all([
-    d.select().from(locations).orderBy(asc(locations.sort), asc(locations.createdAt)),
+    d.select({ l: locations }).from(campaignLocations).innerJoin(locations, eq(locations.id, campaignLocations.locationId)).where(eq(campaignLocations.campaignId, campaignId)).orderBy(asc(campaignLocations.sort), asc(locations.sort), asc(locations.createdAt)).then((r) => r.map((x) => x.l)),
     d.select().from(locationPoints).orderBy(asc(locationPoints.sort), asc(locationPoints.id)),
-    d.select().from(locationStock).orderBy(asc(locationStock.sort), asc(locationStock.id)),
+    d.select().from(locationStock).where(eq(locationStock.campaignId, campaignId)).orderBy(asc(locationStock.sort), asc(locationStock.id)),
   ]);
   return rows.map((r) => locationOf(r, points, stock));
 }
 
-export async function getLocation(id: string): Promise<CampaignLocation | undefined> { return (await listLocations()).find((l) => l.id === id); }
+/** Every place in the atlas, whichever campaigns fight in it, without stock: for bringing one into a campaign. */
+export async function listAtlas(): Promise<CampaignLocation[]> {
+  await ensureLocationsSeeded();
+  const d = db();
+  const [rows, points] = await Promise.all([d.select().from(locations).orderBy(asc(locations.sort), asc(locations.createdAt)), d.select().from(locationPoints).orderBy(asc(locationPoints.sort), asc(locationPoints.id))]);
+  return rows.map((r) => locationOf(r, points, []));
+}
+
+export async function getLocation(id: string, campaignId: string): Promise<CampaignLocation | undefined> { return (await listLocations(campaignId)).find((l) => l.id === id); }
 /** The location, or a refusal the route can pass on. */
-export async function requireLocation(id: string): Promise<CampaignLocation> {
-  const l = await getLocation(id);
+export async function requireLocation(id: string, campaignId: string): Promise<CampaignLocation> {
+  const l = await getLocation(id, campaignId);
   if (!l) throw new LedgerError('No such place is on the map.', 404);
   return l;
+}
+
+/** Bring a place of the atlas into a campaign, at the end of its list. Harmless if it is there already. */
+export async function adoptLocation(actor: Actor, campaignId: string, id: string): Promise<CampaignLocation> {
+  gmOnly(actor);
+  await row(id);
+  const [{ n }] = await db().select({ n: sql<number>`coalesce(max(${campaignLocations.sort}), 0)::int` }).from(campaignLocations).where(eq(campaignLocations.campaignId, campaignId));
+  await db().insert(campaignLocations).values({ campaignId, locationId: id, sort: n + 1 }).onConflictDoNothing();
+  return (await getLocation(id, campaignId))!;
 }
 
 async function row(id: string): Promise<Row> {
@@ -87,7 +110,7 @@ function focusOf(given: string | undefined): string {
   return /^(\d{1,3}%|left|center|centre|right|top|bottom)( (\d{1,3}%|left|center|centre|right|top|bottom))?$/.test(s) ? s.replace('centre', 'center') : '50% 50%';
 }
 
-export async function createLocation(actor: Actor, input: LocationInput): Promise<CampaignLocation> {
+export async function createLocation(actor: Actor, campaignId: string, input: LocationInput): Promise<CampaignLocation> {
   gmOnly(actor);
   await ensureLocationsSeeded();
   const name = clean(input.name, 80);
@@ -99,10 +122,11 @@ export async function createLocation(actor: Actor, input: LocationInput): Promis
   let id = stem, k = 2;
   while (taken.has(id)) id = `${stem}-${k++}`;
   await d.insert(locations).values({ id, name, region: clean(input.region, 80), description: proseSource(input.description, 8000), map: pathOf('map', input.map), banner: pathOf('banner', input.banner), bannerFocus: focusOf(input.bannerFocus), sort: n + 1 });
-  return (await getLocation(id))!;
+  await d.insert(campaignLocations).values({ campaignId, locationId: id, sort: n + 1 }).onConflictDoNothing();
+  return (await getLocation(id, campaignId))!;
 }
 
-export async function updateLocation(actor: Actor, id: string, patch: Partial<LocationInput>): Promise<CampaignLocation> {
+export async function updateLocation(actor: Actor, campaignId: string, id: string, patch: Partial<LocationInput>): Promise<CampaignLocation> {
   gmOnly(actor);
   await row(id);
   const set: Partial<typeof locations.$inferInsert> = { updatedAt: new Date() };
@@ -113,16 +137,24 @@ export async function updateLocation(actor: Actor, id: string, patch: Partial<Lo
   if (patch.banner !== undefined) { set.banner = pathOf('banner', patch.banner); await dropUploaded(id, 'banner', set.banner); }
   if (patch.bannerFocus !== undefined) set.bannerFocus = focusOf(patch.bannerFocus);
   await db().update(locations).set(set).where(eq(locations.id, id));
-  return (await getLocation(id))!;
+  return (await getLocation(id, campaignId))!;
 }
 
-/** Strike a location. One a battle was fought in stays: the Chronicle points at it. */
-export async function deleteLocation(actor: Actor, id: string): Promise<void> {
+/**
+ * Take a location out of a campaign. One a battle of the campaign's is set in stays: the Chronicle points at it. The
+ * place leaves the atlas too when no campaign fights in it any more and no scenario anywhere is set there.
+ */
+export async function deleteLocation(actor: Actor, campaignId: string, id: string): Promise<void> {
   gmOnly(actor);
   await row(id);
-  const fought = await db().select({ id: scenarios.id }).from(scenarios).where(eq(scenarios.locationId, id)).limit(1);
+  const d = db();
+  const fought = await d.select({ id: scenarios.id }).from(scenarios).where(and(eq(scenarios.locationId, id), eq(scenarios.campaignId, campaignId))).limit(1);
   if (fought.length) throw new LedgerError('A scenario is set there. Move it elsewhere first.', 409);
-  await db().delete(locations).where(eq(locations.id, id));
+  await d.delete(campaignLocations).where(and(eq(campaignLocations.campaignId, campaignId), eq(campaignLocations.locationId, id)));
+  await d.delete(locationStock).where(and(eq(locationStock.campaignId, campaignId), eq(locationStock.locationId, id)));
+  const [{ users }] = await d.select({ users: sql<number>`count(*)::int` }).from(campaignLocations).where(eq(campaignLocations.locationId, id));
+  const [{ set }] = await d.select({ set: sql<number>`count(*)::int` }).from(scenarios).where(eq(scenarios.locationId, id));
+  if (users === 0 && set === 0) await d.delete(locations).where(eq(locations.id, id));
 }
 
 // ───────────────────────── the pictures: the map and the banner ─────────────────────────
@@ -137,7 +169,7 @@ async function dropUploaded(id: string, kind: Picture, next: string | null): Pro
 }
 
 /** Keep a picture as the location's map or banner. The browser has shrunk it; the bytes must be the picture they claim to be. */
-export async function uploadPicture(actor: Actor, id: string, kind: Picture, mime: ImageType, base64: string): Promise<CampaignLocation> {
+export async function uploadPicture(actor: Actor, campaignId: string, id: string, kind: Picture, mime: ImageType, base64: string): Promise<CampaignLocation> {
   gmOnly(actor);
   await row(id);
   const bytes = Buffer.from(base64, 'base64');
@@ -149,17 +181,17 @@ export async function uploadPicture(actor: Actor, id: string, kind: Picture, mim
   await dropUploaded(id, kind, path);
   await db().insert(images).values({ id: imageId, locationId: id, mime, data: bytes.toString('base64'), bytes: bytes.length, uploadedBy: actor.id });
   await db().update(locations).set({ [kind]: path, updatedAt: new Date() }).where(eq(locations.id, id));
-  return (await getLocation(id))!;
+  return (await getLocation(id, campaignId))!;
 }
-export const uploadMap = (actor: Actor, id: string, mime: ImageType, base64: string) => uploadPicture(actor, id, 'map', mime, base64);
+export const uploadMap = (actor: Actor, campaignId: string, id: string, mime: ImageType, base64: string) => uploadPicture(actor, campaignId, id, 'map', mime, base64);
 
 /** Take the map away. The points keep their positions, for when a map comes back. */
-export async function removeMap(actor: Actor, id: string): Promise<CampaignLocation> {
-  return updateLocation(actor, id, { map: null });
+export async function removeMap(actor: Actor, campaignId: string, id: string): Promise<CampaignLocation> {
+  return updateLocation(actor, campaignId, id, { map: null });
 }
 /** Take the banner away; the page heads itself with the name alone. */
-export async function removeBanner(actor: Actor, id: string): Promise<CampaignLocation> {
-  return updateLocation(actor, id, { banner: null });
+export async function removeBanner(actor: Actor, campaignId: string, id: string): Promise<CampaignLocation> {
+  return updateLocation(actor, campaignId, id, { banner: null });
 }
 
 // ───────────────────────── points of interest ─────────────────────────
@@ -180,40 +212,40 @@ async function pointRow(pointId: number): Promise<PointRow> {
   return rows[0];
 }
 
-export async function addPoint(actor: Actor, locationId: string, input: PointInput): Promise<CampaignLocation> {
+export async function addPoint(actor: Actor, campaignId: string, locationId: string, input: PointInput): Promise<CampaignLocation> {
   gmOnly(actor);
   await row(locationId);
   const [{ n }] = await db().select({ n: sql<number>`coalesce(max(${locationPoints.sort}), 0)::int` }).from(locationPoints).where(eq(locationPoints.locationId, locationId));
   await db().insert(locationPoints).values({ locationId, ...pointValues(input), sort: n + 1 });
-  return (await getLocation(locationId))!;
+  return (await getLocation(locationId, campaignId))!;
 }
 
-export async function updatePoint(actor: Actor, pointId: number, patch: Partial<PointInput>): Promise<CampaignLocation> {
+export async function updatePoint(actor: Actor, campaignId: string, pointId: number, patch: Partial<PointInput>): Promise<CampaignLocation> {
   gmOnly(actor);
   const p = await pointRow(pointId);
   await db().update(locationPoints).set({ ...pointValues(patch, p), updatedAt: new Date() }).where(eq(locationPoints.id, pointId));
-  return (await getLocation(p.locationId))!;
+  return (await getLocation(p.locationId, campaignId))!;
 }
 
 /** Strike a point. A scenario fought at it keeps its location and loses the point; its own marker, if it had one, stays. */
-export async function removePoint(actor: Actor, pointId: number): Promise<CampaignLocation> {
+export async function removePoint(actor: Actor, campaignId: string, pointId: number): Promise<CampaignLocation> {
   gmOnly(actor);
   const p = await pointRow(pointId);
   await db().delete(locationPoints).where(eq(locationPoints.id, pointId));
-  return (await getLocation(p.locationId))!;
+  return (await getLocation(p.locationId, campaignId))!;
 }
 
 /** Move a point one place earlier (-1) or later (1) in the list. */
-export async function movePoint(actor: Actor, pointId: number, by: -1 | 1): Promise<CampaignLocation> {
+export async function movePoint(actor: Actor, campaignId: string, pointId: number, by: -1 | 1): Promise<CampaignLocation> {
   gmOnly(actor);
   const p = await pointRow(pointId);
-  const list = (await getLocation(p.locationId))!.points;
+  const list = (await getLocation(p.locationId, campaignId))!.points;
   const at = list.findIndex((x) => x.id === pointId), to = at + by;
   if (to >= 0 && to < list.length) {
     [list[at], list[to]] = [list[to], list[at]];
     for (const [i, x] of list.entries()) if (x.sort !== i + 1) await db().update(locationPoints).set({ sort: i + 1 }).where(eq(locationPoints.id, x.id));
   }
-  return (await getLocation(p.locationId))!;
+  return (await getLocation(p.locationId, campaignId))!;
 }
 
 // ───────────────────────── the trading post ─────────────────────────
@@ -235,12 +267,12 @@ const priceOf = (given: string | null | undefined, fallback: string | null): str
  * Amend a chart item at this location: whether it is to be had, its price, its rarity, a note. Fields left out keep
  * what was set; null returns one to the chart. When nothing differs from the chart any more, the row goes.
  */
-export async function setStock(actor: Actor, locationId: string, itemId: string, patch: StockPatch): Promise<CampaignLocation> {
+export async function setStock(actor: Actor, campaignId: string, locationId: string, itemId: string, patch: StockPatch): Promise<CampaignLocation> {
   gmOnly(actor);
   await row(locationId);
   if (!tradeItemById(itemId)) throw new LedgerError('That is not on the price chart. Add it as an item of the post’s own.', 404);
   const d = db();
-  const existing = (await d.select().from(locationStock).where(and(eq(locationStock.locationId, locationId), eq(locationStock.itemId, itemId))).limit(1))[0];
+  const existing = (await d.select().from(locationStock).where(and(eq(locationStock.campaignId, campaignId), eq(locationStock.locationId, locationId), eq(locationStock.itemId, itemId))).limit(1))[0];
   if (existing?.custom) throw new LedgerError('That is not on the price chart.', 409);
   const values = {
     available: patch.available === undefined ? existing?.available ?? null : patch.available,
@@ -252,11 +284,11 @@ export async function setStock(actor: Actor, locationId: string, itemId: string,
   const plain = values.available === null && values.price === null && values.rarity === null && !values.notes;
   if (plain) { if (existing) await d.delete(locationStock).where(eq(locationStock.id, existing.id)); }
   else if (existing) await d.update(locationStock).set(values).where(eq(locationStock.id, existing.id));
-  else await d.insert(locationStock).values({ locationId, itemId, custom: false, ...values });
-  return (await getLocation(locationId))!;
+  else await d.insert(locationStock).values({ campaignId, locationId, itemId, custom: false, ...values });
+  return (await getLocation(locationId, campaignId))!;
 }
 
-export async function addItem(actor: Actor, locationId: string, input: CustomItemInput): Promise<CampaignLocation> {
+export async function addItem(actor: Actor, campaignId: string, locationId: string, input: CustomItemInput): Promise<CampaignLocation> {
   gmOnly(actor);
   await row(locationId);
   const name = clean(input.name, 80);
@@ -264,22 +296,22 @@ export async function addItem(actor: Actor, locationId: string, input: CustomIte
   const price = clean(input.price, 40);
   if (!price) throw new LedgerError('The item needs a price, even if it is a roll of the dice.');
   const d = db();
-  const taken = new Set((await d.select({ itemId: locationStock.itemId }).from(locationStock).where(eq(locationStock.locationId, locationId))).map((r) => r.itemId));
+  const taken = new Set((await d.select({ itemId: locationStock.itemId }).from(locationStock).where(and(eq(locationStock.campaignId, campaignId), eq(locationStock.locationId, locationId)))).map((r) => r.itemId));
   const stem = `custom-${slugify(name) || 'item'}`;
   let itemId = stem, k = 2;
   while (taken.has(itemId) || tradeItemById(itemId)) itemId = `${stem}-${k++}`;
-  const [{ n }] = await d.select({ n: sql<number>`coalesce(max(${locationStock.sort}), 0)::int` }).from(locationStock).where(and(eq(locationStock.locationId, locationId), eq(locationStock.custom, true)));
+  const [{ n }] = await d.select({ n: sql<number>`coalesce(max(${locationStock.sort}), 0)::int` }).from(locationStock).where(and(eq(locationStock.campaignId, campaignId), eq(locationStock.locationId, locationId), eq(locationStock.custom, true)));
   await d.insert(locationStock).values({
-    locationId, itemId, custom: true, name, category: clean(input.category, 60) || 'Miscellaneous equipment', price, rarity: rarityOf(input.rarity, COMMON) ?? COMMON,
+    campaignId, locationId, itemId, custom: true, name, category: clean(input.category, 60) || 'Miscellaneous equipment', price, rarity: rarityOf(input.rarity, COMMON) ?? COMMON,
     available: input.available ?? true, notes: clean(input.notes, 500), sort: n + 1,
   });
-  return (await getLocation(locationId))!;
+  return (await getLocation(locationId, campaignId))!;
 }
 
-export async function updateItem(actor: Actor, locationId: string, itemId: string, patch: Partial<CustomItemInput>): Promise<CampaignLocation> {
+export async function updateItem(actor: Actor, campaignId: string, locationId: string, itemId: string, patch: Partial<CustomItemInput>): Promise<CampaignLocation> {
   gmOnly(actor);
   await row(locationId);
-  const existing = (await db().select().from(locationStock).where(and(eq(locationStock.locationId, locationId), eq(locationStock.itemId, itemId), eq(locationStock.custom, true))).limit(1))[0];
+  const existing = (await db().select().from(locationStock).where(and(eq(locationStock.campaignId, campaignId), eq(locationStock.locationId, locationId), eq(locationStock.itemId, itemId), eq(locationStock.custom, true))).limit(1))[0];
   if (!existing) throw new LedgerError('That item is not the post’s own.', 404);
   const set: Partial<typeof locationStock.$inferInsert> = { updatedAt: new Date() };
   if (patch.name !== undefined) { const name = clean(patch.name, 80); if (!name) throw new LedgerError('The item needs a name.'); set.name = name; }
@@ -289,20 +321,20 @@ export async function updateItem(actor: Actor, locationId: string, itemId: strin
   if (patch.available !== undefined) set.available = !!patch.available;
   if (patch.notes !== undefined) set.notes = clean(patch.notes, 500);
   await db().update(locationStock).set(set).where(eq(locationStock.id, existing.id));
-  return (await getLocation(locationId))!;
+  return (await getLocation(locationId, campaignId))!;
 }
 
 /** Take an item of the post's own off the list. A chart item is put back to the chart with `setStock` instead. */
-export async function removeItem(actor: Actor, locationId: string, itemId: string): Promise<CampaignLocation> {
+export async function removeItem(actor: Actor, campaignId: string, locationId: string, itemId: string): Promise<CampaignLocation> {
   gmOnly(actor);
   await row(locationId);
-  const gone = await db().delete(locationStock).where(and(eq(locationStock.locationId, locationId), eq(locationStock.itemId, itemId), eq(locationStock.custom, true))).returning({ id: locationStock.id });
+  const gone = await db().delete(locationStock).where(and(eq(locationStock.campaignId, campaignId), eq(locationStock.locationId, locationId), eq(locationStock.itemId, itemId), eq(locationStock.custom, true))).returning({ id: locationStock.id });
   if (!gone.length) throw new LedgerError('That item is not the post’s own.', 404);
-  return (await getLocation(locationId))!;
+  return (await getLocation(locationId, campaignId))!;
 }
 
 /** The scenarios set in each location, for the cards. */
-export async function scenarioCounts(): Promise<Record<string, number>> {
-  const rows = await db().select({ locationId: scenarios.locationId, n: sql<number>`count(*)::int` }).from(scenarios).where(isNotNull(scenarios.locationId)).groupBy(scenarios.locationId);
+export async function scenarioCounts(campaignId: string): Promise<Record<string, number>> {
+  const rows = await db().select({ locationId: scenarios.locationId, n: sql<number>`count(*)::int` }).from(scenarios).where(and(isNotNull(scenarios.locationId), eq(scenarios.campaignId, campaignId))).groupBy(scenarios.locationId);
   return Object.fromEntries(rows.map((r) => [r.locationId!, r.n]));
 }

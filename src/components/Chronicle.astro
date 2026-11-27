@@ -3,13 +3,15 @@ import { summaryOf, type Scenario, type Warband } from '../campaign/model';
 import Icon from './Icon.astro';
 import WarbandLabel from './WarbandLabel.astro';
 import Markdown from './Markdown.astro';
-import { base } from '../lib/site';
-import { formatImperial, imperialForDate } from '../lib/calendar';
+
+import { formatImperial, imperialForDate, anchorFor } from '../lib/calendar';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
 
 interface Props { scenarios: Scenario[]; warbands: Warband[] }
 const { scenarios, warbands } = Astro.props;
 const getScenarioUrl = (id: string) => `${base}/scenarios/${id}/`;
-const imperial = (day: string) => formatImperial(imperialForDate(day));
+const imperial = (day: string) => formatImperial(imperialForDate(day, anchorFor(Astro.locals.campaign)));
 /** Newest battle first, as the Chronicle reads; the upcoming games stand above it. */
 const chronicle = scenarios.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence).map((s) => ({ scenarioId: s.id, date: imperial(s.playedOn), title: s.title, body: summaryOf(s) }));
 const upcoming = scenarios.filter((s) => s.status === 'upcoming');

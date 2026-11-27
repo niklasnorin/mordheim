@@ -108,9 +108,31 @@ function utcDay(isoDate: string): number {
   const [y, m, d] = isoDate.split('-').map(Number);
   return Math.floor(Date.UTC(y, m - 1, d) / 86400000);
 }
+/**
+ * A campaign's anchor, read: the real day and the Imperial day it fell on. The Empire keeps one week, counted from the
+ * first campaign's anchor, so a later campaign's anchor only says which day its first game was; a weekday written with
+ * it must be the one that day is, and may be left out.
+ */
+export function anchorOf(a: { date: string; imperial: string }): Anchor {
+  return { date: a.date, imperial: parseImperial(a.imperial) };
+}
+
+const anchors = new Map<string, Anchor>();
+/** A campaign's anchor, read once: what the pages pass `imperialForDate` for the campaign they are in. */
+export function anchorFor(c: { anchor: { date: string; imperial: string } }): Anchor {
+  const key = `${c.anchor.date}|${c.anchor.imperial}`;
+  let a = anchors.get(key);
+  if (!a) { a = anchorOf(c.anchor); anchors.set(key, a); }
+  return a;
+}
+
+let inForce: Anchor = ANCHOR;
+/** The browser alone: put the page's campaign's anchor in force for the calls below that are not given one. */
+export function useAnchor(a: Anchor): void { inForce = a; }
+
 /** The Imperial date of a real calendar day (YYYY-MM-DD): one real day is one Imperial day, counted from the anchor. */
-export function imperialForDate(isoDate: string): ImperialDate {
-  return fromOrdinal(ANCHOR_ORDINAL + utcDay(isoDate) - utcDay(ANCHOR.date));
+export function imperialForDate(isoDate: string, anchor: Anchor = inForce): ImperialDate {
+  return fromOrdinal(ordinal(anchor.imperial) + utcDay(isoDate) - utcDay(anchor.date));
 }
 /** The Imperial date a given number of days after another. */
 export function addDays(d: ImperialDate, days: number): ImperialDate { return fromOrdinal(ordinal(d) + days); }

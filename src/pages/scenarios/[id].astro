@@ -12,9 +12,9 @@ import WarbandLabel from '../../components/WarbandLabel.astro';
 import Portrait from '../../components/Portrait.astro';
 import Markdown from '../../components/Markdown.astro';
 import '../../styles/manage.css';
-import { base } from '../../lib/site';
+import { herePath } from '../../lib/site';
 import { markdownText } from '../../lib/markdown';
-import { formatImperial, imperialForDate } from '../../lib/calendar';
+import { formatImperial, imperialForDate, anchorFor } from '../../lib/calendar';
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm } from '../../server/roles';
 import { listScenarios, mayTrack, revisionsOf } from '../../server/campaign/scenarios';
@@ -25,7 +25,10 @@ import { HOUSE_SCENARIOS, SIDE_LABEL, houseScenario } from '../../campaign/house
 import TarotRules from '../../components/TarotRules.astro';
 import { CHECK_MOMENTS, HOLD_KINDS, HOLD_KIND_LABEL, MAX_HELD, MOMENT_LABEL, objectiveOf, objectiveSummary } from '../../campaign/objective';
 import { MEMBER_STATUSES, fightPosition, hasTurnLog, summaryOf, tallyOf, type CampaignLocation, type NarrativeRevision, type Scenario, type Warband } from '../../campaign/model';
-import { CAMPAIGN } from '../../curfew/engine';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
+const cid = Astro.locals.campaign.id;
+const CAMPAIGN = Astro.locals.campaign;
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -36,7 +39,7 @@ let scenarios: Scenario[] = [], warbands: Warband[] = [], revisions: NarrativeRe
 let scenario: Scenario | undefined;
 if (ready) {
   try {
-    [scenarios, warbands, locations] = await Promise.all([listScenarios(), listWarbands(), listLocations()]);
+    [scenarios, warbands, locations] = await Promise.all([listScenarios(cid), listWarbands(cid), listLocations(cid)]);
     scenario = scenarios.find((s) => s.id === Astro.params.id);
     if (scenario) revisions = await revisionsOf(scenario.id);
   } catch (e) { console.error('[scenarios] unavailable', e); }
@@ -50,7 +53,7 @@ const chapters = scenarios.filter((s) => s.status === 'played').sort((a, b) => a
 const chapterIndex = chapters.findIndex((c) => c.id === scenario!.id);
 const previous = chapters[chapterIndex - 1];
 const next = chapters[chapterIndex + 1];
-const imperial = formatImperial(imperialForDate(scenario.playedOn));
+const imperial = formatImperial(imperialForDate(scenario.playedOn, anchorFor(Astro.locals.campaign)));
 const realDay = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(scenario.playedOn + 'T12:00:00Z'));
 const warbandOf = (id: string) => warbands.find((w) => w.id === id);
 const nameOf = (id: string) => warbandOf(id)?.name ?? id;
@@ -101,7 +104,7 @@ const sealIcons: Record<string, string> = { Bell: 'bell', Boat: 'boat', Key: 'ke
       <a href={home}>Mordheim</a><span aria-hidden="true">/</span>
       <a href={`${base}/scenarios/`}>Scenarios</a><span aria-hidden="true">/</span>
       <span aria-current="page">{upcoming ? 'Upcoming' : `Scenario ${String(scenario.sequence).padStart(2, '0')}`}</span>
-      {ready && !viewer && <a class="breadcrumb-signin" href={`${base}/signin/?next=${encodeURIComponent(Astro.url.pathname)}`}>Sign in</a>}
+      {ready && !viewer && <a class="breadcrumb-signin" href={`${base}/signin/?next=${encodeURIComponent(herePath(Astro.locals, Astro.url))}`}>Sign in</a>}
     </nav>
 
     <header class="report-header">

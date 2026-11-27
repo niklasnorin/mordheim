@@ -4,9 +4,9 @@ import Base from '../../layouts/Base.astro';
 import ManageTop from '../../components/ManageTop.astro';
 import WarbandLabel from '../../components/WarbandLabel.astro';
 import '../../styles/manage.css';
-import { base } from '../../lib/site';
+
 import { markdownText } from '../../lib/markdown';
-import { formatImperial, imperialForDate } from '../../lib/calendar';
+import { formatImperial, imperialForDate, anchorFor } from '../../lib/calendar';
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm } from '../../server/roles';
 import { listScenarios } from '../../server/campaign/scenarios';
@@ -15,7 +15,10 @@ import { listLocations } from '../../server/campaign/locations';
 import { RULEBOOK_SCENARIOS } from '../../campaign/rulebook';
 import { HOUSE_SCENARIOS } from '../../campaign/house';
 import { summaryOf, type CampaignLocation, type Scenario, type Warband } from '../../campaign/model';
-import { localDate } from '../../curfew/engine';
+import { localDateIn } from '../../campaign/campaign';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
+const cid = Astro.locals.campaign.id;
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -23,16 +26,16 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 const ready = hasDatabase();
 const viewer = ready ? await getActor(Astro.request) : null;
 let scenarios: Scenario[] = [], warbands: Warband[] = [], locations: CampaignLocation[] = [];
-if (ready) { try { [scenarios, warbands, locations] = await Promise.all([listScenarios(), listWarbands(), listLocations()]); } catch (e) { console.error('[scenarios] unavailable', e); } }
+if (ready) { try { [scenarios, warbands, locations] = await Promise.all([listScenarios(cid), listWarbands(cid), listLocations(cid)]); } catch (e) { console.error('[scenarios] unavailable', e); } }
 const gm = isGm(viewer);
 const upcoming = scenarios.filter((s) => s.status === 'upcoming');
 const played = scenarios.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence);
-const imperialOf = (day: string) => formatImperial(imperialForDate(day));
+const imperialOf = (day: string) => formatImperial(imperialForDate(day, anchorFor(Astro.locals.campaign)));
 const realOf = (day: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(day + 'T12:00:00Z'));
 const warbandOf = (id: string) => warbands.find((w) => w.id === id);
 const placeOf = (id: string | null) => locations.find((l) => l.id === id)?.name;
 const resultLabel = { victory: 'Victory', defeat: 'Defeat', draw: 'Draw' } as const;
-const today = localDate();
+const today = localDateIn(Astro.locals.campaign.timezone);
 ---
 
 <Base title="Scenarios — Mordheim" description="The battles to come and the battles fought in the City of the Damned.">

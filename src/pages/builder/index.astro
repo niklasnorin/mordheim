@@ -8,11 +8,13 @@ import Base from '../../layouts/Base.astro';
 import ManageTop from '../../components/ManageTop.astro';
 import '../../styles/manage.css';
 import '../../styles/builder.css';
-import { base } from '../../lib/site';
+
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm } from '../../server/roles';
 import { ownWarband } from '../../server/campaign/roster';
 import { catalogueIndex } from '../../builder/data';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -20,7 +22,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 const ready = hasDatabase();
 const viewer = ready ? await getActor(Astro.request) : null;
 let mine: { id: string; name: string } | undefined;
-if (viewer) { try { const w = await ownWarband(viewer.id); if (w) mine = { id: w.id, name: w.name }; } catch (e) { console.error('[builder] unavailable', e); } }
+if (viewer) { try { const w = await ownWarband(viewer.id, Astro.locals.campaign.id); if (w) mine = { id: w.id, name: w.name }; } catch (e) { console.error('[builder] unavailable', e); } }
 // a player founds one warband; a game master may found any, for a player to take up
 const mayFound = !!viewer && (isGm(viewer) || !mine);
 const warbands = catalogueIndex.warbands;

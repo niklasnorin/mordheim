@@ -6,7 +6,7 @@
 import type { APIRoute } from 'astro';
 import { hasDatabase } from '../../../server/db/client';
 import { env } from '../../../server/env';
-import { reconcileAll, todayFor } from '../../../server/curfew/service';
+import { reconcileAll } from '../../../server/curfew/service';
 
 export const prerender = false;
 
@@ -16,8 +16,9 @@ export const GET: APIRoute = async ({ request }) => {
   if (!expected || given !== `Bearer ${expected}`) return new Response('Unauthorized', { status: 401 });
   if (!hasDatabase()) return new Response('No database', { status: 503 });
   try {
-    const result = await reconcileAll(todayFor(null));
-    return new Response(JSON.stringify({ ok: true, ...result }), { headers: { 'content-type': 'application/json' } });
+    // every campaign whose nights run, each by its own clock
+    const campaigns = await reconcileAll('cron');
+    return new Response(JSON.stringify({ ok: true, campaigns }), { headers: { 'content-type': 'application/json' } });
   } catch (e) {
     console.error('[curfew] midnight failed', e);
     return new Response(JSON.stringify({ ok: false }), { status: 500, headers: { 'content-type': 'application/json' } });

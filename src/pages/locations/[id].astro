@@ -11,9 +11,9 @@ import WarbandLabel from '../../components/WarbandLabel.astro';
 import Markdown from '../../components/Markdown.astro';
 import '../../styles/manage.css';
 import '../../styles/locations.css';
-import { asset, base } from '../../lib/site';
+import { asset, base as siteRoot } from '../../lib/site';
 import { markdownText } from '../../lib/markdown';
-import { formatImperial, imperialForDate } from '../../lib/calendar';
+import { formatImperial, imperialForDate, anchorFor } from '../../lib/calendar';
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm } from '../../server/roles';
 import { listLocations } from '../../server/campaign/locations';
@@ -21,6 +21,9 @@ import { listScenarios } from '../../server/campaign/scenarios';
 import { listWarbands } from '../../server/campaign/roster';
 import { fightPosition, pinned, type CampaignLocation, type Scenario, type Warband } from '../../campaign/model';
 import { TRADE_CATEGORIES, byCategory, priceLabel, rarityLabel, stockOf } from '../../campaign/trading';
+/** Links and API calls stay in the campaign this page is in; files under public/ are the site's (`siteRoot`). */
+const base = Astro.locals.base;
+const cid = Astro.locals.campaign.id;
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -30,9 +33,9 @@ const viewer = ready ? await getActor(Astro.request) : null;
 let location: CampaignLocation | undefined, scenarios: Scenario[] = [], warbands: Warband[] = [];
 if (ready) {
   try {
-    const all = await listLocations();
+    const all = await listLocations(cid);
     location = all.find((l) => l.id === Astro.params.id);
-    if (location) [scenarios, warbands] = await Promise.all([listScenarios(), listWarbands()]);
+    if (location) [scenarios, warbands] = await Promise.all([listScenarios(cid), listWarbands(cid)]);
   } catch (e) { console.error('[locations] unavailable', e); }
 }
 if (!location) return Astro.redirect(`${base}/locations/`);
@@ -42,7 +45,7 @@ const here = scenarios.filter((s) => s.locationId === location!.id);
 const played = here.filter((s) => s.status === 'played').sort((a, b) => b.sequence - a.sequence);
 const upcoming = here.filter((s) => s.status === 'upcoming');
 const warbandOf = (id: string) => warbands.find((w) => w.id === id);
-const imperialOf = (day: string) => formatImperial(imperialForDate(day));
+const imperialOf = (day: string) => formatImperial(imperialForDate(day, anchorFor(Astro.locals.campaign)));
 const pointName = (id: number | null) => location!.points.find((p) => p.id === id)?.name;
 const lines = stockOf(location.stock);
 const shown = gm ? lines : lines.filter((l) => l.available);
@@ -63,7 +66,7 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : word + 's'}
     <div class:list={['mg-hero', 'loc-hero', { 'has-banner': !!location.banner }]}>
       {location.banner ? (
         <div class="loc-banner">
-          <img class="loc-banner-art" src={`${base}${location.banner}`} alt="" width="1100" height="495" style={`object-position:${location.bannerFocus}`} fetchpriority="high" decoding="async" />
+          <img class="loc-banner-art" src={`${siteRoot}${location.banner}`} alt="" width="1100" height="495" style={`object-position:${location.bannerFocus}`} fetchpriority="high" decoding="async" />
           <div class="loc-banner-plate">
             <p class="mg-kicker">{location.region || 'The Empire'} · {plural(here.length, 'scenario')} · {plural(location.points.length, 'place')} of interest</p>
             <h1 class="mg-h1">{location.name}</h1>

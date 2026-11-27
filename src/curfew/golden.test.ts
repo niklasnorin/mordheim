@@ -45,8 +45,8 @@ function ledgerRun(): { nights: unknown[]; state: WarbandState; dispatches: unkn
     }
     const waiting = waitingCrossroads(s);
     if (waiting && night % 2 === 0) {
-      const road = waiting.crossroads!.crossroads[0].roads[night % waiting.crossroads!.crossroads[0].roads.length];
-      decide(s, nordost, waiting.night, road.id, { on: night + 1, rival: bitterbrow });
+      const options = waiting.crossroads!.options;
+      decide(s, nordost, waiting.night, options[night % options.length].id, { on: night + 1, rival: bitterbrow });
     }
   }
   return { nights, state: s, dispatches };

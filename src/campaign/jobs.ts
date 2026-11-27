@@ -21,7 +21,7 @@
  * master's, kept on the location (`location_jobs`); the match, the pay and the limits are the rule, so code. The server
  * (`src/server/campaign/jobs.ts`) loads the record into `Standing`s and hands them here.
  */
-import campaign from '../data/curfew/campaign.json' with { type: 'json' };
+import { DEFAULT_CAMPAIGN } from './campaign.ts';
 import { hashSeed, rng, shuffle } from '../lib/random.ts';
 
 /** How a job's pay leans: mostly gold, experience for the whole warband, a share for one hero, or an even split. */
@@ -156,8 +156,8 @@ export function shutBecause(scenario: Fixture | null, warbandId: string): string
 
 // ───────────────────────── the draw ─────────────────────────
 
-/** The seed of one warband's job before one game. The same warband, the same game: the same job and the same pay. */
-export const jobSeed = (warbandId: string, scenarioId: string) => hashSeed(campaign.id, 'jobs', warbandId, scenarioId);
+/** The seed of one warband's job before one game, in its campaign. The same warband, the same game: the same job and the same pay. */
+export const jobSeed = (warbandId: string, scenarioId: string, campaignId: string = DEFAULT_CAMPAIGN.id) => hashSeed(campaignId, 'jobs', warbandId, scenarioId);
 
 export interface DrawOptions {
   /** Points of interest where a game is scheduled: nobody scouts the next field by sweeping it. */

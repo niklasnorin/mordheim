@@ -15,11 +15,10 @@ import { addItem, addPoint, createLocation, deleteLocation, getLocation, listLoc
 import { locations as locationFixtures } from '../../data/locations.ts';
 import { stockOf } from '../../campaign/trading.ts';
 import { fightPosition } from '../../campaign/model.ts';
-import { deleteDocument, getDocument, listDocuments, primeContent, saveDocument, documentRevisions } from '../content/curfew.ts';
+import { deleteDocument, getDocument, listDocuments, worldFor, saveDocument, documentRevisions } from '../content/curfew.ts';
 import { seedIfEmpty, seedLocationsIfEmpty } from './seed.ts';
 import { carriedForward, scoresOf, summaryOf, tallyOf } from '../../campaign/model.ts';
 import { claimWarband as claimLedger, loadOwnLedger, releaseWarband as giveUp } from '../curfew/service.ts';
-import { LOCATIONS, OMENS, locationById } from '../../curfew/engine.ts';
 import { warbands as fixtures } from '../../data/warbands.ts';
 import { history } from '../../data/history.ts';
 import { setRole } from '../roles.ts';
@@ -30,6 +29,8 @@ const gm = actorOf('user-gm', 'Game Master', 'gm');
 const niklas = actorOf('user-niklas', 'Niklas');
 const rival = actorOf('user-rival', 'Rival');
 const stranger = actorOf('user-stranger', 'Stranger');
+/** The first campaign, which the seed fills. */
+const C = 'mordheim-2000';
 
 before(async () => {
   const { db, schema } = await testDatabase();
@@ -39,22 +40,22 @@ before(async () => {
 test('an empty database is seeded once from the fixtures, and never again', async () => {
   assert.equal(await seedIfEmpty(), true);
   assert.equal(await seedIfEmpty(), false);
-  const list = await listWarbands();
+  const list = await listWarbands(C);
   assert.deepEqual(list.map((w) => w.id), fixtures.map((w) => w.id));
   const nordost = list.find((w) => w.id === 'nordost')!;
   assert.equal(nordost.members.length, 7);
   assert.equal(nordost.battles, 1, 'battles are counted from the played scenarios');
   assert.equal(nordost.victories, 1);
   assert.ok(nordost.members.find((m) => m.id === 'skalle')!.skills.some((s) => /Stag/.test(s)), 'prayers fold into skills');
-  const scenarios = await listScenarios();
+  const scenarios = await listScenarios(C);
   assert.equal(scenarios.length, history.length);
   assert.equal(scenarios[0].status, 'played');
   assert.equal(scenarios[0].warbands.length, 2);
   assert.equal(scenarios[0].outOfAction.length, 7);
   assert.ok(scenarios[0].chronicle.length > 50, 'the Chronicle entry rides on the scenario');
-  const roster = await loadRoster();
+  const roster = await loadRoster(C);
   assert.deepEqual(roster.injured.nordost!.sort(), ['mjolnir', 'skalle']);
-  assert.equal((await listArticles()).length, 12);
+  assert.equal((await listArticles(C)).length, 12);
 });
 
 test('a player claims a warband, edits it and its warriors, and a stranger may not', async () => {
@@ -87,22 +88,22 @@ test('a player claims a warband, edits it and its warriors, and a stranger may n
 });
 
 test('a game master founds, hands out and strikes warbands; the ledger follows the owner', async () => {
-  const founded = await createWarband(gm, { name: 'The Ratcatchers of Cutthroat’s Haven', type: 'Reiklanders', player: 'Somebody' });
+  const founded = await createWarband(gm, C, { name: 'The Ratcatchers of Cutthroat’s Haven', type: 'Reiklanders', player: 'Somebody' });
   assert.equal(founded.id, 'ratcatchers-of-cutthroat-s-haven');
   assert.equal(founded.ownerId, null);
   assert.equal(founded.sigil, 'RO');
-  await assert.rejects(createWarband(niklas, { name: 'Another', type: 'Skaven' }), (e: unknown) => e instanceof LedgerError && /already keep/.test(e.message));
-  const own = await createWarband(rival, { name: 'The Grey Hand', type: 'Skaven' });
+  await assert.rejects(createWarband(niklas, C, { name: 'Another', type: 'Skaven' }), (e: unknown) => e instanceof LedgerError && /already keep/.test(e.message));
+  const own = await createWarband(rival, C, { name: 'The Grey Hand', type: 'Skaven' });
   assert.equal(own.ownerId, rival.id);
   // the Curfew ledger follows the warband
-  const view = await claimLedger(rival.id, own.id, 5);
+  const view = await claimLedger(C, rival.id, own.id, 5);
   assert.equal(view.warbandId, own.id);
   await assert.rejects(assignWarband(gm, 'nordost', rival.id), (e: unknown) => e instanceof LedgerError && /already keep/.test(e.message));
   await assignWarband(gm, own.id, stranger.id);
-  assert.equal((await loadOwnLedger(stranger.id, 5))!.warbandId, own.id, 'the nights already written go to the new keeper');
-  assert.equal(await loadOwnLedger(rival.id, 5), null);
+  assert.equal((await loadOwnLedger(C, stranger.id, 5))!.warbandId, own.id, 'the nights already written go to the new keeper');
+  assert.equal(await loadOwnLedger(C, rival.id, 5), null);
   await assert.rejects(assignWarband(niklas, own.id, null), (e: unknown) => e instanceof LedgerError && e.status === 403);
-  await giveUp(stranger.id);
+  await giveUp(C, stranger.id);
   assert.equal((await getWarband(own.id))!.ownerId, null, 'giving up the ledger frees the warband');
   await releaseWarband(gm, 'nordost');
   assert.equal((await getWarband('nordost'))!.ownerId, null);
@@ -114,8 +115,8 @@ test('a game master founds, hands out and strikes warbands; the ledger follows t
 });
 
 test('a game master sets up an upcoming scenario and the players tell their side; then it is played', async () => {
-  await assert.rejects(createScenario(niklas, { title: 'Nope', playedOn: '2026-10-01' }), (e: unknown) => e instanceof LedgerError && e.status === 403);
-  const s = await createScenario(gm, { title: 'The Drowned Bell', playedOn: '2026-10-03', rulebookScenario: 'hidden treasure', customRules: 'The bell tolls on a 6.', prologue: 'A bell where no belfry stands.', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  await assert.rejects(createScenario(niklas, C, { title: 'Nope', playedOn: '2026-10-01' }), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  const s = await createScenario(gm, C, { title: 'The Drowned Bell', playedOn: '2026-10-03', rulebookScenario: 'hidden treasure', customRules: 'The bell tolls on a 6.', prologue: 'A bell where no belfry stands.', warbandIds: ['nordost', 'bitterbrow-expedition'] });
   assert.equal(s.id, 'scenario-02-the-drowned-bell');
   assert.equal(s.status, 'upcoming');
   assert.equal(s.rulebookScenario, 'Hidden Treasure', 'rulebook names are spelled as the book does');
@@ -123,7 +124,7 @@ test('a game master sets up an upcoming scenario and the players tell their side
   assert.equal((await updateScenario(gm, s.id, { prologueAsSummary: false })).prologueAsSummary, false);
   await updateScenario(gm, s.id, { prologueAsSummary: true });
   assert.deepEqual(s.warbands.map((w) => w.warbandId).sort(), ['bitterbrow-expedition', 'nordost']);
-  const list = await listScenarios();
+  const list = await listScenarios(C);
   assert.deepEqual(list.map((x) => x.status), ['played', 'upcoming']);
   // the players' own tellings
   await assert.rejects(writePerspective(niklas, s.id, 'bitterbrow-expedition', { prologue: 'Ours.' }), (e: unknown) => e instanceof LedgerError && e.status === 403);
@@ -161,16 +162,16 @@ test('a game master sets up an upcoming scenario and the players tell their side
   t = await markPlayed(niklas, s.id, [{ warbandId: 'nordost', result: 'defeat' }, { warbandId: 'bitterbrow-expedition', result: 'victory' }]);
   assert.equal(t.status, 'played');
   assert.equal(t.sequence, 2);
-  const bitterbrow = (await listWarbands()).find((w) => w.id === 'bitterbrow-expedition')!;
+  const bitterbrow = (await listWarbands(C)).find((w) => w.id === 'bitterbrow-expedition')!;
   assert.equal(bitterbrow.battles, 2);
   assert.equal(bitterbrow.victories, 1);
-  const stories = memberStories(await listScenarios());
+  const stories = memberStories(await listScenarios(C));
   assert.equal(stories.agnar!.length, 2);
   assert.equal(stories.agnar![1].snapshot.highlight, 'Stood.');
-  const roster = await loadRoster();
+  const roster = await loadRoster(C);
   assert.deepEqual(roster.injured.nordost, ['agnar'], 'the last played scenario says who is still hurt: the takedowns that stand decide it');
   await assert.rejects(deleteScenario(gm, s.id), (e: unknown) => e instanceof LedgerError && e.status === 409);
-  const later = await createScenario(gm, { title: 'Later', playedOn: '2026-11-01' });
+  const later = await createScenario(gm, C, { title: 'Later', playedOn: '2026-11-01' });
   await setParticipants(gm, later.id, ['nordost']);
   assert.equal((await getScenario(later.id))!.warbands.length, 1);
   await deleteScenario(gm, later.id);
@@ -178,7 +179,7 @@ test('a game master sets up an upcoming scenario and the players tell their side
 });
 
 test('the battle tracker: the table keeps the turn, the log and the tally; the record gets the takedowns', async () => {
-  const s = await createScenario(gm, { title: 'The Shard Field', playedOn: '2026-10-10', rulebookScenario: 'Wyrdstone Hunt', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  const s = await createScenario(gm, C, { title: 'The Shard Field', playedOn: '2026-10-10', rulebookScenario: 'Wyrdstone Hunt', warbandIds: ['nordost', 'bitterbrow-expedition'] });
   assert.equal(s.turn, 0, 'the game has not begun');
   assert.equal(tallyOf(s), 'Shards', 'the rulebook scenario says what is counted');
   assert.equal(tallyOf({ ...s, tally: 'Relics' }), 'Relics', 'the game master may name it');
@@ -250,7 +251,7 @@ test('the battle tracker: the table keeps the turn, the log and the tally; the r
 });
 
 test('the Tarot of the Damned: a hidden hand per warband, dealt at the table, fading and filling by the turn, a card shown to all', async () => {
-  const s = await createScenario(gm, { title: 'The Reading', playedOn: '2026-10-11', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  const s = await createScenario(gm, C, { title: 'The Reading', playedOn: '2026-10-11', warbandIds: ['nordost', 'bitterbrow-expedition'] });
   assert.equal(s.tarot, false, 'not in play unless the game master says so');
   await assert.rejects(loadHand(niklas, s.id, 'nordost'), (e: unknown) => e instanceof LedgerError && /not in play/.test(e.message));
   const on = await updateScenario(gm, s.id, { tarot: true });
@@ -337,7 +338,7 @@ test('the Tarot of the Damned: a hidden hand per warband, dealt at the table, fa
 });
 
 test('the summary swallows the Chronicle entry, and the notes swallow the loot', async () => {
-  const played = (await listScenarios()).find((x) => x.id === 'scenario-01-the-merchants-debt')!;
+  const played = (await listScenarios(C)).find((x) => x.id === 'scenario-01-the-merchants-debt')!;
   assert.ok(played.chronicle.trim() && played.summary.trim(), 'the seeded record was written when they were two fields');
   assert.ok(played.loot.length && played.campaignNotes.length);
   assert.deepEqual(carriedForward(played), [...played.loot, ...played.campaignNotes], 'both lists read as one');
@@ -351,46 +352,46 @@ test('the summary swallows the Chronicle entry, and the notes swallow the loot',
 });
 
 test('game masters write the Cryer; the broadsheet prints only the published articles for a place', async () => {
-  await assert.rejects(createArticle(niklas, { headline: 'No', body: 'No.' }), (e: unknown) => e instanceof LedgerError && e.status === 403);
-  const a = await createArticle(gm, { headline: 'Bell Heard Beneath the Ash; Nobody Claims It', byline: 'By our correspondent', body: 'A bell was heard.', locationId: 'fussenbach' });
-  assert.ok((await articlesFor('fussenbach')).some((x) => x.id === a.id));
-  assert.ok(!(await articlesFor('mordheim')).some((x) => x.id === a.id));
+  await assert.rejects(createArticle(niklas, C, { headline: 'No', body: 'No.' }), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  const a = await createArticle(gm, C, { headline: 'Bell Heard Beneath the Ash; Nobody Claims It', byline: 'By our correspondent', body: 'A bell was heard.', locationId: 'fussenbach' });
+  assert.ok((await articlesFor(C, 'fussenbach')).some((x) => x.id === a.id));
+  assert.ok(!(await articlesFor(C, 'mordheim')).some((x) => x.id === a.id));
   const hidden = await updateArticle(gm, a.id, { published: false });
   assert.equal(hidden.published, false);
-  assert.ok(!(await articlesFor('fussenbach')).some((x) => x.id === a.id));
-  await assert.rejects(createArticle(gm, { headline: 'Nowhere', body: 'x', locationId: 'atlantis' }), LedgerError);
+  assert.ok(!(await articlesFor(C, 'fussenbach')).some((x) => x.id === a.id));
+  await assert.rejects(createArticle(gm, C, { headline: 'Nowhere', body: 'x', locationId: 'atlantis' }), LedgerError);
   await deleteArticle(gm, a.id);
   await assert.rejects(deleteArticle(gm, a.id), (e: unknown) => e instanceof LedgerError && e.status === 404);
 });
 
 test('the Curfew’s content lives in the database: seeded from the files, checked before saving, versioned', async () => {
-  await primeContent(true);
-  const docs = await listDocuments();
+  await worldFor(C, true);
+  const docs = await listDocuments(C);
   assert.deepEqual(docs.map((d) => d.id).sort(), ['location:fussenbach', 'location:mordheim', 'moons', 'omens', 'tokens']);
-  const omens = (await getDocument('omens'))!;
-  await assert.rejects(saveDocument(niklas, 'omens', JSON.stringify(omens.document), omens.version), (e: unknown) => e instanceof LedgerError && e.status === 403);
-  await assert.rejects(saveDocument(gm, 'omens', '{not json', omens.version), (e: unknown) => e instanceof LedgerError && /JSON/.test(e.message));
-  await assert.rejects(saveDocument(gm, 'omens', JSON.stringify({ omens: [{ id: 'x', title: 'X', reading: 'x', image: '/x.png', tilt: { scavenge: 5 } }] }), omens.version), (e: unknown) => e instanceof LedgerError && e.status === 422);
+  const omens = (await getDocument(C, 'omens'))!;
+  await assert.rejects(saveDocument(niklas, C, 'omens', JSON.stringify(omens.document), omens.version), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(saveDocument(gm, C, 'omens', '{not json', omens.version), (e: unknown) => e instanceof LedgerError && /JSON/.test(e.message));
+  await assert.rejects(saveDocument(gm, C, 'omens', JSON.stringify({ omens: [{ id: 'x', title: 'X', reading: 'x', image: '/x.png', tilt: { scavenge: 5 } }] }), omens.version), (e: unknown) => e instanceof LedgerError && e.status === 422);
   const edited = { ...(omens.document as { omens: { title: string }[] }) };
   edited.omens = edited.omens.map((o, i) => (i === 0 ? { ...o, title: 'The Ash Wind, Renamed' } : o));
-  const saved = await saveDocument(gm, 'omens', JSON.stringify(edited), omens.version);
+  const saved = await saveDocument(gm, C, 'omens', JSON.stringify(edited), omens.version);
   assert.equal(saved.version, omens.version + 1);
-  assert.equal(OMENS[0].title, 'The Ash Wind, Renamed', 'the engine reads the saved content at once');
-  await assert.rejects(saveDocument(gm, 'omens', JSON.stringify(edited), omens.version), (e: unknown) => e instanceof LedgerError && e.status === 409);
-  const revisions = await documentRevisions('omens');
+  assert.equal((await worldFor(C)).engine.OMENS[0].title, 'The Ash Wind, Renamed', 'the engine reads the saved content at once');
+  await assert.rejects(saveDocument(gm, C, 'omens', JSON.stringify(edited), omens.version), (e: unknown) => e instanceof LedgerError && e.status === 409);
+  const revisions = await documentRevisions(C, 'omens');
   assert.equal(revisions.length, 1);
   assert.equal((revisions[0].document as { omens: { title: string }[] }).omens[0].title, 'The Ash Wind');
   // a new place is a pasted pack
-  const village = LOCATIONS.find((l) => l.id === 'fussenbach')!;
+  const village = (await worldFor(C)).engine.LOCATIONS.find((l) => l.id === 'fussenbach')!;
   const newPlace = { ...village, id: 'kleinfeld', name: 'Kleinfeld' };
-  await assert.rejects(saveDocument(gm, 'location:kleinfeld', JSON.stringify({ ...newPlace, id: 'wrong' }), null), (e: unknown) => e instanceof LedgerError && e.status === 422);
-  await saveDocument(gm, 'location:kleinfeld', JSON.stringify(newPlace), null);
-  assert.equal(locationById('kleinfeld').name, 'Kleinfeld');
-  assert.equal(LOCATIONS.length, 3);
-  await assert.rejects(deleteDocument(gm, 'location:mordheim', 'mordheim'), LedgerError);
-  await assert.rejects(deleteDocument(gm, 'location:kleinfeld', 'kleinfeld'), (e: unknown) => e instanceof LedgerError && /Move it first/.test(e.message));
-  await deleteDocument(gm, 'location:kleinfeld', 'mordheim');
-  assert.equal(LOCATIONS.length, 2);
+  await assert.rejects(saveDocument(gm, C, 'location:kleinfeld', JSON.stringify({ ...newPlace, id: 'wrong' }), null), (e: unknown) => e instanceof LedgerError && e.status === 422);
+  await saveDocument(gm, C, 'location:kleinfeld', JSON.stringify(newPlace), null);
+  assert.equal((await worldFor(C)).engine.locationById('kleinfeld').name, 'Kleinfeld');
+  assert.equal((await worldFor(C)).engine.LOCATIONS.length, 3);
+  await assert.rejects(deleteDocument(gm, C, 'location:mordheim', 'mordheim'), LedgerError);
+  await assert.rejects(deleteDocument(gm, C, 'location:kleinfeld', 'kleinfeld'), (e: unknown) => e instanceof LedgerError && /Move it first/.test(e.message));
+  await deleteDocument(gm, C, 'location:kleinfeld', 'mordheim');
+  assert.equal((await worldFor(C)).engine.LOCATIONS.length, 2);
   // roles
   await setRole(niklas.id, 'gm');
   await assert.rejects(setRole('nobody', 'gm'));
@@ -398,10 +399,10 @@ test('the Curfew’s content lives in the database: seeded from the files, check
 
 test('the standings are hidden until the admin shows them', async () => {
   const admin = actorOf('user-gm', 'Game Master', 'admin');
-  assert.equal((await getSettings()).standingsVisible, false, 'hidden by default');
-  await assert.rejects(setSetting(gm, 'standingsVisible', true), (e: unknown) => e instanceof LedgerError && e.status === 403, 'a game master may not');
-  assert.equal((await setSetting(admin, 'standingsVisible', true)).standingsVisible, true);
-  assert.equal((await setSetting(admin, 'standingsVisible', false)).standingsVisible, false);
+  assert.equal((await getSettings(C)).standingsVisible, false, 'hidden by default');
+  await assert.rejects(setSetting(gm, C, 'standingsVisible', true), (e: unknown) => e instanceof LedgerError && e.status === 403, 'a game master may not');
+  assert.equal((await setSetting(admin, C, 'standingsVisible', true)).standingsVisible, true);
+  assert.equal((await setSetting(admin, C, 'standingsVisible', false)).standingsVisible, false);
 });
 
 test('a warband’s story: its keeper writes chapters with their own pictures, in an order they choose', async () => {
@@ -410,7 +411,7 @@ test('a warband’s story: its keeper writes chapters with their own pictures, i
   const { addChapter, getImage, listChapters, moveChapter, removeChapter, updateChapter, uploadImage } = await import('./chapters.ts');
   const scribe = actorOf('user-scribe', 'Scribe');
   await db().insert(schema.user).values({ id: scribe.id, name: scribe.name, email: scribe.email, emailVerified: true });
-  const w = await createWarband(scribe, { name: 'The Inkwell Company', type: 'Reikland' });
+  const w = await createWarband(scribe, C, { name: 'The Inkwell Company', type: 'Reikland' });
 
   const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]).toString('base64');
   await assert.rejects(uploadImage(stranger, w.id, 'image/png', png), (e: unknown) => e instanceof LedgerError && e.status === 403, 'only the keeper or a game master uploads');
@@ -446,7 +447,7 @@ test('a warrior’s portrait: the keeper brings a picture, frames it, frames it 
   const { removePortrait, setPortrait, uploadPortraitSource } = await import('./portraits.ts');
   const painter = actorOf('user-painter', 'Painter');
   await db().insert(schema.user).values({ id: painter.id, name: painter.name, email: painter.email, emailVerified: true });
-  let w = await createWarband(painter, { name: 'The Gilded Brush', type: 'Middenheim' });
+  let w = await createWarband(painter, C, { name: 'The Gilded Brush', type: 'Middenheim' });
   w = await addMember(painter, w.id, { name: 'Ottilie Farbe', rank: 'hero' });
   w = await addMember(painter, w.id, { name: 'Bruno Pinsel' });
   const [ottilie, bruno] = w.members;
@@ -497,7 +498,7 @@ test('a warrior’s portrait: the keeper brings a picture, frames it, frames it 
 
 test('the supply cart at the table: sides, a turn’s end with the cart and the skaven die, the last round and one more', async () => {
   const { endTurn, setTurnLimit } = await import('./scenarios.ts');
-  const s = await createScenario(gm, { title: 'The Supply Cart', playedOn: '2026-10-10', rulebookScenario: 'the supply cart', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  const s = await createScenario(gm, C, { title: 'The Supply Cart', playedOn: '2026-10-10', rulebookScenario: 'the supply cart', warbandIds: ['nordost', 'bitterbrow-expedition'] });
   assert.equal(s.rulebookScenario, 'The Supply Cart', 'the name is set as the campaign writes it');
   assert.equal(s.turnLimit, 7, 'a house scenario brings its own length');
   await assert.rejects(updateScenario(gm, s.id, { sides: { nordost: 'flanking' as never } }), (e: unknown) => e instanceof LedgerError);
@@ -525,7 +526,7 @@ test('the supply cart at the table: sides, a turn’s end with the cart and the 
 });
 
 test('whose turn it is: the table says who starts, then next goes warband by warband and round by round', async () => {
-  const s = await createScenario(gm, { title: 'The Order of Things', playedOn: '2026-10-12', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  const s = await createScenario(gm, C, { title: 'The Order of Things', playedOn: '2026-10-12', warbandIds: ['nordost', 'bitterbrow-expedition'] });
   assert.deepEqual(s.order, []);
   assert.equal(s.active, null);
   await assert.rejects(pickTurnOrder(stranger, s.id, 'nordost'), (e: unknown) => e instanceof LedgerError && e.status === 403);
@@ -548,7 +549,7 @@ test('whose turn it is: the table says who starts, then next goes warband by war
   t = await pickTurnOrder(gm, s.id, 'nordost');
   assert.deepEqual([t.order, t.active], [['nordost', 'bitterbrow-expedition'], 'bitterbrow-expedition'], 'two at the table: the one tapped starts from the next round; the warband on now keeps its turn');
   // three at the table: the order a tap at a time
-  const trio = await createScenario(gm, { title: 'Three Ways', playedOn: '2026-10-13', warbandIds: ['nordost', 'bitterbrow-expedition', 'welling-rune'] });
+  const trio = await createScenario(gm, C, { title: 'Three Ways', playedOn: '2026-10-13', warbandIds: ['nordost', 'bitterbrow-expedition', 'welling-rune'] });
   let o = await pickTurnOrder(gm, trio.id, 'welling-rune');
   assert.deepEqual(o.order, ['welling-rune']);
   o = await pickTurnOrder(gm, trio.id, 'nordost');
@@ -571,7 +572,7 @@ test('the table chooses its sides before the first turn, and only a game master 
   await db().insert(schema.user).values({ id: carter.id, name: carter.name, email: carter.email, emailVerified: true });
   if ((await getWarband('bitterbrow-expedition'))!.ownerId) await releaseWarband(gm, 'bitterbrow-expedition');
   await assignWarband(gm, 'bitterbrow-expedition', carter.id);
-  const s = await createScenario(gm, { title: 'The Supply Cart again', playedOn: '2026-10-11', rulebookScenario: 'The Supply Cart', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  const s = await createScenario(gm, C, { title: 'The Supply Cart again', playedOn: '2026-10-11', rulebookScenario: 'The Supply Cart', warbandIds: ['nordost', 'bitterbrow-expedition'] });
 
   await assert.rejects(chooseSides(stranger, s.id, { nordost: 'attacker' }), (e: unknown) => e instanceof LedgerError && e.status === 403, 'only those at the table');
   await assert.rejects(chooseSides(carter, s.id, { 'grey-hand': 'attacker' }), (e: unknown) => e instanceof LedgerError && e.status === 404);
@@ -585,7 +586,7 @@ test('the table chooses its sides before the first turn, and only a game master 
   now = await chooseSides(gm, s.id, { nordost: 'attacker' });
   assert.equal(now.warbands.find((w) => w.warbandId === 'nordost')!.side, 'attacker');
 
-  const plain = await createScenario(gm, { title: 'A skirmish', playedOn: '2026-10-12', rulebookScenario: 'Skirmish', warbandIds: ['nordost'] });
+  const plain = await createScenario(gm, C, { title: 'A skirmish', playedOn: '2026-10-12', rulebookScenario: 'Skirmish', warbandIds: ['nordost'] });
   await assert.rejects(chooseSides(gm, plain.id, { nordost: 'attacker' }), (e: unknown) => e instanceof LedgerError && /no sides/.test(e.message));
   await deleteScenario(gm, s.id);
   await deleteScenario(gm, plain.id);
@@ -593,7 +594,7 @@ test('the table chooses its sides before the first turn, and only a game master 
 });
 
 test('the campaign’s locations: seeded with Fussenbach and Mordheim, kept by a game master, with their points of interest', async () => {
-  const list = await listLocations();
+  const list = await listLocations(C);
   assert.deepEqual(list.map((l) => l.id), locationFixtures.map((l) => l.id));
   const fussenbach = list.find((l) => l.id === 'fussenbach')!;
   assert.equal(fussenbach.map, '/locations/fussenbach-map.jpg');
@@ -605,32 +606,32 @@ test('the campaign’s locations: seeded with Fussenbach and Mordheim, kept by a
   assert.equal(mordheim.map, null, 'the city has no map yet');
   assert.equal(mordheim.banner, '/curfew/places/mordheim-band.jpg', 'but it has its banner');
   assert.ok(mordheim.points.length > 0 && mordheim.points.every((p) => p.x == null), 'its points are listed, not pinned');
-  assert.equal((await listScenarios()).find((s) => s.id === 'scenario-01-the-merchants-debt')!.locationId, 'mordheim', 'the first battle was fought in the city');
+  assert.equal((await listScenarios(C)).find((s) => s.id === 'scenario-01-the-merchants-debt')!.locationId, 'mordheim', 'the first battle was fought in the city');
   // founding and writing up
-  await assert.rejects(createLocation(niklas, { name: 'Kleinfeld' }), (e: unknown) => e instanceof LedgerError && e.status === 403);
-  const k = await createLocation(gm, { name: 'Kleinfeld', region: 'Ostermark', description: 'A hamlet.' });
+  await assert.rejects(createLocation(niklas, C, { name: 'Kleinfeld' }), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  const k = await createLocation(gm, C, { name: 'Kleinfeld', region: 'Ostermark', description: 'A hamlet.' });
   assert.equal(k.id, 'kleinfeld');
-  assert.equal((await createLocation(gm, { name: 'Kleinfeld' })).id, 'kleinfeld-2', 'ids are forever, so a second takes a number');
-  await assert.rejects(updateLocation(gm, k.id, { map: 'https://elsewhere.example/map.jpg' }), (e: unknown) => e instanceof LedgerError && /on this site/.test(e.message));
-  const written = await updateLocation(gm, k.id, { description: 'A hamlet of nine houses.', map: '/locations/kleinfeld.jpg' });
+  assert.equal((await createLocation(gm, C, { name: 'Kleinfeld' })).id, 'kleinfeld-2', 'ids are forever, so a second takes a number');
+  await assert.rejects(updateLocation(gm, C, k.id, { map: 'https://elsewhere.example/map.jpg' }), (e: unknown) => e instanceof LedgerError && /on this site/.test(e.message));
+  const written = await updateLocation(gm, C, k.id, { description: 'A hamlet of nine houses.', map: '/locations/kleinfeld.jpg' });
   assert.equal(written.description, 'A hamlet of nine houses.');
   assert.equal(written.map, '/locations/kleinfeld.jpg');
   // points of interest: on the map or only in the list
-  await assert.rejects(addPoint(gm, k.id, { name: 'The well', x: 50 }), (e: unknown) => e instanceof LedgerError && /both/.test(e.message));
-  let l = await addPoint(gm, k.id, { name: 'The well', kind: 'Well', x: 50.04, y: 61 });
-  l = await addPoint(gm, k.id, { name: 'The smithy', kind: 'Smithy' });
+  await assert.rejects(addPoint(gm, C, k.id, { name: 'The well', x: 50 }), (e: unknown) => e instanceof LedgerError && /both/.test(e.message));
+  let l = await addPoint(gm, C, k.id, { name: 'The well', kind: 'Well', x: 50.04, y: 61 });
+  l = await addPoint(gm, C, k.id, { name: 'The smithy', kind: 'Smithy' });
   assert.deepEqual(l.points.map((p) => [p.name, p.x, p.y]), [['The well', 50, 61], ['The smithy', null, null]]);
   const well = l.points[0];
-  l = await updatePoint(gm, well.id, { description: 'Deep, and said to be deeper.', x: null, y: null });
+  l = await updatePoint(gm, C, well.id, { description: 'Deep, and said to be deeper.', x: null, y: null });
   assert.equal(l.points[0].x, null, 'a pin may be lifted off the map');
-  l = await movePoint(gm, well.id, 1);
+  l = await movePoint(gm, C, well.id, 1);
   assert.deepEqual(l.points.map((p) => p.name), ['The smithy', 'The well']);
   // a scenario is fought somewhere: in a place, at a point there, or at a spot on the map
-  await assert.rejects(createScenario(gm, { title: 'Nowhere', playedOn: '2026-12-01', locationId: 'atlantis' }), (e: unknown) => e instanceof LedgerError && e.status === 404);
-  await assert.rejects(createScenario(gm, { title: 'Nowhere', playedOn: '2026-12-01', pointId: well.id }), (e: unknown) => e instanceof LedgerError && /which place/.test(e.message));
+  await assert.rejects(createScenario(gm, C, { title: 'Nowhere', playedOn: '2026-12-01', locationId: 'atlantis' }), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  await assert.rejects(createScenario(gm, C, { title: 'Nowhere', playedOn: '2026-12-01', pointId: well.id }), (e: unknown) => e instanceof LedgerError && /which place/.test(e.message));
   const flagon = fussenbach.points.find((p) => p.name === 'The Cracked Flagon')!;
-  await assert.rejects(createScenario(gm, { title: 'Wrong town', playedOn: '2026-12-01', locationId: k.id, pointId: flagon.id }), (e: unknown) => e instanceof LedgerError && e.status === 404, 'the point must be in the place');
-  let s = await createScenario(gm, { title: 'The Flagon Brawl', playedOn: '2026-12-01', locationId: 'fussenbach', pointId: flagon.id });
+  await assert.rejects(createScenario(gm, C, { title: 'Wrong town', playedOn: '2026-12-01', locationId: k.id, pointId: flagon.id }), (e: unknown) => e instanceof LedgerError && e.status === 404, 'the point must be in the place');
+  let s = await createScenario(gm, C, { title: 'The Flagon Brawl', playedOn: '2026-12-01', locationId: 'fussenbach', pointId: flagon.id });
   assert.equal(s.locationId, 'fussenbach');
   assert.deepEqual(fightPosition(s, fussenbach), { x: flagon.x, y: flagon.y }, 'the marker sits on the point');
   s = await updateScenario(gm, s.id, { mapX: 40, mapY: 70.26 });
@@ -640,81 +641,81 @@ test('the campaign’s locations: seeded with Fussenbach and Mordheim, kept by a
   assert.equal(s.pointId, null, 'moving the fight to another place drops the point');
   assert.equal(s.mapX, null, 'and the spot on the other map');
   assert.deepEqual(fightPosition(s, k), null);
-  assert.equal((await scenarioCounts())[k.id], 1);
-  await assert.rejects(deleteLocation(gm, k.id), (e: unknown) => e instanceof LedgerError && e.status === 409, 'a place with a scenario set there stays');
+  assert.equal((await scenarioCounts(C))[k.id], 1);
+  await assert.rejects(deleteLocation(gm, C, k.id), (e: unknown) => e instanceof LedgerError && e.status === 409, 'a place with a scenario set there stays');
   s = await updateScenario(gm, s.id, { locationId: null });
   assert.equal(s.locationId, null);
   await deleteScenario(gm, s.id);
   // the map picture: uploaded, replaced, taken away
   const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]).toString('base64');
-  await assert.rejects(uploadMap(niklas, k.id, 'image/png', png), (e: unknown) => e instanceof LedgerError && e.status === 403);
-  await assert.rejects(uploadMap(gm, k.id, 'image/jpeg', png), (e: unknown) => e instanceof LedgerError && e.status === 415);
-  l = await uploadMap(gm, k.id, 'image/png', png);
+  await assert.rejects(uploadMap(niklas, C, k.id, 'image/png', png), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(uploadMap(gm, C, k.id, 'image/jpeg', png), (e: unknown) => e instanceof LedgerError && e.status === 415);
+  l = await uploadMap(gm, C, k.id, 'image/png', png);
   assert.match(l.map!, /^\/images\/[0-9a-f-]{36}$/);
   const firstMap = l.map!.slice('/images/'.length);
   const { getImage } = await import('./chapters.ts');
   assert.equal((await getImage(firstMap))!.mime, 'image/png');
-  l = await uploadMap(gm, k.id, 'image/png', png);
+  l = await uploadMap(gm, C, k.id, 'image/png', png);
   assert.notEqual(l.map!.slice('/images/'.length), firstMap);
   assert.equal(await getImage(firstMap), undefined, 'the replaced map is forgotten');
-  l = await removeMap(gm, k.id);
+  l = await removeMap(gm, C, k.id);
   assert.equal(l.map, null);
   assert.equal(await getImage(l.map === null ? firstMap : ''), undefined);
   // the banner, the same way, framed as the game master says
-  l = await uploadPicture(gm, k.id, 'banner', 'image/png', png);
+  l = await uploadPicture(gm, C, k.id, 'banner', 'image/png', png);
   assert.match(l.banner!, /^\/images\//);
   assert.equal(l.map, null, 'the banner is not the map');
   const bannerImage = l.banner!.slice('/images/'.length);
-  l = await updateLocation(gm, k.id, { bannerFocus: '50% 20%' });
+  l = await updateLocation(gm, C, k.id, { bannerFocus: '50% 20%' });
   assert.equal(l.bannerFocus, '50% 20%');
-  l = await updateLocation(gm, k.id, { bannerFocus: 'sideways; drop table' });
+  l = await updateLocation(gm, C, k.id, { bannerFocus: 'sideways; drop table' });
   assert.equal(l.bannerFocus, '50% 50%', 'nonsense framing is centred');
-  l = await removeBanner(gm, k.id);
+  l = await removeBanner(gm, C, k.id);
   assert.equal(l.banner, null);
   assert.equal(await getImage(bannerImage), undefined, 'the uploaded banner is forgotten with it');
-  await removePoint(gm, well.id);
-  assert.equal((await getLocation(k.id))!.points.length, 1);
-  await deleteLocation(gm, k.id);
-  assert.equal(await getLocation(k.id), undefined);
-  await deleteLocation(gm, 'kleinfeld-2');
+  await removePoint(gm, C, well.id);
+  assert.equal((await getLocation(k.id, C))!.points.length, 1);
+  await deleteLocation(gm, C, k.id);
+  assert.equal(await getLocation(k.id, C), undefined);
+  await deleteLocation(gm, C, 'kleinfeld-2');
 });
 
 test('the trading post: the chart as printed until the game master says otherwise, and items of the post’s own', async () => {
-  const before = stockOf((await getLocation('fussenbach'))!.stock);
+  const before = stockOf((await getLocation('fussenbach', C))!.stock);
   assert.equal(before.find((x) => x.itemId === 'sword')!.available, true);
   assert.equal(before.find((x) => x.itemId === 'elf-bow')!.available, false, 'rare items wait to be enabled');
-  await assert.rejects(setStock(niklas, 'fussenbach', 'elf-bow', { available: true }), (e: unknown) => e instanceof LedgerError && e.status === 403);
-  await assert.rejects(setStock(gm, 'fussenbach', 'nonsense', { available: true }), (e: unknown) => e instanceof LedgerError && e.status === 404);
-  await assert.rejects(setStock(gm, 'fussenbach', 'sword', { rarity: 13 }), LedgerError);
-  let l = await setStock(gm, 'fussenbach', 'elf-bow', { available: true, price: '60', notes: 'One, from a bargeman who did not say where he got it.' });
+  await assert.rejects(setStock(niklas, C, 'fussenbach', 'elf-bow', { available: true }), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(setStock(gm, C, 'fussenbach', 'nonsense', { available: true }), (e: unknown) => e instanceof LedgerError && e.status === 404);
+  await assert.rejects(setStock(gm, C, 'fussenbach', 'sword', { rarity: 13 }), LedgerError);
+  let l = await setStock(gm, C, 'fussenbach', 'elf-bow', { available: true, price: '60', notes: 'One, from a bargeman who did not say where he got it.' });
   let lines = stockOf(l.stock);
   const bow = lines.find((x) => x.itemId === 'elf-bow')!;
   assert.equal(bow.available, true);
   assert.equal(bow.price, '60');
   assert.equal(bow.chart?.price, '35+3D6');
   assert.equal(bow.notes, 'One, from a bargeman who did not say where he got it.');
-  l = await setStock(gm, 'fussenbach', 'elf-bow', { price: null });
+  l = await setStock(gm, C, 'fussenbach', 'elf-bow', { price: null });
   assert.equal(stockOf(l.stock).find((x) => x.itemId === 'elf-bow')!.price, '35+3D6', 'null puts a field back to the chart');
-  l = await setStock(gm, 'fussenbach', 'lucky-charm', { rarity: 0 });
+  l = await setStock(gm, C, 'fussenbach', 'lucky-charm', { rarity: 0 });
   assert.equal(stockOf(l.stock).find((x) => x.itemId === 'lucky-charm')!.available, true, 'made common, it is to be had');
-  l = await setStock(gm, 'fussenbach', 'lucky-charm', { rarity: null });
+  l = await setStock(gm, C, 'fussenbach', 'lucky-charm', { rarity: null });
   assert.ok(!l.stock.some((x) => x.itemId === 'lucky-charm'), 'back to the chart in every way, the row goes');
   // the post's own items
-  await assert.rejects(addItem(gm, 'fussenbach', { name: 'Eel oil', price: '  ' }), (e: unknown) => e instanceof LedgerError && /price/.test(e.message));
-  l = await addItem(gm, 'fussenbach', { name: 'Eel oil', price: '5+D6', rarity: 6, notes: 'Keeps the damp out of a lock.' });
-  l = await addItem(gm, 'fussenbach', { name: 'Eel oil', price: '5' });
+  await assert.rejects(addItem(gm, C, 'fussenbach', { name: 'Eel oil', price: '  ' }), (e: unknown) => e instanceof LedgerError && /price/.test(e.message));
+  l = await addItem(gm, C, 'fussenbach', { name: 'Eel oil', price: '5+D6', rarity: 6, notes: 'Keeps the damp out of a lock.' });
+  l = await addItem(gm, C, 'fussenbach', { name: 'Eel oil', price: '5' });
   assert.deepEqual(l.stock.filter((x) => x.custom).map((x) => x.itemId), ['custom-eel-oil', 'custom-eel-oil-2']);
   lines = stockOf(l.stock);
   assert.equal(lines.find((x) => x.itemId === 'custom-eel-oil')!.category, 'Miscellaneous equipment');
   assert.equal(lines.find((x) => x.itemId === 'custom-eel-oil')!.available, true);
-  l = await updateItem(gm, 'fussenbach', 'custom-eel-oil', { category: 'Fussenbach', available: false, rarity: 8 });
+  l = await updateItem(gm, C, 'fussenbach', 'custom-eel-oil', { category: 'Fussenbach', available: false, rarity: 8 });
   assert.equal(stockOf(l.stock).at(-1)!.itemId, 'custom-eel-oil', 'a category of the post’s own closes the list');
   assert.equal(stockOf(l.stock).at(-1)!.available, false);
-  await assert.rejects(setStock(gm, 'fussenbach', 'custom-eel-oil', { available: true }), (e: unknown) => e instanceof LedgerError && e.status === 404, 'a custom item is not amended as a chart item');
-  await assert.rejects(removeItem(gm, 'fussenbach', 'sword'), (e: unknown) => e instanceof LedgerError && e.status === 404, 'a chart item cannot be struck, only withheld');
-  l = await removeItem(gm, 'fussenbach', 'custom-eel-oil-2');
+  await assert.rejects(setStock(gm, C, 'fussenbach', 'custom-eel-oil', { available: true }), (e: unknown) => e instanceof LedgerError && e.status === 404, 'a custom item is not amended as a chart item');
+  await assert.rejects(removeItem(gm, C, 'fussenbach', 'sword'), (e: unknown) => e instanceof LedgerError && e.status === 404, 'a chart item cannot be struck, only withheld');
+  l = await removeItem(gm, C, 'fussenbach', 'custom-eel-oil-2');
   assert.deepEqual(l.stock.filter((x) => x.custom).map((x) => x.itemId), ['custom-eel-oil']);
-  assert.ok(!stockOf((await getLocation('mordheim'))!.stock).some((x) => x.changed.price || x.custom), 'another place’s post is untouched');
+  assert.ok(!stockOf((await getLocation('mordheim', C))!.stock).some((x) => x.changed.price || x.custom), 'another place’s post is untouched');
 });
 
 test('two seeds racing on an empty locations table write each place and its points once', async () => {
@@ -723,13 +724,13 @@ test('two seeds racing on an empty locations table write each place and its poin
   await db().delete(schema.locations);
   const [a, b] = await Promise.all([seedLocationsIfEmpty(), seedLocationsIfEmpty()]);
   assert.ok(a && b, 'both saw an empty table');
-  const list = await listLocations();
+  const list = await listLocations(C);
   assert.deepEqual(list.map((l) => l.id), locationFixtures.map((l) => l.id));
   assert.equal(list.find((l) => l.id === 'fussenbach')!.points.length, 12, 'the points are not doubled');
 });
 
 test('the battle told in one go: the short and long versions, the outcome and the epilogue, each by whoever may write it', async () => {
-  const s = await createScenario(gm, { title: 'The Long and the Short', playedOn: '2026-12-12', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  const s = await createScenario(gm, C, { title: 'The Long and the Short', playedOn: '2026-12-12', warbandIds: ['nordost', 'bitterbrow-expedition'] });
   let t = await writeBattleReport(gm, s.id, { summary: 'Two warbands, one bridge.' });
   assert.equal(t.summary, 'Two warbands, one bridge.', 'an upcoming game takes the short version alone');
   await markPlayed(gm, s.id, [{ warbandId: 'nordost', result: 'victory' }, { warbandId: 'bitterbrow-expedition', result: 'defeat' }]);
@@ -751,7 +752,7 @@ test('the battle told in one go: the short and long versions, the outcome and th
 
 test('long-form Markdown survives saving, reloading and revising every kind of prose', async () => {
   const source = '    An order in the margin\n\n## At the gate\n\n- **Watch**\n  - Wait\n\n```text\n    1\n\n\n\n    2\n```\n\nA line  \nAnother line\n';
-  const warband = await createWarband(gm, { name: 'The Markdown Watch', type: 'Mercenaries', lore: source });
+  const warband = await createWarband(gm, C, { name: 'The Markdown Watch', type: 'Mercenaries', lore: source });
   assert.equal(warband.lore, source);
   assert.equal((await updateWarband(gm, warband.id, { lore: source })).lore, source);
   let roll = await addMember(gm, warband.id, { name: 'The Scribe', lore: source });
@@ -765,20 +766,20 @@ test('long-form Markdown survives saving, reloading and revising every kind of p
   chapters = await updateChapter(gm, chapters[0].id, { blocks: [{ kind: 'text', text: source }] });
   assert.deepEqual((await listChapters(warband.id))[0].blocks, [{ kind: 'text', text: source }]);
 
-  let location = await createLocation(gm, { name: 'The Written Gate', description: source });
+  let location = await createLocation(gm, C, { name: 'The Written Gate', description: source });
   assert.equal(location.description, source);
-  location = await updateLocation(gm, location.id, { description: source });
+  location = await updateLocation(gm, C, location.id, { description: source });
   assert.equal(location.description, source);
-  location = await addPoint(gm, location.id, { name: 'The margin', description: source });
+  location = await addPoint(gm, C, location.id, { name: 'The margin', description: source });
   assert.equal(location.points[0].description, source);
-  location = await updatePoint(gm, location.points[0].id, { description: source });
+  location = await updatePoint(gm, C, location.points[0].id, { description: source });
   assert.equal(location.points[0].description, source);
 
-  const article = await createArticle(gm, { headline: 'Orders Left in Margin', body: source });
+  const article = await createArticle(gm, C, { headline: 'Orders Left in Margin', body: source });
   assert.equal(article.body, source);
   assert.equal((await updateArticle(gm, article.id, { body: source })).body, source);
 
-  let scenario = await createScenario(gm, { title: 'The Written Battle', playedOn: '2026-12-13', warbandIds: [warband.id], prologue: source, customRules: source, summary: source });
+  let scenario = await createScenario(gm, C, { title: 'The Written Battle', playedOn: '2026-12-13', warbandIds: [warband.id], prologue: source, customRules: source, summary: source });
   assert.equal(scenario.prologue, source);
   assert.equal(scenario.customRules, source);
   assert.equal(scenario.summary, source);
@@ -799,8 +800,8 @@ test('long-form Markdown survives saving, reloading and revising every kind of p
 test('something to hold: the game master sets it up, the table checks it, a second telling replaces the first, a strike takes the check whole', async () => {
   const { recordCheck } = await import('./scenarios.ts');
   const { objectiveScores, objectiveOf } = await import('../../campaign/objective.ts');
-  await assert.rejects(createScenario(gm, { title: 'The Well', playedOn: '2026-10-13', objective: { name: 'Markers', kind: 'many', count: 1, when: 'round-end' } }), (e: unknown) => e instanceof LedgerError && /from 2/.test(e.message));
-  let s = await createScenario(gm, { title: 'The Well', playedOn: '2026-10-13', warbandIds: ['nordost', 'bitterbrow-expedition'], objective: { name: 'The well', kind: 'one', count: 9, when: 'round-end' } });
+  await assert.rejects(createScenario(gm, C, { title: 'The Well', playedOn: '2026-10-13', objective: { name: 'Markers', kind: 'many', count: 1, when: 'round-end' } }), (e: unknown) => e instanceof LedgerError && /from 2/.test(e.message));
+  let s = await createScenario(gm, C, { title: 'The Well', playedOn: '2026-10-13', warbandIds: ['nordost', 'bitterbrow-expedition'], objective: { name: 'The well', kind: 'one', count: 9, when: 'round-end' } });
   assert.deepEqual(s.objective, { name: 'The well', kind: 'one', count: 1, when: 'round-end' });
 
   await assert.rejects(recordCheck(stranger, s.id, { turn: 1, held: { nordost: 1 } }), (e: unknown) => e instanceof LedgerError && e.status === 403);
@@ -832,7 +833,7 @@ test('something to hold: the game master sets it up, the table checks it, a seco
 });
 
 test('pictures at the table: kept large with a small one for the log, by the turn, struck with their line and gone when the game starts over', async () => {
-  let s = await createScenario(gm, { title: 'The Snapshot', playedOn: '2026-10-17', warbandIds: ['nordost', 'bitterbrow-expedition'] });
+  let s = await createScenario(gm, C, { title: 'The Snapshot', playedOn: '2026-10-17', warbandIds: ['nordost', 'bitterbrow-expedition'] });
   // a JPEG by its first bytes, which is all the server checks; the browser has done the rest
   const jpeg = (n: number) => ({ mime: 'image/jpeg', bytes: Uint8Array.from({ length: n }, (_, i) => [0xff, 0xd8, 0xff][i] ?? i % 251) });
   const shot = { picture: jpeg(3_000_000), preview: jpeg(200_000) };

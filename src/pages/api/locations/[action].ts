@@ -6,7 +6,7 @@ import type { APIRoute } from 'astro';
 import { z } from 'zod';
 import { dispatch, route } from '../../../server/api';
 import { IMAGE_TYPES } from '../../../server/campaign/chapters';
-import { addItem, addPoint, createLocation, deleteLocation, movePoint, removeBanner, removeItem, removeMap, removePoint, setStock, updateItem, updateLocation, updatePoint, uploadPicture } from '../../../server/campaign/locations';
+import { addItem, addPoint, adoptLocation, createLocation, deleteLocation, movePoint, removeBanner, removeItem, removeMap, removePoint, setStock, updateItem, updateLocation, updatePoint, uploadPicture } from '../../../server/campaign/locations';
 
 export const prerender = false;
 
@@ -21,23 +21,24 @@ const itemFields = { name: z.string().max(80), category: z.string().max(60), pri
 const wrap = (p: Promise<unknown>) => p.then((location) => ({ location }));
 
 const routes = {
-  create: route(z.object(locationFields).partial().required({ name: true }), (i, a) => wrap(createLocation(a, i)), 'gm'),
-  update: route(z.object({ locationId: id, patch: z.object(locationFields).partial() }), (i, a) => wrap(updateLocation(a, i.locationId, i.patch)), 'gm'),
-  delete: route(z.object({ locationId: id }), (i, a) => deleteLocation(a, i.locationId).then(() => ({ ok: true })), 'gm'),
+  create: route(z.object(locationFields).partial().required({ name: true }), (i, a, _r, c) => wrap(createLocation(a, c.id, i)), 'gm'),
+  update: route(z.object({ locationId: id, patch: z.object(locationFields).partial() }), (i, a, _r, c) => wrap(updateLocation(a, c.id, i.locationId, i.patch)), 'gm'),
+  delete: route(z.object({ locationId: id }), (i, a, _r, c) => deleteLocation(a, c.id, i.locationId).then(() => ({ ok: true })), 'gm'),
   // base64 of a picture the browser has already shrunk; the service caps the decoded size
-  'upload-map': route(picture, (i, a) => wrap(uploadPicture(a, i.locationId, 'map', i.mime, i.data)), 'gm'),
-  'remove-map': route(z.object({ locationId: id }), (i, a) => wrap(removeMap(a, i.locationId)), 'gm'),
-  'upload-banner': route(picture, (i, a) => wrap(uploadPicture(a, i.locationId, 'banner', i.mime, i.data)), 'gm'),
-  'remove-banner': route(z.object({ locationId: id }), (i, a) => wrap(removeBanner(a, i.locationId)), 'gm'),
-  'add-point': route(z.object({ locationId: id, point: z.object(pointFields).partial().required({ name: true }) }), (i, a) => wrap(addPoint(a, i.locationId, i.point)), 'gm'),
-  'update-point': route(z.object({ pointId, patch: z.object(pointFields).partial() }), (i, a) => wrap(updatePoint(a, i.pointId, i.patch)), 'gm'),
-  'remove-point': route(z.object({ pointId }), (i, a) => wrap(removePoint(a, i.pointId)), 'gm'),
-  'move-point': route(z.object({ pointId, by: z.union([z.literal(-1), z.literal(1)]) }), (i, a) => wrap(movePoint(a, i.pointId, i.by)), 'gm'),
+  'upload-map': route(picture, (i, a, _r, c) => wrap(uploadPicture(a, c.id, i.locationId, 'map', i.mime, i.data)), 'gm'),
+  'remove-map': route(z.object({ locationId: id }), (i, a, _r, c) => wrap(removeMap(a, c.id, i.locationId)), 'gm'),
+  'upload-banner': route(picture, (i, a, _r, c) => wrap(uploadPicture(a, c.id, i.locationId, 'banner', i.mime, i.data)), 'gm'),
+  'remove-banner': route(z.object({ locationId: id }), (i, a, _r, c) => wrap(removeBanner(a, c.id, i.locationId)), 'gm'),
+  'add-point': route(z.object({ locationId: id, point: z.object(pointFields).partial().required({ name: true }) }), (i, a, _r, c) => wrap(addPoint(a, c.id, i.locationId, i.point)), 'gm'),
+  'update-point': route(z.object({ pointId, patch: z.object(pointFields).partial() }), (i, a, _r, c) => wrap(updatePoint(a, c.id, i.pointId, i.patch)), 'gm'),
+  'remove-point': route(z.object({ pointId }), (i, a, _r, c) => wrap(removePoint(a, c.id, i.pointId)), 'gm'),
+  'move-point': route(z.object({ pointId, by: z.union([z.literal(-1), z.literal(1)]) }), (i, a, _r, c) => wrap(movePoint(a, c.id, i.pointId, i.by)), 'gm'),
   // the trading post
-  stock: route(z.object({ locationId: id, itemId: z.string().max(80), patch: z.object({ available: z.boolean().nullable(), price: z.string().max(40).nullable(), rarity: rarity.nullable(), notes: z.string().max(500) }).partial() }), (i, a) => wrap(setStock(a, i.locationId, i.itemId, i.patch)), 'gm'),
-  'add-item': route(z.object({ locationId: id, item: z.object(itemFields).partial().required({ name: true, price: true }) }), (i, a) => wrap(addItem(a, i.locationId, i.item)), 'gm'),
-  'update-item': route(z.object({ locationId: id, itemId: z.string().max(80), patch: z.object(itemFields).partial() }), (i, a) => wrap(updateItem(a, i.locationId, i.itemId, i.patch)), 'gm'),
-  'remove-item': route(z.object({ locationId: id, itemId: z.string().max(80) }), (i, a) => wrap(removeItem(a, i.locationId, i.itemId)), 'gm'),
+  stock: route(z.object({ locationId: id, itemId: z.string().max(80), patch: z.object({ available: z.boolean().nullable(), price: z.string().max(40).nullable(), rarity: rarity.nullable(), notes: z.string().max(500) }).partial() }), (i, a, _r, c) => wrap(setStock(a, c.id, i.locationId, i.itemId, i.patch)), 'gm'),
+  'add-item': route(z.object({ locationId: id, item: z.object(itemFields).partial().required({ name: true, price: true }) }), (i, a, _r, c) => wrap(addItem(a, c.id, i.locationId, i.item)), 'gm'),
+  'update-item': route(z.object({ locationId: id, itemId: z.string().max(80), patch: z.object(itemFields).partial() }), (i, a, _r, c) => wrap(updateItem(a, c.id, i.locationId, i.itemId, i.patch)), 'gm'),
+  adopt: route(z.object({ locationId: id }), (i, a, _r, c) => wrap(adoptLocation(a, c.id, i.locationId)), 'gm'),
+  'remove-item': route(z.object({ locationId: id, itemId: z.string().max(80) }), (i, a, _r, c) => wrap(removeItem(a, c.id, i.locationId, i.itemId)), 'gm'),
 };
 
-export const POST: APIRoute = ({ request, params }) => dispatch(routes, params.action, request, 'locations');
+export const POST: APIRoute = ({ request, params, locals }) => dispatch(routes, params.action, request, 'locations', locals.campaign);

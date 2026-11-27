@@ -9,7 +9,9 @@ import { SIDE_LABEL, houseScenario, rollBrings } from '../campaign/house';
 import { TAROT_KIND_LABEL, cardById } from '../campaign/tarot';
 import { checksOf, describeCheck, objectiveOf, objectiveScores } from '../campaign/objective';
 import WarbandLabel from './WarbandLabel.astro';
-import { base } from '../lib/site';
+
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
 
 interface Props { scenario: Scenario; warbands: Warband[] }
 const { scenario, warbands } = Astro.props;

@@ -61,3 +61,18 @@ test('slugs, dates and time zones', () => {
   assert.ok(isTimeZone('Europe/Stockholm'));
   assert.ok(!isTimeZone('Mars/Olympus'));
 });
+
+test('the campaign’s clock is the engine’s', async () => {
+  const { createEngine, BUILT_IN_DOCUMENTS } = await import('../curfew/engine.ts');
+  const { nightNow, nightOn, localDateIn } = await import('./campaign.ts');
+  const other = { ...DEFAULT_CAMPAIGN, id: 'other', start: '2027-03-01', timezone: 'America/Los_Angeles' };
+  for (const c of [DEFAULT_CAMPAIGN, other]) {
+    const e = createEngine({ campaign: c, content: BUILT_IN_DOCUMENTS });
+    for (const iso of ['2026-09-09T22:30:00Z', '2027-03-01T07:59:00Z', '2027-03-01T08:01:00Z', '2028-01-01T12:00:00Z']) {
+      const now = new Date(iso);
+      assert.equal(localDateIn(c.timezone, now), e.localDate(now, c.timezone));
+      assert.equal(nightNow(c, now), e.currentNight(now));
+    }
+    assert.equal(nightOn(c, '2027-03-02'), e.nightForDate('2027-03-02'));
+  }
+});

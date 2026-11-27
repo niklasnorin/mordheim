@@ -9,6 +9,9 @@ import type { Roster } from '../../builder/evaluate.ts';
 import { buyItem, changeRoster, drawUp, foundWarband, hire, income, keepView, keepViewFor, loseWarrior, moveGear, promote, proposalFor, recruit, sellItem, undoLast, wyrdstoneIncome, LedgerError } from './keep.ts';
 import { getWarband, updateMember } from './roster.ts';
 
+/** The first campaign, which the seed fills. */
+const C = 'mordheim-2000';
+
 const gm = actorOf('user-gm', 'Game Master', 'gm');
 const hilde = actorOf('user-hilde', 'Hilde');
 const rival = actorOf('user-rival', 'Rival');
@@ -34,7 +37,7 @@ let warbandId = '';
 test('a player founds a warband from the builder: its warriors on the record, the rest of the 500 crowns in the stash', async () => {
   const { roster, names } = startingRoster();
   const spent = summarise(reik, roster).spent;
-  const w = await foundWarband(hilde, { name: 'The Silver Hand', roster, names });
+  const w = await foundWarband(hilde, C, { name: 'The Silver Hand', roster, names });
   warbandId = w.id;
   assert.equal(w.ownerId, hilde.id);
   assert.equal(w.type, 'Reiklanders');
@@ -48,7 +51,7 @@ test('a player founds a warband from the builder: its warriors on the record, th
   const v = await keepView(w.id);
   assert.equal(v.gold, 500 - spent);
   assert.equal(v.log[0].kind, 'found');
-  await assert.rejects(foundWarband(hilde, { name: 'Another', ...startingRoster() }), (e: unknown) => e instanceof LedgerError && e.status === 409);
+  await assert.rejects(foundWarband(hilde, C, { name: 'Another', ...startingRoster() }), (e: unknown) => e instanceof LedgerError && e.status === 409);
   const hidden = await keepViewFor(rival, w.id);
   assert.equal(hidden.log.length, 0, 'a rival does not read the stash');
 });
@@ -57,10 +60,10 @@ test('a roster that breaks the rules or overspends is not founded', async () => 
   const id = ids();
   let r = newRoster(reik, 'reiklanders', id);
   r = addNamed(reik, r, null, 'Warriors', id).roster;
-  await assert.rejects(foundWarband(gm, { name: 'Leaderless', roster: r, names: {} }), (e: unknown) => e instanceof LedgerError && /Captain|heroes/.test(e.message));
+  await assert.rejects(foundWarband(gm, C, { name: 'Leaderless', roster: r, names: {} }), (e: unknown) => e instanceof LedgerError && /Captain|heroes/.test(e.message));
   const bad = structuredClone(startingRoster().roster);
   bad.selections[0].children.push({ id: 'x1', entry: bad.selections.find((s) => reik.nodes.get(s.entry)?.name === 'Mercenary Captain')!.entry, count: 1, children: [] });
-  await assert.rejects(foundWarband(gm, { name: 'Odd', roster: bad, names: {} }), (e: unknown) => e instanceof LedgerError && /not offered where it stands/.test(e.message));
+  await assert.rejects(foundWarband(gm, C, { name: 'Odd', roster: bad, names: {} }), (e: unknown) => e instanceof LedgerError && /not offered where it stands/.test(e.message));
 });
 
 test('between games: hire and recruit from the stash, buy at the post, arm a warrior from the stash, sell the rest', async () => {
@@ -168,7 +171,7 @@ test('a written warband is drawn up from its record and confirmed by its keeper'
 test('a played game’s experience goes onto the roster once, and the Fountain Post pays a built warband through its log', async () => {
   const { listScenarios } = await import('./scenarios.ts');
   const { payIn, awardExperience: award } = await import('./keep.ts');
-  const game = (await listScenarios()).find((s) => s.status === 'played' && s.warbands.some((p) => p.warbandId === 'nordost'))!;
+  const game = (await listScenarios(C)).find((s) => s.status === 'played' && s.warbands.some((p) => p.warbandId === 'nordost'))!;
   assert.ok(game, 'the seed has a played game for the Kin');
   let v = await keepView('nordost');
   const b = bundleFor('ostlanders')!;

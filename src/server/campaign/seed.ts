@@ -5,7 +5,7 @@
  */
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { locationJobs, locationPoints, locations, members, newsArticles, scenarioMembers, scenarioOutOfAction, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
+import { FIRST_CAMPAIGN_ID, locationJobs, locationPoints, locations, members, newsArticles, scenarioMembers, scenarioOutOfAction, scenarioWarbands, scenarios, warbands } from '../db/schema.ts';
 import { warbands as seedWarbands } from '../../data/warbands.ts';
 import { locations as seedLocations } from '../../data/locations.ts';
 import { news as seedNews } from '../../data/news.ts';
@@ -66,6 +66,8 @@ export async function seedLocationsIfEmpty(): Promise<boolean> {
     const written = await d.insert(locations).values({ id: l.id, name: l.name, region: l.region, description: l.description, map: l.map ?? null, banner: l.banner ?? null, bannerFocus: l.bannerFocus ?? '50% 50%', sort: i + 1 }).onConflictDoNothing().returning({ id: locations.id });
     if (!written.length) continue;
     for (const [j, p] of l.points.entries()) await d.insert(locationPoints).values({ locationId: l.id, name: p.name, kind: p.kind, description: p.description, x: p.x ?? null, y: p.y ?? null, sort: j + 1 });
+    // the seed's places are the first campaign's, once its row exists (`ensureCampaigns` fills them in otherwise)
+    await d.execute(sql`insert into campaign_locations (campaign_id, location_id, sort) select ${FIRST_CAMPAIGN_ID}, ${l.id}, ${i + 1} where exists (select 1 from campaigns where id = ${FIRST_CAMPAIGN_ID}) on conflict do nothing`);
   }
   return true;
 }
@@ -87,14 +89,15 @@ export function ensureJobsSeeded(): Promise<void> {
 /** Bring the boards up to the seed, as `ensureJobsSeeded` says. Answers how many jobs were nailed up or brought up to date. */
 export async function seedJobs(): Promise<number> {
   const d = db();
-  const [placed, points, existing] = await Promise.all([d.select({ id: locations.id }).from(locations), d.select().from(locationPoints), d.select().from(locationJobs)]);
+  // the seed's boards are the first campaign's; a later campaign copies its own when it is made
+  const [placed, points, existing] = await Promise.all([d.select({ id: locations.id }).from(locations), d.select().from(locationPoints), d.select().from(locationJobs).where(eq(locationJobs.campaignId, FIRST_CAMPAIGN_ID))]);
   const here = new Set(placed.map((l) => l.id));
   const wanted = seedLocations.filter((l) => here.has(l.id)).flatMap((l) => (l.jobs ?? []).map((j, i) => ({
     locationId: l.id, pointId: points.find((p) => p.locationId === l.id && p.name === j.point)?.id ?? null, title: j.title, text: j.text, lean: j.lean, scope: j.scope, sort: i + 1,
   })));
   const fresh = wanted.filter((w) => !existing.some((e) => e.locationId === w.locationId && e.title === w.title));
   // two cold starts may race; a job's title is its own on its board
-  if (fresh.length) await d.insert(locationJobs).values(fresh).onConflictDoNothing();
+  if (fresh.length) await d.insert(locationJobs).values(fresh.map((f) => ({ ...f, campaignId: FIRST_CAMPAIGN_ID }))).onConflictDoNothing();
   let changed = fresh.length;
   for (const w of wanted) {
     const e = existing.find((x) => x.locationId === w.locationId && x.title === w.title);

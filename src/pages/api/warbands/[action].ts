@@ -45,7 +45,7 @@ const kept = { warbandId: id, version: z.number().int().min(0) };
 
 const routes = {
   // the warband builder: founding, drawing up a written roster, and keeping it between games
-  found: route(z.object({ name: z.string().max(80), player: z.string().max(40).optional(), roster, names }), (i, a) => foundWarband(a, i).then((warband) => ({ warband }))),
+  found: route(z.object({ name: z.string().max(80), player: z.string().max(40).optional(), roster, names }), (i, a, _r, c) => foundWarband(a, c.id, i).then((warband) => ({ warband }))),
   keep: route(z.object({ warbandId: id }), (i, a) => keepViewFor(a, i.warbandId).then((keep) => ({ keep }))),
   'draw-up': route(z.object({ warbandId: id, roster, names: names.optional(), gold: z.number().int().min(0).max(100000), shards: z.number().int().min(0).max(999).optional() }), (i, a) => drawUp(a, i.warbandId, i).then((keep) => ({ keep }))),
   'roster-op': route(z.object({ ...kept, op, free: z.boolean().optional() }), (i, a) => changeRoster(a, i.warbandId, i.version, i.op, !!i.free).then((keep) => ({ keep }))),
@@ -61,7 +61,7 @@ const routes = {
   undo: route(z.object({ warbandId: id }), (i, a) => undoLast(a, i.warbandId).then((keep) => ({ keep }))),
   'drop-roster': route(z.object({ warbandId: id }), (i, a) => dropRoster(a, i.warbandId).then((keep) => ({ keep })), 'gm'),
 
-  create: route(z.object({ ...warbandFields }).partial().required({ name: true, type: true }), (i, a) => createWarband(a, i).then((warband) => ({ warband }))),
+  create: route(z.object({ ...warbandFields }).partial().required({ name: true, type: true }), (i, a, _r, c) => createWarband(a, c.id, i).then((warband) => ({ warband }))),
   update: route(z.object({ warbandId: id, patch: z.object(warbandFields).partial() }), (i, a) => updateWarband(a, i.warbandId, i.patch).then((warband) => ({ warband }))),
   claim: route(z.object({ warbandId: id }), (i, a) => claimWarband(a, i.warbandId).then((warband) => ({ warband }))),
   release: route(z.object({ warbandId: id }), (i, a) => releaseWarband(a, i.warbandId).then(() => ({ ok: true }))),
@@ -83,4 +83,4 @@ const routes = {
   reorder: route(z.object({ warbandId: id, order: z.array(id).max(60) }), (i, a) => reorderMembers(a, i.warbandId, i.order).then((warband) => ({ warband }))),
 };
 
-export const POST: APIRoute = ({ request, params }) => dispatch(routes, params.action, request, 'warbands');
+export const POST: APIRoute = ({ request, params, locals }) => dispatch(routes, params.action, request, 'warbands', locals.campaign);

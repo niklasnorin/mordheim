@@ -7,8 +7,10 @@ import { hasDatabase } from './db/client.ts';
 import { json, sameOrigin } from './http.ts';
 import { getActor, isAdmin, isGm, type Actor, type Role } from './roles.ts';
 import { LedgerError } from '../curfew/ledger.ts';
+import type { CampaignConfig } from '../campaign/campaign.ts';
 
-export type Handler<S extends z.ZodTypeAny> = (input: z.infer<S>, actor: Actor, request: Request) => Promise<unknown>;
+/** A route's work: the checked body, who asks, the request, and the campaign it is asked in (`locals.campaign`). */
+export type Handler<S extends z.ZodTypeAny> = (input: z.infer<S>, actor: Actor, request: Request, campaign: CampaignConfig) => Promise<unknown>;
 export interface Route<S extends z.ZodTypeAny> { schema: S; /** The least role that may call it. */ role?: Role; handle: Handler<S> }
 
 export function route<S extends z.ZodTypeAny>(schema: S, handle: Handler<S>, role: Role = 'player'): Route<S> { return { schema, role, handle }; }
@@ -27,8 +29,8 @@ async function bodyOf(request: Request): Promise<unknown> {
   return out;
 }
 
-/** Run a routing table for a request; `action` is the path segment. */
-export async function dispatch(routes: Record<string, Route<z.ZodTypeAny>>, action: string | undefined, request: Request, log: string): Promise<Response> {
+/** Run a routing table for a request in a campaign; `action` is the path segment. */
+export async function dispatch(routes: Record<string, Route<z.ZodTypeAny>>, action: string | undefined, request: Request, log: string, campaign: CampaignConfig): Promise<Response> {
   if (!hasDatabase()) return json({ error: 'The ledgers are not open on this deployment.' }, 503);
   if (!sameOrigin(request)) return json({ error: 'Not from here.' }, 403);
   const r = action ? routes[action] : undefined;
@@ -41,7 +43,7 @@ export async function dispatch(routes: Record<string, Route<z.ZodTypeAny>>, acti
   const parsed = r.schema.safeParse(body ?? {});
   if (!parsed.success) return json({ error: 'The order could not be read.' }, 400);
   try {
-    const out = await r.handle(parsed.data, actor, request);
+    const out = await r.handle(parsed.data, actor, request, campaign);
     return json(out ?? { ok: true });
   } catch (e) {
     if (e instanceof LedgerError) return json({ error: e.message }, e.status);

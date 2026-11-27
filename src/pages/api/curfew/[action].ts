@@ -31,7 +31,8 @@ const schemas = {
 } as const;
 type Action = keyof typeof schemas;
 
-export const POST: APIRoute = async ({ request, params }) => {
+export const POST: APIRoute = async ({ request, params, locals }) => {
+  const campaign = locals.campaign, cid = campaign.id;
   if (!hasDatabase()) return json({ error: 'The ledgers are not open on this deployment.' }, 503);
   const url = new URL(request.url);
   if (!sameOrigin(request)) return json({ error: 'Not from here.' }, 403);
@@ -53,22 +54,23 @@ export const POST: APIRoute = async ({ request, params }) => {
   const parsed = schema.safeParse(rest);
   if (!parsed.success) return json({ error: 'The orders could not be read.' }, 400);
   const input = parsed.data as z.infer<typeof schema>;
-  const today = todayFor(url, viewer);
+  const today = todayFor(campaign, url, viewer);
+  if (!campaign.options.curfew) return json({ error: 'There is no curfew in this campaign.' }, 404);
 
   try {
     switch (action) {
-      case 'look': return json({ view: await actions.look(viewer.id, today, dry) });
-      case 'claim': return json({ view: await claimWarband(viewer.id, (input as z.infer<typeof schemas.claim>).warbandId, today) });
-      case 'release': await releaseWarband(viewer.id); return json({ view: null });
-      case 'reset': return json({ view: await actions.reset(viewer.id, today, dry) });
-      case 'orders': return json({ view: await actions.orders(viewer.id, today, (input as z.infer<typeof schemas.orders>).orders as Parameters<typeof actions.orders>[2], dry) });
-      case 'heal': return json({ view: await actions.heal(viewer.id, today, (input as z.infer<typeof schemas.heal>).memberId, dry) });
-      case 'offer': { const i = input as z.infer<typeof schemas.offer>; return json({ view: await actions.offer(viewer.id, today, i.offer, i.keep, dry) }); }
-      case 'decide': { const i = input as z.infer<typeof schemas.decide>; return json({ view: await actions.decide(viewer.id, today, i.night, i.roadId, dry) }); }
-      case 'eve-open': return json({ view: await actions.eveOpen(viewer.id, today, dry) });
-      case 'eve-lay': { const i = input as z.infer<typeof schemas['eve-lay']>; return json({ view: await actions.eveLay(viewer.id, today, i.bring, i.flourish, dry) }); }
-      case 'eve-done': return json({ view: await actions.eveDone(viewer.id, today, dry) });
-      case 'eve-undo': return json({ view: await actions.eveUndo(viewer.id, today, dry) });
+      case 'look': return json({ view: await actions.look(cid, viewer.id, today, dry) });
+      case 'claim': return json({ view: await claimWarband(cid, viewer.id, (input as z.infer<typeof schemas.claim>).warbandId, today) });
+      case 'release': await releaseWarband(cid, viewer.id); return json({ view: null });
+      case 'reset': return json({ view: await actions.reset(cid, viewer.id, today, dry) });
+      case 'orders': return json({ view: await actions.orders(cid, viewer.id, today, (input as z.infer<typeof schemas.orders>).orders as Parameters<typeof actions.orders>[3], dry) });
+      case 'heal': return json({ view: await actions.heal(cid, viewer.id, today, (input as z.infer<typeof schemas.heal>).memberId, dry) });
+      case 'offer': { const i = input as z.infer<typeof schemas.offer>; return json({ view: await actions.offer(cid, viewer.id, today, i.offer, i.keep, dry) }); }
+      case 'decide': { const i = input as z.infer<typeof schemas.decide>; return json({ view: await actions.decide(cid, viewer.id, today, i.night, i.roadId, dry) }); }
+      case 'eve-open': return json({ view: await actions.eveOpen(cid, viewer.id, today, dry) });
+      case 'eve-lay': { const i = input as z.infer<typeof schemas['eve-lay']>; return json({ view: await actions.eveLay(cid, viewer.id, today, i.bring, i.flourish, dry) }); }
+      case 'eve-done': return json({ view: await actions.eveDone(cid, viewer.id, today, dry) });
+      case 'eve-undo': return json({ view: await actions.eveUndo(cid, viewer.id, today, dry) });
       default: return json({ error: 'No such errand.' }, 404);
     }
   } catch (e) {

@@ -11,7 +11,7 @@
  */
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { locationJobs, locationPoints, locations, members, warbandJobs, warbands as warbandTable } from '../db/schema.ts';
+import { FIRST_CAMPAIGN_ID, locationJobs, locationPoints, locations, members, warbandJobs, warbands as warbandTable } from '../db/schema.ts';
 import { LedgerError } from '../../curfew/ledger.ts';
 import { leaderOf, type Scenario, type Warband } from '../../campaign/model.ts';
 import { DICE_HIGH, DICE_LOW, JOB_LEANS, JOB_SCOPES, isD6, isDiceTotal, jobSeed, reckon, shutBecause, type Grant, type Job, type JobLean, type JobScope, type Reckoning, type Standing, type TableRolls } from '../../campaign/jobs.ts';
@@ -20,6 +20,7 @@ import { isGm, type Actor } from '../roles.ts';
 import { listWarbands } from './roster.ts';
 import { listScenarios, upcomingOnly } from './scenarios.ts';
 import { ensureJobsSeeded } from './seed.ts';
+import { campaignOfScenario } from './guard.ts';
 import { locations as seedLocations } from '../../data/locations.ts';
 
 export { LedgerError };
@@ -32,10 +33,10 @@ function gmOnly(actor: Actor): void { if (!isGm(actor)) throw new LedgerError('T
 type JobRow = typeof locationJobs.$inferSelect;
 const jobOf = (r: JobRow): Job => ({ id: r.id, locationId: r.locationId, pointId: r.pointId, title: r.title, text: r.text, lean: r.lean, scope: r.scope, withheld: r.withheld, sort: r.sort });
 
-/** Every job on every board, or on one location's, in the game master's order. */
-export async function listJobs(locationId?: string): Promise<Job[]> {
+/** Every job on a campaign's boards, or on one location's, in the game master's order. */
+export async function listJobs(campaignId: string, locationId?: string): Promise<Job[]> {
   await ensureJobsSeeded();
-  const rows = await db().select().from(locationJobs).where(locationId ? eq(locationJobs.locationId, locationId) : undefined).orderBy(asc(locationJobs.locationId), asc(locationJobs.sort), asc(locationJobs.id));
+  const rows = await db().select().from(locationJobs).where(and(eq(locationJobs.campaignId, campaignId), locationId ? eq(locationJobs.locationId, locationId) : undefined)).orderBy(asc(locationJobs.locationId), asc(locationJobs.sort), asc(locationJobs.id));
   return rows.map(jobOf);
 }
 
@@ -50,22 +51,22 @@ async function pointIn(locationId: string, pointId: number | null | undefined): 
 const leanOf = (given: string | undefined, fallback: JobLean): JobLean => (given && (JOB_LEANS as readonly string[]).includes(given) ? (given as JobLean) : fallback);
 const scopeOf = (given: string | undefined, fallback: JobScope): JobScope => (given && (JOB_SCOPES as readonly string[]).includes(given) ? (given as JobScope) : fallback);
 /** A title is its own on its board; the seed relies on it. */
-async function titleFree(locationId: string, title: string, except?: number): Promise<void> {
-  const rows = await db().select({ id: locationJobs.id }).from(locationJobs).where(and(eq(locationJobs.locationId, locationId), eq(locationJobs.title, title))).limit(1);
+async function titleFree(campaignId: string, locationId: string, title: string, except?: number): Promise<void> {
+  const rows = await db().select({ id: locationJobs.id }).from(locationJobs).where(and(eq(locationJobs.campaignId, campaignId), eq(locationJobs.locationId, locationId), eq(locationJobs.title, title))).limit(1);
   if (rows.length && rows[0].id !== except) throw new LedgerError('There is a job of that name on the post already.', 409);
 }
 
-export async function addJob(actor: Actor, locationId: string, input: JobInput): Promise<Job[]> {
+export async function addJob(actor: Actor, campaignId: string, locationId: string, input: JobInput): Promise<Job[]> {
   gmOnly(actor);
   await ensureJobsSeeded();
   const place = await db().select({ id: locations.id }).from(locations).where(eq(locations.id, locationId)).limit(1);
   if (!place.length) throw new LedgerError('No such place is on the map.', 404);
   const title = clean(input.title, 80);
   if (!title) throw new LedgerError('The job needs a name.');
-  await titleFree(locationId, title);
-  const [{ n }] = await db().select({ n: sql<number>`coalesce(max(${locationJobs.sort}), 0)::int` }).from(locationJobs).where(eq(locationJobs.locationId, locationId));
-  await db().insert(locationJobs).values({ locationId, title, text: proseSource(input.text, 1000), lean: leanOf(input.lean, 'even'), scope: scopeOf(input.scope, 'errand'), pointId: await pointIn(locationId, input.pointId), withheld: !!input.withheld, sort: n + 1 });
-  return listJobs(locationId);
+  await titleFree(campaignId, locationId, title);
+  const [{ n }] = await db().select({ n: sql<number>`coalesce(max(${locationJobs.sort}), 0)::int` }).from(locationJobs).where(and(eq(locationJobs.campaignId, campaignId), eq(locationJobs.locationId, locationId)));
+  await db().insert(locationJobs).values({ campaignId, locationId, title, text: proseSource(input.text, 1000), lean: leanOf(input.lean, 'even'), scope: scopeOf(input.scope, 'errand'), pointId: await pointIn(locationId, input.pointId), withheld: !!input.withheld, sort: n + 1 });
+  return listJobs(campaignId, locationId);
 }
 
 async function jobRow(jobId: number): Promise<JobRow> {
@@ -78,18 +79,18 @@ export async function updateJob(actor: Actor, jobId: number, patch: Partial<JobI
   gmOnly(actor);
   const j = await jobRow(jobId);
   const set: Partial<typeof locationJobs.$inferInsert> = { updatedAt: new Date() };
-  if (patch.title !== undefined) { const title = clean(patch.title, 80); if (!title) throw new LedgerError('The job needs a name.'); await titleFree(j.locationId, title, j.id); set.title = title; }
+  if (patch.title !== undefined) { const title = clean(patch.title, 80); if (!title) throw new LedgerError('The job needs a name.'); await titleFree(j.campaignId, j.locationId, title, j.id); set.title = title; }
   if (patch.text !== undefined) set.text = proseSource(patch.text, 1000);
   if (patch.lean !== undefined) set.lean = leanOf(patch.lean, j.lean);
   if (patch.scope !== undefined) set.scope = scopeOf(patch.scope, j.scope);
   if (patch.pointId !== undefined) set.pointId = await pointIn(j.locationId, patch.pointId);
   if (patch.withheld !== undefined) set.withheld = !!patch.withheld;
   await db().update(locationJobs).set(set).where(eq(locationJobs.id, jobId));
-  return listJobs(j.locationId);
+  return listJobs(j.campaignId, j.locationId);
 }
 
 /** Whether a job is one of the seed's own, which the seed would nail up again if it were gone. */
-const isSeedJob = (j: Pick<JobRow, 'locationId' | 'title'>) => seedLocations.some((l) => l.id === j.locationId && (l.jobs ?? []).some((f) => f.title === j.title));
+const isSeedJob = (j: Pick<JobRow, 'campaignId' | 'locationId' | 'title'>) => j.campaignId === FIRST_CAMPAIGN_ID && seedLocations.some((l) => l.id === j.locationId && (l.jobs ?? []).some((f) => f.title === j.title));
 
 /**
  * Take a job off the board. A job of the game master's own goes for good; one of the seed's is withheld instead, and
@@ -101,10 +102,10 @@ export async function removeJob(actor: Actor, jobId: number): Promise<{ jobs: Jo
   const j = await jobRow(jobId);
   if (isSeedJob(j)) {
     await db().update(locationJobs).set({ withheld: true, updatedAt: new Date() }).where(eq(locationJobs.id, jobId));
-    return { jobs: await listJobs(j.locationId), withheld: true };
+    return { jobs: await listJobs(j.campaignId, j.locationId), withheld: true };
   }
   await db().delete(locationJobs).where(eq(locationJobs.id, jobId));
-  return { jobs: await listJobs(j.locationId), withheld: false };
+  return { jobs: await listJobs(j.campaignId, j.locationId), withheld: false };
 }
 
 // ───────────────────────── the warbands as the rule sees them ─────────────────────────
@@ -122,14 +123,14 @@ export async function jobsTaken(warbandId?: string): Promise<TakenJob[]> {
 /** Everything the rule needs from the record: each warband's standing, with the roster and the jobs behind it. */
 export interface PostRecord { warbands: Warband[]; standings: Standing[]; taken: TakenJob[]; scenarios: Scenario[] }
 
-export async function loadRecord(): Promise<PostRecord> {
+export async function loadRecord(campaignId: string): Promise<PostRecord> {
   const { booksOf } = await import('./keep.ts');
   const [list, logged, taken, scenarios, kept] = await Promise.all([
-    listWarbands(),
-    db().select({ id: warbandTable.id, rating: warbandTable.rating, gold: warbandTable.gold }).from(warbandTable),
-    jobsTaken(),
-    listScenarios(),
-    booksOf(),
+    listWarbands(campaignId),
+    db().select({ id: warbandTable.id, rating: warbandTable.rating, gold: warbandTable.gold }).from(warbandTable).where(eq(warbandTable.campaignId, campaignId)),
+    db().select({ j: warbandJobs }).from(warbandJobs).innerJoin(warbandTable, eq(warbandTable.id, warbandJobs.warbandId)).where(eq(warbandTable.campaignId, campaignId)).orderBy(asc(warbandJobs.id)).then((r) => r.map((x) => takenOf(x.j))),
+    listScenarios(campaignId),
+    booksOf(campaignId),
   ]);
   const standings = list.map((w): Standing => {
     // a warband kept by the builder has its books from its roster and its stash; the others as logged by hand
@@ -175,20 +176,20 @@ export interface OfferQuery {
 export const diceKey = (warbandId: string, scenarioId?: string | null) => `${warbandId}:${scenarioId ?? 'dry'}`;
 
 /** What the post would pay this warband now. Saves nothing: the dry run and the real thing reckon alike. */
-export async function offer(actor: Actor, q: OfferQuery, record?: PostRecord): Promise<Offer> {
+export async function offer(actor: Actor, campaignId: string, q: OfferQuery, record?: PostRecord): Promise<Offer> {
   gmOnly(actor);
-  const r = record ?? (await loadRecord());
+  const r = record ?? (await loadRecord(campaignId));
   const standing = r.standings.find((s) => s.warbandId === q.warbandId);
   if (!standing) throw new LedgerError('No such warband has entered the gates.', 404);
   const scenario = q.scenarioId ? r.scenarios.find((s) => s.id === q.scenarioId) : undefined;
   if (q.scenarioId && !scenario) throw new LedgerError('No such scenario is in the archives.', 404);
   const locationId = scenario?.locationId ?? q.locationId ?? null;
-  const board = locationId ? await listJobs(locationId) : [];
+  const board = locationId ? await listJobs(campaignId, locationId) : [];
   // nobody scouts the next field: no job at a point where a game is scheduled
   const barredPoints = upcomingOnly(r.scenarios).map((s) => s.pointId).filter((p): p is number => p != null);
   const mine = r.taken.filter((t) => t.warbandId === q.warbandId);
   const lastTaken = Object.fromEntries(mine.filter((t) => t.jobId != null).map((t) => [t.jobId!, t.id]));
-  const seed = jobSeed(q.warbandId, scenario?.id ?? `dry:${locationId ?? 'nowhere'}`);
+  const seed = jobSeed(q.warbandId, scenario?.id ?? `dry:${locationId ?? 'nowhere'}`, campaignId);
   const taken = scenario ? mine.filter((t) => t.scenarioId === scenario.id) : [];
   // the match: the game's muster, or for a dry run the warbands it would meet
   const facing = scenario ? scenario.warbands.map((w) => w.warbandId) : (q.against ?? []);
@@ -218,12 +219,12 @@ export function withBooks(record: PostRecord, books: Books = {}): PostRecord {
 }
 
 /** Every warband's offer for every scheduled game it is on, for the Watch House, with the record (books applied) to reckon dry runs on. */
-export async function postOverview(actor: Actor, here: string, books: Books = {}, rolls: Record<string, TableRolls> = {}): Promise<{ record: PostRecord; logged: Standing[]; offers: Offer[] }> {
+export async function postOverview(actor: Actor, campaignId: string, here: string, books: Books = {}, rolls: Record<string, TableRolls> = {}): Promise<{ record: PostRecord; logged: Standing[]; offers: Offer[] }> {
   gmOnly(actor);
-  const loaded = await loadRecord();
+  const loaded = await loadRecord(campaignId);
   const record = withBooks(loaded, books);
   const offers: Offer[] = [];
-  for (const s of upcomingOnly(record.scenarios)) for (const w of s.warbands) offers.push(await offer(actor, { warbandId: w.warbandId, scenarioId: s.id, locationId: here, rolls: rolls[diceKey(w.warbandId, s.id)] }, record));
+  for (const s of upcomingOnly(record.scenarios)) for (const w of s.warbands) offers.push(await offer(actor, campaignId, { warbandId: w.warbandId, scenarioId: s.id, locationId: here, rolls: rolls[diceKey(w.warbandId, s.id)] }, record));
   return { record, logged: loaded.standings, offers };
 }
 
@@ -245,7 +246,8 @@ export async function takeJobs(actor: Actor, scenarioId: string, warbandId: stri
   gmOnly(actor);
   if (rolls.dice?.some((n) => n != null && !isDiceTotal(n))) throw new LedgerError(`Two dice show ${DICE_LOW} to ${DICE_HIGH}. Roll again, or let the post roll.`);
   if (rolls.experience?.some((n) => n != null && !isD6(n))) throw new LedgerError('A die shows 1 to 6. Roll again, or let the post roll.');
-  const o = await offer(actor, { warbandId, scenarioId, locationId: here, rolls });
+  const campaignId = await campaignOfScenario(scenarioId);
+  const o = await offer(actor, campaignId, { warbandId, scenarioId, locationId: here, rolls });
   const refused = o.reckoning.payout?.jobs.find((p) => p.slot?.refused);
   if (refused) throw new LedgerError(`${refused.slot!.refused} Roll again for the notice, or let the post draw it.`, 409);
   if (o.shut) throw new LedgerError(o.shut, 409);
@@ -261,14 +263,14 @@ export async function takeJobs(actor: Actor, scenarioId: string, warbandId: stri
   const xp = new Map<string, number>();
   for (const g of pay.jobs.flatMap((p) => p.grants)) xp.set(g.memberId, (xp.get(g.memberId) ?? 0) + g.experience);
   const { payIn } = await import('./keep.ts');
-  if (await payIn(actor, warbandId, { gold: pay.gold, xp, kind: 'job', scenarioId, text: `The Fountain Post: ${pay.jobs.map((p) => p.job.title).join('; ')}` })) return offer(actor, { warbandId, scenarioId, locationId: here });
+  if (await payIn(actor, warbandId, { gold: pay.gold, xp, kind: 'job', scenarioId, text: `The Fountain Post: ${pay.jobs.map((p) => p.job.title).join('; ')}` })) return offer(actor, campaignId, { warbandId, scenarioId, locationId: here });
   for (const [memberId, n] of xp) await d.update(members).set({ experience: sql`coalesce(${members.experience}, 0) + ${n}`, updatedAt: new Date() }).where(eq(members.id, memberId));
   await d.update(warbandTable).set({
     gold: sql`${warbandTable.gold} + ${pay.gold}`,
     rating: sql`case when ${warbandTable.rating} > 0 then ${warbandTable.rating} + ${pay.experience} else 0 end`,
     version: sql`${warbandTable.version} + 1`, updatedAt: new Date(),
   }).where(eq(warbandTable.id, warbandId));
-  return offer(actor, { warbandId, scenarioId, locationId: here });
+  return offer(actor, campaignId, { warbandId, scenarioId, locationId: here });
 }
 
 /** Strike the jobs taken before a game and take their pay back out of the roster, for a mistake. Not routed yet, as `takeJobs`. */

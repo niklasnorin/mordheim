@@ -5,7 +5,7 @@
  * (campaign, night, warband, orders), so the same orders always produce the same dawn.
  * The Omen and Moon for a night are the same for every warband.
  */
-import campaign from '../data/curfew/campaign.json' with { type: 'json' };
+import { DEFAULT_CAMPAIGN, type CampaignConfig } from '../campaign/campaign.ts';
 import omensData from '../data/curfew/omens.json' with { type: 'json' };
 import moonsData from '../data/curfew/moons.json' with { type: 'json' };
 import tokensData from '../data/curfew/tokens.json' with { type: 'json' };
@@ -168,8 +168,6 @@ export interface NightResult {
 }
 export interface TokenOffer { night: number; incoming: string; held: string }
 
-export const CAMPAIGN = campaign;
-export const TITLES = campaign.titles as { renown: number; title: string }[];
 
 // ───────────────────────── the content ─────────────────────────
 // The Omens, Moons, charms, curses and places are content. The files under src/data/curfew/ are the built-in set,
@@ -192,45 +190,6 @@ export const BUILT_IN_DOCUMENTS: CurfewDocuments = {
   locations: [mordheim, fussenbach] as unknown as Location[],
 };
 export const DEFAULT_LOCATION_ID = 'mordheim';
-
-export let OMENS: Omen[] = BUILT_IN_DOCUMENTS.omens.omens;
-export let MOONS: Moon[] = BUILT_IN_DOCUMENTS.moons.moons;
-export let TOKENS: TokenDef[] = BUILT_IN_DOCUMENTS.tokens.tokens;
-export let CURSES: CurseDef[] = BUILT_IN_DOCUMENTS.tokens.curses;
-export let TOKEN_TYPES: Record<TokenType, TokenTypeDef> = BUILT_IN_DOCUMENTS.tokens.types;
-export let LOCATIONS: Location[] = BUILT_IN_DOCUMENTS.locations;
-export let DEFAULT_LOCATION: Location = LOCATIONS.find((l) => l.id === DEFAULT_LOCATION_ID)!;
-
-/**
- * Put content in force for every reader of the bindings above. The server calls this with what the database holds
- * before any night is resolved or any page rendered; a missing document keeps its built-in. Mordheim must exist:
- * an old ledger, an unknown place and every fallback read as Mordheim.
- */
-export function useContent(docs: Partial<CurfewDocuments>): void {
-  OMENS = (docs.omens ?? BUILT_IN_DOCUMENTS.omens).omens;
-  MOONS = (docs.moons ?? BUILT_IN_DOCUMENTS.moons).moons;
-  const t = docs.tokens ?? BUILT_IN_DOCUMENTS.tokens;
-  TOKENS = t.tokens; CURSES = t.curses; TOKEN_TYPES = t.types;
-  const locs = docs.locations && docs.locations.length ? docs.locations : BUILT_IN_DOCUMENTS.locations;
-  LOCATIONS = locs.some((l) => l.id === DEFAULT_LOCATION_ID) ? locs : [BUILT_IN_DOCUMENTS.locations.find((l) => l.id === DEFAULT_LOCATION_ID)!, ...locs];
-  DEFAULT_LOCATION = LOCATIONS.find((l) => l.id === DEFAULT_LOCATION_ID)!;
-}
-/** The content in force, as documents. */
-export function currentDocuments(): CurfewDocuments {
-  return { omens: { ...BUILT_IN_DOCUMENTS.omens, omens: OMENS }, moons: { ...BUILT_IN_DOCUMENTS.moons, moons: MOONS }, tokens: { ...BUILT_IN_DOCUMENTS.tokens, types: TOKEN_TYPES, tokens: TOKENS, curses: CURSES }, locations: LOCATIONS };
-}
-export function curseById(id: string): CurseDef | undefined { return CURSES.find((c) => c.id === id); }
-
-// ───────────────────────── where the campaign is ─────────────────────────
-
-/** The location with this id; Mordheim for anything unknown, so an old ledger always reads. */
-export function locationById(id?: string | null): Location { return LOCATIONS.find((l) => l.id === id) ?? DEFAULT_LOCATION; }
-/** Where the campaign was on a night: the latest move on or before it, else Mordheim. Later moves on the same night win. */
-export function locationForNight(night: number, moves: readonly Move[]): Location {
-  let id = DEFAULT_LOCATION_ID;
-  for (const m of moves.slice().sort((a, b) => a.fromNight - b.fromNight)) if (m.fromNight <= night) id = m.locationId;
-  return locationById(id);
-}
 export function isErrandAt(errand: Errand, location: Location): boolean { return location.errands.includes(errand); }
 /** The errand itself where it is to be had; otherwise where the place sends it, or its first errand. */
 export function errandAt(errand: Errand, location: Location): Errand {
@@ -241,82 +200,15 @@ export function errandAt(errand: Errand, location: Location): Errand {
 export function unavailableReason(errand: Errand, location: Location): string {
   return location.unavailable[errand] ?? `There is no ${ERRAND_LABEL[errand].toLowerCase()} to be had in ${location.name}.`;
 }
-export function blurbFor(errand: Errand, location: Location = DEFAULT_LOCATION): string { return location.blurbs[errand] ?? ERRAND_BLURB[errand]; }
-/** The charms that may turn up at a place: the ones of no fixed place, and the place's own. */
-export function tokensFor(type: TokenType | null, location: Location = DEFAULT_LOCATION): TokenDef[] {
-  return TOKENS.filter((t) => (!type || t.type === type) && (!t.location || t.location === location.id));
-}
 
 // ───────────────────────── randomness ─────────────────────────
 
 // The seeded helpers live in src/lib/random.ts, so the Tarot of the Damned can draw with the same dice without
 // carrying the packs into the browser; the engine still exports them for everything that already uses them here.
 export { hashSeed, pick, rng, shuffle };
-
-// ───────────────────────── calendar ─────────────────────────
-
-/**
- * Calendar date as YYYY-MM-DD in the campaign's time zone. A night is one real day; it turns over at
- * midnight where the campaign is played, so every player and the server agree on which night it is.
- */
-export function localDate(now: Date = new Date(), timeZone: string = campaign.timezone): string {
-  try {
-    const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
-    const get = (t: string) => parts.find((p) => p.type === t)!.value;
-    return `${get('year')}-${get('month')}-${get('day')}`;
-  } catch {
-    const y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0'), d = String(now.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-}
-/** The night it is now, by the campaign's clock. */
-export function currentNight(now: Date = new Date()): number { return nightForDate(localDate(now)); }
 function utcDay(date: string): number {
   const [y, m, d] = date.split('-').map(Number);
   return Math.floor(Date.UTC(y, m - 1, d) / 86400000);
-}
-/** Night 1 is the campaign's start date. Dates before the start are night 0 or less (nothing happens). */
-export function nightForDate(date: string): number { return utcDay(date) - utcDay(campaign.start) + 1; }
-export function dateForNight(night: number): string {
-  const d = new Date((utcDay(campaign.start) + night - 1) * 86400000);
-  return d.toISOString().slice(0, 10);
-}
-export function moonIndex(night: number): number { return Math.floor((night - 1) / campaign.nightsPerMoon); }
-
-// ───────────────────────── omens & moons ─────────────────────────
-
-/** Same Omen for every warband. Each run of 30 nights is a fresh shuffle of the deck, so no card repeats within a cycle. */
-export function omenForNight(night: number): Omen {
-  const cycle = Math.floor((night - 1) / OMENS.length);
-  const order = shuffle(rng(hashSeed(campaign.id, 'omens', cycle)), OMENS);
-  return order[(((night - 1) % OMENS.length) + OMENS.length) % OMENS.length];
-}
-export function moonForNight(night: number): Moon {
-  const idx = moonIndex(night);
-  const cycle = Math.floor(idx / MOONS.length);
-  const order = shuffle(rng(hashSeed(campaign.id, 'moons', cycle)), MOONS);
-  return order[((idx % MOONS.length) + MOONS.length) % MOONS.length];
-}
-/**
- * The errand a Moon favours at a place. Its own where that is to be had; else what the place says, else the
- * errand that inherits from it (Dredge for Scavenge); else nothing, and the Moon is flat there.
- */
-export function moonBoostAt(moon: Moon, location: Location = DEFAULT_LOCATION): Errand | undefined {
-  const said = location.moonBoost?.[moon.id];
-  if (said && isErrandAt(said, location)) return said;
-  if (isErrandAt(moon.boost, location)) return moon.boost;
-  return location.errands.find((e) => location.inherits[e] === moon.boost);
-}
-/** The Moon's tie-in lines for an errand at a place; empty if the Moon leaves none there. */
-export function moonTiesAt(moon: Moon, errand: Errand, location: Location = DEFAULT_LOCATION): string[] {
-  const tie = location.moonTies ? location.moonTies[moon.id]?.[errand] : moon.ties[errand];
-  return tie === undefined ? [] : Array.isArray(tie) ? tie : [tie];
-}
-/** Combined tilt for an errand on a night: the Omen's tilt plus one point for the Moon's favoured errand, clamped to ±3. */
-export function tiltFor(errand: Errand, omen: Omen, moon: Moon, location: Location = DEFAULT_LOCATION): number {
-  const from = location.inherits[errand];
-  const o = omen.tilt[errand] ?? (from ? omen.tilt[from] : undefined) ?? 0;
-  return Math.max(-3, Math.min(3, o + (moonBoostAt(moon, location) === errand ? 1 : 0)));
 }
 
 // ───────────────────────── the edge ─────────────────────────
@@ -379,19 +271,6 @@ export function availability(warband: WarbandLike, recovering: string[], resting
     return { memberId: m.id, available: true };
   });
 }
-/** A sensible default errand from the role, for standing orders, among those the place offers. */
-export function defaultErrand(member: MemberLike, location: Location = DEFAULT_LOCATION): Errand {
-  const role = member.role.toLowerCase();
-  const byRole = (): Errand => {
-    if (/priest|sister|confessor|flagellant|augur/.test(role)) return 'pray';
-    if (/jaeger|hunter|scout|ranger|archer|marksman/.test(role)) return 'scavenge';
-    if (/ogre|slayer|pit|champion|brother|troll/.test(role)) return 'train';
-    if (/thief|assassin|beardling|youngblood|urchin|night runner/.test(role)) return 'spy';
-    if (/lord|elder|captain|merchant|engineer|magister/.test(role)) return 'trade';
-    return 'carouse';
-  };
-  return errandAt(byRole(), location);
-}
 
 // ───────────────────────── resolution ─────────────────────────
 
@@ -446,171 +325,17 @@ export interface ResolveInput {
   /** What the crossroads draw needs to know about the ledger. Without it no crossroads is met (quiet nights, tests of the dice alone). */
   crossroads?: { seen: readonly string[]; marks: Record<string, { id: string }[]>; recent: boolean };
 }
-/** The templates for an errand at a place, falling back to Mordheim's so an odd order never leaves a night unwritten. */
-function templatesAt(errand: Errand, location: Location): TemplateBank {
-  return location.templates[errand] ?? DEFAULT_LOCATION.templates[errand] ?? { boon: [], fair: [], poor: [], standing: [] };
-}
-/**
- * Resolve one night for one warband. Deterministic: the same input always gives the same night.
- * Does not mutate state; see applyNight for the bookkeeping.
- */
-export function resolveNight(input: ResolveInput): NightResult {
-  const { warband, night, state } = input;
-  const location = input.location ?? DEFAULT_LOCATION;
-  const omen = omenForNight(night), moon = moonForNight(night);
-  const orders = input.orders.slice(0, campaign.membersPerNight);
-  const r = rng(hashSeed(campaign.id, warband.id, night, ...orders.map((o) => `${o.memberId}:${o.errand}:${o.standing ? 's' : 'o'}`)));
-  const results: OrderResult[] = [];
-  let favour = state.favour, shards = state.shards;
-  const rivals = Array.isArray(input.rival) ? input.rival : input.rival ? [input.rival] : [];
-  const rivalBand = rivals.length > 1 ? pick(r, rivals) : rivals[0];
-  // templates say "the {rival}", so a name that begins with "The" sheds it: "the Nordost Kin", never "the The Nordost Kin"
-  const rival = rivalBand ? rivalBand.name.replace(/^the\s+/i, '') : 'rival warband';
-  const rivalLiving = rivalBand?.members.filter((m) => !m.dead) ?? [];
-  const detail = pick(r, location.details);
-
-  orders.forEach((order, i) => {
-    const member = warband.members.find((m) => m.id === order.memberId);
-    if (!member) return;
-    const standing = !!order.standing;
-    // the Omen and the Moon set the night's odds; who you send moves them a little further
-    const carried = input.carry?.memberId === member.id ? input.carry.tilt ?? 0 : 0;
-    const tilt = Math.max(-3, Math.min(3, tiltFor(order.errand, omen, moon, location) + (standing ? 0 : statEdge(warband, member, order.errand)) + carried));
-    const outcome: Outcome = standing ? (r() < YIELDS.standing.poor ? 'poor' : 'fair') : rollOutcome(r, tilt);
-    let f = FAVOUR[outcome];
-    if (standing) f = Math.ceil(f / 2);
-    let renown = 0, gained = 0, token: TokenDef | undefined, rumour: string | undefined, convertedShards: number | undefined;
-    // yields by errand
-    if (SHARD_ERRANDS.includes(order.errand)) gained = standing ? (outcome === 'fair' && r() < YIELDS.standing.shardOnFair ? 1 : 0) : YIELDS.shards[outcome];
-    if (order.errand === 'train') renown += YIELDS.trainRenown[outcome];
-    if (order.errand === 'carouse' && outcome === 'boon') renown += YIELDS.carouseBoonRenown;
-    if (order.errand === 'spy' && outcome !== 'poor') rumour = fill(pick(r, location.rumours), { rival });
-    if (order.errand === 'trade' && outcome !== 'poor' && shards >= 5) {
-      convertedShards = 5; shards -= 5;
-      token = pick(r, tokensFor('market', location));
-    }
-    // token drop: a boon often brings one, a fair night now and then, a poor night and standing orders never.
-    // Tuned so a warband with two out finds a charm about one night in three; the Omen, the Moon and the edge push it a little.
-    const type = ERRAND_TOKEN_TYPE[order.errand];
-    if (type && !token && !standing) {
-      const chance = outcome === 'boon' ? TOKEN_CHANCE.boon(tilt) : outcome === 'fair' ? TOKEN_CHANCE.fair(tilt) : 0;
-      if (r() < chance) token = pick(r, tokensFor(type, location));
-    }
-    // favour soft cap: past it the city forgets quickly and the surplus becomes a name
-    let effective = f;
-    if (favour >= campaign.favourSoftCap) { effective = Math.ceil(f / 2); renown += f - effective; }
-    effective = Math.max(0, Math.min(effective, 100 - favour));
-    favour += effective; shards += gained;
-    // prose
-    const bank = templatesAt(order.errand, location);
-    const pool = standing ? bank.standing : bank[outcome];
-    const lineKey = (idx: number) => `${order.errand}:${standing ? 'standing' : outcome}:${idx}`;
-    let index = Math.floor(r() * pool.length);
-    // a line used in the nights just before is redrawn, a few times, when the bank is deep enough to allow it
-    if (input.avoid?.length && pool.length > 3) for (let tries = 0; tries < 3 && input.avoid.includes(lineKey(index)); tries++) index = Math.floor(r() * pool.length);
-    const template = pool[index];
-    const other = orders.find((o) => o !== order);
-    const otherMember = other && warband.members.find((m) => m.id === other.memberId);
-    const slots = {
-      name: member.name, first: firstName(member.name), they: 'they', them: 'them', their: 'their',
-      district: pick(r, location.districts), omen: omen.title, rival, other: otherMember ? firstName(otherMember.name) : 'nobody',
-    };
-    let prose = fill(template, slots);
-    if (i === 1 && otherMember && r() < 0.35) prose += ' ' + fill(pick(r, location.pairs), { ...slots, other: firstName(member.name) });
-    // the Moon leaves its mark on one errand a night, quietly
-    const ties = moonTiesAt(moon, order.errand, location);
-    if (i === 0 && ties.length && r() < 0.6) prose += ' ' + fill(pick(r, ties), slots);
-    // now and then the rival warband crosses their path; never on standing orders, which nobody remarks on
-    if (i === 0 && !standing && rivalBand && location.encounters.length && r() < 0.15) {
-      const rivalMember = rivalLiving.length ? firstName(pick(r, rivalLiving).name) : 'somebody';
-      prose += ' ' + fill(pick(r, location.encounters), { ...slots, rivalMember });
-    }
-    results.push({ memberId: member.id, errand: order.errand, outcome, standing, favour: effective, renown, shards: gained, token, rumour, convertedShards, prose, line: lineKey(index) });
-  });
-
-  const ledger: string[] = [];
-  const totalFavour = results.reduce((a, b) => a + b.favour, 0);
-  const totalShards = results.reduce((a, b) => a + b.shards, 0);
-  const totalRenown = results.reduce((a, b) => a + b.renown, 0);
-  if (totalFavour) ledger.push(`+${totalFavour} Favour`);
-  if (totalShards) ledger.push(`${totalShards} ${totalShards === 1 ? 'shard' : 'shards'}`);
-  if (totalRenown) ledger.push(`+${totalRenown} Renown`);
-  for (const res of results) {
-    const m = warband.members.find((x) => x.id === res.memberId)!;
-    if (res.convertedShards) ledger.push(`${firstName(m.name)}: 5 shards to ${res.token!.name}`);
-    else if (res.token) ledger.push(`${firstName(m.name)}: ${res.token.name}`);
-    if (res.rumour) ledger.push(`${firstName(m.name)}: a rumour`);
-  }
-  const header = `Night ${night} — under ${omen.title}.`;
-  const closer = results.length && r() < 0.45 ? pick(r, location.closers) : undefined;
-  // last of all, and only after the dice have said their piece: does one of them come to a crossroads?
-  const crossroads = input.crossroads ? drawCrossroads(r, warband, night, results, location, input.crossroads, { rival }) : undefined;
-  return { night, omenId: omen.id, moonId: moon.id, header, results, closer, detail, ledger, locationId: location.id, ...(crossroads ? { crossroads } : {}) };
-}
-
-// ───────────────────────── the Crossroads ─────────────────────────
-
-/** The crossroads a member could come to after this errand and outcome, here, given what they already carry. */
-export function crossroadsFor(location: Location, errand: Errand, outcome: Outcome, night: number, marks: { id: string }[], seen: readonly string[]): Crossroad[] {
-  const omen = omenForNight(night), moon = moonForNight(night);
-  const has = (id: string) => marks.some((m) => m.id === id);
-  return (location.crossroads ?? []).filter((c) =>
-    c.errands.includes(errand)
-    && (!c.outcomes || c.outcomes.includes(outcome))
-    && !seen.includes(c.id)
-    && (!c.requires?.moon || c.requires.moon.includes(moon.id))
-    && (!c.requires?.omen || c.requires.omen.includes(omen.id))
-    && (!c.requires?.mark || c.requires.mark.every(has))
-    && (!c.requires?.notMark || !c.requires.notMark.some(has)));
-}
-/** Unmet crossroads first; when every fitting one has been met, all but the most recent half of them; failing that, any that fits. */
-function crossroadsWithFallback(location: Location, errand: Errand, outcome: Outcome, night: number, marks: { id: string }[], seen: readonly string[]): Crossroad[] {
-  const unmet = crossroadsFor(location, errand, outcome, night, marks, seen);
-  if (unmet.length) return unmet;
-  const any = crossroadsFor(location, errand, outcome, night, marks, []);
-  if (!any.length) return any;
-  const recent = seen.filter((id) => any.some((c) => c.id === id)).slice(-Math.floor(any.length / 2));
-  const older = any.filter((c) => !recent.includes(c.id));
-  return older.length ? older : any;
-}
 function weighted<T extends { weight?: number }>(r: () => number, list: readonly T[]): T {
   const total = list.reduce((a, c) => a + (c.weight ?? 1), 0);
   let x = r() * total;
   for (const c of list) { x -= c.weight ?? 1; if (x < 0) return c; }
   return list[list.length - 1];
 }
-/**
- * About one night in three (`crossroadsChance` is the raw draw; the night's rest after a crossroads brings it down to
- * about a third), the first member out on real orders whose errand has a crossroads to offer comes to one.
- * Never on standing orders, never two nights running, and not the same crossroads again while others are still unmet:
- * once a pack's crossroads have all been met, the least recently met come round again rather than the nights going quiet.
- */
-function drawCrossroads(r: () => number, warband: WarbandLike, night: number, results: OrderResult[], location: Location, ctx: NonNullable<ResolveInput['crossroads']>, extra: { rival: string }): CrossroadsMet | undefined {
-  const hit = r() < campaign.crossroadsChance;
-  if (!hit || ctx.recent) return undefined;
-  for (const res of results) {
-    if (res.standing) continue;
-    const member = warband.members.find((m) => m.id === res.memberId);
-    if (!member) continue;
-    const candidates = crossroadsWithFallback(location, res.errand, res.outcome, night, ctx.marks[member.id] ?? [], ctx.seen);
-    if (!candidates.length) continue;
-    const c = weighted(r, candidates);
-    const other = results.find((x) => x !== res);
-    const otherMember = other && warband.members.find((m) => m.id === other.memberId);
-    const slots = roadSlots(warband, member, otherMember, location, r, extra.rival);
-    return { id: c.id, memberId: member.id, kind: c.kind, setup: fill(c.setup, slots), rival: extra.rival, options: c.options.map((o) => ({ id: o.id, label: fill(o.label, slots) })) };
-  }
-  return undefined;
-}
 function roadSlots(warband: WarbandLike, member: MemberLike, other: MemberLike | undefined, location: Location, r: () => number, rival: string): Record<string, string> {
   return {
     name: member.name, first: firstName(member.name), they: 'they', them: 'them', their: 'their',
     district: pick(r, location.districts), other: other ? firstName(other.name) : 'nobody', rival, warband: warband.name,
   };
-}
-/** The road the character takes when nobody decides: the one marked default, else a seeded pick. */
-export function defaultRoad(c: Crossroad, warbandId: string, night: number): Road {
-  return c.options.find((o) => o.default) ?? pick(rng(hashSeed(campaign.id, 'undecided', warbandId, night, c.id)), c.options);
 }
 export function crossroadById(location: Location, id: string): Crossroad | undefined { return location.crossroads?.find((c) => c.id === id); }
 
@@ -621,125 +346,473 @@ export interface RoadTaken {
   tokenId?: string; rumour?: string; mark?: { id: string; name: string }; carryTilt?: number; staysHome?: number; curse?: CurseDef;
 }
 export interface TakeRoadInput { warband: WarbandLike; night: NightResult; roadId: string; location: Location; defaulted?: boolean; rival?: WarbandLike | WarbandLike[] }
-/**
- * Take a road at a crossroads. Deterministic in (campaign, warband, night, crossroads, road): the dice inside a risk road,
- * the charm, the rumour and the words fall the same way on every machine. Does not touch state; the ledger does the bookkeeping.
- */
-export function takeRoad(input: TakeRoadInput): RoadTaken {
-  const { warband, night, location } = input;
-  const met = night.crossroads;
-  if (!met) throw new Error('No crossroads was met that night.');
-  const c = crossroadById(location, met.id) ?? crossroadById(DEFAULT_LOCATION, met.id);
-  if (!c) throw new Error(`The pack has no crossroads ${met.id}.`);
-  const road = c.options.find((o) => o.id === input.roadId);
-  if (!road) throw new Error(`No road ${input.roadId} at ${met.id}.`);
-  const member = warband.members.find((m) => m.id === met.memberId) ?? { id: met.memberId, name: 'Somebody', role: '' };
-  const r = rng(hashSeed(campaign.id, 'road', warband.id, night.night, c.id, road.id));
-  // the rival named when the crossroads was met; only a night written before rivals were remembered falls back to a draw
-  const rivals = Array.isArray(input.rival) ? input.rival : input.rival ? [input.rival] : [];
-  const rivalBand = rivals.length > 1 ? pick(r, rivals) : rivals[0];
-  const rival = met.rival ?? (rivalBand ? rivalBand.name.replace(/^the\s+/i, '') : 'rival warband');
-  const otherRes = night.results.find((x) => x.memberId !== met.memberId);
-  const other = otherRes && warband.members.find((m) => m.id === otherRes.memberId);
-  const slots = roadSlots(warband, member, other, location, r, rival);
-  // a risk road: the player chose the risk, the dice choose the branch
-  let branch: RoadBranch = road;
-  let outcome = fill(road.outcome, slots);
-  if (road.risk) {
-    branch = r() < (road.risk.chance ?? 0.5) ? road.risk.good : road.risk.bad;
-    outcome = `${outcome} ${fill(branch.outcome, slots)}`.trim();
-  }
-  if (input.defaulted && location.undecided?.length) outcome = `${pick(r, location.undecided).replace(/\{first\}/g, slots.first)} ${outcome}`;
-  const fx = branch.effects ?? {};
-  const curse = fx.curse ? curseById(fx.curse) : undefined;
-  const out: RoadTaken = {
-    road, label: fill(road.label, slots), outcome, headline: road.headline ? fill(road.headline, slots) : curse?.headline ? fill(curse.headline, slots) : undefined,
-    favour: (fx.favour ?? 0), shards: (fx.shards ?? 0) + (curse?.effects?.shards ?? 0), renown: (fx.renown ?? 0) + (curse?.effects?.renown ?? 0),
-    tokenId: fx.token ? pick(r, tokensFor(fx.token, location)).id : undefined,
-    rumour: fx.rumour ? fill(pick(r, location.rumours), { rival }) : undefined,
-    mark: fx.mark ? { id: fx.mark, name: location.markNames?.[fx.mark] ?? DEFAULT_LOCATION.markNames?.[fx.mark] ?? fx.mark.replace(/-/g, ' ') } : undefined,
-    carryTilt: fx.carry?.tilt, staysHome: fx.carry?.staysHome ?? curse?.effects?.staysHome, curse,
-  };
-  return out;
-}
-/** The ledger line a road taken adds beneath the night's own. */
-export function roadLedger(taken: RoadTaken, member: MemberLike): string[] {
-  const first = firstName(member.name), out: string[] = [];
-  const signed = (n: number) => (n > 0 ? `+${n}` : `−${-n}`);
-  if (taken.favour) out.push(`${signed(taken.favour)} Favour`);
-  if (taken.shards) out.push(`${signed(taken.shards)} ${Math.abs(taken.shards) === 1 ? 'shard' : 'shards'}`);
-  if (taken.renown) out.push(`${signed(taken.renown)} Renown`);
-  if (taken.tokenId) out.push(`${first}: ${tokenById(taken.tokenId).name}`);
-  if (taken.rumour) out.push(`${first}: a rumour`);
-  if (taken.curse) out.push(`${first}: ${taken.curse.name}${taken.curse.nights > 1 ? ` (${taken.curse.nights} nights)` : ''}`);
-  if (taken.mark) out.push(`${first}: ${taken.mark.name}`);
-  if (taken.carryTilt) out.push(`${first}: ${taken.carryTilt > 0 ? '▲'.repeat(taken.carryTilt) : '▼'.repeat(-taken.carryTilt)} tonight`);
-  if (taken.staysHome) out.push(`${first} stays in tonight`);
-  return out;
-}
-
-/** The night nobody went out. Still a Chronicle line. */
-export function quietNight(night: number, location: Location = DEFAULT_LOCATION): NightResult {
-  const omen = omenForNight(night), moon = moonForNight(night);
-  const r = rng(hashSeed(campaign.id, 'quiet', night));
-  return { night, omenId: omen.id, moonId: moon.id, header: `Night ${night} — under ${omen.title}.`, results: [], detail: pick(r, location.details), closer: pick(r, location.quiet), ledger: [], locationId: location.id };
-}
-/** The single vignette a player gets after a long absence. No summary of what they missed. */
-export function returnNight(night: number, warbandId: string, location: Location = DEFAULT_LOCATION): NightResult {
-  const omen = omenForNight(night), moon = moonForNight(night);
-  const r = rng(hashSeed(campaign.id, 'return', warbandId, night));
-  return { night, omenId: omen.id, moonId: moon.id, header: `Night ${night} — the return.`, results: [], detail: pick(r, location.return), ledger: ['Favour primed to 20'], locationId: location.id };
-}
 
 // ───────────────────────── the Hand ─────────────────────────
 
 export const HAND_SIZE = 3;
-export function tokenById(id: string): TokenDef { return TOKENS.find((t) => t.id === id)!; }
-export function handHas(hand: HeldToken[], type: TokenType): HeldToken | undefined { return hand.find((h) => tokenById(h.id).type === type); }
-
-/** Apply a night's results to a hand state. Tokens of a type already held become offers to decide. */
-export function applyNight(state: HandState, result: NightResult): { state: HandState; offers: TokenOffer[] } {
-  const next: HandState = { ...state, hand: state.hand.slice() };
-  const offers: TokenOffer[] = [];
-  for (const res of result.results) {
-    next.favour = Math.min(100, next.favour + res.favour);
-    next.shards += res.shards - (res.convertedShards ?? 0);
-    next.renown += res.renown;
-    if (res.token) {
-      // one per type, and never more than three: a fourth kind is offered against the oldest charm
-      const held = handHas(next.hand, res.token.type) ?? (next.hand.length >= HAND_SIZE ? next.hand.slice().sort((a, b) => a.earnedNight - b.earnedNight)[0] : undefined);
-      if (held) offers.push({ night: result.night, incoming: res.token.id, held: held.id });
-      else next.hand.push({ id: res.token.id, earnedNight: result.night });
-    }
-  }
-  return { state: next, offers };
-}
-/** The City Provides: a warband at the Eve with an empty Hand is dealt one random token, from among the place's. */
-export function cityProvides(warbandId: string, night: number, location: Location = DEFAULT_LOCATION): TokenDef {
-  return pick(rng(hashSeed(campaign.id, 'provides', warbandId, night)), tokensFor(null, location));
-}
-export function cityProvidesLine(warbandId: string, night: number, location: Location = DEFAULT_LOCATION): string {
-  return pick(rng(hashSeed(campaign.id, 'provides-line', warbandId, night)), location.cityProvides);
-}
-export function titleFor(renown: number): string {
-  let title = TITLES[0].title;
-  for (const t of TITLES) if (renown >= t.renown) title = t.title;
-  return title;
-}
-export function nextTitle(renown: number): { title: string; renown: number } | undefined { return TITLES.find((t) => t.renown > renown); }
-/** Epithets are earned by featuring in enough Chronicle entries; the errand they did most decides the flavour, the place the words. */
-export function epithetFor(memberId: string, counts: Partial<Record<Errand, number>>, location: Location = DEFAULT_LOCATION): string {
-  const top = (Object.entries(counts) as [Errand, number][]).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'carouse';
-  const pool = location.epithets[top] ?? DEFAULT_LOCATION.epithets[top] ?? DEFAULT_LOCATION.epithets.carouse!;
-  return pick(rng(hashSeed(campaign.id, 'epithet', memberId)), pool);
-}
-
-/** Short ticket for the Eve, carrying the charm count so a rival can be shown how many, not which. */
-export function eveTicket(warbandId: string, night: number, count: number): string {
-  const h = hashSeed(campaign.id, 'eve', warbandId, night).toString(36).toUpperCase().padStart(7, '0').slice(-5);
-  return `EVE-${count}-${h}`;
-}
 export function readTicket(ticket: string): number | null {
   const m = /^EVE-([0-3])-[0-9A-Z]{5}$/i.exec(ticket.trim());
   return m ? Number(m[1]) : null;
 }
+
+// ───────────────────────── the world ─────────────────────────
+
+/**
+ * What a campaign's nights are read from: the campaign itself (its id seeds every roll, its start and time zone say which
+ * night a day is, its tuning sets the dials) and the content in force for it (the decks and the places). The engine is
+ * made for a world by `createEngine`, so two campaigns never share a binding: the server keeps one engine per campaign
+ * (`worldFor` in src/server/content/curfew.ts) and the browser puts the page's own in force with `useWorld`.
+ */
+export interface World { campaign: CampaignConfig; content: CurfewDocuments }
+export const DEFAULT_WORLD: World = { campaign: DEFAULT_CAMPAIGN, content: BUILT_IN_DOCUMENTS };
+
+/** The content a world reads, every missing document its built-in. Mordheim must exist: an old ledger, an unknown place and every fallback read as Mordheim. */
+export function documentsWith(docs: Partial<CurfewDocuments>): CurfewDocuments {
+  const locs = docs.locations && docs.locations.length ? docs.locations : BUILT_IN_DOCUMENTS.locations;
+  return {
+    omens: docs.omens ?? BUILT_IN_DOCUMENTS.omens,
+    moons: docs.moons ?? BUILT_IN_DOCUMENTS.moons,
+    tokens: docs.tokens ?? BUILT_IN_DOCUMENTS.tokens,
+    locations: locs.some((l) => l.id === DEFAULT_LOCATION_ID) ? locs : [BUILT_IN_DOCUMENTS.locations.find((l) => l.id === DEFAULT_LOCATION_ID)!, ...locs],
+  };
+}
+
+/** The engine for one world: every rule that reads the campaign or its content, closed over them. Pure. */
+export function createEngine(world: World) {
+  const campaign = world.campaign;
+  const CAMPAIGN: CampaignConfig = campaign;
+  const TITLES = campaign.titles;
+  const docs = documentsWith(world.content);
+  const OMENS: Omen[] = docs.omens.omens;
+  const MOONS: Moon[] = docs.moons.moons;
+  const TOKENS: TokenDef[] = docs.tokens.tokens;
+  const CURSES: CurseDef[] = docs.tokens.curses;
+  const TOKEN_TYPES: Record<TokenType, TokenTypeDef> = docs.tokens.types;
+  const LOCATIONS: Location[] = docs.locations;
+  const DEFAULT_LOCATION: Location = LOCATIONS.find((l) => l.id === DEFAULT_LOCATION_ID)!;
+
+  /** The content in force, as documents. */
+  function currentDocuments(): CurfewDocuments {
+    return { omens: { ...BUILT_IN_DOCUMENTS.omens, omens: OMENS }, moons: { ...BUILT_IN_DOCUMENTS.moons, moons: MOONS }, tokens: { ...BUILT_IN_DOCUMENTS.tokens, types: TOKEN_TYPES, tokens: TOKENS, curses: CURSES }, locations: LOCATIONS };
+  }
+  function curseById(id: string): CurseDef | undefined { return CURSES.find((c) => c.id === id); }
+
+  // ───────────────────────── where the campaign is ─────────────────────────
+
+  /** The location with this id; Mordheim for anything unknown, so an old ledger always reads. */
+  function locationById(id?: string | null): Location { return LOCATIONS.find((l) => l.id === id) ?? DEFAULT_LOCATION; }
+  /** Where the campaign was on a night: the latest move on or before it, else Mordheim. Later moves on the same night win. */
+  function locationForNight(night: number, moves: readonly Move[]): Location {
+    let id = DEFAULT_LOCATION_ID;
+    for (const m of moves.slice().sort((a, b) => a.fromNight - b.fromNight)) if (m.fromNight <= night) id = m.locationId;
+    return locationById(id);
+  }
+  function blurbFor(errand: Errand, location: Location = DEFAULT_LOCATION): string { return location.blurbs[errand] ?? ERRAND_BLURB[errand]; }
+  /** The charms that may turn up at a place: the ones of no fixed place, and the place's own. */
+  function tokensFor(type: TokenType | null, location: Location = DEFAULT_LOCATION): TokenDef[] {
+    return TOKENS.filter((t) => (!type || t.type === type) && (!t.location || t.location === location.id));
+  }
+
+  // ───────────────────────── calendar ─────────────────────────
+
+  /**
+   * Calendar date as YYYY-MM-DD in the campaign's time zone. A night is one real day; it turns over at
+   * midnight where the campaign is played, so every player and the server agree on which night it is.
+   */
+  function localDate(now: Date = new Date(), timeZone: string = campaign.timezone): string {
+    try {
+      const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+      const get = (t: string) => parts.find((p) => p.type === t)!.value;
+      return `${get('year')}-${get('month')}-${get('day')}`;
+    } catch {
+      const y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0'), d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+  }
+  /** The night it is now, by the campaign's clock. */
+  function currentNight(now: Date = new Date()): number { return nightForDate(localDate(now)); }
+  /** Night 1 is the campaign's start date. Dates before the start are night 0 or less (nothing happens). */
+  function nightForDate(date: string): number { return utcDay(date) - utcDay(campaign.start) + 1; }
+  function dateForNight(night: number): string {
+    const d = new Date((utcDay(campaign.start) + night - 1) * 86400000);
+    return d.toISOString().slice(0, 10);
+  }
+  function moonIndex(night: number): number { return Math.floor((night - 1) / campaign.nightsPerMoon); }
+
+  // ───────────────────────── omens & moons ─────────────────────────
+
+  /** Same Omen for every warband. Each run of 30 nights is a fresh shuffle of the deck, so no card repeats within a cycle. */
+  function omenForNight(night: number): Omen {
+    const cycle = Math.floor((night - 1) / OMENS.length);
+    const order = shuffle(rng(hashSeed(campaign.id, 'omens', cycle)), OMENS);
+    return order[(((night - 1) % OMENS.length) + OMENS.length) % OMENS.length];
+  }
+  function moonForNight(night: number): Moon {
+    const idx = moonIndex(night);
+    const cycle = Math.floor(idx / MOONS.length);
+    const order = shuffle(rng(hashSeed(campaign.id, 'moons', cycle)), MOONS);
+    return order[((idx % MOONS.length) + MOONS.length) % MOONS.length];
+  }
+  /**
+   * The errand a Moon favours at a place. Its own where that is to be had; else what the place says, else the
+   * errand that inherits from it (Dredge for Scavenge); else nothing, and the Moon is flat there.
+   */
+  function moonBoostAt(moon: Moon, location: Location = DEFAULT_LOCATION): Errand | undefined {
+    const said = location.moonBoost?.[moon.id];
+    if (said && isErrandAt(said, location)) return said;
+    if (isErrandAt(moon.boost, location)) return moon.boost;
+    return location.errands.find((e) => location.inherits[e] === moon.boost);
+  }
+  /** The Moon's tie-in lines for an errand at a place; empty if the Moon leaves none there. */
+  function moonTiesAt(moon: Moon, errand: Errand, location: Location = DEFAULT_LOCATION): string[] {
+    const tie = location.moonTies ? location.moonTies[moon.id]?.[errand] : moon.ties[errand];
+    return tie === undefined ? [] : Array.isArray(tie) ? tie : [tie];
+  }
+  /** Combined tilt for an errand on a night: the Omen's tilt plus one point for the Moon's favoured errand, clamped to ±3. */
+  function tiltFor(errand: Errand, omen: Omen, moon: Moon, location: Location = DEFAULT_LOCATION): number {
+    const from = location.inherits[errand];
+    const o = omen.tilt[errand] ?? (from ? omen.tilt[from] : undefined) ?? 0;
+    return Math.max(-3, Math.min(3, o + (moonBoostAt(moon, location) === errand ? 1 : 0)));
+  }
+  /** A sensible default errand from the role, for standing orders, among those the place offers. */
+  function defaultErrand(member: MemberLike, location: Location = DEFAULT_LOCATION): Errand {
+    const role = member.role.toLowerCase();
+    const byRole = (): Errand => {
+      if (/priest|sister|confessor|flagellant|augur/.test(role)) return 'pray';
+      if (/jaeger|hunter|scout|ranger|archer|marksman/.test(role)) return 'scavenge';
+      if (/ogre|slayer|pit|champion|brother|troll/.test(role)) return 'train';
+      if (/thief|assassin|beardling|youngblood|urchin|night runner/.test(role)) return 'spy';
+      if (/lord|elder|captain|merchant|engineer|magister/.test(role)) return 'trade';
+      return 'carouse';
+    };
+    return errandAt(byRole(), location);
+  }
+  /** The templates for an errand at a place, falling back to Mordheim's so an odd order never leaves a night unwritten. */
+  function templatesAt(errand: Errand, location: Location): TemplateBank {
+    return location.templates[errand] ?? DEFAULT_LOCATION.templates[errand] ?? { boon: [], fair: [], poor: [], standing: [] };
+  }
+  /**
+   * Resolve one night for one warband. Deterministic: the same input always gives the same night.
+   * Does not mutate state; see applyNight for the bookkeeping.
+   */
+  function resolveNight(input: ResolveInput): NightResult {
+    const { warband, night, state } = input;
+    const location = input.location ?? DEFAULT_LOCATION;
+    const omen = omenForNight(night), moon = moonForNight(night);
+    const orders = input.orders.slice(0, campaign.membersPerNight);
+    const r = rng(hashSeed(campaign.id, warband.id, night, ...orders.map((o) => `${o.memberId}:${o.errand}:${o.standing ? 's' : 'o'}`)));
+    const results: OrderResult[] = [];
+    let favour = state.favour, shards = state.shards;
+    const rivals = Array.isArray(input.rival) ? input.rival : input.rival ? [input.rival] : [];
+    const rivalBand = rivals.length > 1 ? pick(r, rivals) : rivals[0];
+    // templates say "the {rival}", so a name that begins with "The" sheds it: "the Nordost Kin", never "the The Nordost Kin"
+    const rival = rivalBand ? rivalBand.name.replace(/^the\s+/i, '') : 'rival warband';
+    const rivalLiving = rivalBand?.members.filter((m) => !m.dead) ?? [];
+    const detail = pick(r, location.details);
+
+    orders.forEach((order, i) => {
+      const member = warband.members.find((m) => m.id === order.memberId);
+      if (!member) return;
+      const standing = !!order.standing;
+      // the Omen and the Moon set the night's odds; who you send moves them a little further
+      const carried = input.carry?.memberId === member.id ? input.carry.tilt ?? 0 : 0;
+      const tilt = Math.max(-3, Math.min(3, tiltFor(order.errand, omen, moon, location) + (standing ? 0 : statEdge(warband, member, order.errand)) + carried));
+      const outcome: Outcome = standing ? (r() < YIELDS.standing.poor ? 'poor' : 'fair') : rollOutcome(r, tilt);
+      let f = FAVOUR[outcome];
+      if (standing) f = Math.ceil(f / 2);
+      let renown = 0, gained = 0, token: TokenDef | undefined, rumour: string | undefined, convertedShards: number | undefined;
+      // yields by errand
+      if (SHARD_ERRANDS.includes(order.errand)) gained = standing ? (outcome === 'fair' && r() < YIELDS.standing.shardOnFair ? 1 : 0) : YIELDS.shards[outcome];
+      if (order.errand === 'train') renown += YIELDS.trainRenown[outcome];
+      if (order.errand === 'carouse' && outcome === 'boon') renown += YIELDS.carouseBoonRenown;
+      if (order.errand === 'spy' && outcome !== 'poor') rumour = fill(pick(r, location.rumours), { rival });
+      if (order.errand === 'trade' && outcome !== 'poor' && shards >= 5) {
+        convertedShards = 5; shards -= 5;
+        token = pick(r, tokensFor('market', location));
+      }
+      // token drop: a boon often brings one, a fair night now and then, a poor night and standing orders never.
+      // Tuned so a warband with two out finds a charm about one night in three; the Omen, the Moon and the edge push it a little.
+      const type = ERRAND_TOKEN_TYPE[order.errand];
+      if (type && !token && !standing) {
+        const chance = outcome === 'boon' ? TOKEN_CHANCE.boon(tilt) : outcome === 'fair' ? TOKEN_CHANCE.fair(tilt) : 0;
+        if (r() < chance) token = pick(r, tokensFor(type, location));
+      }
+      // favour soft cap: past it the city forgets quickly and the surplus becomes a name
+      let effective = f;
+      if (favour >= campaign.favourSoftCap) { effective = Math.ceil(f / 2); renown += f - effective; }
+      effective = Math.max(0, Math.min(effective, 100 - favour));
+      favour += effective; shards += gained;
+      // prose
+      const bank = templatesAt(order.errand, location);
+      const pool = standing ? bank.standing : bank[outcome];
+      const lineKey = (idx: number) => `${order.errand}:${standing ? 'standing' : outcome}:${idx}`;
+      let index = Math.floor(r() * pool.length);
+      // a line used in the nights just before is redrawn, a few times, when the bank is deep enough to allow it
+      if (input.avoid?.length && pool.length > 3) for (let tries = 0; tries < 3 && input.avoid.includes(lineKey(index)); tries++) index = Math.floor(r() * pool.length);
+      const template = pool[index];
+      const other = orders.find((o) => o !== order);
+      const otherMember = other && warband.members.find((m) => m.id === other.memberId);
+      const slots = {
+        name: member.name, first: firstName(member.name), they: 'they', them: 'them', their: 'their',
+        district: pick(r, location.districts), omen: omen.title, rival, other: otherMember ? firstName(otherMember.name) : 'nobody',
+      };
+      let prose = fill(template, slots);
+      if (i === 1 && otherMember && r() < 0.35) prose += ' ' + fill(pick(r, location.pairs), { ...slots, other: firstName(member.name) });
+      // the Moon leaves its mark on one errand a night, quietly
+      const ties = moonTiesAt(moon, order.errand, location);
+      if (i === 0 && ties.length && r() < 0.6) prose += ' ' + fill(pick(r, ties), slots);
+      // now and then the rival warband crosses their path; never on standing orders, which nobody remarks on
+      if (i === 0 && !standing && rivalBand && location.encounters.length && r() < 0.15) {
+        const rivalMember = rivalLiving.length ? firstName(pick(r, rivalLiving).name) : 'somebody';
+        prose += ' ' + fill(pick(r, location.encounters), { ...slots, rivalMember });
+      }
+      results.push({ memberId: member.id, errand: order.errand, outcome, standing, favour: effective, renown, shards: gained, token, rumour, convertedShards, prose, line: lineKey(index) });
+    });
+
+    const ledger: string[] = [];
+    const totalFavour = results.reduce((a, b) => a + b.favour, 0);
+    const totalShards = results.reduce((a, b) => a + b.shards, 0);
+    const totalRenown = results.reduce((a, b) => a + b.renown, 0);
+    if (totalFavour) ledger.push(`+${totalFavour} Favour`);
+    if (totalShards) ledger.push(`${totalShards} ${totalShards === 1 ? 'shard' : 'shards'}`);
+    if (totalRenown) ledger.push(`+${totalRenown} Renown`);
+    for (const res of results) {
+      const m = warband.members.find((x) => x.id === res.memberId)!;
+      if (res.convertedShards) ledger.push(`${firstName(m.name)}: 5 shards to ${res.token!.name}`);
+      else if (res.token) ledger.push(`${firstName(m.name)}: ${res.token.name}`);
+      if (res.rumour) ledger.push(`${firstName(m.name)}: a rumour`);
+    }
+    const header = `Night ${night} — under ${omen.title}.`;
+    const closer = results.length && r() < 0.45 ? pick(r, location.closers) : undefined;
+    // last of all, and only after the dice have said their piece: does one of them come to a crossroads?
+    const crossroads = input.crossroads ? drawCrossroads(r, warband, night, results, location, input.crossroads, { rival }) : undefined;
+    return { night, omenId: omen.id, moonId: moon.id, header, results, closer, detail, ledger, locationId: location.id, ...(crossroads ? { crossroads } : {}) };
+  }
+
+  // ───────────────────────── the Crossroads ─────────────────────────
+
+  /** The crossroads a member could come to after this errand and outcome, here, given what they already carry. */
+  function crossroadsFor(location: Location, errand: Errand, outcome: Outcome, night: number, marks: { id: string }[], seen: readonly string[]): Crossroad[] {
+    const omen = omenForNight(night), moon = moonForNight(night);
+    const has = (id: string) => marks.some((m) => m.id === id);
+    return (location.crossroads ?? []).filter((c) =>
+      c.errands.includes(errand)
+      && (!c.outcomes || c.outcomes.includes(outcome))
+      && !seen.includes(c.id)
+      && (!c.requires?.moon || c.requires.moon.includes(moon.id))
+      && (!c.requires?.omen || c.requires.omen.includes(omen.id))
+      && (!c.requires?.mark || c.requires.mark.every(has))
+      && (!c.requires?.notMark || !c.requires.notMark.some(has)));
+  }
+  /** Unmet crossroads first; when every fitting one has been met, all but the most recent half of them; failing that, any that fits. */
+  function crossroadsWithFallback(location: Location, errand: Errand, outcome: Outcome, night: number, marks: { id: string }[], seen: readonly string[]): Crossroad[] {
+    const unmet = crossroadsFor(location, errand, outcome, night, marks, seen);
+    if (unmet.length) return unmet;
+    const any = crossroadsFor(location, errand, outcome, night, marks, []);
+    if (!any.length) return any;
+    const recent = seen.filter((id) => any.some((c) => c.id === id)).slice(-Math.floor(any.length / 2));
+    const older = any.filter((c) => !recent.includes(c.id));
+    return older.length ? older : any;
+  }
+  /**
+   * About one night in three (`crossroadsChance` is the raw draw; the night's rest after a crossroads brings it down to
+   * about a third), the first member out on real orders whose errand has a crossroads to offer comes to one.
+   * Never on standing orders, never two nights running, and not the same crossroads again while others are still unmet:
+   * once a pack's crossroads have all been met, the least recently met come round again rather than the nights going quiet.
+   */
+  function drawCrossroads(r: () => number, warband: WarbandLike, night: number, results: OrderResult[], location: Location, ctx: NonNullable<ResolveInput['crossroads']>, extra: { rival: string }): CrossroadsMet | undefined {
+    const hit = r() < campaign.crossroadsChance;
+    if (!hit || ctx.recent) return undefined;
+    for (const res of results) {
+      if (res.standing) continue;
+      const member = warband.members.find((m) => m.id === res.memberId);
+      if (!member) continue;
+      const candidates = crossroadsWithFallback(location, res.errand, res.outcome, night, ctx.marks[member.id] ?? [], ctx.seen);
+      if (!candidates.length) continue;
+      const c = weighted(r, candidates);
+      const other = results.find((x) => x !== res);
+      const otherMember = other && warband.members.find((m) => m.id === other.memberId);
+      const slots = roadSlots(warband, member, otherMember, location, r, extra.rival);
+      return { id: c.id, memberId: member.id, kind: c.kind, setup: fill(c.setup, slots), rival: extra.rival, options: c.options.map((o) => ({ id: o.id, label: fill(o.label, slots) })) };
+    }
+    return undefined;
+  }
+  /** The road the character takes when nobody decides: the one marked default, else a seeded pick. */
+  function defaultRoad(c: Crossroad, warbandId: string, night: number): Road {
+    return c.options.find((o) => o.default) ?? pick(rng(hashSeed(campaign.id, 'undecided', warbandId, night, c.id)), c.options);
+  }
+  /**
+   * Take a road at a crossroads. Deterministic in (campaign, warband, night, crossroads, road): the dice inside a risk road,
+   * the charm, the rumour and the words fall the same way on every machine. Does not touch state; the ledger does the bookkeeping.
+   */
+  function takeRoad(input: TakeRoadInput): RoadTaken {
+    const { warband, night, location } = input;
+    const met = night.crossroads;
+    if (!met) throw new Error('No crossroads was met that night.');
+    const c = crossroadById(location, met.id) ?? crossroadById(DEFAULT_LOCATION, met.id);
+    if (!c) throw new Error(`The pack has no crossroads ${met.id}.`);
+    const road = c.options.find((o) => o.id === input.roadId);
+    if (!road) throw new Error(`No road ${input.roadId} at ${met.id}.`);
+    const member = warband.members.find((m) => m.id === met.memberId) ?? { id: met.memberId, name: 'Somebody', role: '' };
+    const r = rng(hashSeed(campaign.id, 'road', warband.id, night.night, c.id, road.id));
+    // the rival named when the crossroads was met; only a night written before rivals were remembered falls back to a draw
+    const rivals = Array.isArray(input.rival) ? input.rival : input.rival ? [input.rival] : [];
+    const rivalBand = rivals.length > 1 ? pick(r, rivals) : rivals[0];
+    const rival = met.rival ?? (rivalBand ? rivalBand.name.replace(/^the\s+/i, '') : 'rival warband');
+    const otherRes = night.results.find((x) => x.memberId !== met.memberId);
+    const other = otherRes && warband.members.find((m) => m.id === otherRes.memberId);
+    const slots = roadSlots(warband, member, other, location, r, rival);
+    // a risk road: the player chose the risk, the dice choose the branch
+    let branch: RoadBranch = road;
+    let outcome = fill(road.outcome, slots);
+    if (road.risk) {
+      branch = r() < (road.risk.chance ?? 0.5) ? road.risk.good : road.risk.bad;
+      outcome = `${outcome} ${fill(branch.outcome, slots)}`.trim();
+    }
+    if (input.defaulted && location.undecided?.length) outcome = `${pick(r, location.undecided).replace(/\{first\}/g, slots.first)} ${outcome}`;
+    const fx = branch.effects ?? {};
+    const curse = fx.curse ? curseById(fx.curse) : undefined;
+    const out: RoadTaken = {
+      road, label: fill(road.label, slots), outcome, headline: road.headline ? fill(road.headline, slots) : curse?.headline ? fill(curse.headline, slots) : undefined,
+      favour: (fx.favour ?? 0), shards: (fx.shards ?? 0) + (curse?.effects?.shards ?? 0), renown: (fx.renown ?? 0) + (curse?.effects?.renown ?? 0),
+      tokenId: fx.token ? pick(r, tokensFor(fx.token, location)).id : undefined,
+      rumour: fx.rumour ? fill(pick(r, location.rumours), { rival }) : undefined,
+      mark: fx.mark ? { id: fx.mark, name: location.markNames?.[fx.mark] ?? DEFAULT_LOCATION.markNames?.[fx.mark] ?? fx.mark.replace(/-/g, ' ') } : undefined,
+      carryTilt: fx.carry?.tilt, staysHome: fx.carry?.staysHome ?? curse?.effects?.staysHome, curse,
+    };
+    return out;
+  }
+  /** The ledger line a road taken adds beneath the night's own. */
+  function roadLedger(taken: RoadTaken, member: MemberLike): string[] {
+    const first = firstName(member.name), out: string[] = [];
+    const signed = (n: number) => (n > 0 ? `+${n}` : `−${-n}`);
+    if (taken.favour) out.push(`${signed(taken.favour)} Favour`);
+    if (taken.shards) out.push(`${signed(taken.shards)} ${Math.abs(taken.shards) === 1 ? 'shard' : 'shards'}`);
+    if (taken.renown) out.push(`${signed(taken.renown)} Renown`);
+    if (taken.tokenId) out.push(`${first}: ${tokenById(taken.tokenId).name}`);
+    if (taken.rumour) out.push(`${first}: a rumour`);
+    if (taken.curse) out.push(`${first}: ${taken.curse.name}${taken.curse.nights > 1 ? ` (${taken.curse.nights} nights)` : ''}`);
+    if (taken.mark) out.push(`${first}: ${taken.mark.name}`);
+    if (taken.carryTilt) out.push(`${first}: ${taken.carryTilt > 0 ? '▲'.repeat(taken.carryTilt) : '▼'.repeat(-taken.carryTilt)} tonight`);
+    if (taken.staysHome) out.push(`${first} stays in tonight`);
+    return out;
+  }
+
+  /** The night nobody went out. Still a Chronicle line. */
+  function quietNight(night: number, location: Location = DEFAULT_LOCATION): NightResult {
+    const omen = omenForNight(night), moon = moonForNight(night);
+    const r = rng(hashSeed(campaign.id, 'quiet', night));
+    return { night, omenId: omen.id, moonId: moon.id, header: `Night ${night} — under ${omen.title}.`, results: [], detail: pick(r, location.details), closer: pick(r, location.quiet), ledger: [], locationId: location.id };
+  }
+  /** The single vignette a player gets after a long absence. No summary of what they missed. */
+  function returnNight(night: number, warbandId: string, location: Location = DEFAULT_LOCATION): NightResult {
+    const omen = omenForNight(night), moon = moonForNight(night);
+    const r = rng(hashSeed(campaign.id, 'return', warbandId, night));
+    return { night, omenId: omen.id, moonId: moon.id, header: `Night ${night} — the return.`, results: [], detail: pick(r, location.return), ledger: ['Favour primed to 20'], locationId: location.id };
+  }
+  function tokenById(id: string): TokenDef { return TOKENS.find((t) => t.id === id)!; }
+  function handHas(hand: HeldToken[], type: TokenType): HeldToken | undefined { return hand.find((h) => tokenById(h.id).type === type); }
+
+  /** Apply a night's results to a hand state. Tokens of a type already held become offers to decide. */
+  function applyNight(state: HandState, result: NightResult): { state: HandState; offers: TokenOffer[] } {
+    const next: HandState = { ...state, hand: state.hand.slice() };
+    const offers: TokenOffer[] = [];
+    for (const res of result.results) {
+      next.favour = Math.min(100, next.favour + res.favour);
+      next.shards += res.shards - (res.convertedShards ?? 0);
+      next.renown += res.renown;
+      if (res.token) {
+        // one per type, and never more than three: a fourth kind is offered against the oldest charm
+        const held = handHas(next.hand, res.token.type) ?? (next.hand.length >= HAND_SIZE ? next.hand.slice().sort((a, b) => a.earnedNight - b.earnedNight)[0] : undefined);
+        if (held) offers.push({ night: result.night, incoming: res.token.id, held: held.id });
+        else next.hand.push({ id: res.token.id, earnedNight: result.night });
+      }
+    }
+    return { state: next, offers };
+  }
+  /** The City Provides: a warband at the Eve with an empty Hand is dealt one random token, from among the place's. */
+  function cityProvides(warbandId: string, night: number, location: Location = DEFAULT_LOCATION): TokenDef {
+    return pick(rng(hashSeed(campaign.id, 'provides', warbandId, night)), tokensFor(null, location));
+  }
+  function cityProvidesLine(warbandId: string, night: number, location: Location = DEFAULT_LOCATION): string {
+    return pick(rng(hashSeed(campaign.id, 'provides-line', warbandId, night)), location.cityProvides);
+  }
+  function titleFor(renown: number): string {
+    let title = TITLES[0].title;
+    for (const t of TITLES) if (renown >= t.renown) title = t.title;
+    return title;
+  }
+  function nextTitle(renown: number): { title: string; renown: number } | undefined { return TITLES.find((t) => t.renown > renown); }
+  /** Epithets are earned by featuring in enough Chronicle entries; the errand they did most decides the flavour, the place the words. */
+  function epithetFor(memberId: string, counts: Partial<Record<Errand, number>>, location: Location = DEFAULT_LOCATION): string {
+    const top = (Object.entries(counts) as [Errand, number][]).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'carouse';
+    const pool = location.epithets[top] ?? DEFAULT_LOCATION.epithets[top] ?? DEFAULT_LOCATION.epithets.carouse!;
+    return pick(rng(hashSeed(campaign.id, 'epithet', memberId)), pool);
+  }
+
+  /** Short ticket for the Eve, carrying the charm count so a rival can be shown how many, not which. */
+  function eveTicket(warbandId: string, night: number, count: number): string {
+    const h = hashSeed(campaign.id, 'eve', warbandId, night).toString(36).toUpperCase().padStart(7, '0').slice(-5);
+    return `EVE-${count}-${h}`;
+  }
+
+  return { world, CAMPAIGN, TITLES, OMENS, MOONS, TOKENS, CURSES, TOKEN_TYPES, LOCATIONS, DEFAULT_LOCATION, currentDocuments, curseById, locationById, locationForNight, blurbFor, tokensFor, localDate, currentNight, nightForDate, dateForNight, moonIndex, omenForNight, moonForNight, moonBoostAt, moonTiesAt, tiltFor, defaultErrand, resolveNight, crossroadsFor, defaultRoad, takeRoad, roadLedger, quietNight, returnNight, tokenById, handHas, applyNight, cityProvides, cityProvidesLine, titleFor, nextTitle, epithetFor, eveTicket };
+}
+export type Engine = ReturnType<typeof createEngine>;
+
+// ───────────────────────── the world in force ─────────────────────────
+// The exports below read the engine in force: the first campaign's, built in, unless a page has put its own in force
+// with `useWorld`. The browser does that once per page, from the boot blob. The server never does: one process serves
+// several campaigns at once, so it asks `worldFor(campaignId)` for each and calls that engine's members directly.
+
+let current: Engine = createEngine(DEFAULT_WORLD);
+let version = 0;
+/** The engine in force, and a number that moves each time another is put in force (the ledger and the Cryer follow it). */
+export const currentEngine = (): Engine => current;
+export const engineVersion = (): number => version;
+export let CAMPAIGN = current.CAMPAIGN;
+export let TITLES = current.TITLES;
+export let OMENS = current.OMENS;
+export let MOONS = current.MOONS;
+export let TOKENS = current.TOKENS;
+export let CURSES = current.CURSES;
+export let TOKEN_TYPES = current.TOKEN_TYPES;
+export let LOCATIONS = current.LOCATIONS;
+export let DEFAULT_LOCATION = current.DEFAULT_LOCATION;
+/** Read the values above again from the instance in force. */
+function refreshValues(): void { CAMPAIGN = current.CAMPAIGN;  TITLES = current.TITLES;  OMENS = current.OMENS;  MOONS = current.MOONS;  TOKENS = current.TOKENS;  CURSES = current.CURSES;  TOKEN_TYPES = current.TOKEN_TYPES;  LOCATIONS = current.LOCATIONS;  DEFAULT_LOCATION = current.DEFAULT_LOCATION; }
+/** Put a campaign's world in force for this page's default exports. The browser alone: never on the server. */
+export function useWorld(world: World): void { current = createEngine(world); version++; refreshValues(); }
+export const currentDocuments: Engine['currentDocuments'] = (...a) => current.currentDocuments(...a);
+export const curseById: Engine['curseById'] = (...a) => current.curseById(...a);
+export const locationById: Engine['locationById'] = (...a) => current.locationById(...a);
+export const locationForNight: Engine['locationForNight'] = (...a) => current.locationForNight(...a);
+export const blurbFor: Engine['blurbFor'] = (...a) => current.blurbFor(...a);
+export const tokensFor: Engine['tokensFor'] = (...a) => current.tokensFor(...a);
+export const localDate: Engine['localDate'] = (...a) => current.localDate(...a);
+export const currentNight: Engine['currentNight'] = (...a) => current.currentNight(...a);
+export const nightForDate: Engine['nightForDate'] = (...a) => current.nightForDate(...a);
+export const dateForNight: Engine['dateForNight'] = (...a) => current.dateForNight(...a);
+export const moonIndex: Engine['moonIndex'] = (...a) => current.moonIndex(...a);
+export const omenForNight: Engine['omenForNight'] = (...a) => current.omenForNight(...a);
+export const moonForNight: Engine['moonForNight'] = (...a) => current.moonForNight(...a);
+export const moonBoostAt: Engine['moonBoostAt'] = (...a) => current.moonBoostAt(...a);
+export const moonTiesAt: Engine['moonTiesAt'] = (...a) => current.moonTiesAt(...a);
+export const tiltFor: Engine['tiltFor'] = (...a) => current.tiltFor(...a);
+export const defaultErrand: Engine['defaultErrand'] = (...a) => current.defaultErrand(...a);
+export const resolveNight: Engine['resolveNight'] = (...a) => current.resolveNight(...a);
+export const crossroadsFor: Engine['crossroadsFor'] = (...a) => current.crossroadsFor(...a);
+export const defaultRoad: Engine['defaultRoad'] = (...a) => current.defaultRoad(...a);
+export const takeRoad: Engine['takeRoad'] = (...a) => current.takeRoad(...a);
+export const roadLedger: Engine['roadLedger'] = (...a) => current.roadLedger(...a);
+export const quietNight: Engine['quietNight'] = (...a) => current.quietNight(...a);
+export const returnNight: Engine['returnNight'] = (...a) => current.returnNight(...a);
+export const tokenById: Engine['tokenById'] = (...a) => current.tokenById(...a);
+export const handHas: Engine['handHas'] = (...a) => current.handHas(...a);
+export const applyNight: Engine['applyNight'] = (...a) => current.applyNight(...a);
+export const cityProvides: Engine['cityProvides'] = (...a) => current.cityProvides(...a);
+export const cityProvidesLine: Engine['cityProvidesLine'] = (...a) => current.cityProvidesLine(...a);
+export const titleFor: Engine['titleFor'] = (...a) => current.titleFor(...a);
+export const nextTitle: Engine['nextTitle'] = (...a) => current.nextTitle(...a);
+export const epithetFor: Engine['epithetFor'] = (...a) => current.epithetFor(...a);
+export const eveTicket: Engine['eveTicket'] = (...a) => current.eveTicket(...a);

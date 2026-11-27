@@ -3,11 +3,14 @@
 import Base from '../../layouts/Base.astro';
 import ManageTop from '../../components/ManageTop.astro';
 import '../../styles/manage.css';
-import { base } from '../../lib/site';
+
 import { hasDatabase } from '../../server/db/client';
 import { getActor, isGm } from '../../server/roles';
 import { listWarbands } from '../../server/campaign/roster';
 import type { Warband } from '../../campaign/model';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
+const cid = Astro.locals.campaign.id;
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -15,7 +18,7 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 const ready = hasDatabase();
 const viewer = ready ? await getActor(Astro.request) : null;
 let warbands: Warband[] = [];
-if (ready) { try { warbands = await listWarbands(); } catch (e) { console.error('[warbands] unavailable', e); } }
+if (ready) { try { warbands = await listWarbands(cid); } catch (e) { console.error('[warbands] unavailable', e); } }
 const mine = viewer ? warbands.find((w) => w.ownerId === viewer.id) : undefined;
 if (mine) return Astro.redirect(`${base}/warbands/${mine.id}/`);
 const free = warbands.filter((w) => !w.ownerId);

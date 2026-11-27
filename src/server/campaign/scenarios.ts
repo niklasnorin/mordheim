@@ -28,6 +28,7 @@ import { pickOrder, roundStart, stepBack, stepForward } from '../../campaign/tur
 import { isGm, type Actor } from '../roles.ts';
 import { looksLike, type ImageType } from './chapters.ts';
 import { ensureLocationsSeeded, ensureSeeded } from './seed.ts';
+import { campaignOfScenario, writableCampaign } from './guard.ts';
 
 export { LedgerError };
 
@@ -41,7 +42,7 @@ type Row = typeof scenarios.$inferSelect;
 
 function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mems: (typeof scenarioMembers.$inferSelect)[], ooa: (typeof scenarioOutOfAction.$inferSelect)[], events: (typeof scenarioEvents.$inferSelect)[]): Scenario {
   return {
-    id: r.id, sequence: r.sequence, status: r.status, title: r.title, playedOn: r.playedOn, rulebookScenario: r.rulebookScenario, customRules: r.customRules,
+    id: r.id, campaignId: r.campaignId, sequence: r.sequence, status: r.status, title: r.title, playedOn: r.playedOn, rulebookScenario: r.rulebookScenario, customRules: r.customRules,
     winCondition: r.winCondition, summary: r.summary, chronicle: r.chronicle, outcome: r.outcome, prologue: r.prologue, prologueAsSummary: r.prologueAsSummary, battle: (r.battle as string[]) ?? [], epilogue: r.epilogue,
     battleOpen: r.battleOpen, loot: (r.loot as string[]) ?? [], campaignNotes: (r.campaignNotes as string[]) ?? [], puzzle: (r.puzzle as Puzzle | null) ?? null, turn: r.turn, turnLimit: r.turnLimit, tally: r.tally, order: Array.isArray(r.order) ? (r.order as unknown[]).filter((x): x is string => typeof x === 'string') : [], active: r.active, objective: coerceObjective(r.objective), tarot: r.tarot,
     locationId: r.locationId, pointId: r.pointId, mapX: r.mapX, mapY: r.mapY,
@@ -58,13 +59,17 @@ function scenarioOf(r: Row, parts: (typeof scenarioWarbands.$inferSelect)[], mem
   };
 }
 
-/** Every scenario: the played ones in play order, then the upcoming ones by date. */
-export async function listScenarios(): Promise<Scenario[]> {
+/** Every scenario of a campaign: the played ones in play order, then the upcoming ones by date. */
+export async function listScenarios(campaignId: string): Promise<Scenario[]> {
   await ensureSeeded();
   const d = db();
-  const [rows, parts, mems, ooa, events] = await Promise.all([
-    d.select().from(scenarios), d.select().from(scenarioWarbands), d.select().from(scenarioMembers), d.select().from(scenarioOutOfAction).orderBy(asc(scenarioOutOfAction.id)),
-    d.select().from(scenarioEvents).orderBy(asc(scenarioEvents.turn), asc(scenarioEvents.id)),
+  const rows = await d.select().from(scenarios).where(eq(scenarios.campaignId, campaignId));
+  const ids = rows.map((r) => r.id);
+  if (!ids.length) return [];
+  const [parts, mems, ooa, events] = await Promise.all([
+    d.select().from(scenarioWarbands).where(inArray(scenarioWarbands.scenarioId, ids)), d.select().from(scenarioMembers).where(inArray(scenarioMembers.scenarioId, ids)),
+    d.select().from(scenarioOutOfAction).where(inArray(scenarioOutOfAction.scenarioId, ids)).orderBy(asc(scenarioOutOfAction.id)),
+    d.select().from(scenarioEvents).where(inArray(scenarioEvents.scenarioId, ids)).orderBy(asc(scenarioEvents.turn), asc(scenarioEvents.id)),
   ]);
   const list = rows.map((r) => scenarioOf(r, parts, mems, ooa, events));
   return list.sort((a, b) => {
@@ -74,7 +79,12 @@ export async function listScenarios(): Promise<Scenario[]> {
   });
 }
 
-export async function getScenario(id: string): Promise<Scenario | undefined> { return (await listScenarios()).find((s) => s.id === id); }
+/** A scenario by its id, in whichever campaign it is. */
+export async function getScenario(id: string): Promise<Scenario | undefined> {
+  await ensureSeeded();
+  const [r] = await db().select({ c: scenarios.campaignId }).from(scenarios).where(eq(scenarios.id, id)).limit(1);
+  return r ? (await listScenarios(r.c)).find((s) => s.id === id) : undefined;
+}
 /** The scenario, or a refusal the route can pass on. */
 export async function requireScenario(id: string): Promise<Scenario> {
   const s = await getScenario(id);
@@ -198,20 +208,21 @@ async function whereOf(patch: Pick<ScenarioInput, 'locationId' | 'pointId' | 'ma
   return out;
 }
 
-export async function createScenario(actor: Actor, input: ScenarioInput): Promise<Scenario> {
+export async function createScenario(actor: Actor, campaignId: string, input: ScenarioInput): Promise<Scenario> {
   gmOnly(actor);
   await ensureSeeded();
+  await writableCampaign(actor, campaignId);
   const title = clean(input.title, 120);
   if (!title) throw new LedgerError('The scenario needs a title.');
   if (!isDate(input.playedOn)) throw new LedgerError('Say which day it is played, as YYYY-MM-DD.');
   const d = db();
   const taken = new Set((await d.select({ id: scenarios.id }).from(scenarios)).map((r) => r.id));
-  const [{ n }] = await d.select({ n: sql<number>`coalesce(max(${scenarios.sequence}), 0)::int` }).from(scenarios);
+  const [{ n }] = await d.select({ n: sql<number>`coalesce(max(${scenarios.sequence}), 0)::int` }).from(scenarios).where(eq(scenarios.campaignId, campaignId));
   const seq = n + 1;
   let id = `scenario-${String(seq).padStart(2, '0')}-${slugify(title)}`, k = 2;
   while (taken.has(id)) id = `scenario-${String(seq).padStart(2, '0')}-${slugify(title)}-${k++}`;
   await d.insert(scenarios).values({
-    id, sequence: seq, status: 'upcoming', title, playedOn: input.playedOn, rulebookScenario: rulebookOf(input.rulebookScenario), customRules: proseSource(input.customRules, 8000),
+    id, campaignId, sequence: seq, status: 'upcoming', title, playedOn: input.playedOn, rulebookScenario: rulebookOf(input.rulebookScenario), customRules: proseSource(input.customRules, 8000),
     turnLimit: turnLimitOf(input.turnLimit) ?? houseScenario(input.rulebookScenario)?.turns ?? null, tarot: !!input.tarot, objective: objectiveInputOf(input.objective),
     prologue: proseSource(input.prologue, 8000), prologueAsSummary: input.prologueAsSummary ?? true, summary: proseSource(input.summary, 1000), createdBy: actor.id,
     ...(await whereOf(input)),
@@ -221,6 +232,7 @@ export async function createScenario(actor: Actor, input: ScenarioInput): Promis
 }
 
 export async function updateScenario(actor: Actor, id: string, patch: ScenarioPatch): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   gmOnly(actor);
   const before = await row(id);
   const set: Partial<typeof scenarios.$inferInsert> = { updatedAt: new Date(), ...(await whereOf(patch, before)) };
@@ -259,10 +271,12 @@ export async function updateScenario(actor: Actor, id: string, patch: ScenarioPa
 
 /** Which warbands attend. A warband taken off the list takes its warriors' records with it. */
 export async function setParticipants(actor: Actor, id: string, warbandIds: string[]): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   gmOnly(actor);
-  await row(id);
+  const here = await row(id);
   const d = db();
-  const known = new Set((await d.select({ id: warbands.id }).from(warbands)).map((r) => r.id));
+  // only the campaign's own warbands may attend its scenarios
+  const known = new Set((await d.select({ id: warbands.id }).from(warbands).where(eq(warbands.campaignId, here.campaignId))).map((r) => r.id));
   const wanted = [...new Set(warbandIds)].filter((w) => known.has(w));
   const current = (await d.select({ warbandId: scenarioWarbands.warbandId }).from(scenarioWarbands).where(eq(scenarioWarbands.scenarioId, id))).map((r) => r.warbandId);
   const gone = current.filter((w) => !wanted.includes(w));
@@ -281,6 +295,7 @@ export async function setParticipants(actor: Actor, id: string, warbandIds: stri
  * lifts it out of the Chronicle.
  */
 export async function markPlayed(actor: Actor, id: string, results: { warbandId: string; result: ScenarioResult }[]): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   const r = await row(id);
   await tableOnly(actor, id);
   const d = db();
@@ -292,15 +307,16 @@ export async function markPlayed(actor: Actor, id: string, results: { warbandId:
   }
   for (const { warbandId, result } of results) if (parts.includes(warbandId)) await d.update(scenarioWarbands).set({ result }).where(and(eq(scenarioWarbands.scenarioId, id), eq(scenarioWarbands.warbandId, warbandId)));
   if (r.status !== 'played') {
-    const [{ n }] = await d.select({ n: sql<number>`coalesce(max(${scenarios.sequence}), 0)::int` }).from(scenarios).where(eq(scenarios.status, 'played'));
+    const [{ n }] = await d.select({ n: sql<number>`coalesce(max(${scenarios.sequence}), 0)::int` }).from(scenarios).where(and(eq(scenarios.status, 'played'), eq(scenarios.campaignId, r.campaignId)));
     // played scenarios take the next place in play order; the upcoming ones move up behind them
-    await d.update(scenarios).set({ sequence: sql`${scenarios.sequence} + 1` }).where(and(eq(scenarios.status, 'upcoming'), sql`${scenarios.sequence} > ${n}`));
+    await d.update(scenarios).set({ sequence: sql`${scenarios.sequence} + 1` }).where(and(eq(scenarios.status, 'upcoming'), eq(scenarios.campaignId, r.campaignId), sql`${scenarios.sequence} > ${n}`));
     await d.update(scenarios).set({ status: 'played', sequence: n + 1, updatedAt: new Date() }).where(eq(scenarios.id, id));
   }
   return (await getScenario(id))!;
 }
 
 export async function reopenScenario(actor: Actor, id: string): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   gmOnly(actor);
   await row(id);
   await db().update(scenarios).set({ status: 'upcoming', updatedAt: new Date() }).where(eq(scenarios.id, id));
@@ -309,6 +325,7 @@ export async function reopenScenario(actor: Actor, id: string): Promise<Scenario
 
 /** Strike an upcoming scenario. A played one stays in the archives. */
 export async function deleteScenario(actor: Actor, id: string): Promise<void> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   gmOnly(actor);
   const r = await row(id);
   if (r.status === 'played') throw new LedgerError('A played scenario stays in the archives. Reopen it first if it was never fought.', 409);
@@ -319,6 +336,7 @@ export async function deleteScenario(actor: Actor, id: string): Promise<void> {
 
 /** Rewrite the battle. Game masters always; attending players once the game master has opened it. The old telling is kept. */
 export async function writeBattle(actor: Actor, id: string, battle: string[]): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   const r = await row(id);
   if (!isGm(actor)) {
     if (!r.battleOpen) throw new LedgerError('The game master has not opened the battle to be retold.', 403);
@@ -352,6 +370,7 @@ export interface BattleReport {
  * player who sends them is refused before anything is written.
  */
 export async function writeBattleReport(actor: Actor, id: string, report: BattleReport): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   const { battle, ...rest } = report;
   const patch = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined)) as ScenarioPatch;
   if (Object.keys(patch).length) await updateScenario(actor, id, patch);
@@ -364,6 +383,7 @@ export async function writeBattleReport(actor: Actor, id: string, report: Battle
 export interface PerspectivePatch { prologue?: string; epilogue?: string; highlights?: string[]; lowlights?: string[] }
 
 export async function writePerspective(actor: Actor, id: string, warbandId: string, patch: PerspectivePatch): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   await speaksFor(actor, id, warbandId);
   const set: Partial<typeof scenarioWarbands.$inferInsert> = {};
   if (patch.prologue !== undefined) set.prologue = proseSource(patch.prologue, 8000);
@@ -379,6 +399,7 @@ export interface BroughtInput { memberId: string; status?: MemberStatus; highlig
 
 /** Which warriors a warband brought and how each came out of it. Replaces the warband's list; only its own warriors count. */
 export async function setBrought(actor: Actor, id: string, warbandId: string, brought: BroughtInput[]): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   await speaksFor(actor, id, warbandId);
   const d = db();
   const own = new Set((await d.select({ id: members.id }).from(members).where(eq(members.warbandId, warbandId))).map((m) => m.id));
@@ -413,6 +434,7 @@ function turnOf(given: number | null | undefined, fallback: number | null): numb
 
 /** Record a takedown. The one who struck, or the one who fell, may record it for their own warband; a game master for any. */
 export async function addOutOfAction(actor: Actor, id: string, input: OutOfActionInput): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   await row(id);
   const turn = turnOf(input.turn, null);
   const d = db();
@@ -438,6 +460,7 @@ export async function addOutOfAction(actor: Actor, id: string, input: OutOfActio
 }
 
 export async function removeOutOfAction(actor: Actor, id: string, ooaId: number): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   await row(id);
   const d = db();
   const rows = await d.select().from(scenarioOutOfAction).where(and(eq(scenarioOutOfAction.id, ooaId), eq(scenarioOutOfAction.scenarioId, id))).limit(1);
@@ -465,6 +488,7 @@ export async function removeOutOfAction(actor: Actor, id: string, ooaId: number)
  * begun. Anyone at the table may; a game master too. Nothing logged is touched.
  */
 export async function setTurn(actor: Actor, id: string, turn: number): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   await row(id);
   await tableOnly(actor, id);
   if (!Number.isInteger(turn) || turn < 0 || turn > MAX_TURN) throw new LedgerError('That is not a turn of this game.');
@@ -479,6 +503,7 @@ export async function setTurn(actor: Actor, id: string, turn: number): Promise<S
  * then who follows; a warband tapped again is taken out from there. A game master may change it once the game has begun.
  */
 export async function pickTurnOrder(actor: Actor, id: string, warbandId: string): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   const r = await row(id);
   await tableOnly(actor, id);
   if (r.status === 'played') throw new LedgerError('The game is already called.', 409);
@@ -497,6 +522,7 @@ export async function pickTurnOrder(actor: Actor, id: string, warbandId: string)
  * Back from the first warband of the first round is before the game, which is the reset's business, not this.
  */
 export async function stepTurn(actor: Actor, id: string, direction: 'forward' | 'back'): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   const r = await row(id);
   await tableOnly(actor, id);
   if (r.status === 'played') throw new LedgerError('The game is already called.', 409);
@@ -515,6 +541,7 @@ export async function stepTurn(actor: Actor, id: string, direction: 'forward' | 
  * game is not yet called.
  */
 export async function resetGame(actor: Actor, id: string): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   const r = await row(id);
   await tableOnly(actor, id);
   if (r.status === 'played') throw new LedgerError('The game is already called.', 409);
@@ -535,6 +562,7 @@ export interface EventInput { kind: EventKind; turn?: number | null; warbandId?:
  * (which may be negative, when the shard is lost again) and may say how. The turn defaults to the one the table is on.
  */
 export async function addEvent(actor: Actor, id: string, input: EventInput): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   const r = await row(id);
   await tableOnly(actor, id);
   if (!LOGGED_KINDS.includes(input.kind)) throw new LedgerError('The tracker does not log that.');
@@ -586,6 +614,7 @@ function photoBytes(file: PhotoFile, max: number): { mime: ImageType; data: stri
  * the one the table is on. Anyone at the table may, during the game and after it is called.
  */
 export async function addPhoto(actor: Actor, id: string, input: PhotoInput): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   const r = await row(id);
   await tableOnly(actor, id);
   const turn = turnOf(input.turn, Math.max(1, r.turn))!;
@@ -608,6 +637,7 @@ export async function addPhoto(actor: Actor, id: string, input: PhotoInput): Pro
 
 /** Strike a line from the log: the one who wrote it, or a game master. A check of the objective goes whole, every warband's count with it; a photo takes its pictures. */
 export async function removeEvent(actor: Actor, id: string, eventId: number): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   await row(id);
   const d = db();
   const rows = await d.select().from(scenarioEvents).where(and(eq(scenarioEvents.id, eventId), eq(scenarioEvents.scenarioId, id))).limit(1);
@@ -635,6 +665,7 @@ export interface TurnEndInput { turn: number; held?: string | null; roll?: numbe
  * the game, in which case it stays where it is for the table to call the game.
  */
 export async function endTurn(actor: Actor, id: string, input: TurnEndInput): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   const r = await row(id);
   await tableOnly(actor, id);
   if (r.status === 'played') throw new LedgerError('The game is already called.', 409);
@@ -666,6 +697,7 @@ export async function endTurn(actor: Actor, id: string, input: TurnEndInput): Pr
 
 /** Another round, time permitting, or one fewer: the table sets how many turns the game runs, never fewer than it has played. */
 export async function setTurnLimit(actor: Actor, id: string, turnLimit: number): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   const r = await row(id);
   await tableOnly(actor, id);
   const limit = turnLimitOf(turnLimit)!;
@@ -684,6 +716,7 @@ export async function setTurnLimit(actor: Actor, id: string, turnLimit: number):
  * the table may, until the first turn begins; after that only a game master changes them, on the scenario page.
  */
 export async function chooseSides(actor: Actor, id: string, sides: Record<string, Side | '' | null>): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   const r = await row(id);
   await tableOnly(actor, id);
   if (!houseScenario(r.rulebookScenario)?.sides) throw new LedgerError('This scenario has no sides to choose.', 400);
@@ -709,6 +742,7 @@ export interface CheckInput { turn: number; /** Whose turn it is, when the objec
  * replaces the first. Anyone at the table may; the turn does not move.
  */
 export async function recordCheck(actor: Actor, id: string, input: CheckInput): Promise<Scenario> {
+  await writableCampaign(actor, await campaignOfScenario(id));
   const r = await row(id);
   await tableOnly(actor, id);
   if (r.status === 'played') throw new LedgerError('The game is already called.', 409);

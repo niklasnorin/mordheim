@@ -15,6 +15,7 @@ import type { PortraitCrop } from '../../campaign/portrait.ts';
 import { proseSource } from '../../campaign/prose.ts';
 import { isGm, type Actor } from '../roles.ts';
 import { ensureEquipmentSeeded, ensureSeeded } from './seed.ts';
+import { writableCampaign } from './guard.ts';
 
 export { LedgerError };
 
@@ -30,16 +31,16 @@ function memberOf(r: MemberRow): Member {
   };
 }
 
-/** Every warband with its members, home-page order, plus the tallies from the played scenarios. */
-export async function listWarbands(): Promise<Warband[]> {
+/** Every warband of a campaign with its members, home-page order, plus the tallies from the played scenarios. */
+export async function listWarbands(campaignId: string): Promise<Warband[]> {
   await ensureSeeded();
   await ensureEquipmentSeeded();
   const d = db();
   const [rows, memberRows, tallies] = await Promise.all([
-    d.select({ w: warbands, ownerName: user.name }).from(warbands).leftJoin(user, eq(user.id, warbands.ownerId)).orderBy(asc(warbands.sort), asc(warbands.createdAt)),
-    d.select().from(members).orderBy(asc(members.sort), asc(members.createdAt)),
+    d.select({ w: warbands, ownerName: user.name }).from(warbands).leftJoin(user, eq(user.id, warbands.ownerId)).where(eq(warbands.campaignId, campaignId)).orderBy(asc(warbands.sort), asc(warbands.createdAt)),
+    d.select({ m: members }).from(members).innerJoin(warbands, eq(warbands.id, members.warbandId)).where(eq(warbands.campaignId, campaignId)).orderBy(asc(members.sort), asc(members.createdAt)).then((r) => r.map((x) => x.m)),
     d.select({ warbandId: scenarioWarbands.warbandId, battles: sql<number>`count(*)::int`, victories: sql<number>`count(*) filter (where ${scenarioWarbands.result} = 'victory')::int` })
-      .from(scenarioWarbands).innerJoin(scenarios, eq(scenarios.id, scenarioWarbands.scenarioId)).where(eq(scenarios.status, 'played')).groupBy(scenarioWarbands.warbandId),
+      .from(scenarioWarbands).innerJoin(scenarios, eq(scenarios.id, scenarioWarbands.scenarioId)).where(and(eq(scenarios.status, 'played'), eq(scenarios.campaignId, campaignId))).groupBy(scenarioWarbands.warbandId),
   ]);
   return rows.map(({ w, ownerName }) => {
     const t = tallies.find((x) => x.warbandId === w.id);
@@ -49,25 +50,35 @@ export async function listWarbands(): Promise<Warband[]> {
 
 function warbandOf(w: WarbandRow, ownerName: string | null, memberRows: MemberRow[], battles: number, victories: number): Warband {
   return {
-    id: w.id, name: w.name, type: w.type, sigil: w.sigil, crest: w.crest ?? undefined, ownerId: w.ownerId, player: ownerName ?? w.player,
+    id: w.id, campaignId: w.campaignId, carriedFromId: w.carriedFromId, name: w.name, type: w.type, sigil: w.sigil, crest: w.crest ?? undefined, ownerId: w.ownerId, player: ownerName ?? w.player,
     battles, victories, lore: w.lore, sort: w.sort, version: w.version, built: w.roster != null,
     members: memberRows.map(memberOf),
   };
 }
 
+/** A warband by its id, in whichever campaign it is. */
 export async function getWarband(id: string): Promise<Warband | undefined> {
-  return (await listWarbands()).find((w) => w.id === id);
+  await ensureSeeded();
+  const [r] = await db().select({ c: warbands.campaignId }).from(warbands).where(eq(warbands.id, id)).limit(1);
+  if (!r) return undefined;
+  return (await listWarbands(r.c)).find((w) => w.id === id);
 }
 
-/** The warband a player keeps, if any. */
-export async function ownWarband(userId: string): Promise<Warband | undefined> {
-  return (await listWarbands()).find((w) => w.ownerId === userId);
+/** The warband a player keeps in a campaign, if any. */
+export async function ownWarband(userId: string, campaignId: string): Promise<Warband | undefined> {
+  return (await listWarbands(campaignId)).find((w) => w.ownerId === userId);
 }
 
-/** The roster as the Night engine wants it: every warband, and who is still hurt from the last played scenario. */
-export async function loadRoster(): Promise<Roster> {
-  const list = await listWarbands();
-  const last = await db().select({ id: scenarios.id }).from(scenarios).where(eq(scenarios.status, 'played')).orderBy(sql`${scenarios.sequence} desc`).limit(1);
+/** The warbands a player keeps, one per campaign at most, by campaign id. */
+export async function warbandsKeptBy(userId: string): Promise<{ campaignId: string; warbandId: string; name: string }[]> {
+  await ensureSeeded();
+  return db().select({ campaignId: warbands.campaignId, warbandId: warbands.id, name: warbands.name }).from(warbands).where(eq(warbands.ownerId, userId));
+}
+
+/** The roster of a campaign as the Night engine wants it: every warband, and who is still hurt from its last played scenario. */
+export async function loadRoster(campaignId: string): Promise<Roster> {
+  const list = await listWarbands(campaignId);
+  const last = await db().select({ id: scenarios.id }).from(scenarios).where(and(eq(scenarios.status, 'played'), eq(scenarios.campaignId, campaignId))).orderBy(sql`${scenarios.sequence} desc`).limit(1);
   const injured: Record<string, string[]> = {};
   if (last.length) {
     const rows = await db().select({ warbandId: scenarioMembers.warbandId, memberId: scenarioMembers.memberId }).from(scenarioMembers).where(and(eq(scenarioMembers.scenarioId, last[0].id), eq(scenarioMembers.status, 'injured')));
@@ -83,14 +94,14 @@ async function warbandRow(id: string): Promise<WarbandRow> {
   if (!rows.length) throw new LedgerError('No such warband has entered the gates.', 404);
   return rows[0];
 }
-/** The owner, or a game master, may edit a warband. */
-function mayEdit(actor: Actor, w: WarbandRow): void {
-  if (isGm(actor) || w.ownerId === actor.id) return;
-  throw new LedgerError('That warband is not yours to keep.', 403);
+/** The owner, or a game master, may edit a warband, while its campaign lets them write. */
+async function mayEdit(actor: Actor, w: WarbandRow): Promise<void> {
+  if (!isGm(actor) && w.ownerId !== actor.id) throw new LedgerError('That warband is not yours to keep.', 403);
+  await writableCampaign(actor, w.campaignId);
 }
 /** Refuse unless the actor may edit this warband: its owner, or a game master. For the services beside this one. */
 export async function mayTend(actor: Actor, warbandId: string): Promise<void> {
-  mayEdit(actor, await warbandRow(warbandId));
+  await mayEdit(actor, await warbandRow(warbandId));
 }
 
 // ───────────────────────── the warband ─────────────────────────
@@ -110,19 +121,20 @@ function unique(base: string, taken: Set<string>): string {
   return id;
 }
 
-/** A new warband. A player may create one when they keep none; it is theirs. A game master may create any, unowned. */
-export async function createWarband(actor: Actor, input: WarbandInput): Promise<Warband> {
+/** A new warband in a campaign. A player may create one when they keep none there; it is theirs. A game master may create any, unowned. */
+export async function createWarband(actor: Actor, campaignId: string, input: WarbandInput): Promise<Warband> {
   await ensureSeeded();
+  await writableCampaign(actor, campaignId);
   const name = clean(input.name, 80), type = clean(input.type, 60);
   if (!name) throw new LedgerError('The warband needs a name.');
   if (!type) throw new LedgerError('Say what kind of warband they are.');
-  if (!isGm(actor) && (await ownWarband(actor.id))) throw new LedgerError('You already keep a warband. Give it up before founding another.', 409);
+  if (!isGm(actor) && (await ownWarband(actor.id, campaignId))) throw new LedgerError('You already keep a warband. Give it up before founding another.', 409);
   const d = db();
   const taken = new Set((await d.select({ id: warbands.id }).from(warbands)).map((r) => r.id));
   const id = unique(slugify(name.replace(/^the\s+/i, '')), taken);
-  const [{ n }] = await d.select({ n: sql<number>`coalesce(max(${warbands.sort}), 0)::int` }).from(warbands);
+  const [{ n }] = await d.select({ n: sql<number>`coalesce(max(${warbands.sort}), 0)::int` }).from(warbands).where(eq(warbands.campaignId, campaignId));
   await d.insert(warbands).values({
-    id, name, type, sigil: sigilFor(name, input.sigil), ownerId: isGm(actor) ? null : actor.id, player: isGm(actor) ? clean(input.player, 40) : actor.name,
+    id, campaignId, name, type, sigil: sigilFor(name, input.sigil), ownerId: isGm(actor) ? null : actor.id, player: isGm(actor) ? clean(input.player, 40) : actor.name,
     lore: proseSource(input.lore, 4000), sort: n + 1,
   });
   return (await getWarband(id))!;
@@ -132,7 +144,7 @@ export type WarbandPatch = Partial<WarbandInput & { crest: string }>;
 
 export async function updateWarband(actor: Actor, id: string, patch: WarbandPatch): Promise<Warband> {
   const w = await warbandRow(id);
-  mayEdit(actor, w);
+  await mayEdit(actor, w);
   const set: Partial<typeof warbands.$inferInsert> = { updatedAt: new Date(), version: w.version + 1 };
   if (patch.name !== undefined) { const name = clean(patch.name, 80); if (!name) throw new LedgerError('The warband needs a name.'); set.name = name; }
   if (patch.type !== undefined) { const type = clean(patch.type, 60); if (!type) throw new LedgerError('Say what kind of warband they are.'); set.type = type; }
@@ -155,7 +167,8 @@ export async function claimWarband(actor: Actor, id: string): Promise<Warband> {
   const w = await warbandRow(id);
   if (w.ownerId === actor.id) return (await getWarband(id))!;
   if (w.ownerId) throw new LedgerError(`${w.name} already have a keeper.`, 409);
-  if (await ownWarband(actor.id)) throw new LedgerError('You already keep a warband. Give it up before taking another.', 409);
+  await writableCampaign(actor, w.campaignId);
+  if (await ownWarband(actor.id, w.campaignId)) throw new LedgerError('You already keep a warband. Give it up before taking another.', 409);
   const updated = await db().update(warbands).set({ ownerId: actor.id, player: actor.name, updatedAt: new Date() }).where(and(eq(warbands.id, id), isNull(warbands.ownerId))).returning({ id: warbands.id });
   if (!updated.length) throw new LedgerError(`${w.name} already have a keeper.`, 409);
   return (await getWarband(id))!;
@@ -164,7 +177,7 @@ export async function claimWarband(actor: Actor, id: string): Promise<Warband> {
 /** Give a warband up, ledger and all, so someone else may take it. The owner may; so may a game master. */
 export async function releaseWarband(actor: Actor, id: string): Promise<void> {
   const w = await warbandRow(id);
-  mayEdit(actor, w);
+  await mayEdit(actor, w);
   await db().delete(curfewLedgers).where(eq(curfewLedgers.warbandId, id));
   await db().update(warbands).set({ ownerId: null, updatedAt: new Date() }).where(eq(warbands.id, id));
 }
@@ -180,7 +193,7 @@ export async function assignWarband(actor: Actor, id: string, userId: string | n
   if (userId) {
     const rows = await d.select({ id: user.id, name: user.name }).from(user).where(eq(user.id, userId)).limit(1);
     if (!rows.length) throw new LedgerError('No such player.', 404);
-    const other = await d.select({ id: warbands.id, name: warbands.name }).from(warbands).where(and(eq(warbands.ownerId, userId), sql`${warbands.id} <> ${id}`)).limit(1);
+    const other = await d.select({ id: warbands.id, name: warbands.name }).from(warbands).where(and(eq(warbands.ownerId, userId), eq(warbands.campaignId, w.campaignId), sql`${warbands.id} <> ${id}`)).limit(1);
     if (other.length) throw new LedgerError(`${rows[0].name} already keep ${other[0].name}. Release that first.`, 409);
     await d.update(warbands).set({ ownerId: userId, player: rows[0].name, updatedAt: new Date() }).where(eq(warbands.id, id));
     await d.update(curfewLedgers).set({ ownerId: userId, updatedAt: new Date() }).where(eq(curfewLedgers.warbandId, id));
@@ -219,7 +232,7 @@ const lines = (list: string[] | undefined, max = 30) => (list ?? []).map((s) => 
 
 export async function addMember(actor: Actor, warbandId: string, input: MemberInput): Promise<Warband> {
   const w = await warbandRow(warbandId);
-  mayEdit(actor, w);
+  await mayEdit(actor, w);
   const name = clean(input.name, 80);
   if (!name) throw new LedgerError('The warrior needs a name.');
   const d = db();
@@ -263,7 +276,7 @@ export async function updateMember(actor: Actor, memberId: string, patch: Partia
   if (!rows.length) throw new LedgerError('No such warrior is on the roster.', 404);
   const m = rows[0];
   const w = await warbandRow(m.warbandId);
-  mayEdit(actor, w);
+  await mayEdit(actor, w);
   const set: Partial<typeof members.$inferInsert> = { updatedAt: new Date() };
   // a warband kept by the builder has its warriors' numbers from the roster; the record keeps their names and stories
   const built = w.roster != null;
@@ -293,7 +306,7 @@ export async function removeMember(actor: Actor, memberId: string): Promise<Warb
   if (!rows.length) throw new LedgerError('No such warrior is on the roster.', 404);
   const m = rows[0];
   const w = await warbandRow(m.warbandId);
-  mayEdit(actor, w);
+  await mayEdit(actor, w);
   const fought = await db().select({ id: scenarioMembers.scenarioId }).from(scenarioMembers).innerJoin(scenarios, eq(scenarios.id, scenarioMembers.scenarioId)).where(and(eq(scenarioMembers.memberId, memberId), eq(scenarios.status, 'played'))).limit(1);
   if (fought.length) throw new LedgerError(`${m.name} fought in a recorded battle; the archives keep them. Mark them dead instead.`, 409);
   await db().delete(scenarioMembers).where(eq(scenarioMembers.memberId, memberId));
@@ -305,7 +318,7 @@ export async function removeMember(actor: Actor, memberId: string): Promise<Warb
 /** Members in a given order; ids not named keep their place after the named ones. */
 export async function reorderMembers(actor: Actor, warbandId: string, order: string[]): Promise<Warband> {
   const w = await warbandRow(warbandId);
-  mayEdit(actor, w);
+  await mayEdit(actor, w);
   const rows = await db().select({ id: members.id }).from(members).where(and(eq(members.warbandId, warbandId), inArray(members.id, order.length ? order : ['']))); 
   const known = new Set(rows.map((r) => r.id));
   let i = 1;
