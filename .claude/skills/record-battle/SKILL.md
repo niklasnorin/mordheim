@@ -7,7 +7,7 @@ argument-hint: "[scenario title or a description of the game]"
 
 # Record a battle
 
-The record lives in the database and is written on the site: a game master at `/scenarios/<id>/` under **The pen**, each player under their warband's own drawer there, and the rosters at `/warbands/<id>/`. The archive voice is in `docs/agents/writing.md` §3; the shapes are `Scenario`, `ScenarioWarband`, `ScenarioMember` and `OutOfAction` in `src/campaign/model.ts`. Nothing about a played game is a commit any more, unless you are writing the seed for an empty database (§7).
+The record lives in the database and is written on the site: a game master at `/scenarios/<id>/` under **The pen**, each player under their warband's own drawer there, and the rosters at `/warbands/<id>/`. The archive voice is in `docs/agents/writing.md` §3; the shapes are `Scenario`, `ScenarioWarband`, `ScenarioMember` and `OutOfAction` in `src/campaign/model.ts`. Nothing about a played game is a commit any more, unless you are writing the seed for an empty database (§7). Every scenario belongs to one campaign: a campaign other than the front door has its pages under `/c/<slug>/` (so `/c/<slug>/scenarios/<id>/`), only its own warbands may attend, and play order counts within it. A finished campaign is closed to players; a game master may still put its record straight.
 
 ## 1. Gather what was recorded, and only that
 

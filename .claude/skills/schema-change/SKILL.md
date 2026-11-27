@@ -42,5 +42,7 @@ git status drizzle/          # one new .sql, one new meta snapshot, the journal 
 
 - Running `db:generate` without `--name`: a random two-word file name that does not match the others. Regenerate.
 - A destructive change (dropping a column that ledgers still reference): the migration runs before the new code is warm; make the code tolerate both shapes for one deploy.
+- A table of the record without `campaign_id`: everything a campaign owns carries one (`campaignId()` in the schema, defaulting to the first campaign's id so old rows fall into it). Name the campaign on every insert all the same, and widen any unique index to include it. A data fill a migration cannot write (a row that must exist first) is a memoised code path, as `ensureCampaigns` is; a migration that depends on it (dropping those defaults, adding the foreign keys to `campaigns`) ships in a later deploy.
+- Changing a primary key: drizzle-kit cannot generate it safely. Make a new table and copy across in code, as `curfew_documents` replaced `curfew_content`.
 - Rewriting ledger JSON in SQL: the shape is owned by `coerceState`; a data fix is a code path, not a migration.
 - Adding `@electric-sql/pglite` to `dependencies`: it is a devDependency, loaded by a runtime-built import so the Vercel bundle never carries it.

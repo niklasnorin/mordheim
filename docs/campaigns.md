@@ -1,6 +1,8 @@
 # Proposal: campaigns as a first-class concept
 
-Status: proposal, approved as a plan, not yet started. Nothing here is built.
+Status: built. What follows is the design as agreed; where the building refined it, the note under this line says how.
+
+**As built.** The engine is a factory over a world (`createEngine(world)`, `worldFor` on the server) rather than a parameter on every function; the default exports follow `useWorld` for the browser and the tests. `campaign_settings` stays site-wide and holds `frontDoor`; `standingsVisible` moved into the campaign's options. The content documents moved to a new table, `curfew_documents`, keyed by campaign, because drizzle-kit cannot change a primary key safely; `curfew_content` stays until it is dropped. A carried warband waiting for approval exists in the new campaign "on the road" (`warbands.carry`), marked as such, with no roster or stash written until its keeper approves. **Still to do:** a later migration drops the `'mordheim-2000'` defaults on `campaign_id`, adds the foreign keys to `campaigns` and drops `curfew_content`, once a deploy has run `ensureCampaigns`; per-campaign game master roles.
 
 ## Why
 

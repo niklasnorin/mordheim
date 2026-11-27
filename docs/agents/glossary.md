@@ -2,11 +2,24 @@
 
 The repository names technical things in the fiction's words. This maps each word to what it is and where it lives, so an agent can read a request like "the Cryer should print the arrival headline the first night in a new place" and know which files it touches. Where a word has two meanings, both are given.
 
+## Campaigns
+
+| Term | Means | In code |
+| --- | --- | --- |
+| **Campaign** | One run of play, with its own warbands, scenarios, nights and broadsheet. Several run at once. Its id seeds its dice; its start, time zone and anchor are its clock. | `campaigns`, `CampaignConfig` in `src/campaign/campaign.ts`, `src/server/campaign/campaigns.ts` |
+| **Setting** | The template a campaign is drawn up from: its dials, Curfew documents, places, warband lists and crowns. Code, not record. | `src/data/settings/index.ts` |
+| **Draft, live, finished, archived** | A campaign's status: a draft is the game masters' sketch, seen by nobody else; live is open and its nights run; finished is closed to players with no more nights; archived is finished and out of the list. | `campaigns.status`, `mayView`, `isFrozen`, `runsNights` |
+| **The front door** | The campaign the site's plain addresses show; every other campaign is at `/c/<slug>/`. | `campaign_settings.frontDoor`, `frontDoor()`, `src/middleware.ts` |
+| **World** | A campaign and its content documents, from which its engine, ledger, Cryer and odds are built. | `World`, `createEngine`, `worldFor` |
+| **Carry-over** | Bringing a warband from one campaign into another: always a copy, as it is, adjusted by the new campaign's rules, or started over with veterans. | `src/campaign/carry.ts`, `carryWarband`, `carried_from_id` |
+| **On the road** | A carried warband waiting for its keeper to approve its roster in the new campaign's draw-up. | `warbands.carry`, `PendingCarry`, `approveCarry` |
+| **Veteran** | A hero who comes back when a warband starts over: their name, face and epithet, on fresh stats with no experience. | `PlannedMember.veteran` |
+
 ## Time
 
 | Word | Meaning | Code |
 | --- | --- | --- |
-| **Night** | One real day. Night 1 is `campaign.json` `start` (2026-09-10); nights turn at midnight in `campaign.json` `timezone` (Europe/Stockholm). Nights before the start are zero or negative; the first game was night -4. | `nightForDate`, `dateForNight`, `currentNight`, `localDate` in `src/curfew/engine.ts` |
+| **Night** | One real day. Night 1 is the campaign's `start` (2026-09-10 for the first, `campaign.json`); nights turn at midnight in its `timezone` (Europe/Stockholm). Nights before the start are zero or negative; the first game was night -4. | `nightForDate`, `dateForNight`, `currentNight`, `localDate` in `src/curfew/engine.ts` |
 | **today** | The night the server treats as current, always passed into the services as a number. With `CURFEW_DEBUG` on, `?date=YYYY-MM-DD` overrides it for a game master's own Ledger and Eve; never for a player, never in the Watch House, never for the cron. | `todayFor(url, viewer)` in `src/server/curfew/service.ts` |
 | **Moon** | Seven nights. Eight Moons in `moons.json`, drawn as a seeded shuffle per cycle. A Moon favours one errand by one point (`boost`) and carries a tie-in line per errand. | `moonIndex`, `moonForNight`, `moonBoostAt`, `moonTiesAt` |
 | **Season** | Twelve Moons (`seasonMoons`). The finale is unbuilt. | `campaign.json` |

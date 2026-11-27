@@ -45,6 +45,8 @@ Then, by eye:
 - Prose reads in its voice (`docs/agents/writing.md`): no exclamation marks, British spelling, typographic apostrophes, nights and Moons in Curfew copy.
 - Player-facing messages are in the campaign's voice and come from `LedgerError` where they are refusals.
 - Nothing renamed an id in `warbands.ts`, and `campaign.json`'s `id`, `start`, `timezone` and `anchor` are untouched.
+- `src/curfew/golden.test.ts` passes unchanged; a change to `__golden__/` is only ever deliberate, and said in the commit body.
+- Every new query of the record is scoped to a campaign, and every new page builds links from `Astro.locals.base`.
 - No dependency added without a sentence in the commit body saying why.
 
 ## 4. Smoke test in the browser, when the change is visible

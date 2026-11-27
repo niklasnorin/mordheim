@@ -15,7 +15,7 @@ npm ci
 npm run dev        # http://localhost:4321, no .env needed
 ```
 
-`astro dev` gives you PGlite under `.pglite/`, the name-only "Local player" sign-in, and the Debug strip. Sign in twice with two names in two browsers to hold two warbands. Claim a warband at `/curfew/`, give orders, then step nights with `?date=YYYY-MM-DD` or the strip. `/admin/` is open to every local player. `npm run db:reset` wipes the local database when a state gets odd.
+`astro dev` gives you PGlite under `.pglite/`, the name-only "Local player" sign-in, and the Debug strip. Sign in twice with two names in two browsers to hold two warbands. Claim a warband at `/curfew/`, give orders, then step nights with `?date=YYYY-MM-DD` or the strip. `/admin/` is open to every local player. `npm run db:reset` wipes the local database when a state gets odd. To try a second campaign, draw one up at `/admin/campaigns/`; it is a draft at `/c/<slug>/` until it is launched, and a warband's keeper's pen then offers to carry it across.
 
 ## Definition of done
 
