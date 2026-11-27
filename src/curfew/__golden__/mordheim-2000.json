@@ -1,0 +1,3462 @@
+{
+ "omens": [
+  "sisters-candle",
+  "crooked-dice",
+  "drowned-quarter",
+  "empty-cradle",
+  "whispering-wall",
+  "the-pit",
+  "cracked-hourglass",
+  "crooked-dice",
+  "twin-moons",
+  "the-comet",
+  "drowned-bell",
+  "ash-wind",
+  "hanged-merchant",
+  "sealed-door",
+  "tower-on-the-rock",
+  "rat-kings-court",
+  "lantern-bearer",
+  "whispering-wall",
+  "drowned-quarter",
+  "bone-hand",
+  "the-ferryman",
+  "beggar-king",
+  "witch-hunter",
+  "broken-bell",
+  "nameless-grave",
+  "black-sails",
+  "empty-cradle",
+  "plague-doctor",
+  "carrion-crown",
+  "sisters-candle",
+  "last-candle",
+  "hammer-reversed",
+  "fences-scales",
+  "wyrd-lantern",
+  "green-light-under-ash",
+  "broken-bell",
+  "cracked-hourglass",
+  "last-candle",
+  "ash-wind",
+  "drowned-quarter",
+  "rat-kings-court",
+  "drowned-bell",
+  "empty-cradle",
+  "hammer-reversed",
+  "the-comet",
+  "black-sails",
+  "fences-scales",
+  "carrion-crown",
+  "plague-doctor",
+  "beggar-king",
+  "bone-hand",
+  "whispering-wall",
+  "tower-on-the-rock",
+  "the-pit",
+  "crooked-dice",
+  "twin-moons",
+  "green-light-under-ash",
+  "the-ferryman",
+  "nameless-grave",
+  "sisters-candle",
+  "sealed-door",
+  "hanged-merchant",
+  "lantern-bearer",
+  "wyrd-lantern",
+  "witch-hunter",
+  "the-comet",
+  "plague-doctor",
+  "beggar-king",
+  "drowned-bell",
+  "whispering-wall",
+  "sealed-door",
+  "drowned-quarter",
+  "wyrd-lantern",
+  "green-light-under-ash",
+  "lantern-bearer",
+  "tower-on-the-rock",
+  "fences-scales",
+  "witch-hunter",
+  "the-ferryman",
+  "broken-bell",
+  "nameless-grave",
+  "hammer-reversed",
+  "black-sails",
+  "ash-wind",
+  "bone-hand",
+  "twin-moons",
+  "sisters-candle",
+  "empty-cradle",
+  "hanged-merchant",
+  "crooked-dice",
+  "cracked-hourglass",
+  "carrion-crown",
+  "last-candle",
+  "the-pit",
+  "rat-kings-court",
+  "the-comet",
+  "witch-hunter",
+  "nameless-grave",
+  "crooked-dice",
+  "whispering-wall",
+  "broken-bell",
+  "the-pit",
+  "hanged-merchant",
+  "rat-kings-court",
+  "drowned-quarter",
+  "ash-wind",
+  "tower-on-the-rock",
+  "empty-cradle",
+  "plague-doctor",
+  "sealed-door",
+  "carrion-crown",
+  "green-light-under-ash",
+  "beggar-king",
+  "the-ferryman",
+  "drowned-bell",
+  "fences-scales",
+  "cracked-hourglass",
+  "hammer-reversed",
+  "lantern-bearer",
+  "twin-moons"
+ ],
+ "moons": [
+  "debtors-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "festival-of-hanging",
+  "festival-of-hanging",
+  "festival-of-hanging",
+  "festival-of-hanging",
+  "festival-of-hanging",
+  "festival-of-hanging",
+  "festival-of-hanging",
+  "green-moon",
+  "green-moon",
+  "green-moon",
+  "green-moon",
+  "green-moon",
+  "green-moon",
+  "green-moon",
+  "ash-moon",
+  "ash-moon",
+  "ash-moon",
+  "ash-moon",
+  "ash-moon",
+  "ash-moon",
+  "ash-moon",
+  "hunters-moon",
+  "hunters-moon",
+  "hunters-moon",
+  "hunters-moon",
+  "hunters-moon",
+  "hunters-moon",
+  "hunters-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "silent-moon",
+  "silent-moon",
+  "silent-moon",
+  "silent-moon",
+  "silent-moon",
+  "silent-moon",
+  "silent-moon",
+  "market-moon",
+  "market-moon",
+  "market-moon",
+  "market-moon",
+  "market-moon",
+  "market-moon",
+  "market-moon",
+  "plague-moon",
+  "plague-moon",
+  "plague-moon",
+  "plague-moon",
+  "plague-moon",
+  "plague-moon",
+  "plague-moon",
+  "hunters-moon",
+  "hunters-moon",
+  "hunters-moon",
+  "hunters-moon",
+  "hunters-moon",
+  "hunters-moon",
+  "hunters-moon",
+  "ash-moon",
+  "ash-moon",
+  "ash-moon",
+  "ash-moon",
+  "ash-moon",
+  "ash-moon",
+  "ash-moon",
+  "plague-moon",
+  "plague-moon",
+  "plague-moon",
+  "plague-moon",
+  "plague-moon",
+  "plague-moon",
+  "plague-moon",
+  "festival-of-hanging",
+  "festival-of-hanging",
+  "festival-of-hanging",
+  "festival-of-hanging",
+  "festival-of-hanging",
+  "festival-of-hanging",
+  "festival-of-hanging",
+  "silent-moon",
+  "silent-moon",
+  "silent-moon",
+  "silent-moon",
+  "silent-moon",
+  "silent-moon",
+  "silent-moon",
+  "market-moon",
+  "market-moon",
+  "market-moon",
+  "market-moon",
+  "market-moon",
+  "market-moon",
+  "market-moon",
+  "green-moon",
+  "green-moon",
+  "green-moon",
+  "green-moon",
+  "green-moon",
+  "green-moon",
+  "green-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "debtors-moon",
+  "market-moon",
+  "market-moon",
+  "market-moon"
+ ],
+ "dates": [
+  "2026-09-05",
+  "2026-09-06",
+  "2026-09-07",
+  "2026-09-08",
+  "2026-09-09",
+  "2026-09-10",
+  "2026-09-11",
+  "2026-09-12",
+  "2026-09-13",
+  "2026-09-14",
+  "2026-09-15",
+  "2026-09-16",
+  "2026-09-17",
+  "2026-09-18",
+  "2026-09-19",
+  "2026-09-20",
+  "2026-09-21",
+  "2026-09-22",
+  "2026-09-23",
+  "2026-09-24",
+  "2026-09-25",
+  "2026-09-26",
+  "2026-09-27",
+  "2026-09-28",
+  "2026-09-29",
+  "2026-09-30",
+  "2026-10-01",
+  "2026-10-02",
+  "2026-10-03",
+  "2026-10-04",
+  "2026-10-05",
+  "2026-10-06",
+  "2026-10-07",
+  "2026-10-08",
+  "2026-10-09",
+  "2026-10-10",
+  "2026-10-11",
+  "2026-10-12",
+  "2026-10-13",
+  "2026-10-14",
+  "2026-10-15",
+  "2026-10-16",
+  "2026-10-17",
+  "2026-10-18",
+  "2026-10-19",
+  "2026-10-20",
+  "2026-10-21",
+  "2026-10-22",
+  "2026-10-23",
+  "2026-10-24",
+  "2026-10-25",
+  "2026-10-26",
+  "2026-10-27",
+  "2026-10-28",
+  "2026-10-29",
+  "2026-10-30",
+  "2026-10-31",
+  "2026-11-01",
+  "2026-11-02",
+  "2026-11-03",
+  "2026-11-04",
+  "2026-11-05",
+  "2026-11-06",
+  "2026-11-07",
+  "2026-11-08",
+  "2026-11-09",
+  "2026-11-10",
+  "2026-11-11",
+  "2026-11-12",
+  "2026-11-13",
+  "2026-11-14",
+  "2026-11-15",
+  "2026-11-16",
+  "2026-11-17",
+  "2026-11-18",
+  "2026-11-19",
+  "2026-11-20",
+  "2026-11-21",
+  "2026-11-22",
+  "2026-11-23",
+  "2026-11-24",
+  "2026-11-25",
+  "2026-11-26",
+  "2026-11-27",
+  "2026-11-28",
+  "2026-11-29",
+  "2026-11-30",
+  "2026-12-01",
+  "2026-12-02",
+  "2026-12-03",
+  "2026-12-04",
+  "2026-12-05",
+  "2026-12-06",
+  "2026-12-07",
+  "2026-12-08",
+  "2026-12-09",
+  "2026-12-10",
+  "2026-12-11",
+  "2026-12-12",
+  "2026-12-13",
+  "2026-12-14",
+  "2026-12-15",
+  "2026-12-16",
+  "2026-12-17",
+  "2026-12-18",
+  "2026-12-19",
+  "2026-12-20",
+  "2026-12-21",
+  "2026-12-22",
+  "2026-12-23",
+  "2026-12-24",
+  "2026-12-25",
+  "2026-12-26",
+  "2026-12-27",
+  "2026-12-28",
+  "2026-12-29",
+  "2026-12-30",
+  "2026-12-31",
+  "2027-01-01",
+  "2027-01-02"
+ ],
+ "nightFor": [
+  0,
+  1,
+  106,
+  265
+ ],
+ "single": [
+  {
+   "night": 1,
+   "omenId": "the-pit",
+   "moonId": "festival-of-hanging",
+   "header": "Night 1 — under The Pit.",
+   "results": [
+    {
+     "memberId": "agnar",
+     "errand": "carouse",
+     "outcome": "poor",
+     "standing": false,
+     "favour": 2,
+     "renown": 0,
+     "shards": 0,
+     "prose": "Agnar Nordost drank in Cutthroat's Haven and said too much to the wrong table. It will keep. The whole city was drinking to the hanged. Agnar drank to them twice.",
+     "line": "carouse:poor:0"
+    },
+    {
+     "memberId": "torgrim",
+     "errand": "scavenge",
+     "outcome": "boon",
+     "standing": false,
+     "favour": 8,
+     "renown": 0,
+     "shards": 2,
+     "prose": "Torgrim Nordost found where the ash was warm in the cellars under the Pit and dug until it was not. Two slivers, and a hand that shakes a little.",
+     "line": "scavenge:boon:2"
+    }
+   ],
+   "closer": "The door stayed barred until first light.",
+   "detail": "A crow followed for three streets.",
+   "ledger": [
+    "+10 Favour",
+    "2 shards"
+   ],
+   "locationId": "mordheim"
+  },
+  {
+   "night": 7,
+   "omenId": "ash-wind",
+   "moonId": "festival-of-hanging",
+   "header": "Night 7 — under The Ash Wind.",
+   "results": [
+    {
+     "memberId": "agnar",
+     "errand": "carouse",
+     "outcome": "fair",
+     "standing": false,
+     "favour": 5,
+     "renown": 0,
+     "shards": 0,
+     "prose": "Agnar Nordost stood at the Flagon's bar for four hours and was served without being asked their name. Progress. The whole Flagon was drinking to the hanged man. Agnar drank to him twice.",
+     "line": "carouse:fair:6"
+    },
+    {
+     "memberId": "torgrim",
+     "errand": "scavenge",
+     "outcome": "fair",
+     "standing": false,
+     "favour": 5,
+     "renown": 0,
+     "shards": 1,
+     "prose": "Torgrim Nordost spent the night in the manor road moving stones. One of them was worth moving.",
+     "line": "scavenge:fair:2"
+    }
+   ],
+   "detail": "A heron stood on the fish-gut quay all night and would not feed.",
+   "ledger": [
+    "+10 Favour",
+    "1 shard"
+   ],
+   "locationId": "fussenbach"
+  },
+  {
+   "night": 33,
+   "omenId": "last-candle",
+   "moonId": "debtors-moon",
+   "header": "Night 33 — under The Last Candle.",
+   "results": [
+    {
+     "memberId": "agnar",
+     "errand": "carouse",
+     "outcome": "fair",
+     "standing": false,
+     "favour": 5,
+     "renown": 0,
+     "shards": 0,
+     "prose": "Agnar found the back room at the Merchant's Quarter. Nothing was decided. Nothing was lost.",
+     "line": "carouse:fair:3"
+    },
+    {
+     "memberId": "torgrim",
+     "errand": "scavenge",
+     "outcome": "fair",
+     "standing": false,
+     "favour": 5,
+     "renown": 0,
+     "shards": 1,
+     "prose": "Torgrim Nordost spent the night in the old Guild Hall moving stones. One of them was worth moving.",
+     "line": "scavenge:fair:2"
+    }
+   ],
+   "closer": "Somebody had left bread on the step.",
+   "detail": "Smoke from the tanneries hung low.",
+   "ledger": [
+    "+10 Favour",
+    "1 shard"
+   ],
+   "locationId": "mordheim"
+  }
+ ],
+ "ledger": {
+  "nights": [
+   {
+    "night": 1,
+    "omenId": "the-pit",
+    "moonId": "festival-of-hanging",
+    "header": "Night 1 — under The Pit.",
+    "results": [
+     {
+      "memberId": "skalle",
+      "errand": "carouse",
+      "outcome": "boon",
+      "standing": false,
+      "favour": 8,
+      "renown": 1,
+      "shards": 0,
+      "prose": "Skalle drank in the cellars under the Pit with men who talk. By midnight the whole tavern knew their name and half of them owed them.",
+      "line": "carouse:boon:0"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "spy",
+      "outcome": "boon",
+      "standing": false,
+      "favour": 8,
+      "renown": 0,
+      "shards": 0,
+      "rumour": "The Watch has stopped walking the tannery lane. Nobody asked them to.",
+      "prose": "Torgrim Nordost paid a child in the Drowned Quarter a penny for a rumour and got three. Two were true.",
+      "line": "spy:boon:2"
+     }
+    ],
+    "detail": "Smoke from the tanneries hung low.",
+    "ledger": [
+     "+16 Favour",
+     "+1 Renown",
+     "Torgrim: a rumour"
+    ],
+    "locationId": "mordheim",
+    "crossroads": {
+     "id": "the-pit-fighters-wager",
+     "memberId": "skalle",
+     "kind": "risk",
+     "setup": "A Pit fighter with one ear wanted to arm-wrestle for a shard. The table was already wet with the last man's blood.",
+     "rival": "Bitterbrow Expedition",
+     "options": [
+      {
+       "id": "wager",
+       "label": "Take the wager."
+      },
+      {
+       "id": "drink",
+       "label": "Buy him a drink instead."
+      }
+     ],
+     "decided": {
+      "roadId": "drink",
+      "label": "Buy him a drink instead.",
+      "outcome": "By the time anyone might have asked, it was done. He told a story about the Pit that Skalle will not repeat.",
+      "ledger": [
+       "+2 Favour"
+      ],
+      "defaulted": true,
+      "on": 2
+     }
+    }
+   },
+   {
+    "night": 2,
+    "omenId": "cracked-hourglass",
+    "moonId": "festival-of-hanging",
+    "header": "Night 2 — under The Cracked Hourglass.",
+    "results": [],
+    "detail": "Wet plaster. Old blood. Bread, from somewhere.",
+    "closer": "A night in. The fire held. The count was taken.",
+    "ledger": [],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 3,
+    "omenId": "crooked-dice",
+    "moonId": "festival-of-hanging",
+    "header": "Night 3 — under The Crooked Dice.",
+    "results": [
+     {
+      "memberId": "skalle",
+      "errand": "carouse",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 3,
+      "renown": 0,
+      "shards": 0,
+      "prose": "Skalle drank in the ruins by Sigmar's Bridge and was neither remembered nor forgotten. The whole city was drinking to the hanged. Skalle drank to them twice.",
+      "line": "carouse:standing:1"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "spy",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 3,
+      "renown": 0,
+      "shards": 0,
+      "rumour": "The Man in Grey was seen at the Ostermark Gate. He was not going in.",
+      "prose": "Torgrim watched the usual corner in the granary quarter. The usual nothing.",
+      "line": "spy:standing:1"
+     }
+    ],
+    "detail": "Smoke from the tanneries hung low.",
+    "ledger": [
+     "+6 Favour",
+     "Torgrim: a rumour"
+    ],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 4,
+    "omenId": "twin-moons",
+    "moonId": "festival-of-hanging",
+    "header": "Night 4 — under The Twin Moons.",
+    "results": [],
+    "detail": "The wind carried ash from the west.",
+    "closer": "A night in. The fire held. The count was taken.",
+    "ledger": [],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 5,
+    "omenId": "the-comet",
+    "moonId": "festival-of-hanging",
+    "header": "Night 5 — under The Comet.",
+    "results": [
+     {
+      "memberId": "skalle",
+      "errand": "trade",
+      "outcome": "fair",
+      "standing": false,
+      "favour": 5,
+      "renown": 0,
+      "shards": 0,
+      "prose": "Skalle watched Henrik weigh everything twice in the cellars under the Pit. The second time was the price. The fences did brisk business in the effects of the dead.",
+      "line": "trade:fair:3"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "carouse",
+      "outcome": "fair",
+      "standing": false,
+      "favour": 5,
+      "renown": 0,
+      "shards": 0,
+      "prose": "Torgrim Nordost sat with the boatmen in the old Guild Hall. They know their face now.",
+      "line": "carouse:fair:2"
+     }
+    ],
+    "detail": "The stars were out. All of them.",
+    "ledger": [
+     "+10 Favour"
+    ],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 6,
+    "omenId": "drowned-bell",
+    "moonId": "festival-of-hanging",
+    "header": "Night 6 — under The Drowned Bell.",
+    "results": [],
+    "detail": "Smoke from the tanneries hung low.",
+    "closer": "The door stayed barred. Nobody went out. The city went on without them.",
+    "ledger": [],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 7,
+    "omenId": "ash-wind",
+    "moonId": "festival-of-hanging",
+    "header": "Night 7 — under The Ash Wind.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "scavenge",
+      "outcome": "boon",
+      "standing": false,
+      "favour": 8,
+      "renown": 0,
+      "shards": 2,
+      "prose": "Hilde went sifting in the Drowned Quarter. They came back with green in both pockets and no words about how.",
+      "line": "scavenge:boon:0"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "scavenge",
+      "outcome": "fair",
+      "standing": false,
+      "favour": 5,
+      "renown": 0,
+      "shards": 1,
+      "prose": "Agnar Nordost spent the night in the Steinhardt tenements moving stones. One of them was worth moving.",
+      "line": "scavenge:fair:2"
+     }
+    ],
+    "closer": "The night was not mentioned again.",
+    "detail": "The gutters ran black.",
+    "ledger": [
+     "+13 Favour",
+     "3 shards"
+    ],
+    "locationId": "mordheim",
+    "crossroads": {
+     "id": "the-hand-in-the-rubble",
+     "memberId": "hilde",
+     "kind": "moral",
+     "setup": "Under a fallen lintel in the ash flats, a hand, and on the hand three rings. The arm it belonged to was still warm.",
+     "rival": "Bitterbrow Expedition",
+     "options": [
+      {
+       "id": "rings",
+       "label": "Take the rings."
+      },
+      {
+       "id": "dig",
+       "label": "Dig them out."
+      },
+      {
+       "id": "mark",
+       "label": "Mark the place. Move on."
+      }
+     ],
+     "decided": {
+      "roadId": "mark",
+      "label": "Mark the place. Move on.",
+      "outcome": "Hilde did not wait to be told. The place is marked. The hand was gone in the morning.",
+      "ledger": [],
+      "defaulted": true,
+      "on": 8
+     }
+    }
+   },
+   {
+    "night": 8,
+    "omenId": "hanged-merchant",
+    "moonId": "green-moon",
+    "header": "Night 8 — under The Hanged Merchant.",
+    "results": [],
+    "detail": "Somebody was singing in the Poor Quarter. Badly.",
+    "closer": "A night in. The fire held. The count was taken.",
+    "ledger": [],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 9,
+    "omenId": "sealed-door",
+    "moonId": "green-moon",
+    "header": "Night 9 — under The Sealed Door.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "scavenge",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 3,
+      "renown": 0,
+      "shards": 0,
+      "prose": "Hilde sifted the cattle market out of habit and came back out of habit. The rubble hummed under Hilde's hands. Nobody stopped to wonder why.",
+      "line": "scavenge:standing:1"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "scavenge",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 3,
+      "renown": 0,
+      "shards": 1,
+      "prose": "Agnar sifted the cattle market out of habit and came back out of habit. Agnar kept watch on the door. Nobody tried it.",
+      "line": "scavenge:standing:1"
+     }
+    ],
+    "closer": "The fire was let go out.",
+    "detail": "Wet plaster. Old blood. Bread, from somewhere.",
+    "ledger": [
+     "+6 Favour",
+     "1 shard"
+    ],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 10,
+    "omenId": "tower-on-the-rock",
+    "moonId": "green-moon",
+    "header": "Night 10 — under The Tower on the Rock.",
+    "results": [],
+    "detail": "The candles burned green for a moment.",
+    "closer": "The door stayed barred. Nobody went out. The city went on without them.",
+    "ledger": [],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 11,
+    "omenId": "rat-kings-court",
+    "moonId": "green-moon",
+    "header": "Night 11 — under The Rat King's Court.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "pray",
+      "outcome": "poor",
+      "standing": false,
+      "favour": 2,
+      "renown": 0,
+      "shards": 0,
+      "prose": "Hilde prayed in Executioner's Square and heard only the rain. It is possible the rain was the answer.",
+      "line": "pray:poor:1"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "trade",
+      "outcome": "boon",
+      "standing": false,
+      "favour": 8,
+      "renown": 0,
+      "shards": 0,
+      "token": {
+       "id": "fences-favour",
+       "type": "market",
+       "name": "Fence's Favour",
+       "effect": "+1 to one Rarity roll."
+      },
+      "prose": "Agnar found a fence in the cattle market who owed the Bitterbrow Expedition money. Interesting rates. Agnar waited at the corner with a lantern and did not need to use it.",
+      "line": "trade:boon:3"
+     }
+    ],
+    "closer": "The count was taken twice.",
+    "detail": "Somewhere a dog barked and was stopped.",
+    "ledger": [
+     "+10 Favour",
+     "Agnar: Fence's Favour"
+    ],
+    "locationId": "mordheim",
+    "crossroads": {
+     "id": "the-sisters-candle",
+     "memberId": "hilde",
+     "kind": "risk",
+     "setup": "Sister Agathe left Hilde alone with one candle and a door that was bolted from the other side. Keep it lit until the bell, she said.",
+     "rival": "Bitterbrow Expedition",
+     "options": [
+      {
+       "id": "keep",
+       "label": "Keep it lit."
+      },
+      {
+       "id": "bang",
+       "label": "Bang on the door."
+      }
+     ],
+     "decided": {
+      "roadId": "bang",
+      "label": "Bang on the door.",
+      "outcome": "By the time anyone might have asked, it was done. The Sister opened it without a word and took the candle back.",
+      "ledger": [],
+      "defaulted": true,
+      "on": 12
+     }
+    }
+   },
+   {
+    "night": 12,
+    "omenId": "lantern-bearer",
+    "moonId": "green-moon",
+    "header": "Night 12 — under The Lantern-Bearer.",
+    "results": [],
+    "detail": "A cart came down the north road with its lamps out.",
+    "closer": "The door stayed barred. The river rose, and fell, and the count at dawn was the count at dusk. That is a good night here.",
+    "ledger": [],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 13,
+    "omenId": "whispering-wall",
+    "moonId": "green-moon",
+    "header": "Night 13 — under The Whispering Wall.",
+    "results": [
+     {
+      "memberId": "skalle",
+      "errand": "dredge",
+      "outcome": "boon",
+      "standing": false,
+      "favour": 4,
+      "renown": 4,
+      "shards": 2,
+      "token": {
+       "id": "bargemans-chart",
+       "type": "ground",
+       "name": "Bargeman’s Chart",
+       "effect": "After both sides deploy, move one of your models up to 6\" along your own table edge.",
+       "location": "fussenbach"
+      },
+      "prose": "Skalle waded the silt flats at low tide and came back with green in a jar and a story about a bone with teeth marks that nobody will hear twice. Skalle did not need the lantern on the flats. That was the trouble. Nobody needed a lantern.",
+      "line": "dredge:boon:1"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "pray",
+      "outcome": "fair",
+      "standing": false,
+      "favour": 3,
+      "renown": 2,
+      "shards": 0,
+      "prose": "Torgrim knelt until the doubt and the prayer were about even. In Fussenbach that counts as faith. They came back by different lanes and arrived at once. The village noticed. The village notices.",
+      "line": "pray:fair:15"
+     }
+    ],
+    "detail": "A barge slipped its mooring at midnight and was found upstream. Upstream.",
+    "ledger": [
+     "+7 Favour",
+     "2 shards",
+     "+6 Renown",
+     "Skalle: Bargeman’s Chart"
+    ],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 14,
+    "omenId": "drowned-quarter",
+    "moonId": "green-moon",
+    "header": "Night 14 — under The Drowned Quarter.",
+    "results": [],
+    "detail": "Pumpkin ale on every breath in the lane.",
+    "closer": "A night in above the Flagon. The fire held. The count was taken.",
+    "ledger": [],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 15,
+    "omenId": "bone-hand",
+    "moonId": "ash-moon",
+    "header": "Night 15 — under The Bone Hand.",
+    "results": [
+     {
+      "memberId": "skalle",
+      "errand": "dredge",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 2,
+      "renown": 1,
+      "shards": 1,
+      "prose": "Skalle took the rake to the fish-gut quay out of habit and came back out of habit.",
+      "line": "dredge:standing:1"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "pray",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 2,
+      "renown": 1,
+      "shards": 0,
+      "prose": "Torgrim Nordost kept the usual candle. The floor was quiet, as usual, or as usual as it gets.",
+      "line": "pray:standing:2"
+     }
+    ],
+    "detail": "The fog came up off the silt and did not leave.",
+    "ledger": [
+     "+4 Favour",
+     "1 shard",
+     "+2 Renown"
+    ],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 16,
+    "omenId": "the-ferryman",
+    "moonId": "ash-moon",
+    "header": "Night 16 — under The Ferryman.",
+    "results": [],
+    "detail": "The wind came off the river and smelled of a smithy.",
+    "closer": "A night in above the Flagon. The fire held. The count was taken.",
+    "ledger": [],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 17,
+    "omenId": "beggar-king",
+    "moonId": "ash-moon",
+    "header": "Night 17 — under The Beggar King.",
+    "results": [
+     {
+      "memberId": "skalle",
+      "errand": "dredge",
+      "outcome": "poor",
+      "standing": true,
+      "favour": 1,
+      "renown": 0,
+      "shards": 0,
+      "prose": "Skalle dredged the usual stretch below the mill. The mill did not comment.",
+      "line": "dredge:standing:2"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "pray",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 2,
+      "renown": 1,
+      "shards": 0,
+      "prose": "Torgrim said the words at the shrine. Father Justinian nodded without looking up.",
+      "line": "pray:standing:1"
+     }
+    ],
+    "detail": "Smoke from the charcoal burners lay flat on the fields.",
+    "ledger": [
+     "+3 Favour",
+     "+1 Renown"
+    ],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 18,
+    "omenId": "witch-hunter",
+    "moonId": "ash-moon",
+    "header": "Night 18 — under The Witch Hunter.",
+    "results": [],
+    "detail": "A bell buoy rang on the water, though the village keeps no buoy.",
+    "closer": "The door stayed barred. Nobody went out. The river went on without them.",
+    "ledger": [],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 19,
+    "omenId": "broken-bell",
+    "moonId": "ash-moon",
+    "header": "Night 19 — under The Broken Bell.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "trade",
+      "outcome": "poor",
+      "standing": false,
+      "favour": 1,
+      "renown": 1,
+      "shards": 0,
+      "prose": "Hilde waited at the boatyard for the shipwright, who has gone upriver, according to the Baron's men. His tools are still on the bench. The buyer at the tollhouse asked if the green had come down with the ash. Hilde said yes. It paid better.",
+      "line": "trade:poor:8"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "carouse",
+      "outcome": "fair",
+      "standing": false,
+      "favour": 3,
+      "renown": 2,
+      "shards": 0,
+      "prose": "Agnar Nordost sat at the Flagon and let the room get used to them. The room took its time. A fair night.",
+      "line": "carouse:fair:0"
+     }
+    ],
+    "closer": "Nobody slept on the side of the house facing the water.",
+    "detail": "The moon came up green over the marsh and corrected itself.",
+    "ledger": [
+     "+4 Favour",
+     "+3 Renown"
+    ],
+    "locationId": "fussenbach",
+    "crossroads": {
+     "id": "the-barons-silver",
+     "memberId": "hilde",
+     "kind": "moral",
+     "setup": "Old Henrik counted out Baron's silver for the green, twice what the green is worth, and said the Baron would like to know where The Nordost Kin finds it.",
+     "rival": "Bitterbrow Expedition",
+     "options": [
+      {
+       "id": "tell",
+       "label": "Take the silver. Tell him."
+      },
+      {
+       "id": "back",
+       "label": "Take the green back."
+      },
+      {
+       "id": "fair",
+       "label": "Take the fair price. Say nothing."
+      }
+     ],
+     "decided": {
+      "roadId": "fair",
+      "label": "Take the fair price. Say nothing.",
+      "outcome": "There was nobody to ask. Hilde kept walking. Henrik paid the usual and did not ask twice. He will ask twice next time.",
+      "ledger": [
+       "+3 Favour"
+      ],
+      "defaulted": true,
+      "on": 20
+     }
+    }
+   },
+   {
+    "night": 20,
+    "omenId": "nameless-grave",
+    "moonId": "ash-moon",
+    "header": "Night 20 — under The Nameless Grave.",
+    "results": [],
+    "detail": "Ice in the basins, though the river ran free.",
+    "closer": "The door stayed barred. The river rose, and fell, and the count at dawn was the count at dusk. That is a good night here.",
+    "ledger": [],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 21,
+    "omenId": "black-sails",
+    "moonId": "ash-moon",
+    "header": "Night 21 — under The Black Sails.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "trade",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 2,
+      "renown": 1,
+      "shards": 0,
+      "token": {
+       "id": "kummerspeck-seal",
+       "type": "market",
+       "name": "Kummerspeck Seal",
+       "effect": "+2 to one Rarity roll. Do not ask whose seal is on the crate.",
+       "location": "fussenbach"
+      },
+      "convertedShards": 5,
+      "prose": "Hilde kept the usual arrangement on the lower docks. The usual coin.",
+      "line": "trade:standing:0"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "carouse",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 2,
+      "renown": 1,
+      "shards": 0,
+      "prose": "Agnar Nordost sat where they always sit. The landlord poured without asking. The two of them counted each other in at the door. Both were there. It is not always certain.",
+      "line": "carouse:standing:2"
+     }
+    ],
+    "detail": "The shrine's bell rang once, cracked, and nobody had pulled it.",
+    "ledger": [
+     "+4 Favour",
+     "+2 Renown",
+     "Hilde: 5 shards to Kummerspeck Seal"
+    ],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 22,
+    "omenId": "empty-cradle",
+    "moonId": "hunters-moon",
+    "header": "Night 22 — under The Empty Cradle.",
+    "results": [],
+    "detail": "The barges were dark. All of them.",
+    "closer": "Nobody went out. The landlord's boy brought up the supper and looked at the shutters and went down again.",
+    "ledger": [],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 23,
+    "omenId": "plague-doctor",
+    "moonId": "hunters-moon",
+    "header": "Night 23 — under The Plague Doctor.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "trade",
+      "outcome": "poor",
+      "standing": true,
+      "favour": 1,
+      "renown": 0,
+      "shards": 0,
+      "prose": "Hilde traded with the eel-men as usual. Coin and eels, as usual. The buyer at the tollhouse paid double and asked Hilde to walk back the long way. The hat was on the short way.",
+      "line": "trade:standing:4"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "carouse",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 2,
+      "renown": 1,
+      "shards": 0,
+      "prose": "Agnar drank two and went home. The village barely noticed. That is the point of a village. Agnar had the door open before Agnar knocked.",
+      "line": "carouse:standing:3"
+     }
+    ],
+    "closer": "The night was not mentioned at breakfast.",
+    "detail": "A dog would not cross the mill bridge.",
+    "ledger": [
+     "+3 Favour",
+     "+1 Renown"
+    ],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 24,
+    "omenId": "carrion-crown",
+    "moonId": "hunters-moon",
+    "header": "Night 24 — under The Carrion Crown.",
+    "results": [],
+    "detail": "The Flagon's landlord slept in his chair with the poker across his knees.",
+    "closer": "Nobody went out. The landlord's boy brought up the supper and looked at the shutters and went down again.",
+    "ledger": [],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 25,
+    "omenId": "sisters-candle",
+    "moonId": "hunters-moon",
+    "header": "Night 25 — under The Sisters' Candle.",
+    "results": [
+     {
+      "memberId": "skalle",
+      "errand": "pray",
+      "outcome": "fair",
+      "standing": false,
+      "favour": 3,
+      "renown": 2,
+      "shards": 0,
+      "prose": "Skalle sat with Father Justinian and said little. The priest kept looking at the door.",
+      "line": "pray:fair:1"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "trade",
+      "outcome": "fair",
+      "standing": false,
+      "favour": 3,
+      "renown": 2,
+      "shards": 0,
+      "prose": "Torgrim Nordost traded in the Flagon's yard by the light from the window. A fair chit, and the landlord's boy watching from the woodpile. Torgrim walked Torgrim home along the water and neither looked at it.",
+      "line": "trade:fair:8"
+     }
+    ],
+    "detail": "Somebody had left a pumpkin on every grave in Morr's Garden. Hollowed.",
+    "ledger": [
+     "+6 Favour",
+     "+4 Renown"
+    ],
+    "locationId": "fussenbach",
+    "crossroads": {
+     "id": "the-fathers-spears",
+     "memberId": "skalle",
+     "kind": "loyalty",
+     "setup": "Father Justinian asked Skalle, quietly, whether The Nordost Kin would stand in the nave with spears on the Silent Moon. He did not say against what.",
+     "rival": "Bitterbrow Expedition",
+     "options": [
+      {
+       "id": "promise",
+       "label": "Promise it."
+      },
+      {
+       "id": "refuse",
+       "label": "Refuse."
+      },
+      {
+       "id": "ask",
+       "label": "Say they will ask the others."
+      }
+     ],
+     "decided": {
+      "roadId": "ask",
+      "label": "Say they will ask the others.",
+      "outcome": "The river does not wait for orders, and neither did Skalle. The Father nodded as if he had heard that before.",
+      "ledger": [],
+      "defaulted": true,
+      "on": 26
+     }
+    }
+   },
+   {
+    "night": 26,
+    "omenId": "last-candle",
+    "moonId": "hunters-moon",
+    "header": "Night 26 — under The Last Candle.",
+    "results": [],
+    "detail": "The fog came up off the silt and did not leave.",
+    "closer": "A night in. The rain came off the river and nobody missed being out in it.",
+    "ledger": [],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 27,
+    "omenId": "hammer-reversed",
+    "moonId": "hunters-moon",
+    "header": "Night 27 — under Sigmar's Hammer, Reversed.",
+    "results": [
+     {
+      "memberId": "skalle",
+      "errand": "pray",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 2,
+      "renown": 1,
+      "shards": 0,
+      "prose": "Skalle prayed at the usual hour. The village has started to set its clocks by it. A witch hunter knelt in the front row of the shrine. Father Justinian stopped counting spears.",
+      "line": "pray:standing:3"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "trade",
+      "outcome": "poor",
+      "standing": true,
+      "favour": 1,
+      "renown": 0,
+      "shards": 0,
+      "prose": "Torgrim did the usual deal in the Flagon's yard. The landlord's boy watched, as usual. Torgrim waited at the ferry stair with a lantern and did not light it.",
+      "line": "trade:standing:3"
+     }
+    ],
+    "closer": "The ledger was written fast and the candle put out faster.",
+    "detail": "A heron stood on the fish-gut quay all night and would not feed.",
+    "ledger": [
+     "+3 Favour",
+     "+1 Renown"
+    ],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 28,
+    "omenId": "fences-scales",
+    "moonId": "hunters-moon",
+    "header": "Night 28 — under The Fence's Scales.",
+    "results": [],
+    "detail": "The moon came up green over the marsh and corrected itself.",
+    "closer": "Nobody went out. The landlord's boy brought up the supper and looked at the shutters and went down again.",
+    "ledger": [],
+    "locationId": "fussenbach"
+   },
+   {
+    "night": 29,
+    "omenId": "wyrd-lantern",
+    "moonId": "debtors-moon",
+    "header": "Night 29 — under The Wyrd Lantern.",
+    "results": [
+     {
+      "memberId": "skalle",
+      "errand": "carouse",
+      "outcome": "boon",
+      "standing": false,
+      "favour": 0,
+      "renown": 5,
+      "shards": 0,
+      "prose": "Skalle lost at dice to the landlord's boy on purpose and won the landlord for it. There is a room going free above the bar. The chandler and the miller argued over a debt from the old Baron's time and stopped, both at once, when the old Baron was mentioned. Skalle found Durin of the Bitterbrow Expedition asleep in the wayshrine and left them asleep. It will be remembered, one way or the other.",
+      "line": "carouse:boon:5"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "spy",
+      "outcome": "fair",
+      "standing": false,
+      "favour": 0,
+      "renown": 2,
+      "shards": 0,
+      "rumour": "Father Justinian has a list of names in the vestry. Not the dead. Not yet.",
+      "prose": "Torgrim got a name from the ferryman for the price of a crossing. The name was Hauer. The direction was down. The two of them met on the mill bridge at the third hour without arranging it.",
+      "line": "spy:fair:15"
+     }
+    ],
+    "detail": "Ice in the basins, though the river ran free.",
+    "ledger": [
+     "+7 Renown",
+     "Torgrim: a rumour"
+    ],
+    "locationId": "fussenbach",
+    "crossroads": {
+     "id": "the-song-about-the-baron",
+     "memberId": "skalle",
+     "kind": "light",
+     "setup": "Somebody started the song about the Baron's shutters. Everybody knew the words. Nobody would sing the third verse.",
+     "rival": "Bitterbrow Expedition",
+     "options": [
+      {
+       "id": "sing",
+       "label": "Sing the third verse."
+      },
+      {
+       "id": "hum",
+       "label": "Hum along."
+      }
+     ],
+     "decided": {
+      "roadId": "hum",
+      "label": "Hum along.",
+      "outcome": "There was nobody to ask. Skalle kept walking. Skalle hummed. It was enough.",
+      "ledger": [
+       "+1 Favour"
+      ],
+      "defaulted": true,
+      "on": 30
+     }
+    }
+   },
+   {
+    "night": 30,
+    "omenId": "green-light-under-ash",
+    "moonId": "debtors-moon",
+    "header": "Night 30 — under Green Light Under Ash.",
+    "results": [],
+    "detail": "Smoke from the tanneries hung low.",
+    "closer": "A night in. The fire held. The count was taken.",
+    "ledger": [],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 31,
+    "omenId": "broken-bell",
+    "moonId": "debtors-moon",
+    "header": "Night 31 — under The Broken Bell.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "spy",
+      "outcome": "poor",
+      "standing": false,
+      "favour": 0,
+      "renown": 1,
+      "shards": 0,
+      "prose": "Hilde was seen in the Merchant's Quarter. Not caught. Seen. Debt makes people talk. Hilde let them.",
+      "line": "spy:poor:0"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "train",
+      "outcome": "fair",
+      "standing": false,
+      "favour": 0,
+      "renown": 3,
+      "shards": 0,
+      "prose": "Agnar took a bout at the Pit and took a bruise for it. The crowd was fair. The crowd is never fair.",
+      "line": "train:fair:1"
+     }
+    ],
+    "detail": "The stars were out. All of them.",
+    "ledger": [
+     "+4 Renown"
+    ],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 32,
+    "omenId": "cracked-hourglass",
+    "moonId": "debtors-moon",
+    "header": "Night 32 — under The Cracked Hourglass.",
+    "results": [],
+    "detail": "Wet plaster. Old blood. Bread, from somewhere.",
+    "closer": "The door stayed barred. Nobody went out. The city went on without them.",
+    "ledger": [],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 33,
+    "omenId": "last-candle",
+    "moonId": "debtors-moon",
+    "header": "Night 33 — under The Last Candle.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "spy",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 0,
+      "renown": 1,
+      "shards": 0,
+      "rumour": "The Watch has stopped walking the tannery lane. Nobody asked them to.",
+      "prose": "Hilde watched the usual corner in the Poor Quarter. The usual nothing.",
+      "line": "spy:standing:1"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "train",
+      "outcome": "poor",
+      "standing": true,
+      "favour": 0,
+      "renown": 0,
+      "shards": 0,
+      "prose": "Agnar Nordost drilled in the granary quarter as they always do. The blade is no duller.",
+      "line": "train:standing:0"
+     }
+    ],
+    "detail": "A cart went by with no driver.",
+    "ledger": [
+     "+1 Renown",
+     "Hilde: a rumour"
+    ],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 34,
+    "omenId": "ash-wind",
+    "moonId": "debtors-moon",
+    "header": "Night 34 — under The Ash Wind.",
+    "results": [],
+    "detail": "Somebody was singing in the Poor Quarter. Badly.",
+    "closer": "A night in. The fire held. The count was taken.",
+    "ledger": [],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 35,
+    "omenId": "drowned-quarter",
+    "moonId": "debtors-moon",
+    "header": "Night 35 — under The Drowned Quarter.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "scavenge",
+      "outcome": "poor",
+      "standing": false,
+      "favour": 0,
+      "renown": 1,
+      "shards": 0,
+      "prose": "Hilde went into the cellars under the Pit and came back with dust, a cough, and nothing green. Someone had been through the cellars under the Pit already, in a hurry, owing money.",
+      "line": "scavenge:poor:1"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "scavenge",
+      "outcome": "boon",
+      "standing": false,
+      "favour": 0,
+      "renown": 4,
+      "shards": 2,
+      "prose": "Agnar Nordost went sifting in the Rock. They came back with green in both pockets and no words about how. The two of them did not speak on the way home.",
+      "line": "scavenge:boon:0"
+     }
+    ],
+    "detail": "It rained until the third hour.",
+    "ledger": [
+     "2 shards",
+     "+5 Renown"
+    ],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 36,
+    "omenId": "rat-kings-court",
+    "moonId": "silent-moon",
+    "header": "Night 36 — under The Rat King's Court.",
+    "results": [],
+    "detail": "Wet plaster. Old blood. Bread, from somewhere.",
+    "closer": "A night in. The fire held. The count was taken.",
+    "ledger": [],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 37,
+    "omenId": "drowned-bell",
+    "moonId": "silent-moon",
+    "header": "Night 37 — under The Drowned Bell.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "scavenge",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 0,
+      "renown": 1,
+      "shards": 0,
+      "prose": "Hilde sifted the Poor Quarter out of habit and came back out of habit. No bells, no carts. Hilde could hear each stone fall.",
+      "line": "scavenge:standing:1"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "scavenge",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 0,
+      "renown": 1,
+      "shards": 1,
+      "prose": "Agnar sifted the cellars under the Pit out of habit and came back out of habit.",
+      "line": "scavenge:standing:1"
+     }
+    ],
+    "closer": "Somebody had left bread on the step.",
+    "detail": "The gutters ran black.",
+    "ledger": [
+     "1 shard",
+     "+2 Renown"
+    ],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 38,
+    "omenId": "empty-cradle",
+    "moonId": "silent-moon",
+    "header": "Night 38 — under The Empty Cradle.",
+    "results": [],
+    "detail": "The wind carried ash from the west.",
+    "closer": "A night in. The fire held. The count was taken.",
+    "ledger": [],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 39,
+    "omenId": "hammer-reversed",
+    "moonId": "silent-moon",
+    "header": "Night 39 — under Sigmar's Hammer, Reversed.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "scavenge",
+      "outcome": "poor",
+      "standing": true,
+      "favour": 0,
+      "renown": 0,
+      "shards": 0,
+      "prose": "Hilde sifted the Rock out of habit and came back out of habit. No bells, no carts. Hilde could hear each stone fall.",
+      "line": "scavenge:standing:1"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "scavenge",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 0,
+      "renown": 1,
+      "shards": 1,
+      "prose": "Agnar sifted the ruins by Sigmar's Bridge out of habit and came back out of habit. The two of them did not speak on the way home.",
+      "line": "scavenge:standing:1"
+     }
+    ],
+    "closer": "The count was taken twice.",
+    "detail": "Wet plaster. Old blood. Bread, from somewhere.",
+    "ledger": [
+     "1 shard",
+     "+1 Renown"
+    ],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 40,
+    "omenId": "the-comet",
+    "moonId": "silent-moon",
+    "header": "Night 40 — under The Comet.",
+    "results": [],
+    "detail": "The Watch did not pass all night.",
+    "closer": "The door stayed barred. Nobody went out. The city went on without them.",
+    "ledger": [],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 41,
+    "omenId": "black-sails",
+    "moonId": "silent-moon",
+    "header": "Night 41 — under The Black Sails.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "scavenge",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 0,
+      "renown": 1,
+      "shards": 0,
+      "prose": "Hilde sifted the tanneries out of habit and came back out of habit. No bells, no carts. Hilde could hear each stone fall.",
+      "line": "scavenge:standing:1"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "scavenge",
+      "outcome": "poor",
+      "standing": true,
+      "favour": 0,
+      "renown": 0,
+      "shards": 0,
+      "prose": "Agnar Nordost kept to the usual rubble in Cutthroat's Haven. The usual haul. Agnar kept watch on the door. Nobody tried it.",
+      "line": "scavenge:standing:0"
+     }
+    ],
+    "detail": "The fog came up to the knee.",
+    "ledger": [
+     "+1 Renown"
+    ],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 42,
+    "omenId": "fences-scales",
+    "moonId": "silent-moon",
+    "header": "Night 42 — under The Fence's Scales.",
+    "results": [],
+    "detail": "The stars were out. All of them.",
+    "closer": "The door stayed barred. Nobody went out. The city went on without them.",
+    "ledger": [],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 43,
+    "omenId": "carrion-crown",
+    "moonId": "market-moon",
+    "header": "Night 43 — under The Carrion Crown.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "carouse",
+      "outcome": "boon",
+      "standing": false,
+      "favour": 0,
+      "renown": 5,
+      "shards": 0,
+      "token": {
+       "id": "sigmars-nod",
+       "type": "fortune",
+       "name": "Sigmar's Nod",
+       "effect": "Reroll one Rout test."
+      },
+      "prose": "Hilde sang in the Poor Quarter. It should not have worked. It worked. The tavern was full of sailors with coin and no sense of how much. Durin of the Bitterbrow Expedition was working the same street. Neither warband mentioned it in the morning.",
+      "line": "carouse:boon:2"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "spy",
+      "outcome": "fair",
+      "standing": false,
+      "favour": 0,
+      "renown": 2,
+      "shards": 0,
+      "rumour": "The Bitterbrow Expedition lost something in the cellars. They want it back.",
+      "prose": "Agnar learned which alley in the tanneries the Watch does not walk. It may be useful. It may be why.",
+      "line": "spy:fair:3"
+     }
+    ],
+    "detail": "A bell rang once and was not answered.",
+    "ledger": [
+     "+7 Renown",
+     "Hilde: Sigmar's Nod",
+     "Agnar: a rumour"
+    ],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 44,
+    "omenId": "plague-doctor",
+    "moonId": "market-moon",
+    "header": "Night 44 — under The Plague Doctor.",
+    "results": [],
+    "detail": "The gutters ran black.",
+    "closer": "The door stayed barred. Nobody went out. The city went on without them.",
+    "ledger": [],
+    "locationId": "mordheim"
+   },
+   {
+    "night": 45,
+    "omenId": "beggar-king",
+    "moonId": "market-moon",
+    "header": "Night 45 — under The Beggar King.",
+    "results": [
+     {
+      "memberId": "hilde",
+      "errand": "carouse",
+      "outcome": "poor",
+      "standing": true,
+      "favour": 0,
+      "renown": 0,
+      "shards": 0,
+      "prose": "Hilde drank in Cutthroat's Haven and was neither remembered nor forgotten.",
+      "line": "carouse:standing:1"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "spy",
+      "outcome": "fair",
+      "standing": true,
+      "favour": 0,
+      "renown": 1,
+      "shards": 0,
+      "rumour": "The Watch has stopped walking the tannery lane. Nobody asked them to.",
+      "prose": "Agnar watched the usual corner in the Steinhardt tenements. The usual nothing.",
+      "line": "spy:standing:1"
+     }
+    ],
+    "detail": "The river smelled of iron.",
+    "ledger": [
+     "+1 Renown",
+     "Agnar: a rumour"
+    ],
+    "locationId": "mordheim"
+   }
+  ],
+  "state": {
+   "version": 2,
+   "warbandId": "nordost",
+   "favour": 100,
+   "shards": 6,
+   "renown": 50,
+   "hand": [
+    {
+     "id": "fences-favour",
+     "earnedNight": 11
+    },
+    {
+     "id": "bargemans-chart",
+     "earnedNight": 13
+    },
+    {
+     "id": "sigmars-nod",
+     "earnedNight": 43
+    }
+   ],
+   "firstSeen": 1,
+   "lastResolved": 45,
+   "orders": {
+    "1": [
+     {
+      "memberId": "skalle",
+      "errand": "carouse"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "spy"
+     }
+    ],
+    "5": [
+     {
+      "memberId": "skalle",
+      "errand": "trade"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "carouse"
+     }
+    ],
+    "7": [
+     {
+      "memberId": "hilde",
+      "errand": "scavenge"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "scavenge"
+     }
+    ],
+    "11": [
+     {
+      "memberId": "hilde",
+      "errand": "pray"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "trade"
+     }
+    ],
+    "13": [
+     {
+      "memberId": "skalle",
+      "errand": "dredge"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "pray"
+     }
+    ],
+    "19": [
+     {
+      "memberId": "hilde",
+      "errand": "trade"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "carouse"
+     }
+    ],
+    "25": [
+     {
+      "memberId": "skalle",
+      "errand": "pray"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "trade"
+     }
+    ],
+    "29": [
+     {
+      "memberId": "skalle",
+      "errand": "carouse"
+     },
+     {
+      "memberId": "torgrim",
+      "errand": "spy"
+     }
+    ],
+    "31": [
+     {
+      "memberId": "hilde",
+      "errand": "spy"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "train"
+     }
+    ],
+    "35": [
+     {
+      "memberId": "hilde",
+      "errand": "scavenge"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "scavenge"
+     }
+    ],
+    "43": [
+     {
+      "memberId": "hilde",
+      "errand": "carouse"
+     },
+     {
+      "memberId": "agnar",
+      "errand": "spy"
+     }
+    ]
+   },
+   "nights": [
+    {
+     "night": 1,
+     "omenId": "the-pit",
+     "moonId": "festival-of-hanging",
+     "header": "Night 1 — under The Pit.",
+     "results": [
+      {
+       "memberId": "skalle",
+       "errand": "carouse",
+       "outcome": "boon",
+       "standing": false,
+       "favour": 8,
+       "renown": 1,
+       "shards": 0,
+       "prose": "Skalle drank in the cellars under the Pit with men who talk. By midnight the whole tavern knew their name and half of them owed them.",
+       "line": "carouse:boon:0"
+      },
+      {
+       "memberId": "torgrim",
+       "errand": "spy",
+       "outcome": "boon",
+       "standing": false,
+       "favour": 8,
+       "renown": 0,
+       "shards": 0,
+       "rumour": "The Watch has stopped walking the tannery lane. Nobody asked them to.",
+       "prose": "Torgrim Nordost paid a child in the Drowned Quarter a penny for a rumour and got three. Two were true.",
+       "line": "spy:boon:2"
+      }
+     ],
+     "detail": "Smoke from the tanneries hung low.",
+     "ledger": [
+      "+16 Favour",
+      "+1 Renown",
+      "Torgrim: a rumour"
+     ],
+     "locationId": "mordheim",
+     "crossroads": {
+      "id": "the-pit-fighters-wager",
+      "memberId": "skalle",
+      "kind": "risk",
+      "setup": "A Pit fighter with one ear wanted to arm-wrestle for a shard. The table was already wet with the last man's blood.",
+      "rival": "Bitterbrow Expedition",
+      "options": [
+       {
+        "id": "wager",
+        "label": "Take the wager."
+       },
+       {
+        "id": "drink",
+        "label": "Buy him a drink instead."
+       }
+      ],
+      "decided": {
+       "roadId": "drink",
+       "label": "Buy him a drink instead.",
+       "outcome": "By the time anyone might have asked, it was done. He told a story about the Pit that Skalle will not repeat.",
+       "ledger": [
+        "+2 Favour"
+       ],
+       "defaulted": true,
+       "on": 2
+      }
+     }
+    },
+    {
+     "night": 2,
+     "omenId": "cracked-hourglass",
+     "moonId": "festival-of-hanging",
+     "header": "Night 2 — under The Cracked Hourglass.",
+     "results": [],
+     "detail": "Wet plaster. Old blood. Bread, from somewhere.",
+     "closer": "A night in. The fire held. The count was taken.",
+     "ledger": [],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 3,
+     "omenId": "crooked-dice",
+     "moonId": "festival-of-hanging",
+     "header": "Night 3 — under The Crooked Dice.",
+     "results": [
+      {
+       "memberId": "skalle",
+       "errand": "carouse",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 3,
+       "renown": 0,
+       "shards": 0,
+       "prose": "Skalle drank in the ruins by Sigmar's Bridge and was neither remembered nor forgotten. The whole city was drinking to the hanged. Skalle drank to them twice.",
+       "line": "carouse:standing:1"
+      },
+      {
+       "memberId": "torgrim",
+       "errand": "spy",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 3,
+       "renown": 0,
+       "shards": 0,
+       "rumour": "The Man in Grey was seen at the Ostermark Gate. He was not going in.",
+       "prose": "Torgrim watched the usual corner in the granary quarter. The usual nothing.",
+       "line": "spy:standing:1"
+      }
+     ],
+     "detail": "Smoke from the tanneries hung low.",
+     "ledger": [
+      "+6 Favour",
+      "Torgrim: a rumour"
+     ],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 4,
+     "omenId": "twin-moons",
+     "moonId": "festival-of-hanging",
+     "header": "Night 4 — under The Twin Moons.",
+     "results": [],
+     "detail": "The wind carried ash from the west.",
+     "closer": "A night in. The fire held. The count was taken.",
+     "ledger": [],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 5,
+     "omenId": "the-comet",
+     "moonId": "festival-of-hanging",
+     "header": "Night 5 — under The Comet.",
+     "results": [
+      {
+       "memberId": "skalle",
+       "errand": "trade",
+       "outcome": "fair",
+       "standing": false,
+       "favour": 5,
+       "renown": 0,
+       "shards": 0,
+       "prose": "Skalle watched Henrik weigh everything twice in the cellars under the Pit. The second time was the price. The fences did brisk business in the effects of the dead.",
+       "line": "trade:fair:3"
+      },
+      {
+       "memberId": "torgrim",
+       "errand": "carouse",
+       "outcome": "fair",
+       "standing": false,
+       "favour": 5,
+       "renown": 0,
+       "shards": 0,
+       "prose": "Torgrim Nordost sat with the boatmen in the old Guild Hall. They know their face now.",
+       "line": "carouse:fair:2"
+      }
+     ],
+     "detail": "The stars were out. All of them.",
+     "ledger": [
+      "+10 Favour"
+     ],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 6,
+     "omenId": "drowned-bell",
+     "moonId": "festival-of-hanging",
+     "header": "Night 6 — under The Drowned Bell.",
+     "results": [],
+     "detail": "Smoke from the tanneries hung low.",
+     "closer": "The door stayed barred. Nobody went out. The city went on without them.",
+     "ledger": [],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 7,
+     "omenId": "ash-wind",
+     "moonId": "festival-of-hanging",
+     "header": "Night 7 — under The Ash Wind.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "scavenge",
+       "outcome": "boon",
+       "standing": false,
+       "favour": 8,
+       "renown": 0,
+       "shards": 2,
+       "prose": "Hilde went sifting in the Drowned Quarter. They came back with green in both pockets and no words about how.",
+       "line": "scavenge:boon:0"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "scavenge",
+       "outcome": "fair",
+       "standing": false,
+       "favour": 5,
+       "renown": 0,
+       "shards": 1,
+       "prose": "Agnar Nordost spent the night in the Steinhardt tenements moving stones. One of them was worth moving.",
+       "line": "scavenge:fair:2"
+      }
+     ],
+     "closer": "The night was not mentioned again.",
+     "detail": "The gutters ran black.",
+     "ledger": [
+      "+13 Favour",
+      "3 shards"
+     ],
+     "locationId": "mordheim",
+     "crossroads": {
+      "id": "the-hand-in-the-rubble",
+      "memberId": "hilde",
+      "kind": "moral",
+      "setup": "Under a fallen lintel in the ash flats, a hand, and on the hand three rings. The arm it belonged to was still warm.",
+      "rival": "Bitterbrow Expedition",
+      "options": [
+       {
+        "id": "rings",
+        "label": "Take the rings."
+       },
+       {
+        "id": "dig",
+        "label": "Dig them out."
+       },
+       {
+        "id": "mark",
+        "label": "Mark the place. Move on."
+       }
+      ],
+      "decided": {
+       "roadId": "mark",
+       "label": "Mark the place. Move on.",
+       "outcome": "Hilde did not wait to be told. The place is marked. The hand was gone in the morning.",
+       "ledger": [],
+       "defaulted": true,
+       "on": 8
+      }
+     }
+    },
+    {
+     "night": 8,
+     "omenId": "hanged-merchant",
+     "moonId": "green-moon",
+     "header": "Night 8 — under The Hanged Merchant.",
+     "results": [],
+     "detail": "Somebody was singing in the Poor Quarter. Badly.",
+     "closer": "A night in. The fire held. The count was taken.",
+     "ledger": [],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 9,
+     "omenId": "sealed-door",
+     "moonId": "green-moon",
+     "header": "Night 9 — under The Sealed Door.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "scavenge",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 3,
+       "renown": 0,
+       "shards": 0,
+       "prose": "Hilde sifted the cattle market out of habit and came back out of habit. The rubble hummed under Hilde's hands. Nobody stopped to wonder why.",
+       "line": "scavenge:standing:1"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "scavenge",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 3,
+       "renown": 0,
+       "shards": 1,
+       "prose": "Agnar sifted the cattle market out of habit and came back out of habit. Agnar kept watch on the door. Nobody tried it.",
+       "line": "scavenge:standing:1"
+      }
+     ],
+     "closer": "The fire was let go out.",
+     "detail": "Wet plaster. Old blood. Bread, from somewhere.",
+     "ledger": [
+      "+6 Favour",
+      "1 shard"
+     ],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 10,
+     "omenId": "tower-on-the-rock",
+     "moonId": "green-moon",
+     "header": "Night 10 — under The Tower on the Rock.",
+     "results": [],
+     "detail": "The candles burned green for a moment.",
+     "closer": "The door stayed barred. Nobody went out. The city went on without them.",
+     "ledger": [],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 11,
+     "omenId": "rat-kings-court",
+     "moonId": "green-moon",
+     "header": "Night 11 — under The Rat King's Court.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "pray",
+       "outcome": "poor",
+       "standing": false,
+       "favour": 2,
+       "renown": 0,
+       "shards": 0,
+       "prose": "Hilde prayed in Executioner's Square and heard only the rain. It is possible the rain was the answer.",
+       "line": "pray:poor:1"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "trade",
+       "outcome": "boon",
+       "standing": false,
+       "favour": 8,
+       "renown": 0,
+       "shards": 0,
+       "token": {
+        "id": "fences-favour",
+        "type": "market",
+        "name": "Fence's Favour",
+        "effect": "+1 to one Rarity roll."
+       },
+       "prose": "Agnar found a fence in the cattle market who owed the Bitterbrow Expedition money. Interesting rates. Agnar waited at the corner with a lantern and did not need to use it.",
+       "line": "trade:boon:3"
+      }
+     ],
+     "closer": "The count was taken twice.",
+     "detail": "Somewhere a dog barked and was stopped.",
+     "ledger": [
+      "+10 Favour",
+      "Agnar: Fence's Favour"
+     ],
+     "locationId": "mordheim",
+     "crossroads": {
+      "id": "the-sisters-candle",
+      "memberId": "hilde",
+      "kind": "risk",
+      "setup": "Sister Agathe left Hilde alone with one candle and a door that was bolted from the other side. Keep it lit until the bell, she said.",
+      "rival": "Bitterbrow Expedition",
+      "options": [
+       {
+        "id": "keep",
+        "label": "Keep it lit."
+       },
+       {
+        "id": "bang",
+        "label": "Bang on the door."
+       }
+      ],
+      "decided": {
+       "roadId": "bang",
+       "label": "Bang on the door.",
+       "outcome": "By the time anyone might have asked, it was done. The Sister opened it without a word and took the candle back.",
+       "ledger": [],
+       "defaulted": true,
+       "on": 12
+      }
+     }
+    },
+    {
+     "night": 12,
+     "omenId": "lantern-bearer",
+     "moonId": "green-moon",
+     "header": "Night 12 — under The Lantern-Bearer.",
+     "results": [],
+     "detail": "A cart came down the north road with its lamps out.",
+     "closer": "The door stayed barred. The river rose, and fell, and the count at dawn was the count at dusk. That is a good night here.",
+     "ledger": [],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 13,
+     "omenId": "whispering-wall",
+     "moonId": "green-moon",
+     "header": "Night 13 — under The Whispering Wall.",
+     "results": [
+      {
+       "memberId": "skalle",
+       "errand": "dredge",
+       "outcome": "boon",
+       "standing": false,
+       "favour": 4,
+       "renown": 4,
+       "shards": 2,
+       "token": {
+        "id": "bargemans-chart",
+        "type": "ground",
+        "name": "Bargeman’s Chart",
+        "effect": "After both sides deploy, move one of your models up to 6\" along your own table edge.",
+        "location": "fussenbach"
+       },
+       "prose": "Skalle waded the silt flats at low tide and came back with green in a jar and a story about a bone with teeth marks that nobody will hear twice. Skalle did not need the lantern on the flats. That was the trouble. Nobody needed a lantern.",
+       "line": "dredge:boon:1"
+      },
+      {
+       "memberId": "torgrim",
+       "errand": "pray",
+       "outcome": "fair",
+       "standing": false,
+       "favour": 3,
+       "renown": 2,
+       "shards": 0,
+       "prose": "Torgrim knelt until the doubt and the prayer were about even. In Fussenbach that counts as faith. They came back by different lanes and arrived at once. The village noticed. The village notices.",
+       "line": "pray:fair:15"
+      }
+     ],
+     "detail": "A barge slipped its mooring at midnight and was found upstream. Upstream.",
+     "ledger": [
+      "+7 Favour",
+      "2 shards",
+      "+6 Renown",
+      "Skalle: Bargeman’s Chart"
+     ],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 14,
+     "omenId": "drowned-quarter",
+     "moonId": "green-moon",
+     "header": "Night 14 — under The Drowned Quarter.",
+     "results": [],
+     "detail": "Pumpkin ale on every breath in the lane.",
+     "closer": "A night in above the Flagon. The fire held. The count was taken.",
+     "ledger": [],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 15,
+     "omenId": "bone-hand",
+     "moonId": "ash-moon",
+     "header": "Night 15 — under The Bone Hand.",
+     "results": [
+      {
+       "memberId": "skalle",
+       "errand": "dredge",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 2,
+       "renown": 1,
+       "shards": 1,
+       "prose": "Skalle took the rake to the fish-gut quay out of habit and came back out of habit.",
+       "line": "dredge:standing:1"
+      },
+      {
+       "memberId": "torgrim",
+       "errand": "pray",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 2,
+       "renown": 1,
+       "shards": 0,
+       "prose": "Torgrim Nordost kept the usual candle. The floor was quiet, as usual, or as usual as it gets.",
+       "line": "pray:standing:2"
+      }
+     ],
+     "detail": "The fog came up off the silt and did not leave.",
+     "ledger": [
+      "+4 Favour",
+      "1 shard",
+      "+2 Renown"
+     ],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 16,
+     "omenId": "the-ferryman",
+     "moonId": "ash-moon",
+     "header": "Night 16 — under The Ferryman.",
+     "results": [],
+     "detail": "The wind came off the river and smelled of a smithy.",
+     "closer": "A night in above the Flagon. The fire held. The count was taken.",
+     "ledger": [],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 17,
+     "omenId": "beggar-king",
+     "moonId": "ash-moon",
+     "header": "Night 17 — under The Beggar King.",
+     "results": [
+      {
+       "memberId": "skalle",
+       "errand": "dredge",
+       "outcome": "poor",
+       "standing": true,
+       "favour": 1,
+       "renown": 0,
+       "shards": 0,
+       "prose": "Skalle dredged the usual stretch below the mill. The mill did not comment.",
+       "line": "dredge:standing:2"
+      },
+      {
+       "memberId": "torgrim",
+       "errand": "pray",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 2,
+       "renown": 1,
+       "shards": 0,
+       "prose": "Torgrim said the words at the shrine. Father Justinian nodded without looking up.",
+       "line": "pray:standing:1"
+      }
+     ],
+     "detail": "Smoke from the charcoal burners lay flat on the fields.",
+     "ledger": [
+      "+3 Favour",
+      "+1 Renown"
+     ],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 18,
+     "omenId": "witch-hunter",
+     "moonId": "ash-moon",
+     "header": "Night 18 — under The Witch Hunter.",
+     "results": [],
+     "detail": "A bell buoy rang on the water, though the village keeps no buoy.",
+     "closer": "The door stayed barred. Nobody went out. The river went on without them.",
+     "ledger": [],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 19,
+     "omenId": "broken-bell",
+     "moonId": "ash-moon",
+     "header": "Night 19 — under The Broken Bell.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "trade",
+       "outcome": "poor",
+       "standing": false,
+       "favour": 1,
+       "renown": 1,
+       "shards": 0,
+       "prose": "Hilde waited at the boatyard for the shipwright, who has gone upriver, according to the Baron's men. His tools are still on the bench. The buyer at the tollhouse asked if the green had come down with the ash. Hilde said yes. It paid better.",
+       "line": "trade:poor:8"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "carouse",
+       "outcome": "fair",
+       "standing": false,
+       "favour": 3,
+       "renown": 2,
+       "shards": 0,
+       "prose": "Agnar Nordost sat at the Flagon and let the room get used to them. The room took its time. A fair night.",
+       "line": "carouse:fair:0"
+      }
+     ],
+     "closer": "Nobody slept on the side of the house facing the water.",
+     "detail": "The moon came up green over the marsh and corrected itself.",
+     "ledger": [
+      "+4 Favour",
+      "+3 Renown"
+     ],
+     "locationId": "fussenbach",
+     "crossroads": {
+      "id": "the-barons-silver",
+      "memberId": "hilde",
+      "kind": "moral",
+      "setup": "Old Henrik counted out Baron's silver for the green, twice what the green is worth, and said the Baron would like to know where The Nordost Kin finds it.",
+      "rival": "Bitterbrow Expedition",
+      "options": [
+       {
+        "id": "tell",
+        "label": "Take the silver. Tell him."
+       },
+       {
+        "id": "back",
+        "label": "Take the green back."
+       },
+       {
+        "id": "fair",
+        "label": "Take the fair price. Say nothing."
+       }
+      ],
+      "decided": {
+       "roadId": "fair",
+       "label": "Take the fair price. Say nothing.",
+       "outcome": "There was nobody to ask. Hilde kept walking. Henrik paid the usual and did not ask twice. He will ask twice next time.",
+       "ledger": [
+        "+3 Favour"
+       ],
+       "defaulted": true,
+       "on": 20
+      }
+     }
+    },
+    {
+     "night": 20,
+     "omenId": "nameless-grave",
+     "moonId": "ash-moon",
+     "header": "Night 20 — under The Nameless Grave.",
+     "results": [],
+     "detail": "Ice in the basins, though the river ran free.",
+     "closer": "The door stayed barred. The river rose, and fell, and the count at dawn was the count at dusk. That is a good night here.",
+     "ledger": [],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 21,
+     "omenId": "black-sails",
+     "moonId": "ash-moon",
+     "header": "Night 21 — under The Black Sails.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "trade",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 2,
+       "renown": 1,
+       "shards": 0,
+       "token": {
+        "id": "kummerspeck-seal",
+        "type": "market",
+        "name": "Kummerspeck Seal",
+        "effect": "+2 to one Rarity roll. Do not ask whose seal is on the crate.",
+        "location": "fussenbach"
+       },
+       "convertedShards": 5,
+       "prose": "Hilde kept the usual arrangement on the lower docks. The usual coin.",
+       "line": "trade:standing:0"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "carouse",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 2,
+       "renown": 1,
+       "shards": 0,
+       "prose": "Agnar Nordost sat where they always sit. The landlord poured without asking. The two of them counted each other in at the door. Both were there. It is not always certain.",
+       "line": "carouse:standing:2"
+      }
+     ],
+     "detail": "The shrine's bell rang once, cracked, and nobody had pulled it.",
+     "ledger": [
+      "+4 Favour",
+      "+2 Renown",
+      "Hilde: 5 shards to Kummerspeck Seal"
+     ],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 22,
+     "omenId": "empty-cradle",
+     "moonId": "hunters-moon",
+     "header": "Night 22 — under The Empty Cradle.",
+     "results": [],
+     "detail": "The barges were dark. All of them.",
+     "closer": "Nobody went out. The landlord's boy brought up the supper and looked at the shutters and went down again.",
+     "ledger": [],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 23,
+     "omenId": "plague-doctor",
+     "moonId": "hunters-moon",
+     "header": "Night 23 — under The Plague Doctor.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "trade",
+       "outcome": "poor",
+       "standing": true,
+       "favour": 1,
+       "renown": 0,
+       "shards": 0,
+       "prose": "Hilde traded with the eel-men as usual. Coin and eels, as usual. The buyer at the tollhouse paid double and asked Hilde to walk back the long way. The hat was on the short way.",
+       "line": "trade:standing:4"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "carouse",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 2,
+       "renown": 1,
+       "shards": 0,
+       "prose": "Agnar drank two and went home. The village barely noticed. That is the point of a village. Agnar had the door open before Agnar knocked.",
+       "line": "carouse:standing:3"
+      }
+     ],
+     "closer": "The night was not mentioned at breakfast.",
+     "detail": "A dog would not cross the mill bridge.",
+     "ledger": [
+      "+3 Favour",
+      "+1 Renown"
+     ],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 24,
+     "omenId": "carrion-crown",
+     "moonId": "hunters-moon",
+     "header": "Night 24 — under The Carrion Crown.",
+     "results": [],
+     "detail": "The Flagon's landlord slept in his chair with the poker across his knees.",
+     "closer": "Nobody went out. The landlord's boy brought up the supper and looked at the shutters and went down again.",
+     "ledger": [],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 25,
+     "omenId": "sisters-candle",
+     "moonId": "hunters-moon",
+     "header": "Night 25 — under The Sisters' Candle.",
+     "results": [
+      {
+       "memberId": "skalle",
+       "errand": "pray",
+       "outcome": "fair",
+       "standing": false,
+       "favour": 3,
+       "renown": 2,
+       "shards": 0,
+       "prose": "Skalle sat with Father Justinian and said little. The priest kept looking at the door.",
+       "line": "pray:fair:1"
+      },
+      {
+       "memberId": "torgrim",
+       "errand": "trade",
+       "outcome": "fair",
+       "standing": false,
+       "favour": 3,
+       "renown": 2,
+       "shards": 0,
+       "prose": "Torgrim Nordost traded in the Flagon's yard by the light from the window. A fair chit, and the landlord's boy watching from the woodpile. Torgrim walked Torgrim home along the water and neither looked at it.",
+       "line": "trade:fair:8"
+      }
+     ],
+     "detail": "Somebody had left a pumpkin on every grave in Morr's Garden. Hollowed.",
+     "ledger": [
+      "+6 Favour",
+      "+4 Renown"
+     ],
+     "locationId": "fussenbach",
+     "crossroads": {
+      "id": "the-fathers-spears",
+      "memberId": "skalle",
+      "kind": "loyalty",
+      "setup": "Father Justinian asked Skalle, quietly, whether The Nordost Kin would stand in the nave with spears on the Silent Moon. He did not say against what.",
+      "rival": "Bitterbrow Expedition",
+      "options": [
+       {
+        "id": "promise",
+        "label": "Promise it."
+       },
+       {
+        "id": "refuse",
+        "label": "Refuse."
+       },
+       {
+        "id": "ask",
+        "label": "Say they will ask the others."
+       }
+      ],
+      "decided": {
+       "roadId": "ask",
+       "label": "Say they will ask the others.",
+       "outcome": "The river does not wait for orders, and neither did Skalle. The Father nodded as if he had heard that before.",
+       "ledger": [],
+       "defaulted": true,
+       "on": 26
+      }
+     }
+    },
+    {
+     "night": 26,
+     "omenId": "last-candle",
+     "moonId": "hunters-moon",
+     "header": "Night 26 — under The Last Candle.",
+     "results": [],
+     "detail": "The fog came up off the silt and did not leave.",
+     "closer": "A night in. The rain came off the river and nobody missed being out in it.",
+     "ledger": [],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 27,
+     "omenId": "hammer-reversed",
+     "moonId": "hunters-moon",
+     "header": "Night 27 — under Sigmar's Hammer, Reversed.",
+     "results": [
+      {
+       "memberId": "skalle",
+       "errand": "pray",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 2,
+       "renown": 1,
+       "shards": 0,
+       "prose": "Skalle prayed at the usual hour. The village has started to set its clocks by it. A witch hunter knelt in the front row of the shrine. Father Justinian stopped counting spears.",
+       "line": "pray:standing:3"
+      },
+      {
+       "memberId": "torgrim",
+       "errand": "trade",
+       "outcome": "poor",
+       "standing": true,
+       "favour": 1,
+       "renown": 0,
+       "shards": 0,
+       "prose": "Torgrim did the usual deal in the Flagon's yard. The landlord's boy watched, as usual. Torgrim waited at the ferry stair with a lantern and did not light it.",
+       "line": "trade:standing:3"
+      }
+     ],
+     "closer": "The ledger was written fast and the candle put out faster.",
+     "detail": "A heron stood on the fish-gut quay all night and would not feed.",
+     "ledger": [
+      "+3 Favour",
+      "+1 Renown"
+     ],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 28,
+     "omenId": "fences-scales",
+     "moonId": "hunters-moon",
+     "header": "Night 28 — under The Fence's Scales.",
+     "results": [],
+     "detail": "The moon came up green over the marsh and corrected itself.",
+     "closer": "Nobody went out. The landlord's boy brought up the supper and looked at the shutters and went down again.",
+     "ledger": [],
+     "locationId": "fussenbach"
+    },
+    {
+     "night": 29,
+     "omenId": "wyrd-lantern",
+     "moonId": "debtors-moon",
+     "header": "Night 29 — under The Wyrd Lantern.",
+     "results": [
+      {
+       "memberId": "skalle",
+       "errand": "carouse",
+       "outcome": "boon",
+       "standing": false,
+       "favour": 0,
+       "renown": 5,
+       "shards": 0,
+       "prose": "Skalle lost at dice to the landlord's boy on purpose and won the landlord for it. There is a room going free above the bar. The chandler and the miller argued over a debt from the old Baron's time and stopped, both at once, when the old Baron was mentioned. Skalle found Durin of the Bitterbrow Expedition asleep in the wayshrine and left them asleep. It will be remembered, one way or the other.",
+       "line": "carouse:boon:5"
+      },
+      {
+       "memberId": "torgrim",
+       "errand": "spy",
+       "outcome": "fair",
+       "standing": false,
+       "favour": 0,
+       "renown": 2,
+       "shards": 0,
+       "rumour": "Father Justinian has a list of names in the vestry. Not the dead. Not yet.",
+       "prose": "Torgrim got a name from the ferryman for the price of a crossing. The name was Hauer. The direction was down. The two of them met on the mill bridge at the third hour without arranging it.",
+       "line": "spy:fair:15"
+      }
+     ],
+     "detail": "Ice in the basins, though the river ran free.",
+     "ledger": [
+      "+7 Renown",
+      "Torgrim: a rumour"
+     ],
+     "locationId": "fussenbach",
+     "crossroads": {
+      "id": "the-song-about-the-baron",
+      "memberId": "skalle",
+      "kind": "light",
+      "setup": "Somebody started the song about the Baron's shutters. Everybody knew the words. Nobody would sing the third verse.",
+      "rival": "Bitterbrow Expedition",
+      "options": [
+       {
+        "id": "sing",
+        "label": "Sing the third verse."
+       },
+       {
+        "id": "hum",
+        "label": "Hum along."
+       }
+      ],
+      "decided": {
+       "roadId": "hum",
+       "label": "Hum along.",
+       "outcome": "There was nobody to ask. Skalle kept walking. Skalle hummed. It was enough.",
+       "ledger": [
+        "+1 Favour"
+       ],
+       "defaulted": true,
+       "on": 30
+      }
+     }
+    },
+    {
+     "night": 30,
+     "omenId": "green-light-under-ash",
+     "moonId": "debtors-moon",
+     "header": "Night 30 — under Green Light Under Ash.",
+     "results": [],
+     "detail": "Smoke from the tanneries hung low.",
+     "closer": "A night in. The fire held. The count was taken.",
+     "ledger": [],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 31,
+     "omenId": "broken-bell",
+     "moonId": "debtors-moon",
+     "header": "Night 31 — under The Broken Bell.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "spy",
+       "outcome": "poor",
+       "standing": false,
+       "favour": 0,
+       "renown": 1,
+       "shards": 0,
+       "prose": "Hilde was seen in the Merchant's Quarter. Not caught. Seen. Debt makes people talk. Hilde let them.",
+       "line": "spy:poor:0"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "train",
+       "outcome": "fair",
+       "standing": false,
+       "favour": 0,
+       "renown": 3,
+       "shards": 0,
+       "prose": "Agnar took a bout at the Pit and took a bruise for it. The crowd was fair. The crowd is never fair.",
+       "line": "train:fair:1"
+      }
+     ],
+     "detail": "The stars were out. All of them.",
+     "ledger": [
+      "+4 Renown"
+     ],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 32,
+     "omenId": "cracked-hourglass",
+     "moonId": "debtors-moon",
+     "header": "Night 32 — under The Cracked Hourglass.",
+     "results": [],
+     "detail": "Wet plaster. Old blood. Bread, from somewhere.",
+     "closer": "The door stayed barred. Nobody went out. The city went on without them.",
+     "ledger": [],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 33,
+     "omenId": "last-candle",
+     "moonId": "debtors-moon",
+     "header": "Night 33 — under The Last Candle.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "spy",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 0,
+       "renown": 1,
+       "shards": 0,
+       "rumour": "The Watch has stopped walking the tannery lane. Nobody asked them to.",
+       "prose": "Hilde watched the usual corner in the Poor Quarter. The usual nothing.",
+       "line": "spy:standing:1"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "train",
+       "outcome": "poor",
+       "standing": true,
+       "favour": 0,
+       "renown": 0,
+       "shards": 0,
+       "prose": "Agnar Nordost drilled in the granary quarter as they always do. The blade is no duller.",
+       "line": "train:standing:0"
+      }
+     ],
+     "detail": "A cart went by with no driver.",
+     "ledger": [
+      "+1 Renown",
+      "Hilde: a rumour"
+     ],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 34,
+     "omenId": "ash-wind",
+     "moonId": "debtors-moon",
+     "header": "Night 34 — under The Ash Wind.",
+     "results": [],
+     "detail": "Somebody was singing in the Poor Quarter. Badly.",
+     "closer": "A night in. The fire held. The count was taken.",
+     "ledger": [],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 35,
+     "omenId": "drowned-quarter",
+     "moonId": "debtors-moon",
+     "header": "Night 35 — under The Drowned Quarter.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "scavenge",
+       "outcome": "poor",
+       "standing": false,
+       "favour": 0,
+       "renown": 1,
+       "shards": 0,
+       "prose": "Hilde went into the cellars under the Pit and came back with dust, a cough, and nothing green. Someone had been through the cellars under the Pit already, in a hurry, owing money.",
+       "line": "scavenge:poor:1"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "scavenge",
+       "outcome": "boon",
+       "standing": false,
+       "favour": 0,
+       "renown": 4,
+       "shards": 2,
+       "prose": "Agnar Nordost went sifting in the Rock. They came back with green in both pockets and no words about how. The two of them did not speak on the way home.",
+       "line": "scavenge:boon:0"
+      }
+     ],
+     "detail": "It rained until the third hour.",
+     "ledger": [
+      "2 shards",
+      "+5 Renown"
+     ],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 36,
+     "omenId": "rat-kings-court",
+     "moonId": "silent-moon",
+     "header": "Night 36 — under The Rat King's Court.",
+     "results": [],
+     "detail": "Wet plaster. Old blood. Bread, from somewhere.",
+     "closer": "A night in. The fire held. The count was taken.",
+     "ledger": [],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 37,
+     "omenId": "drowned-bell",
+     "moonId": "silent-moon",
+     "header": "Night 37 — under The Drowned Bell.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "scavenge",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 0,
+       "renown": 1,
+       "shards": 0,
+       "prose": "Hilde sifted the Poor Quarter out of habit and came back out of habit. No bells, no carts. Hilde could hear each stone fall.",
+       "line": "scavenge:standing:1"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "scavenge",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 0,
+       "renown": 1,
+       "shards": 1,
+       "prose": "Agnar sifted the cellars under the Pit out of habit and came back out of habit.",
+       "line": "scavenge:standing:1"
+      }
+     ],
+     "closer": "Somebody had left bread on the step.",
+     "detail": "The gutters ran black.",
+     "ledger": [
+      "1 shard",
+      "+2 Renown"
+     ],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 38,
+     "omenId": "empty-cradle",
+     "moonId": "silent-moon",
+     "header": "Night 38 — under The Empty Cradle.",
+     "results": [],
+     "detail": "The wind carried ash from the west.",
+     "closer": "A night in. The fire held. The count was taken.",
+     "ledger": [],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 39,
+     "omenId": "hammer-reversed",
+     "moonId": "silent-moon",
+     "header": "Night 39 — under Sigmar's Hammer, Reversed.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "scavenge",
+       "outcome": "poor",
+       "standing": true,
+       "favour": 0,
+       "renown": 0,
+       "shards": 0,
+       "prose": "Hilde sifted the Rock out of habit and came back out of habit. No bells, no carts. Hilde could hear each stone fall.",
+       "line": "scavenge:standing:1"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "scavenge",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 0,
+       "renown": 1,
+       "shards": 1,
+       "prose": "Agnar sifted the ruins by Sigmar's Bridge out of habit and came back out of habit. The two of them did not speak on the way home.",
+       "line": "scavenge:standing:1"
+      }
+     ],
+     "closer": "The count was taken twice.",
+     "detail": "Wet plaster. Old blood. Bread, from somewhere.",
+     "ledger": [
+      "1 shard",
+      "+1 Renown"
+     ],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 40,
+     "omenId": "the-comet",
+     "moonId": "silent-moon",
+     "header": "Night 40 — under The Comet.",
+     "results": [],
+     "detail": "The Watch did not pass all night.",
+     "closer": "The door stayed barred. Nobody went out. The city went on without them.",
+     "ledger": [],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 41,
+     "omenId": "black-sails",
+     "moonId": "silent-moon",
+     "header": "Night 41 — under The Black Sails.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "scavenge",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 0,
+       "renown": 1,
+       "shards": 0,
+       "prose": "Hilde sifted the tanneries out of habit and came back out of habit. No bells, no carts. Hilde could hear each stone fall.",
+       "line": "scavenge:standing:1"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "scavenge",
+       "outcome": "poor",
+       "standing": true,
+       "favour": 0,
+       "renown": 0,
+       "shards": 0,
+       "prose": "Agnar Nordost kept to the usual rubble in Cutthroat's Haven. The usual haul. Agnar kept watch on the door. Nobody tried it.",
+       "line": "scavenge:standing:0"
+      }
+     ],
+     "detail": "The fog came up to the knee.",
+     "ledger": [
+      "+1 Renown"
+     ],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 42,
+     "omenId": "fences-scales",
+     "moonId": "silent-moon",
+     "header": "Night 42 — under The Fence's Scales.",
+     "results": [],
+     "detail": "The stars were out. All of them.",
+     "closer": "The door stayed barred. Nobody went out. The city went on without them.",
+     "ledger": [],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 43,
+     "omenId": "carrion-crown",
+     "moonId": "market-moon",
+     "header": "Night 43 — under The Carrion Crown.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "carouse",
+       "outcome": "boon",
+       "standing": false,
+       "favour": 0,
+       "renown": 5,
+       "shards": 0,
+       "token": {
+        "id": "sigmars-nod",
+        "type": "fortune",
+        "name": "Sigmar's Nod",
+        "effect": "Reroll one Rout test."
+       },
+       "prose": "Hilde sang in the Poor Quarter. It should not have worked. It worked. The tavern was full of sailors with coin and no sense of how much. Durin of the Bitterbrow Expedition was working the same street. Neither warband mentioned it in the morning.",
+       "line": "carouse:boon:2"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "spy",
+       "outcome": "fair",
+       "standing": false,
+       "favour": 0,
+       "renown": 2,
+       "shards": 0,
+       "rumour": "The Bitterbrow Expedition lost something in the cellars. They want it back.",
+       "prose": "Agnar learned which alley in the tanneries the Watch does not walk. It may be useful. It may be why.",
+       "line": "spy:fair:3"
+      }
+     ],
+     "detail": "A bell rang once and was not answered.",
+     "ledger": [
+      "+7 Renown",
+      "Hilde: Sigmar's Nod",
+      "Agnar: a rumour"
+     ],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 44,
+     "omenId": "plague-doctor",
+     "moonId": "market-moon",
+     "header": "Night 44 — under The Plague Doctor.",
+     "results": [],
+     "detail": "The gutters ran black.",
+     "closer": "The door stayed barred. Nobody went out. The city went on without them.",
+     "ledger": [],
+     "locationId": "mordheim"
+    },
+    {
+     "night": 45,
+     "omenId": "beggar-king",
+     "moonId": "market-moon",
+     "header": "Night 45 — under The Beggar King.",
+     "results": [
+      {
+       "memberId": "hilde",
+       "errand": "carouse",
+       "outcome": "poor",
+       "standing": true,
+       "favour": 0,
+       "renown": 0,
+       "shards": 0,
+       "prose": "Hilde drank in Cutthroat's Haven and was neither remembered nor forgotten.",
+       "line": "carouse:standing:1"
+      },
+      {
+       "memberId": "agnar",
+       "errand": "spy",
+       "outcome": "fair",
+       "standing": true,
+       "favour": 0,
+       "renown": 1,
+       "shards": 0,
+       "rumour": "The Watch has stopped walking the tannery lane. Nobody asked them to.",
+       "prose": "Agnar watched the usual corner in the Steinhardt tenements. The usual nothing.",
+       "line": "spy:standing:1"
+      }
+     ],
+     "detail": "The river smelled of iron.",
+     "ledger": [
+      "+1 Renown",
+      "Agnar: a rumour"
+     ],
+     "locationId": "mordheim"
+    }
+   ],
+   "healed": [],
+   "rumours": [
+    {
+     "night": 43,
+     "text": "The Bitterbrow Expedition lost something in the cellars. They want it back."
+    },
+    {
+     "night": 45,
+     "text": "The Watch has stopped walking the tannery lane. Nobody asked them to."
+    }
+   ],
+   "epithets": {
+    "skalle": "Who Was Welcomed",
+    "torgrim": "Who Listens Under Floors",
+    "hilde": "Who Digs at Night",
+    "agnar": "the Sifter"
+   },
+   "headlines": [
+    {
+     "night": 12,
+     "text": "The Nordost Kin came up the Fussen on a grain barge and took the rooms above the Cracked Flagon. The village noticed, and said nothing."
+    },
+    {
+     "night": 15,
+     "text": "Skalle is called Skalle Who Was Welcomed now. Nobody remembers who started it."
+    },
+    {
+     "night": 15,
+     "text": "Torgrim Nordost is called Torgrim Who Listens Under Floors now. Nobody remembers who started it."
+    },
+    {
+     "night": 17,
+     "text": "The Nordost Kin are spoken of in the taverns as Sifters."
+    },
+    {
+     "night": 21,
+     "text": "Hilde is called Hilde Who Digs at Night now. Nobody remembers who started it."
+    },
+    {
+     "night": 21,
+     "text": "Agnar Nordost is called Agnar the Sifter now. Nobody remembers who started it."
+    },
+    {
+     "night": 29,
+     "text": "The Nordost Kin are spoken of in the taverns as Ratcatchers."
+    },
+    {
+     "night": 30,
+     "text": "The Nordost Kin are back inside the walls of Mordheim. The city did not notice they had gone."
+    },
+    {
+     "night": 45,
+     "text": "The Nordost Kin are spoken of in the taverns as Confessors."
+    }
+   ],
+   "offers": [
+    {
+     "night": 21,
+     "incoming": "kummerspeck-seal",
+     "held": "fences-favour"
+    }
+   ],
+   "fights": [],
+   "marks": {},
+   "afflictions": [],
+   "kept": [],
+   "seenCrossroads": [
+    "the-pit-fighters-wager",
+    "the-hand-in-the-rubble",
+    "the-sisters-candle",
+    "the-barons-silver",
+    "the-fathers-spears",
+    "the-song-about-the-baron"
+   ]
+  },
+  "dispatches": [
+   [],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [
+    {
+     "key": "nordost:12:h0",
+     "warbandId": "nordost",
+     "night": 12,
+     "kind": "headline",
+     "headline": "The Nordost Kin came up the Fussen on a grain barge and took the rooms above the Cracked Flagon. The village noticed, and said nothing."
+    }
+   ],
+   [
+    {
+     "key": "nordost:13:e",
+     "warbandId": "nordost",
+     "night": 13,
+     "kind": "happening",
+     "headline": "Eel-Weir Yields No Eels and Two Slivers; Eel-Men Say That Is Not How Weirs Work",
+     "body": "Skalle waded the silt flats at low tide and came back with green in a jar and a story about a bone with teeth marks that nobody will hear twice. Skalle did not need the lantern on the flats. That was the trouble. Nobody needed a lantern. A barge slipped its mooring at midnight and was found upstream. Upstream."
+    }
+   ],
+   [],
+   [
+    {
+     "key": "nordost:15:h0",
+     "warbandId": "nordost",
+     "night": 15,
+     "kind": "headline",
+     "headline": "Skalle is called Skalle Who Was Welcomed now. Nobody remembers who started it."
+    },
+    {
+     "key": "nordost:15:h1",
+     "warbandId": "nordost",
+     "night": 15,
+     "kind": "headline",
+     "headline": "Torgrim Nordost is called Torgrim Who Listens Under Floors now. Nobody remembers who started it."
+    }
+   ],
+   [],
+   [
+    {
+     "key": "nordost:17:h0",
+     "warbandId": "nordost",
+     "night": 17,
+     "kind": "headline",
+     "headline": "The Nordost Kin are spoken of in the taverns as Sifters."
+    }
+   ],
+   [],
+   [],
+   [],
+   [
+    {
+     "key": "nordost:21:h0",
+     "warbandId": "nordost",
+     "night": 21,
+     "kind": "headline",
+     "headline": "Hilde is called Hilde Who Digs at Night now. Nobody remembers who started it."
+    },
+    {
+     "key": "nordost:21:h1",
+     "warbandId": "nordost",
+     "night": 21,
+     "kind": "headline",
+     "headline": "Agnar Nordost is called Agnar the Sifter now. Nobody remembers who started it."
+    }
+   ],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [
+    {
+     "key": "nordost:29:h0",
+     "warbandId": "nordost",
+     "night": 29,
+     "kind": "headline",
+     "headline": "The Nordost Kin are spoken of in the taverns as Ratcatchers."
+    }
+   ],
+   [
+    {
+     "key": "nordost:30:h0",
+     "warbandId": "nordost",
+     "night": 30,
+     "kind": "headline",
+     "headline": "The Nordost Kin are back inside the walls of Mordheim. The city did not notice they had gone."
+    }
+   ],
+   [
+    {
+     "key": "nordost:31:e",
+     "warbandId": "nordost",
+     "night": 31,
+     "kind": "happening",
+     "headline": "Agnar Watches the Pit More Than Fights It; Pit Unbothered",
+     "body": "Agnar took a bout at the Pit and took a bruise for it. The crowd was fair. The crowd is never fair. The stars were out. All of them."
+    }
+   ],
+   [],
+   [],
+   [],
+   [
+    {
+     "key": "nordost:35:e",
+     "warbandId": "nordost",
+     "night": 35,
+     "kind": "happening",
+     "headline": "Hilde Returns Empty-Handed; Blames the Stones",
+     "body": "Hilde went into the cellars under the Pit and came back with dust, a cough, and nothing green. Someone had been through the cellars under the Pit already, in a hurry, owing money. It rained until the third hour."
+    }
+   ],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [],
+   [
+    {
+     "key": "nordost:45:h0",
+     "warbandId": "nordost",
+     "night": 45,
+     "kind": "headline",
+     "headline": "The Nordost Kin are spoken of in the taverns as Confessors."
+    }
+   ]
+  ]
+ },
+ "bylines": [
+  "By a lamplighter who saw more than he was paid to",
+  "By our correspondent at the Mud-Gate, from whichever half of the Watch was on"
+ ],
+ "provides": [
+  "fences-favour",
+  "know-the-streets"
+ ],
+ "epithet": "Who Holds the Table",
+ "ticket": "EVE-2-1HDFM",
+ "simulation": {
+  "nights": 60,
+  "nightsOut": 60,
+  "membersOut": 120,
+  "outcomes": {
+   "boon": 49,
+   "fair": 47,
+   "poor": 24
+  },
+  "tilts": {},
+  "charms": 22,
+  "favour": 675,
+  "shards": 31,
+  "renown": 10,
+  "rumours": 21,
+  "crossroads": 21,
+  "repeats": 1,
+  "happenings": 21,
+  "risks": {
+   "good": 0,
+   "bad": 1
+  },
+  "curses": 1,
+  "perNight": {
+   "charms": 0.36666666666666664,
+   "favour": 11.25,
+   "shards": 0.5166666666666667,
+   "renown": 0.16666666666666666,
+   "rumours": 0.35,
+   "crossroads": 0.35,
+   "happenings": 0.35
+  }
+ },
+ "jobs": [
+  1299522127,
+  213516437
+ ],
+ "imperial": [
+  "Marktag, 5th of Pflugzeit, 2004 IC",
+  "Festag, 10th of Pflugzeit, 2004 IC",
+  "Festag, 23rd of Vorgeheim, 2004 IC",
+  "Wellentag, 13th of Nachgeheim, 2005 IC"
+ ]
+}
