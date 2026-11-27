@@ -9,7 +9,7 @@
  */
 import { asc, eq, sql } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { campaignLocations, campaignSettings, campaigns, curfewContent, FIRST_CAMPAIGN_ID, legacyCurfewContent, locations } from '../db/schema.ts';
+import { campaignLocations, campaignSettings, campaigns, curfewContent, FIRST_CAMPAIGN_ID, legacyCurfewContent, locations, scenarios, warbands } from '../db/schema.ts';
 import { configOf, DEFAULT_CAMPAIGN, mayView, tuningFrom, type CampaignConfig } from '../../campaign/campaign.ts';
 import { ensureLocationsSeeded } from './seed.ts';
 import { LedgerError } from '../../curfew/ledger.ts';
@@ -100,3 +100,19 @@ export async function campaignLocationIds(campaignId: string): Promise<string[]>
   const rows = await db().select({ id: campaignLocations.locationId }).from(campaignLocations).where(eq(campaignLocations.campaignId, campaignId)).orderBy(asc(campaignLocations.sort));
   return rows.map((r) => r.id);
 }
+
+/** How many warbands each campaign musters and how many games it has played, by campaign id, for the campaigns' list. */
+export async function campaignCounts(): Promise<Record<string, { warbands: number; played: number }>> {
+  const d = db();
+  const [w, s] = await Promise.all([
+    d.select({ id: warbands.campaignId, n: sql<number>`count(*)::int` }).from(warbands).groupBy(warbands.campaignId),
+    d.select({ id: scenarios.campaignId, n: sql<number>`count(*)::int` }).from(scenarios).where(eq(scenarios.status, 'played')).groupBy(scenarios.campaignId),
+  ]);
+  const out: Record<string, { warbands: number; played: number }> = {};
+  for (const r of w) (out[r.id] ??= { warbands: 0, played: 0 }).warbands = r.n;
+  for (const r of s) (out[r.id] ??= { warbands: 0, played: 0 }).played = r.n;
+  return out;
+}
+
+/** The address of a campaign's front page: the site's own for the front door, `/c/<slug>/` for the rest. */
+export const campaignHref = (siteBase: string, c: Pick<CampaignConfig, 'slug' | 'id'>, frontDoorId: string): string => (c.id === frontDoorId ? `${siteBase}/` : `${siteBase}/c/${c.slug}/`);

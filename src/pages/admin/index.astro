@@ -79,6 +79,7 @@ const lastRun = data?.runs[0];
           <a href="#articles">Articles</a>
           {admin && <a href="#players">Players</a>}
           {admin && <a href="#midnight">Midnight</a>}
+          <a class="wh-nav-page" href={`${base}/admin/campaigns/`} title="The campaign this console keeps; the others are a step away">{campaign.name} · Campaigns →</a>
           <a class="wh-nav-page" href={`${base}/scenarios/`}>Scenarios →</a>
           <a class="wh-nav-page" href={`${base}/locations/`}>Locations →</a>
           <a class="wh-nav-page" href={`${base}/admin/content/`}>Content →</a>

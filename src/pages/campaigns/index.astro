@@ -1,0 +1,80 @@
+---
+/**
+ * The campaigns: every run of play the site keeps, live and finished, with the warbands each musters and the games it
+ * has played. A signed-in player sees where they keep a warband; a game master sees the drafts too, and the way to
+ * start another in the Watch House. Each campaign's pages are its own, under its address (src/middleware.ts).
+ */
+import Base from '../../layouts/Base.astro';
+import ManageTop from '../../components/ManageTop.astro';
+import '../../styles/manage.css';
+import { base as siteRoot } from '../../lib/site';
+import { hasDatabase } from '../../server/db/client';
+import { getActor, isGm } from '../../server/roles';
+import { campaignCounts, campaignHref, frontDoor, visibleCampaigns } from '../../server/campaign/campaigns';
+import { warbandsKeptBy } from '../../server/campaign/roster';
+import { STATUS_WORDS, type CampaignConfig } from '../../campaign/campaign';
+import { settingFor } from '../../data/settings/index';
+import { anchorFor, formatImperial, imperialForDate } from '../../lib/calendar';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const viewer = ready ? await getActor(Astro.request) : null;
+const gm = isGm(viewer);
+let campaigns: CampaignConfig[] = [], counts: Record<string, { warbands: number; played: number }> = {}, kept: { campaignId: string; warbandId: string; name: string }[] = [], door = Astro.locals.campaign.id;
+if (ready) {
+  try {
+    [campaigns, counts, kept, door] = await Promise.all([visibleCampaigns(gm), campaignCounts(), viewer ? warbandsKeptBy(viewer.id) : Promise.resolve([]), frontDoor().then((c) => c.id)]);
+  } catch (e) { console.error('[campaigns] unavailable', e); }
+}
+const open = campaigns.filter((c) => c.status !== 'archived');
+const archived = campaigns.filter((c) => c.status === 'archived');
+const began = (c: CampaignConfig) => { try { return formatImperial(imperialForDate(c.start, anchorFor(c)), 'short'); } catch { return c.start; } };
+const yours = (c: CampaignConfig) => kept.find((k) => k.campaignId === c.id);
+---
+
+<Base title="The campaigns — Mordgrim" description="Every campaign the site keeps: the warbands each musters and the games it has played.">
+  <main class="mg mg-page" id="main-content" data-base={base}>
+    <ManageTop crumbs={[{ label: 'Campaigns' }]} viewer={viewer} />
+    <div class="mg-hero">
+      <p class="mg-kicker">The campaigns</p>
+      <h1 class="mg-h1">Where the warbands fight</h1>
+      <p class="mg-lede">Each campaign keeps its own warbands, its own games, its own nights and its own broadsheet. A warband may be carried from one into the next.</p>
+    </div>
+
+    {!ready && <p class="mg-empty">The campaign's record is not open on this deployment.</p>}
+
+    {ready && (
+      <section class="mg-section">
+        <div class="mg-cards">
+          {open.map((c) => {
+            const n = counts[c.id] ?? { warbands: 0, played: 0 };
+            const mine = yours(c);
+            return (
+              <div class="mg-card">
+                <span class="mg-sub">{settingFor(c.setting)?.name ?? c.setting}{c.status !== 'live' && <> · <span class="mg-chip">{STATUS_WORDS[c.status]}</span></>}{c.id === door && <> · <span class="mg-chip">The front door</span></>}</span>
+                <h3><a href={campaignHref(siteRoot, c, door)}>{c.name}</a></h3>
+                <p>{n.warbands} {n.warbands === 1 ? 'warband' : 'warbands'} · {n.played} {n.played === 1 ? 'game' : 'games'} played · since {began(c)}</p>
+                {mine && <p class="mg-muted">You keep <a href={`${campaignHref(siteRoot, c, door)}warbands/${mine.warbandId}/`}>{mine.name}</a> here.</p>}
+                <div class="mg-actions"><a class="mg-btn ghost" href={campaignHref(siteRoot, c, door)}>Go there</a></div>
+              </div>
+            );
+          })}
+        </div>
+        {!open.length && <p class="mg-empty">No campaign is open.</p>}
+      </section>
+    )}
+
+    {archived.length > 0 && (
+      <details class="mg-section">
+        <summary class="mg-h2">The archive</summary>
+        <ul class="mg-list">{archived.map((c) => <li><a href={campaignHref(siteRoot, c, door)}>{c.name}</a> <span class="mg-muted">— {(counts[c.id]?.played ?? 0)} games played</span></li>)}</ul>
+      </details>
+    )}
+
+    {gm && <p class="mg-note">A game master starts and keeps campaigns in <a href={`${base}/admin/campaigns/`}>the Watch House</a>.</p>}
+  </main>
+</Base>

@@ -16,6 +16,8 @@ import type { Warband } from '../../campaign/model';
 const base = Astro.locals.base;
 const campaign = Astro.locals.campaign;
 const world = await worldOrBuiltIn(campaign);
+// a campaign may run without the Curfew's nights
+if (!campaign.options.curfew) return Astro.redirect(`${base}/`);
 
 // The Ledger is personal: rendered on request, never cached.
 export const prerender = false;

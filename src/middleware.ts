@@ -40,5 +40,11 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   ctx.locals.base = `${base}/c/${campaign.slug}`;
   const url = new URL(`${base}${m[2] ?? '/'}${ctx.url.search}`, ctx.url);
   // a fresh pass through the pipeline, so the page or endpoint gets the params of the path it serves; locals carry over
-  return ctx.rewrite(new Request(url, ctx.request));
+  const res = await ctx.rewrite(new Request(url, ctx.request));
+  if (campaign.status !== 'draft') return res;
+  // a sketch is nobody's business but the game masters': never cached, never indexed
+  const out = new Response(res.body, res);
+  out.headers.set('cache-control', 'private, no-store');
+  out.headers.set('x-robots-tag', 'noindex');
+  return out;
 });

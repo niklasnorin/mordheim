@@ -15,6 +15,8 @@ import { clientWorld, worldOrBuiltIn } from '../../server/content/curfew';
 const base = Astro.locals.base;
 const campaign = Astro.locals.campaign;
 const world = await worldOrBuiltIn(campaign);
+// a campaign may run without the Curfew's nights
+if (!campaign.options.curfew) return Astro.redirect(`${base}/`);
 const { DEFAULT_LOCATION, locationById } = world.engine;
 
 export const prerender = false;

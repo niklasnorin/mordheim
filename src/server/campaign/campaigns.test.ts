@@ -144,3 +144,52 @@ test('a finished campaign is closed: its players may not write, its nights do no
   // the first campaign is untouched by all of this
   await updateWarband(niklas, 'nordost', { lore: 'Still the Kin.' });
 });
+
+// ───────────────────────── drawing up and keeping campaigns ─────────────────────────
+
+test('a game master draws up a campaign from a setting: a draft with its places, its boards, its documents', async () => {
+  const { createCampaign } = await import('../admin/campaigns.ts');
+  await assert.rejects(createCampaign(niklas, { name: 'Mine', start: '2027-01-01' }), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await assert.rejects(createCampaign(gm, { name: 'Bad', start: '2027-13-40' }), LedgerError);
+  await assert.rejects(createCampaign(gm, { name: 'Bad', start: '2027-01-01', timezone: 'Mars/Olympus' }), LedgerError);
+  await assert.rejects(createCampaign(gm, { name: 'Bad', start: '2027-01-01', anchor: 'Not a date' }), LedgerError);
+  await assert.rejects(createCampaign(gm, { name: 'Again', slug: 'lustria', start: '2027-01-01' }), (e: unknown) => e instanceof LedgerError && e.status === 409);
+  const c = await createCampaign(gm, { name: 'The Empire in Flames', start: '2027-01-01', anchor: '1st of Nachexen, 2006 IC', options: { curfew: true, startingCrowns: 600, catalogues: ['averlanders'] } });
+  assert.equal(c.status, 'draft');
+  assert.equal(c.slug, 'the-empire-in-flames');
+  assert.equal(c.id, 'the-empire-in-flames-2006', 'the id is the address and the year');
+  assert.equal(c.options.startingCrowns, 600);
+  assert.deepEqual(c.options.catalogues, ['averlanders']);
+  assert.deepEqual((await campaignLocationIds(c.id)).sort(), ['fussenbach', 'mordheim']);
+  const jobs = await db.select().from(schema.locationJobs).where(eq(schema.locationJobs.campaignId, c.id));
+  assert.ok(jobs.length > 0, 'its own copies of the boards');
+  const docs = await db.select().from(schema.curfewContent).where(eq(schema.curfewContent.campaignId, c.id));
+  assert.ok(docs.some((d) => d.id === 'omens') && docs.some((d) => d.id === 'location:mordheim'));
+});
+
+test('a draft launches once its checklist is met, striking the sketches if asked; its clock is fixed after', async () => {
+  const { launchCampaign, launchChecklist, moveStatus, setFrontDoor, updateCampaign } = await import('../admin/campaigns.ts');
+  const id = 'the-empire-in-flames-2006';
+  assert.ok((await launchChecklist(id)).every((i) => i.ok));
+  await updateCampaign(gm, id, { start: '2027-02-01', anchor: 'Festag, 1st of Nachexen, 2006 IC'.replace('Festag, ', '') });
+  const sketch = await createWarband(gm, id, { name: 'A Sketch', type: 'Averlanders' });
+  const launched = await launchCampaign(gm, id, { strikeSketches: true });
+  assert.equal(launched.status, 'live');
+  assert.ok(!(await listWarbands(id)).some((w) => w.id === sketch.id), 'the sketch is struck');
+  await assert.rejects(launchCampaign(gm, id), (e: unknown) => e instanceof LedgerError && e.status === 409, 'only a draft is launched');
+  await assert.rejects(updateCampaign(gm, id, { start: '2027-03-01' }), (e: unknown) => e instanceof LedgerError && e.status === 409, 'the clock is fixed');
+  const renamed = await updateCampaign(gm, id, { name: 'The Empire Burns', options: { curfew: false } });
+  assert.equal(renamed.name, 'The Empire Burns');
+  assert.equal(renamed.options.curfew, false);
+  assert.equal(renamed.options.startingCrowns, 600, 'the rest of the options stay');
+  // the front door: the admin's, and only a campaign open to everyone
+  const admin = actorOf('user-admin', 'Admin', 'admin');
+  await assert.rejects(setFrontDoor(gm, id), (e: unknown) => e instanceof LedgerError && e.status === 403);
+  await setFrontDoor(admin, id);
+  assert.equal((await frontDoor()).id, id);
+  await assert.rejects(moveStatus(gm, id, 'finished'), (e: unknown) => e instanceof LedgerError && /front door/.test(e.message));
+  await setFrontDoor(admin, A);
+  assert.equal((await moveStatus(gm, id, 'finished')).status, 'finished');
+  assert.equal((await moveStatus(gm, id, 'archived')).status, 'archived');
+  await assert.rejects(moveStatus(gm, id, 'live'), LedgerError, 'an archived campaign comes back as finished first');
+});

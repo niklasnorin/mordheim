@@ -1,6 +1,8 @@
 ---
 import Icon from './Icon.astro';
-import { asset } from '../lib/site';
+import { asset, base as siteRoot } from '../lib/site';
+import { DEFAULT_CAMPAIGN, STATUS_WORDS } from '../campaign/campaign';
+import { settingFor } from '../data/settings/index';
 import { imperialForDate, anchorFor } from '../lib/calendar';
 /** Links and API calls stay in the campaign this page is in. */
 const base = Astro.locals.base;
@@ -15,6 +17,12 @@ interface Props {
 }
 const { warbands, scenarios, fallen, standings = true } = Astro.props;
 const campaign = Astro.locals.campaign;
+// the first campaign keeps the masthead it always had; another is headed by its own name, under its setting's
+const first = campaign.id === DEFAULT_CAMPAIGN.id;
+const logoMain = first ? 'Mordheim' : campaign.name;
+const logoSub = first ? 'City of the Damned' : settingFor(campaign.setting)?.name ?? '';
+const curfew = campaign.options.curfew;
+const status = campaign.status === 'live' ? null : STATUS_WORDS[campaign.status];
 // the year the campaign stands in today, counted by the Imperial Calendar from the first game
 const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campaign.timezone }).format(new Date()), anchorFor(Astro.locals.campaign)).year;
 ---
@@ -30,7 +38,8 @@ const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campai
       <a class="nav-inline" href={`${base}/scenarios/`}>Scenarios</a>
       <a class="nav-inline" href={`${base}/locations/`}>Locations</a>
       <a class="nav-inline nav-account" href={`${base}/warbands/`} hidden data-when="warband">My warband</a>
-      <a class="nav-inline nav-account" href={`${base}/curfew/`} hidden data-when="signed-in">Curfew</a>
+      {curfew && <a class="nav-inline nav-account" href={`${base}/curfew/`} hidden data-when="signed-in">Curfew</a>}
+      <a class="nav-inline" href={`${siteRoot}/campaigns/`}>Campaigns</a>
       <a class="nav-inline nav-account" href={`${base}/admin/`} hidden data-when="gm">Watch House</a>
       <a class="nav-inline nav-account" href={`${base}/signin/`} hidden data-when="signed-out">Sign in</a>
       <details class="section-menu">
@@ -44,7 +53,8 @@ const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campai
           <a href={`${base}/scenarios/`}>Scenarios</a>
           <a href={`${base}/locations/`}>Locations</a>
           <a class="nav-account" href={`${base}/warbands/`} hidden data-when="warband">My warband</a>
-          <a class="nav-account" href={`${base}/curfew/`} hidden data-when="signed-in">Curfew</a>
+          {curfew && <a class="nav-account" href={`${base}/curfew/`} hidden data-when="signed-in">Curfew</a>}
+          <a href={`${siteRoot}/campaigns/`}>Campaigns</a>
           <a class="nav-account" href={`${base}/admin/`} hidden data-when="gm">Watch House</a>
           <a class="nav-account" href={`${base}/signin/`} hidden data-when="signed-out">Sign in</a>
         </div>
@@ -58,8 +68,8 @@ const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campai
     <div class="hero-content">
       <p class="eyebrow"><span></span> The year of Sigmar {year} IC <span></span></p>
       <h1 class="logo">
-        <span class="logo-main">Mordheim</span>
-        <span class="logo-sub">City of the Damned</span>
+        <span class="logo-main">{logoMain}</span>
+        {logoSub && <span class="logo-sub">{logoSub}</span>}
       </h1>
       <div class="hero-rule" aria-hidden="true"><Icon name="diamond" size={10} /></div>
       <p class="tagline">The comet has fallen. The gates lie broken.<br />And still, the brave and the desperate come.</p>
@@ -67,7 +77,7 @@ const year = imperialForDate(new Intl.DateTimeFormat('en-CA', { timeZone: campai
     <div class="hero-caption" aria-hidden="true"><span>A chronicle of fortune &amp; ruin</span></div>
   </div>
   <div class="campaign-bar" aria-label="Campaign overview">
-    <div class="campaign-label"><span class="status-light" aria-hidden="true"></span> {scenarios === 0 ? 'The campaign begins' : 'The campaign continues'}</div>
+    <div class="campaign-label"><span class="status-light" aria-hidden="true"></span> {status ? <>{campaign.name} · {status}</> : scenarios === 0 ? 'The campaign begins' : 'The campaign continues'}</div>
     <dl>
       <div><dt>Warbands</dt><dd>{warbands.toString().padStart(2, '0')}</dd></div>
       <div><dt>Scenarios recorded</dt><dd>{scenarios.toString().padStart(2, '0')}</dd></div>

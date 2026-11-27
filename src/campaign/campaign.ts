@@ -38,7 +38,7 @@ export interface CampaignOptions {
   curfew: boolean;
   /** Whether the home page prints the standings table: who has fought and who has won. */
   standingsVisible: boolean;
-  /** The builder's warband lists a warband may be founded from; null for every one. */
+  /** The builder's warband lists a warband may be founded from; null (or none chosen) for every one. */
   catalogues: string[] | null;
   /** The crowns a warband is founded with. */
   startingCrowns: number;
@@ -110,7 +110,8 @@ export function optionsOf(given: unknown): CampaignOptions {
   return {
     curfew: typeof g.curfew === 'boolean' ? g.curfew : DEFAULT_OPTIONS.curfew,
     standingsVisible: typeof g.standingsVisible === 'boolean' ? g.standingsVisible : DEFAULT_OPTIONS.standingsVisible,
-    catalogues: Array.isArray(g.catalogues) ? g.catalogues.filter((x): x is string => typeof x === 'string' && x.length > 0) : null,
+    // an empty choice of lists is every list
+    catalogues: Array.isArray(g.catalogues) && g.catalogues.some((x) => typeof x === 'string' && x) ? g.catalogues.filter((x): x is string => typeof x === 'string' && x.length > 0) : null,
     startingCrowns: nonNegative(g.startingCrowns) ?? DEFAULT_OPTIONS.startingCrowns,
     carry: {
       modes,

@@ -1,0 +1,169 @@
+---
+/**
+ * The campaigns, as the Watch House keeps them: every campaign with its status, its address and its clock; a draft's
+ * checklist and its launch; finishing, reopening and archiving; the front door (the admin's); copying the Curfew's
+ * documents from one campaign into another; and the form that draws up a new campaign from a setting.
+ */
+import Base from '../../layouts/Base.astro';
+import ManageTop from '../../components/ManageTop.astro';
+import '../../styles/manage.css';
+import { base as siteRoot } from '../../lib/site';
+import { hasDatabase } from '../../server/db/client';
+import { admission } from '../../server/admin/guard';
+import { campaignCounts, campaignHref, frontDoor, listCampaigns } from '../../server/campaign/campaigns';
+import { launchChecklist, settingsOffered, type ChecklistItem } from '../../server/admin/campaigns';
+import { CARRY_MODES, STATUS_WORDS, type CampaignConfig, type CarryMode } from '../../campaign/campaign';
+import { settingFor } from '../../data/settings/index';
+import { catalogueIndex } from '../../builder/data';
+/** Links and API calls stay in the campaign this page is in. */
+const base = Astro.locals.base;
+
+export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const ready = hasDatabase();
+const { viewer, gm, admin } = ready ? await admission(Astro.request) : { viewer: null, gm: false, admin: false };
+if (ready && !gm) Astro.response.status = viewer ? 403 : 401;
+let campaigns: CampaignConfig[] = [], counts: Record<string, { warbands: number; played: number }> = {}, door = '';
+const checklists: Record<string, ChecklistItem[]> = {};
+if (gm) {
+  try {
+    [campaigns, counts, door] = await Promise.all([listCampaigns(), campaignCounts(), frontDoor().then((c) => c.id)]);
+    for (const c of campaigns.filter((x) => x.status === 'draft')) checklists[c.id] = await launchChecklist(c.id);
+  } catch (e) { console.error('[campaigns] unavailable', e); }
+}
+const settings = settingsOffered();
+const MODE_WORDS: Record<CarryMode, string> = { 'as-is': 'As they are', adjusted: 'Adjusted by these rules', 'start-over': 'Started over' };
+const today = new Date().toISOString().slice(0, 10);
+const signInHref = `${base}/signin/?next=${encodeURIComponent(`${base}/admin/campaigns/`)}`;
+const lists = catalogueIndex.warbands;
+const DOCS = ['omens', 'moons', 'tokens'];
+---
+
+<Base title="Campaigns — The Watch House" description="Start, sketch, launch, finish and archive the campaigns.">
+  <Fragment slot="head"><meta name="robots" content="noindex" /></Fragment>
+  <main class="mg mg-page" id="main-content" data-base={base}>
+    <ManageTop crumbs={[{ label: 'The Watch House', href: `${base}/admin/` }, { label: 'Campaigns' }]} viewer={viewer} />
+    <div class="mg-hero">
+      <p class="mg-kicker">The Watch House</p>
+      <h1 class="mg-h1">The campaigns</h1>
+      <p class="mg-lede">A campaign is drawn up from a setting as a draft, which only game masters see, under its own address. Sketch it there: its places, its scenarios, its articles, its Curfew. Launch it when it is ready, and its pages open to everyone and its nights begin.</p>
+    </div>
+
+    {ready && !viewer && <p class="mg-empty"><a href={signInHref}>Sign in</a> first.</p>}
+    {ready && viewer && !gm && <p class="mg-empty">The campaigns are kept by the game masters.</p>}
+
+    {gm && (
+      <>
+        <section class="mg-section">
+          {campaigns.map((c) => {
+            const n = counts[c.id] ?? { warbands: 0, played: 0 };
+            const href = campaignHref(siteRoot, c, door);
+            const list = checklists[c.id];
+            return (
+              <article class="mg-panel" id={`campaign-${c.slug}`}>
+                <div class="mg-section-head">
+                  <h2 class="mg-h2"><a href={href}>{c.name}</a></h2>
+                  <span class="mg-muted"><span class="mg-chip">{STATUS_WORDS[c.status]}</span>{c.id === door && <> <span class="mg-chip">The front door</span></>}</span>
+                </div>
+                <p class="mg-muted">{settingFor(c.setting)?.name ?? c.setting} · id <code>{c.id}</code> · <a href={href}>{href}</a></p>
+                <p>Night 1 is {c.start} ({c.anchor.imperial}), at midnight in {c.timezone}. {n.warbands} {n.warbands === 1 ? 'warband' : 'warbands'}, {n.played} {n.played === 1 ? 'game' : 'games'} played. {c.options.curfew ? 'The Curfew runs.' : 'No Curfew.'} Warbands are founded with {c.options.startingCrowns} crowns{c.options.catalogues ? ` from ${c.options.catalogues.length} lists` : ''}. {c.options.carry.modes.length ? `A warband may come in ${c.options.carry.modes.map((m) => MODE_WORDS[m].toLowerCase()).join(', ')}.` : 'No warband may be brought in.'}</p>
+
+                {list && (
+                  <div>
+                    <h3 class="mg-h3">Before it is launched</h3>
+                    <ul class="mg-list">{list.map((i) => <li><b>{i.ok ? '✓' : '✗'} {i.label}.</b> <span class="mg-muted">{i.detail}</span></li>)}</ul>
+                    <form class="mg-form" data-api="admin/campaign-launch" data-json={JSON.stringify({ campaignId: c.id })} data-confirm={`Launch ${c.name}? Its pages open to everyone and its nights begin; its clock is fixed from then on.`}>
+                      <label class="mg-field check"><input type="checkbox" name="strikeSketches" /> Strike the warbands and scenarios made while sketching it</label>
+                      <div class="mg-actions"><button type="submit" class="mg-btn" disabled={list.some((i) => !i.ok)}>Launch</button></div>
+                    </form>
+                  </div>
+                )}
+
+                <div class="mg-actions">
+                  {c.status === 'live' && <button type="button" class="mg-btn ghost" data-act="admin/campaign-status" data-body={JSON.stringify({ campaignId: c.id, status: 'finished' })} data-confirm={`Finish ${c.name}? Its nights stop and its players can no longer change its record.`}>Finish it</button>}
+                  {c.status === 'finished' && <button type="button" class="mg-btn ghost" data-act="admin/campaign-status" data-body={JSON.stringify({ campaignId: c.id, status: 'live' })}>Reopen it</button>}
+                  {c.status === 'finished' && <button type="button" class="mg-btn ghost" data-act="admin/campaign-status" data-body={JSON.stringify({ campaignId: c.id, status: 'archived' })}>Archive it</button>}
+                  {c.status === 'archived' && <button type="button" class="mg-btn ghost" data-act="admin/campaign-status" data-body={JSON.stringify({ campaignId: c.id, status: 'finished' })}>Bring it back from the archive</button>}
+                  {admin && c.id !== door && (c.status === 'live' || c.status === 'finished') && <button type="button" class="mg-btn ghost" data-act="admin/campaign-front-door" data-body={JSON.stringify({ campaignId: c.id })} data-confirm={`Open the site's plain addresses on ${c.name}? The other campaigns stay at their own addresses.`}>Make it the front door</button>}
+                </div>
+
+                <details>
+                  <summary>Change it</summary>
+                  <form class="mg-form" data-api="admin/campaign-update" data-json={JSON.stringify({ campaignId: c.id })}>
+                    <label class="mg-field">Name<input name="patch.name" required maxlength="80" value={c.name} /></label>
+                    <label class="mg-field">Address<input name="patch.slug" required maxlength="48" value={c.slug} pattern="[a-z0-9]+(-[a-z0-9]+)*" /><small>The campaign's pages are at /c/{c.slug}/. Changing it breaks links to the old address.</small></label>
+                    {c.status === 'draft' && (
+                      <>
+                        <label class="mg-field">Night 1<input type="date" name="patch.start" value={c.start} /></label>
+                        <label class="mg-field">Time zone<input name="patch.timezone" value={c.timezone} maxlength="64" /></label>
+                        <label class="mg-field">The Imperial day night 1 falls on<input name="patch.anchor" value={c.anchor.imperial} maxlength="80" /><small>As the calendar writes it: “Festag, 1st of Nachexen, 2005 IC”. The weekday may be left out.</small></label>
+                      </>
+                    )}
+                    <label class="mg-field check"><input type="checkbox" name="patch.options.curfew" checked={c.options.curfew} /> The Curfew runs in this campaign</label>
+                    <label class="mg-field">Crowns a warband is founded with<input type="number" name="patch.options.startingCrowns" min="0" max="100000" value={c.options.startingCrowns} /></label>
+                    <fieldset class="mg-fieldset">
+                      <legend>Bringing warbands in from other campaigns</legend>
+                      {CARRY_MODES.map((m) => <label class="mg-field check"><input type="checkbox" name="patch.options.carry.modes" value={m} data-array checked={c.options.carry.modes.includes(m)} /> {MODE_WORDS[m]}</label>)}
+                      <p class="mg-muted">What “adjusted” proposes; the keeper may change anything before they approve.</p>
+                      <label class="mg-field">Most gold brought<input type="number" name="patch.options.carry.goldCap" min="0" data-nullable value={c.options.carry.goldCap ?? ''} placeholder="All of it" /></label>
+                      <label class="mg-field">Most wyrdstone brought<input type="number" name="patch.options.carry.shardCap" min="0" data-nullable value={c.options.carry.shardCap ?? ''} placeholder="All of it" /></label>
+                      <label class="mg-field">Most experience a warrior keeps<input type="number" name="patch.options.carry.experienceCap" min="0" data-nullable value={c.options.carry.experienceCap ?? ''} placeholder="All of it" /></label>
+                      <label class="mg-field check"><input type="checkbox" name="patch.options.carry.heroesOnly" checked={c.options.carry.heroesOnly} /> Heroes only: the henchmen stay behind</label>
+                      <label class="mg-field check"><input type="checkbox" name="patch.options.carry.healInjuries" checked={c.options.carry.healInjuries} /> Old wounds heal on the road</label>
+                    </fieldset>
+                    <div class="mg-actions"><button type="submit" class="mg-btn">Save</button><button type="button" class="mg-btn ghost" data-cancel>Cancel</button></div>
+                  </form>
+                </details>
+
+                {campaigns.length > 1 && (
+                  <details>
+                    <summary>Copy the Curfew’s documents in from another campaign</summary>
+                    <form class="mg-form" data-api="admin/campaign-copy-content" data-json={JSON.stringify({ to: c.id })} data-confirm={`Copy them into ${c.name}? Its own versions are kept as earlier versions.`}>
+                      <label class="mg-field">From<select name="from">{campaigns.filter((x) => x.id !== c.id).map((x) => <option value={x.id}>{x.name}</option>)}</select></label>
+                      <fieldset class="mg-fieldset"><legend>Which</legend>
+                        {DOCS.map((d) => <label class="mg-field check"><input type="checkbox" name="ids" value={d} data-array /> The {d}</label>)}
+                        {['mordheim', 'fussenbach'].map((l) => <label class="mg-field check"><input type="checkbox" name="ids" value={`location:${l}`} data-array /> The pack for {l}</label>)}
+                      </fieldset>
+                      <div class="mg-actions"><button type="submit" class="mg-btn">Copy</button></div>
+                    </form>
+                  </details>
+                )}
+              </article>
+            );
+          })}
+        </section>
+
+        <section class="mg-section" id="new">
+          <div class="mg-section-head"><h2 class="mg-h2">Draw up a new campaign</h2></div>
+          <form class="mg-panel mg-form" data-api="admin/campaign-create" data-goto={`${siteRoot}/admin/campaigns/`}>
+            <label class="mg-field">Setting<select name="setting">{settings.map((s) => <option value={s.id}>{s.name}</option>)}</select><small>{settings.map((s) => s.description).join(' ')}</small></label>
+            <label class="mg-field">Name<input name="name" required maxlength="80" placeholder="The Lost Expedition" /></label>
+            <label class="mg-field">Address<input name="slug" maxlength="48" pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="lost-expedition" /><small>Its pages will be at /c/&lt;address&gt;/. Left empty, it is made from the name.</small></label>
+            <label class="mg-field">Night 1<input type="date" name="start" required value={today} /><small>The first night of the Curfew, and the day the Imperial calendar is counted from.</small></label>
+            <label class="mg-field">Time zone<input name="timezone" maxlength="64" placeholder={settings[0]?.timezone} /></label>
+            <label class="mg-field">The Imperial day night 1 falls on<input name="anchor" maxlength="80" placeholder={`1st of Nachexen, ${settings[0]?.year ?? 2005} IC`} /><small>The weekday may be left out; the Empire keeps one week, and the calendar works it out.</small></label>
+            <label class="mg-field check"><input type="checkbox" name="options.curfew" checked /> The Curfew runs in this campaign</label>
+            <label class="mg-field">Crowns a warband is founded with<input type="number" name="options.startingCrowns" min="0" max="100000" value={settings[0]?.startingCrowns ?? 500} /></label>
+            <fieldset class="mg-fieldset">
+              <legend>Warband lists it takes</legend>
+              <p class="mg-muted">Leave every box empty for every list the builder has.</p>
+              <div class="mg-checks">{lists.map((w) => <label class="mg-field check"><input type="checkbox" name="options.catalogues" value={w.slug} data-array /> {w.name}</label>)}</div>
+            </fieldset>
+            <fieldset class="mg-fieldset">
+              <legend>Bringing warbands in from other campaigns</legend>
+              {CARRY_MODES.map((m) => <label class="mg-field check"><input type="checkbox" name="options.carry.modes" value={m} data-array checked /> {MODE_WORDS[m]}</label>)}
+            </fieldset>
+            <div class="mg-actions"><button type="submit" class="mg-btn">Draw it up as a draft</button><span class="mg-note">Nobody but the game masters sees it until it is launched.</span></div>
+          </form>
+        </section>
+      </>
+    )}
+  </main>
+</Base>
+
+<script>
+  import { wireManage } from '../../lib/manage';
+  const root = document.getElementById('main-content')!;
+  wireManage(root, root.dataset.base ?? '');
+</script>

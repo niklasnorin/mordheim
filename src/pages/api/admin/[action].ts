@@ -16,6 +16,9 @@ import { currentLocation } from '../../../server/curfew/service';
 import { addJob, removeJob, updateJob } from '../../../server/campaign/jobs';
 import { JOB_LEANS, JOB_SCOPES } from '../../../campaign/jobs';
 import type { CampaignConfig } from '../../../campaign/campaign';
+import { CARRY_MODES } from '../../../campaign/campaign';
+import { createCampaign, launchCampaign, moveStatus, setFrontDoor, updateCampaign } from '../../../server/admin/campaigns';
+import { copyDocuments } from '../../../server/content/curfew';
 
 export const prerender = false;
 
@@ -25,7 +28,24 @@ const job = { title: z.string().max(80), text: z.string().max(1000), lean: z.enu
   pointId: z.preprocess((v) => (v === '' || v == null ? null : Number(v)), z.number().int().positive().nullable()), withheld: z.boolean() };
 const article = { headline: z.string().max(200), byline: z.string().max(200), body: z.string().max(4000), notice: z.boolean(), locationId: z.string().max(64), published: z.boolean(), sort: z.number().int() };
 
+// a number field sent empty is no cap at all
+const cap = z.preprocess((v) => (v === '' || v == null ? null : Number(v)), z.number().int().min(0).max(1_000_000).nullable());
+const campaignOptions = z.object({
+  curfew: z.boolean(), standingsVisible: z.boolean(), startingCrowns: z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().int().min(0).max(100_000)),
+  catalogues: z.array(z.string().max(80)).max(60).nullable(),
+  carry: z.object({ modes: z.array(z.enum(CARRY_MODES as unknown as ['as-is', 'adjusted', 'start-over'])).max(3), goldCap: cap, shardCap: cap, experienceCap: cap, heroesOnly: z.boolean(), healInjuries: z.boolean() }).partial(),
+}).partial();
+const campaignFields = { name: z.string().max(80), slug: z.string().max(48), start: z.string().max(10), timezone: z.string().max(64), anchor: z.string().max(80), options: campaignOptions };
+const campaignId = z.string().min(1).max(64);
+
 const routes = {
+  // the campaigns: a game master starts and keeps them; the admin chooses the front door
+  'campaign-create': route(z.object({ ...campaignFields, id: z.string().max(64).optional(), setting: z.string().max(64).optional() }).partial().required({ name: true, start: true }), async (i, a) => { const c = await createCampaign(a, i); return { ok: true, message: `${c.name} is drawn up as a draft.`, campaign: c }; }, 'gm'),
+  'campaign-update': route(z.object({ campaignId, patch: z.object(campaignFields).partial() }), async (i, a) => { const c = await updateCampaign(a, i.campaignId, i.patch); return { ok: true, message: 'The campaign is amended.', campaign: c }; }, 'gm'),
+  'campaign-launch': route(z.object({ campaignId, strikeSketches: z.boolean().optional() }), async (i, a) => { const c = await launchCampaign(a, i.campaignId, { strikeSketches: i.strikeSketches }); return { ok: true, message: `${c.name} is open to everyone, and its nights run.`, campaign: c }; }, 'gm'),
+  'campaign-status': route(z.object({ campaignId, status: z.enum(['live', 'finished', 'archived']) }), async (i, a) => { const c = await moveStatus(a, i.campaignId, i.status); return { ok: true, message: `${c.name} is ${c.status} now.`, campaign: c }; }, 'gm'),
+  'campaign-front-door': route(z.object({ campaignId }), async (i, a) => { const c = await setFrontDoor(a, i.campaignId); return { ok: true, message: `The site's front door opens on ${c.name}.` }; }, 'admin'),
+  'campaign-copy-content': route(z.object({ from: campaignId, to: campaignId, ids: z.array(z.string().max(80)).min(1).max(40) }), async (i, a) => { const n = await copyDocuments(a, i.from, i.to, i.ids); return { ok: true, message: `${n} ${n === 1 ? 'document' : 'documents'} copied in; the earlier versions are kept.` }; }, 'gm'),
   // the admin's: accounts and ledgers
   burn: route(z.object({ warbandId: z.string().min(1).max(64) }), async (i, _a, _r, c) => { await burnLedger(c.id, i.warbandId, today(c)); return { ok: true, message: 'The ledger is ash. The keeper keeps the warband.' }; }, 'admin'),
   release: route(z.object({ warbandId: z.string().min(1).max(64) }), async (i) => { await releaseLedger(i.warbandId); return { ok: true, message: 'The warband is nobody’s now.' }; }, 'admin'),
