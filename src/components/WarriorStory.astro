@@ -6,6 +6,8 @@
  */
 import type { Member, Warband } from '../campaign/model';
 import type { MemberChapter } from '../server/campaign/scenarios';
+import type { EarlierLife } from '../server/campaign/carry';
+import { base as siteRoot } from '../lib/site';
 import type { MemberNights, NightEntry } from '../curfew/story';
 import { worldOrBuiltIn } from '../server/content/curfew';
 import { formatImperial, imperialForDate, anchorFor } from '../lib/calendar';
@@ -23,8 +25,10 @@ interface Props {
   nights?: MemberNights;
   /** Every warband, so whoever put them out of action can be named. */
   warbands: Warband[];
+  /** Who they were in the campaigns they were carried from, nearest first (`earlierLives` in server/campaign/carry.ts). */
+  earlier?: EarlierLife[];
 }
-const { member: m, chapters, nights: curfew, warbands } = Astro.props;
+const { member: m, chapters, nights: curfew, warbands, earlier = [] } = Astro.props;
 
 const first = m.name.split(' ')[0];
 const memberName = (id: string) => warbands.flatMap((w) => w.members).find((x) => x.id === id)?.name ?? id;
@@ -67,6 +71,12 @@ const placesOf = (list: NightEntry[]) => [...new Set(list.map((e) => locationByI
 const countOf = (n: number, one: string, many: string) => (n === 1 ? `One ${one}` : `${n} ${many}`);
 const nightsOut = curfew?.nightsOut ?? 0;
 ---
+
+{earlier.map((e) => (
+  <p class="story-tally story-before">
+    Before: <b>{e.battles}</b> {e.battles === 1 ? 'battle' : 'battles'}{e.takedowns > 0 && <>, <b>{e.takedowns}</b> put out of action</>} in <a href={`${siteRoot}/c/${e.campaignSlug}/warbands/${e.warbandId}/#${e.memberId}`}>{e.campaignName}</a>
+  </p>
+))}
 
 {(chapters.length > 0 || took.length > 0 || fell.length > 0 || nightsOut > 0) && (
   <p class="story-tally">
@@ -159,6 +169,8 @@ const nightsOut = curfew?.nightsOut ?? 0;
 <style>
   .story-tally { margin-top: 1.2rem; padding-top: .9rem; border-top: 1px solid var(--border); color: var(--ink-dim); font: var(--text-ui)/1.6 var(--font-utility); font-variant: small-caps; letter-spacing: .06em; }
   .story-tally b { color: var(--gold); font-weight: normal; font-variant-numeric: tabular-nums; }
+  .story-before + .story-tally { margin-top: .4rem; border-top: 0; padding-top: 0; }
+  .story-tally a { color: inherit; }
   .story-empty { color: var(--ink-dim); border-top: 1px solid var(--border); margin-top: 1.5rem; padding-top: 1rem; font-size: var(--text-body); }
   .storyline { margin-top: 1rem; }
   .dead-marker { color: var(--blood-bright); }

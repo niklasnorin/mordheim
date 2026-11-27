@@ -16,6 +16,10 @@ import { evaluate, findPlaced, optionsUnder, place, type Evaluation, type Option
 import { applyOp, randomId, type Op } from '../builder/ops.ts';
 import { addSelection, flatOptions, newRoster, RosterError } from '../builder/roster.ts';
 import { GROUP_MAX, maxWarriors, rosterText, STARTING_GOLD, stashItems, stashOf, summarise, type Summary, type Warrior } from '../builder/rules.ts';
+
+/** The crowns a warband is founded with in the campaign this page is in: 500 unless the campaign says otherwise. */
+let startingGold = STARTING_GOLD;
+export function setStartingGold(n: number): void { if (Number.isInteger(n) && n >= 0) startingGold = n; }
 import { STAT_KEYS, STAT_NAMES } from '../campaign/model.ts';
 import { ensureToast } from './manage.ts';
 
@@ -193,10 +197,10 @@ export function mountBuilder(root: HTMLElement, initial: State, driver: Driver):
     const b = state.bundle;
     const slug = state.roster.catalogue;
     const max = maxWarriors(slug);
-    const left = state.stash == null ? STARTING_GOLD - summary.spent : state.stash;
+    const left = state.stash == null ? startingGold - summary.spent : state.stash;
     const purse = h('div', { class: 'bd-purse', role: 'status' },
       state.stash == null
-        ? h('span', { class: left < 0 ? 'over' : '' }, h('b', {}, gc(summary.spent)), ` of ${STARTING_GOLD} spent · `, h('b', {}, left < 0 ? `${-left} gc over` : gc(left)), left < 0 ? '' : ' to the stash')
+        ? h('span', { class: left < 0 ? 'over' : '' }, h('b', {}, gc(summary.spent)), ` of ${startingGold} spent · `, h('b', {}, left < 0 ? `${-left} gc over` : gc(left)), left < 0 ? '' : ' to the stash')
         : h('span', {}, h('b', {}, gc(left)), ' in the stash'),
       h('span', {}, 'Rating ', h('b', {}, String(summary.rating))),
       h('span', { class: summary.size > max ? 'over' : '' }, h('b', {}, `${summary.size}`), ` of ${max} warriors`),
@@ -283,4 +287,4 @@ export function mountBuilder(root: HTMLElement, initial: State, driver: Driver):
 }
 
 /** The roster as text, with the names given. */
-export const textOf = (state: State, name?: string): string => rosterText(state.bundle, state.roster, { name, names: state.names, stash: state.stash ?? STARTING_GOLD - summarise(state.bundle, state.roster).spent });
+export const textOf = (state: State, name?: string): string => rosterText(state.bundle, state.roster, { name, names: state.names, stash: state.stash ?? startingGold - summarise(state.bundle, state.roster).spent });

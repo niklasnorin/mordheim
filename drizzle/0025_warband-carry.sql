@@ -1,0 +1,1 @@
+ALTER TABLE "warbands" ADD COLUMN "carry" jsonb;

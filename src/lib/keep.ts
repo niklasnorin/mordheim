@@ -34,7 +34,8 @@ export interface PageData {
   canEdit: boolean;
   gm: boolean;
   keep?: KeepData;
-  proposal?: { roster: Roster; names: Record<string, string[]>; notes: string[]; catalogue: string };
+  /** The roster to confirm, and for a warband on the road from another campaign, where from and what it proposes. */
+  proposal?: { roster: Roster; names: Record<string, string[]>; notes: string[]; catalogue: string; carried?: { from: string; mode: string; gold: number; shards: number } };
   /** Played scenarios the warband fought in, newest first, with what the record says of them, for experience and income. */
   games?: ({ id: string; title: string } & GameRecord)[];
 }
@@ -212,11 +213,15 @@ export function mountDraw(root: HTMLElement, data: PageData, bundle: Bundle): vo
   // a linked warrior's name is the record's, changed on the muster roll; one the keeper adds here is named here
   driver.rename = async (s, id, list) => (linked(s, id) ? s : { ...s, names: { ...s.names, [id]: list } });
   driver.after = (v) => {
-    const gold = h('input', { type: 'number', min: 0, max: 100000, value: 0, 'aria-label': 'Crowns in the stash' }) as HTMLInputElement;
-    const shards = h('input', { type: 'number', min: 0, max: 999, value: 0, 'aria-label': 'Shards of wyrdstone in the stash' }) as HTMLInputElement;
+    const road = p.carried;
+    const gold = h('input', { type: 'number', min: 0, max: 100000, value: road?.gold ?? 0, 'aria-label': 'Crowns in the stash' }) as HTMLInputElement;
+    const shards = h('input', { type: 'number', min: 0, max: 999, value: road?.shards ?? 0, 'aria-label': 'Shards of wyrdstone in the stash' }) as HTMLInputElement;
     const box = h('section', { class: 'bd-panel', id: 'confirm' },
-      h('h2', {}, 'Confirm the roster'),
-      p.notes.length ? h('div', {}, h('p', {}, 'What the record had that the catalogue did not take; put it right above, or leave it:'), h('ul', { class: 'mg-list' }, ...p.notes.map((n) => h('li', {}, n)))) : h('p', { class: 'mg-muted' }, 'Every warrior was found in the catalogue.'),
+      h('h2', {}, road ? 'Approve the roster' : 'Confirm the roster'),
+      road ? h('p', {}, road.mode === 'start-over'
+        ? `They start over, brought from ${road.from}: found the roster afresh above, with the crowns below.`
+        : `Brought from ${road.from}, ${road.mode === 'adjusted' ? 'adjusted by this campaign’s rules' : 'as they were'}: the roster above and the stash below are what it proposes. Change anything you like; the log keeps what was proposed beside what you approve.`) : null,
+      p.notes.length ? h('div', {}, h('p', {}, road ? 'What the road changed:' : 'What the record had that the catalogue did not take; put it right above, or leave it:'), h('ul', { class: 'mg-list' }, ...p.notes.map((n) => h('li', {}, n)))) : h('p', { class: 'mg-muted' }, 'Every warrior was found in the catalogue.'),
       h('div', { class: 'bd-row' }, h('label', {}, 'Crowns in the stash ', gold), h('label', {}, 'Shards of wyrdstone ', shards)),
       h('p', { class: 'mg-note' }, 'Once confirmed, the warriors’ statlines, gear, skills, old wounds and experience are the roster’s, and their names and stories stay on the muster roll. Hiring, buying and selling go through the stash from then on.'),
       h('div', { class: 'mg-actions end' },
@@ -230,7 +235,7 @@ export function mountDraw(root: HTMLElement, data: PageData, bundle: Bundle): vo
             try { sessionStorage.removeItem(KEY); } catch { /* none */ }
             location.reload();
           } catch (err) { toast((err as Error).message); btn.disabled = false; }
-        } }, 'Confirm the roster')),
+        } }, road ? 'Approve the roster' : 'Confirm the roster')),
     );
     v.root.append(box);
   };

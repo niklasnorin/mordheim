@@ -78,3 +78,8 @@ const yours = (c: CampaignConfig) => kept.find((k) => k.campaignId === c.id);
     {gm && <p class="mg-note">A game master starts and keeps campaigns in <a href={`${base}/admin/campaigns/`}>the Watch House</a>.</p>}
   </main>
 </Base>
+
+<style>
+  .mg-h2 a, .mg-card h3 a { color: inherit; text-decoration-color: var(--border); text-underline-offset: .2em; }
+  .mg-h2 a:hover, .mg-card h3 a:hover { color: var(--gold); }
+</style>

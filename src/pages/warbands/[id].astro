@@ -22,6 +22,9 @@ import { listScenarios, memberStories, type MemberChapter } from '../../server/c
 import { curfewStory, todayFor } from '../../server/curfew/service';
 import { STAT_KEYS, STAT_NAMES, type Scenario, type StoryChapter, type Warband } from '../../campaign/model';
 import { listChapters } from '../../server/campaign/chapters';
+import { carryTargets, earlierLives, earlierWarbands, pendingFor, type EarlierLife, type PendingCarry } from '../../server/campaign/carry';
+import { base as siteRoot, herePath } from '../../lib/site';
+import { STATUS_WORDS, type CampaignConfig } from '../../campaign/campaign';
 import type { MemberNights } from '../../curfew/story';
 /** Links and API calls stay in the campaign this page is in. */
 const base = Astro.locals.base;
@@ -35,6 +38,7 @@ const viewer = ready ? await getActor(Astro.request) : null;
 let warband: Warband | undefined, stories: Record<string, MemberChapter[]> = {}, keeperless = 0;
 let nights: Record<string, MemberNights> = {}, roster: Warband[] = [], scenarios: Scenario[] = [], chapters: StoryChapter[] = [];
 let players: { id: string; name: string; email: string }[] = [];
+let targets: CampaignConfig[] = [], pending: PendingCarry | null = null, lives: Record<string, EarlierLife[]> = {}, before: Awaited<ReturnType<typeof earlierWarbands>> = [];
 if (ready) {
   try {
     warband = await getWarband(Astro.params.id!);
@@ -49,6 +53,9 @@ if (ready) {
       roster = all;
       keeperless = all.filter((w) => !w.ownerId).length;
       if (viewer && isGm(viewer)) players = await listUsers();
+      // the road: where they came from, and where they may go
+      [pending, lives, before] = await Promise.all([pendingFor(warband.id), earlierLives(warband.members.map((m) => m.id)), earlierWarbands(warband.id)]);
+      if (viewer && (isGm(viewer) || warband.ownerId === viewer.id)) targets = await carryTargets(viewer, warband.id);
     }
   } catch (e) { console.error('[warbands] unavailable', e); }
 }
@@ -73,8 +80,9 @@ const overview = warband?.lore.trim() ?? '';
         <div class="mg-hero wb-hero">
           <span class="wb-crest" aria-hidden="true">{warband.crest ? <img src={asset(warband.crest)} width="120" height="140" alt="" /> : warband.sigil}</span>
           <div>
-            <p class="mg-kicker">{warband.type}{warband.player ? <> · kept by {warband.player}</> : <> · <span class="mg-chip">nobody’s yet</span></>}{owner && <span class="mg-chip gold">Yours</span>}{owner && <a class="wb-kicker-link" href={`${base}/curfew/`}>The Curfew ledger</a>}{!viewer && ready && <a class="wb-kicker-link" href={`${base}/signin/?next=${encodeURIComponent(Astro.url.pathname)}`}>Sign in to keep a warband</a>}</p>
+            <p class="mg-kicker">{warband.type}{warband.player ? <> · kept by {warband.player}</> : <> · <span class="mg-chip">nobody’s yet</span></>}{owner && <span class="mg-chip gold">Yours</span>}{owner && <a class="wb-kicker-link" href={`${base}/curfew/`}>The Curfew ledger</a>}{!viewer && ready && <a class="wb-kicker-link" href={`${base}/signin/?next=${encodeURIComponent(herePath(Astro.locals, Astro.url))}`}>Sign in to keep a warband</a>}</p>
             <h1 class="mg-h1">{warband.name}</h1>
+            {pending && <p class="mg-note">On the road from {pending.fromCampaignName}. {canEdit ? <a href={`${base}/warbands/${warband.id}/roster/`}>Approve their roster</a> : 'Their keeper has yet to approve their roster.'}</p>}
           </div>
         </div>
 
@@ -97,6 +105,7 @@ const overview = warband?.lore.trim() ?? '';
 
         <section class="mg-section wb-pane" id="story" data-pane hidden>
           <h2 class="visually-hidden">Their story</h2>
+          {before.length > 0 && <p class="mg-note">Their story began before this campaign: {before.map((b, i) => <>{i > 0 && ', and before that '}<a href={`${siteRoot}/c/${b.campaignSlug}/warbands/${b.warbandId}/#story`}>the earlier chapters, in {b.campaignName}</a></>)}.</p>}
           <StoryChapters warbandId={warband.id} chapters={chapters} canEdit={canEdit} />
         </section>
 
@@ -148,7 +157,7 @@ const overview = warband?.lore.trim() ?? '';
                         {m.skills.length > 0 && <><h4 class="mg-h3">Skills &amp; special rules</h4><ul class="mg-list">{m.skills.map((x) => <li>{x}</li>)}</ul></>}
                         {m.injuries.length > 0 && <><h4 class="mg-h3">Old wounds</h4><ul class="mg-list">{m.injuries.map((x) => <li>{x}</li>)}</ul></>}
                         {m.lore.trim() && <><h4 class="mg-h3">Tale</h4><Markdown class="mg-lede" text={m.lore} /></>}
-                        <WarriorStory member={m} chapters={chapters} nights={nights[m.id]} warbands={roster} />
+                        <WarriorStory member={m} chapters={chapters} nights={nights[m.id]} warbands={roster} earlier={lives[m.id]} />
                         {canEdit && (
                           <details class="mg-editor">
                             <summary>Change {m.name.split(' ')[0]}</summary>
@@ -267,6 +276,29 @@ const overview = warband?.lore.trim() ?? '';
               </details>
             )}
 
+            {canEdit && targets.length > 0 && !pending && (
+              <details class="mg-editor" id="carry">
+                <summary>Take them to another campaign</summary>
+                <div class="carry" data-carry={JSON.stringify({ warbandId: warband.id, targets: targets.map((c) => ({ id: c.id, name: c.name, status: STATUS_WORDS[c.status], modes: c.options.carry.modes, crowns: c.options.startingCrowns })) })}>
+                  <p class="mg-muted">They are copied, not moved: this campaign keeps them as they are, and the copy begins its own story in the next, with a link back to this one.</p>
+                  <label class="mg-field">Into<select data-carry-to>{targets.map((c) => <option value={c.id}>{c.name}{c.status !== 'live' ? ` (${STATUS_WORDS[c.status]})` : ''}</option>)}</select></label>
+                  <fieldset class="mg-fieldset">
+                    <legend>How</legend>
+                    <label class="mg-field check"><input type="radio" name="carry-mode" value="as-is" checked /> As they are: every living warrior, the roster, the gold and the wyrdstone</label>
+                    <label class="mg-field check"><input type="radio" name="carry-mode" value="adjusted" /> Adjusted by the campaign’s rules, for you to change as you like before you approve them</label>
+                    <label class="mg-field check"><input type="radio" name="carry-mode" value="start-over" /> Started over: the name, the crest and the story, a fresh roster, and any heroes you name as veterans</label>
+                  </fieldset>
+                  <fieldset class="mg-fieldset" data-carry-veterans hidden>
+                    <legend>Veterans</legend>
+                    <div class="mg-checks">{warband.members.filter((m) => !m.dead && m.rank === 'hero').map((m) => <label class="mg-field check"><input type="checkbox" value={m.id} data-veteran /> {m.name}</label>)}</div>
+                    <p class="mg-muted">A veteran keeps their name, their face and their epithet, on fresh stats with no experience.</p>
+                  </fieldset>
+                  <div class="mg-actions"><button type="button" class="mg-btn ghost" data-carry-preview>See what goes across</button></div>
+                  <div data-carry-plan aria-live="polite"></div>
+                </div>
+              </details>
+            )}
+
             {gm && (
               <details class="mg-editor">
                 <summary>The keeper</summary>
@@ -326,7 +358,9 @@ const overview = warband?.lore.trim() ?? '';
 <script>
   import { wireManage } from '../../lib/manage';
   import { wirePortraits } from '../../lib/portrait';
+  import { wireCarry } from '../../lib/carry';
   const root = document.getElementById('main-content')!;
+  wireCarry(root, root.dataset.base ?? '');
   wireManage(root, root.dataset.base ?? '');
   wirePortraits(root, root.dataset.base ?? '');
   // One part of the page shows at a time, chosen by the address: a tab's own name (#roster), or anything inside a

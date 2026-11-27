@@ -1,7 +1,7 @@
 ---
 /**
- * The warband builder, for practice: any warband in the catalogue, hired and equipped from its own lists with the
- * 500 crowns, reckoned as it goes, kept in this browser. A player who keeps no warband yet may found this one: the
+ * The warband builder, for practice: any warband the campaign takes, hired and equipped from its own lists with the
+ * campaign's crowns (500 unless it says otherwise), reckoned as it goes, kept in this browser. A player who keeps no warband yet may found this one: the
  * roster goes to the record, and what was not spent goes into its stash.
  */
 import Base from '../../layouts/Base.astro';
@@ -25,16 +25,18 @@ let mine: { id: string; name: string } | undefined;
 if (viewer) { try { const w = await ownWarband(viewer.id, Astro.locals.campaign.id); if (w) mine = { id: w.id, name: w.name }; } catch (e) { console.error('[builder] unavailable', e); } }
 // a player founds one warband; a game master may found any, for a player to take up
 const mayFound = !!viewer && (isGm(viewer) || !mine);
-const warbands = catalogueIndex.warbands;
+// the lists the campaign takes, and the crowns it founds a warband with
+const { catalogues, startingCrowns: crowns } = Astro.locals.campaign.options;
+const warbands = catalogueIndex.warbands.filter((w) => !catalogues || catalogues.includes(w.slug));
 ---
 
 <Base title="Warband builder — Mordheim" description="Hire and equip a Mordheim warband from its own lists, with the crowns and the rating reckoned as you go.">
-  <main class="mg mg-page" id="main-content" data-base={base}>
+  <main class="mg mg-page" id="main-content" data-base={base} data-crowns={crowns}>
     <ManageTop crumbs={[{ label: 'Warbands', href: `${base}/warbands/` }, { label: 'The builder' }]} viewer={viewer} />
     <div class="mg-hero">
       <p class="mg-kicker">The muster</p>
       <h1 class="mg-h1">Raise a warband</h1>
-      <p class="mg-lede">Five hundred crowns, a warband’s own lists and its rules. Hire, arm and name them; what you do not spend goes into the stash. Nothing here is kept but in this browser{mayFound ? ', until you found them' : ''}.</p>
+      <p class="mg-lede">{crowns} crowns, a warband’s own lists and its rules. Hire, arm and name them; what you do not spend goes into the stash. Nothing here is kept but in this browser{mayFound ? ', until you found them' : ''}.</p>
     </div>
 
     <div class="bd-top">
@@ -72,12 +74,13 @@ const warbands = catalogueIndex.warbands;
 
 <script>
   import { catalogueIndex, loadBundle } from '../../lib/builder-data';
-  import { emptyState, localDriver, mountBuilder, textOf, type State, type View } from '../../lib/builder';
+  import { emptyState, localDriver, mountBuilder, setStartingGold, textOf, type State, type View } from '../../lib/builder';
   import { postApi, ensureToast } from '../../lib/manage';
   import { summarise } from '../../builder/rules';
 
   const main = document.getElementById('main-content')!;
   const base = main.dataset.base ?? '';
+  setStartingGold(Number(main.dataset.crowns));
   const root = document.getElementById('bd-root')!;
   const select = document.getElementById('bd-type') as HTMLSelectElement;
   const toast = ensureToast();
@@ -100,7 +103,7 @@ const warbands = catalogueIndex.warbands;
     view = mountBuilder(root, state, localDriver('practice', save));
   }
 
-  if (catalogueIndex.warbands.some((w) => w.slug === saved.slug)) select.value = saved.slug;
+  if ([...select.options].some((o) => o.value === saved.slug)) select.value = saved.slug;
   select.addEventListener('change', () => void open(select.value));
   document.getElementById('bd-reset')!.addEventListener('click', () => { if (confirm('Start this warband again from nothing?')) void open(select.value, true); });
   document.getElementById('bd-copy')!.addEventListener('click', async () => {

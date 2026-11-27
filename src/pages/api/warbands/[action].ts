@@ -10,6 +10,9 @@ import { removePortrait, setPortrait, uploadPortraitSource } from '../../../serv
 import { awardExperience, buyItem, changeRoster, drawUp, dropRoster, foundWarband, hire, income, keepViewFor, loseWarrior, moveGear, promote, recruit, sellItem, undoLast } from '../../../server/campaign/keep';
 import type { Roster, Selection } from '../../../builder/evaluate';
 import { addMember, assignWarband, claimWarband, createWarband, deleteWarband, releaseWarband, removeMember, reorderMembers, updateMember, updateWarband } from '../../../server/campaign/roster';
+import { carryWarband, previewCarry } from '../../../server/campaign/carry';
+import { getCampaign } from '../../../server/campaign/campaigns';
+import { base as siteBase } from '../../../lib/site';
 
 export const prerender = false;
 
@@ -43,7 +46,17 @@ const op = z.discriminatedUnion('kind', [
 ]);
 const kept = { warbandId: id, version: z.number().int().min(0) };
 
+const carryBody = { warbandId: id, to: z.string().min(1).max(64), mode: z.enum(['as-is', 'adjusted', 'start-over']), veterans: z.array(id).max(30).optional() };
+
 const routes = {
+  // carrying a warband into another campaign: what would go across, then the copy
+  'carry-preview': route(z.object(carryBody), (i, a) => previewCarry(a, i.warbandId, i.to, i.mode, { veterans: i.veterans }).then((preview) => ({ preview }))),
+  carry: route(z.object(carryBody), async (i, a) => {
+    const r = await carryWarband(a, i.warbandId, i.to, i.mode, { veterans: i.veterans });
+    const to = await getCampaign(i.to);
+    const where = to ? `${siteBase}/c/${to.slug}` : siteBase;
+    return { ok: true, message: r.pending ? 'They are on the road. Approve their roster in the new campaign.' : `They stand in ${to?.name ?? 'the new campaign'} now.`, warband: r.warband, pending: r.pending, goto: r.pending ? `${where}/warbands/${r.warband.id}/roster/` : `${where}/warbands/${r.warband.id}/` };
+  }),
   // the warband builder: founding, drawing up a written roster, and keeping it between games
   found: route(z.object({ name: z.string().max(80), player: z.string().max(40).optional(), roster, names }), (i, a, _r, c) => foundWarband(a, c.id, i).then((warband) => ({ warband }))),
   keep: route(z.object({ warbandId: id }), (i, a) => keepViewFor(a, i.warbandId).then((keep) => ({ keep }))),

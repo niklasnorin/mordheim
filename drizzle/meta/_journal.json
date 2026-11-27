@@ -176,6 +176,13 @@
       "when": 1795807842633,
       "tag": "0024_campaigns",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795810648454,
+      "tag": "0025_warband-carry",
+      "breakpoints": true
     }
   ]
 }

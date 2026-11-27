@@ -162,6 +162,11 @@ const DOCS = ['omens', 'moons', 'tokens'];
   </main>
 </Base>
 
+<style>
+  .mg-h2 a, .mg-card h3 a { color: inherit; text-decoration-color: var(--border); text-underline-offset: .2em; }
+  .mg-h2 a:hover, .mg-card h3 a:hover { color: var(--gold); }
+</style>
+
 <script>
   import { wireManage } from '../../lib/manage';
   const root = document.getElementById('main-content')!;

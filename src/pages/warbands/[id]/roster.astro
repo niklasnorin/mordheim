@@ -63,8 +63,9 @@ const catalogue = data?.keep?.catalogue ?? (warband ? catalogueForType(warband.t
       <>
         <div class="mg-hero">
           <p class="mg-kicker">{warband.type}{warband.player ? <> · kept by {warband.player}</> : null}</p>
-          <h1 class="mg-h1">{data?.mode === 'draw' ? 'Draw up the roster' : 'The roster'}</h1>
-          {data?.mode === 'draw' && <p class="mg-lede">Drawn up from the muster roll as it is written: each warrior found among the {warband.type}’ fighters, their gear, skills and wounds by name, the rest as advances. Put right what is wrong, then confirm it below.</p>}
+          <h1 class="mg-h1">{data?.mode === 'draw' ? (data.proposal?.carried ? 'On the road' : 'Draw up the roster') : 'The roster'}</h1>
+          {data?.mode === 'draw' && data.proposal?.carried && <p class="mg-lede">Brought from {data.proposal.carried.from}. {data.proposal.carried.mode === 'start-over' ? 'They start over: found their roster afresh, with any veterans, and approve it at the foot of the page.' : 'The roster below is what this campaign proposes. Change anything you like, then approve it at the foot of the page; until then they are on the road.'}</p>}
+          {data?.mode === 'draw' && !data.proposal?.carried && <p class="mg-lede">Drawn up from the muster roll as it is written: each warrior found among the {warband.type}’ fighters, their gear, skills and wounds by name, the rest as advances. Put right what is wrong, then confirm it below.</p>}
           {data?.mode === 'keep' && data.canEdit && <p class="mg-lede">Between games: hire, arm and advance them here. Gear bought from their own lists is paid from the stash; gear taken off goes into it; the trading post is where the campaign is now.</p>}
         </div>
         {!data && !warband.built && (

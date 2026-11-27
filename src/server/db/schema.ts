@@ -192,6 +192,12 @@ export const warbands = pgTable(
      * the warriors' statlines, gear, skills, old wounds and experience are read from it.
      */
     roster: jsonb('roster'),
+    /**
+     * A warband on the road from another campaign, not yet approved by its keeper (`PendingCarry` in
+     * server/campaign/carry.ts): where it came from, how, and what the new campaign proposes (the roster, the gold, the
+     * wyrdstone, what was changed). The roster's draw-up opens on it, and approving it writes the roster and clears this.
+     */
+    carry: jsonb('carry'),
     sort: integer('sort').notNull().default(0),
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

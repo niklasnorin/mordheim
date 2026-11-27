@@ -64,7 +64,7 @@ async function mayKeep(actor: Actor, w: WarbandRow): Promise<void> {
   if (!isGm(actor) && w.ownerId !== actor.id) throw new LedgerError('That warband is not yours to keep.', 403);
   await writableCampaign(actor, w.campaignId);
 }
-function bundleOrRefuse(slug: string): Bundle {
+export function bundleOrRefuse(slug: string): Bundle {
   const b = bundleFor(slug);
   if (!b) throw new LedgerError('That warband is not in the builder’s catalogue.');
   return b;
@@ -72,7 +72,8 @@ function bundleOrRefuse(slug: string): Bundle {
 /** The catalogue a warband's kind names, if the builder has it. */
 export const catalogueForType = (type: string): string | undefined => slugForType(type, catalogueSlugs());
 
-async function sums(warbandId: string): Promise<{ gold: number; shards: number }> {
+/** A built warband's stash: the gold and wyrdstone of its log, struck lines aside. */
+export async function sums(warbandId: string): Promise<{ gold: number; shards: number }> {
   const [r] = await db().select({ gold: sql<number>`coalesce(sum(${warbandLog.gold}), 0)::int`, shards: sql<number>`coalesce(sum(${warbandLog.shards}), 0)::int` }).from(warbandLog).where(and(eq(warbandLog.warbandId, warbandId), eq(warbandLog.struck, false)));
   return { gold: r?.gold ?? 0, shards: r?.shards ?? 0 };
 }
@@ -149,7 +150,8 @@ function checkSent(b: Bundle, slug: string, sent: Roster): Roster {
 // ───────────────────────── writing the warriors back onto the record ─────────────────────────
 
 /** Each warrior's numbers, from the roster onto their row: their kind, rank, statline, gear, skills, old wounds, experience. */
-async function project(b: Bundle, roster: Roster): Promise<void> {
+/** Write the warriors' numbers from the roster onto their rows. */
+export async function project(b: Bundle, roster: Roster): Promise<void> {
   for (const w of warriorsOf(b, roster)) for (const id of w.members) {
     await db().update(members).set({
       role: w.type.slice(0, 60), rank: w.kind === 'hero' ? 'hero' : 'henchman', stats: w.stats, equipment: w.equipment.slice(0, 30),
@@ -176,7 +178,8 @@ async function attachMembers(b: Bundle, warbandId: string, roster: Roster, names
   return created;
 }
 
-async function log(warbandId: string, actor: Actor, line: { kind: string; gold?: number; shards?: number; text: string; before?: Roster | null; created?: string[]; dead?: string[]; scenarioId?: string | null }): Promise<void> {
+/** A line in the warband's log. */
+export async function log(warbandId: string, actor: Actor, line: { kind: string; gold?: number; shards?: number; text: string; before?: Roster | null; created?: string[]; dead?: string[]; scenarioId?: string | null }): Promise<void> {
   await db().insert(warbandLog).values({
     warbandId, kind: line.kind, gold: line.gold ?? 0, shards: line.shards ?? 0, text: line.text.slice(0, 500), before: line.before ?? null,
     members: line.created?.length || line.dead?.length ? { created: line.created ?? [], dead: line.dead ?? [] } : null,
@@ -222,14 +225,23 @@ export async function foundWarband(actor: Actor, campaignId: string, input: Foun
   return (await getWarband(w.id))!;
 }
 
-/** A roster drawn up from the warband's written record, for the keeper to correct and confirm. */
-export async function proposalFor(warbandId: string): Promise<Proposal & { catalogue: string }> {
+/**
+ * A roster for the keeper to correct and confirm: drawn up from the warband's written record, or, for a warband on the
+ * road from another campaign, the roster that campaign proposes, with the gold and wyrdstone it proposes and what it
+ * changed (`PendingCarry` in carry.ts).
+ */
+export async function proposalFor(warbandId: string): Promise<Proposal & { catalogue: string; carried?: { from: string; mode: string; gold: number; shards: number } }> {
   const w = await getWarband(warbandId);
   if (!w) throw new LedgerError('No such warband has entered the gates.', 404);
+  const [r] = await db().select({ carry: warbands.carry }).from(warbands).where(eq(warbands.id, warbandId)).limit(1);
+  const { pendingOf } = await import('./carry.ts');
+  const carry = pendingOf(r?.carry);
+  const carried = carry ? { from: carry.fromCampaignName, mode: carry.mode, gold: carry.gold, shards: carry.shards } : undefined;
+  if (carry?.proposed) return { roster: carry.proposed, names: {}, notes: carry.notes, catalogue: carry.proposed.catalogue, carried };
   const slug = catalogueForType(w.type);
   if (!slug) throw new LedgerError(`The builder has no catalogue for ${w.type}. A game master may change the warband’s kind to one it has.`);
   const p = propose(bundleOrRefuse(slug), slug, w.members.map((m) => ({ ...m, experience: m.experience ?? undefined })), randomId);
-  return { ...p, catalogue: slug };
+  return { ...p, notes: [...(carry?.notes ?? []), ...p.notes], catalogue: slug, carried };
 }
 
 /**
@@ -242,6 +254,8 @@ export async function drawUp(actor: Actor, warbandId: string, input: { roster: R
   if (w.roster) throw new LedgerError('The warband’s roster is kept already.', 409);
   const slug = catalogueForType(w.type);
   if (!slug || input.roster?.catalogue !== slug) throw new LedgerError('The roster is for another kind of warband.');
+  const campaign = await writableCampaign(actor, w.campaignId);
+  if (campaign.options.catalogues && !campaign.options.catalogues.includes(slug)) throw new LedgerError(`${campaign.name} does not take ${w.type}. A game master may change the warband’s kind to a list it takes.`);
   const b = bundleOrRefuse(slug);
   const roster = checkSent(b, slug, input.roster);
   if (!Number.isInteger(input.gold) || input.gold < 0 || input.gold > 100000) throw new LedgerError('The stash’s gold is a whole number of crowns.');
@@ -258,6 +272,9 @@ export async function drawUp(actor: Actor, warbandId: string, input: { roster: R
   await save(warbandId, w.version, roster);
   await project(b, roster);
   const left = [...own].filter((id) => !seen.has(id) && !created.includes(id));
+  // a warband on the road from another campaign: approving the roster is approving the carry
+  const { approveCarry } = await import('./carry.ts');
+  if (await approveCarry(actor, warbandId, roster, input.gold, Math.max(0, input.shards ?? 0))) { await touch(warbandId); return keepView(warbandId); }
   await log(warbandId, actor, { kind: 'drawn', gold: input.gold, shards: Math.max(0, input.shards ?? 0), text: `The roster drawn up from the record, with ${input.gold} crowns in the stash${left.length ? `; ${left.length} warrior${left.length === 1 ? '' : 's'} left off it, written by hand` : ''}.` });
   await touch(warbandId);
   return keepView(warbandId);
